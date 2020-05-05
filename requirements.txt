@@ -1,1 +1,6 @@
 PyGreSQL>5.1.2
+requests
+pathlib
+pandas
+PyJWT[crypto]>=1.7.1
+PyJWT>=1.7.1
