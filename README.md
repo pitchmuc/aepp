@@ -33,6 +33,6 @@ The QueryService class is the wrapper around the AEP Query Service API. It provi
 #### InteractiveQuery
 
 This class is based on the pyGreSQL module for python. It requires that you possess this module to realize the query to AEP in an interactive mode.
-You can instantiate this class by passing the response returned by the QueryService.connection method.
-pypi doc : <https://pypi.org/project/PyGreSQL/>
+You can instantiate this class by passing the response returned by the QueryService.connection method.\n
+pypi doc : <https://pypi.org/project/PyGreSQL/> \n
 tutorial : <http://www.pygresql.org/contents/tutorial.html>
