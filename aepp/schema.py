@@ -12,7 +12,11 @@ json_extend = [{'op': 'replace',
 
 
 class Schema:
+    """
+    This class is a wrapper around the schema registry API for Adobe Experience Platform.
+    More documentation on these endpoints can be found here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/schema-registry.yaml
 
+    """
     schemas = {}
     schemasPaths = {}
     schemaClasses = {
@@ -21,14 +25,21 @@ class Schema:
     }
 
     def __init__(self, **kwargs):
-        self.header = aepp.config._header
+        self.header = deepcopy(aepp.config._header)
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
         self.endpoint = config._endpoint+config._endpoint_schema
-        pass
 
     def _getPaths(self, myDict: dict, path: list = None, key: str = None, list_path: list = None, verbose: bool = False):
-        "Function to find the different paths existing in a schema"
+        """
+        Function to find the different paths existing in a schema
+        Arguments:
+            myDict : REQUIRED : Schema that needs to be analyzed
+            paths : Not required - path being built on run time
+            key : key pass to the lower iteration in case.
+            list_path : what is returned at the end of the recursion
+            verbose : OPTIONAL : In case you need to see something
+        """
         if path is None:
             path = []
         if list_path is None:
@@ -70,8 +81,8 @@ class Schema:
         """
         path = '/tenant/schemas/'
         res = aepp._getData(self.endpoint+path, headers=self.header)
-        res = res['results']
-        return res
+        data = res['results']
+        return data
 
     def getSchema(self, schema_id: str = None, version: int = 1, save: bool = False, findPaths: bool = False, **kwargs):
         """
@@ -212,13 +223,48 @@ class Schema:
             f".*{filter}.*", str(element)) is not None)
         return list(elements)
 
+    def getClasses(self):
+        """
+        return the classes of the AEP Instances.
+        """
+        path = '/tenant/classes/'
+        res = aepp._getData(self.endpoint+path, headers=self.header)
+        return res
+
+    def getClass(self, class_id: str = None, version: int = 1):
+        """
+        Return a specific class.
+        Arguments: 
+            class_id : REQUIRED : the meta:altId or $id from the class
+            version : OPTIONAL : the version of the class to retrieve.
+        """
+        if class_id is None:
+            raise Exception("Require a class_id")
+        header = self.header
+        if class_id.startswith('https://'):
+            from urllib import parse
+            class_id = parse.quote_plus(class_id)
+        self.header['Accept-Encoding'] = 'identity'
+        self.header.update({
+            "Accept": "application/vnd.adobe.xed-full+json; version="+str(version)})
+        path = f'/tenant/classes/{class_id}'
+        res = aepp._getData(self.endpoint + path, headers=header)
+        del header['Accept-Encoding']
+        self.header.update({
+            "Accept": "application/json"})
+        return res
+
     def getMixins(self):
+        """
+        returns the mixin of the account
+        """
         path = '/tenant/mixins/'
         res = aepp._getData(self.endpoint+path, headers=self.header)
         return res
 
     def getMixin(self, mixin_id: str = None, version: int = 1):
         """
+        Returns a specific mixin.
         Arguments:
             mixin_id : meta:altId or $id
             version : version of the mixin
@@ -284,8 +330,8 @@ class Schema:
                 params[key] = kwargs.get(key, '')
         res = aepp._getData(self.endpoint+path,
                             params=params, headers=self.header)
-        res = res['results']
-        return res
+        data = res['results']  # issue when requesting directly results.
+        return data
 
     def getUnion(self, union_id: str = None, version: int = 1):
         """
@@ -299,12 +345,18 @@ class Schema:
         if union_id.startswith('https://'):
             from urllib import parse
             union_id = parse.quote_plus(union_id)
-        path = '/tenant/unions/{union_id}'
-        self.header['Accept-Encoding'] = 'identity'
+        path = f'/tenant/unions/{union_id}'
         self.header.update({
             "Accept": "application/vnd.adobe.xed-full+json; version="+str(version)})
         res = aepp._getData(self.endpoint + path, headers=self.header)
-        del self.header['Accept-Encoding']
         self.header.update({
             "Accept": "application/json"})
+        return res
+
+    def getXDMprofileSchema(self):
+        """
+        Returns a list of all schemas that are part of the XDM Individual Profile.
+        """
+        path = "/tenant/schemas?property=meta:immutableTags==union&property=meta:class==https://ns.adobe.com/xdm/context/profile"
+        res = aepp._getData(self.endpoint + path, headers=self.header)
         return res

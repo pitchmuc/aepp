@@ -2,6 +2,7 @@
 import aepp
 from aepp import config
 from pg import DB
+from copy import deepcopy
 
 
 class QueryService:
@@ -9,9 +10,8 @@ class QueryService:
     QueryService class is to be used 
     """
 
-    header = aepp.config._header
-
     def __init__(self, **kwargs):
+        self.header = deepcopy(aepp.config._header)
         self.header.update({"Accept": "application/json"})
         self.header.update(**kwargs)
         self.endpoint = config._endpoint+config._endpoint_query
@@ -164,12 +164,46 @@ class QueryService:
         res = aepp._deleteData(self.endpoint + path)
         return res
 
-    def getTemplates(self):
+    def getTemplates(self, **kwargs):
         """
         Retrieve the list of template for this instance.
         possible kwargs:
-
+            limit : Hint on number of records to fetch per page. default (50)
+            orderby : Field to order results by. Supported fields: created, updated. Prepend property name with + for ASC,- for DESC order. Default is -created.
+            start : Start value of property specified using orderby.
+            property : Comma-separated filters.List of properties that allow filtering:
+                    name
+                    userId
+                    lastUpdatedBy
+                operations:
+                    ‘~’ (contains). This operator can only be used on the name property.
+                    ‘==’ (equal to). This operator can be used on both the userId and the lastUpdatedBy properties.
+        more details here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Query-Templates/get_query_templates
         """
+        path = "/query-templates"
+        params = {**kwargs}
+        params['limit'] = kwargs.get('limit', 50)
+        res = aepp._getData(self.endpoint + path,
+                            headers=self.header, params=params)
+        return res
+
+    def createQueryTemplate(self, queryData: dict = None):
+        """
+        Create a query template based on the dictionary passed.
+        Arguments: 
+            queryData : REQUIED : An object that contains "sql", "queryParameter" and "name" keys.
+        more info : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Query-Templates/create_query_template
+        """
+        path = "/query-templates"
+        if isinstance(queryData, dict):
+            if "sql" not in queryData.keys() or "queryParameter" not in queryData.keys() or "name" not in queryData.keys():
+                raise KeyError(
+                    "Minimum key value are not respected.\nPlease see here for more info :\nhttps://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Query-Templates/create_query_template ")
+        else:
+            raise Exception("expected a dictionary for queryData")
+        res = aepp._postData(self.endpoint + path,
+                             headers=self.header, data=queryData)
+        return res
 
 
 class InteractiveQuery:

@@ -53,16 +53,16 @@ def _getData(endpoint: str, params: dict = None, data: dict = None, headers: dic
     """
     Abstraction for getting data
     """
-    if headers is not None:
-        config._header.update(headers)
+    if headers is None:
+        headers = config._header
     if params == None and data == None:
-        res = requests.get(endpoint, headers=config._header)
+        res = requests.get(endpoint, headers=headers)
     elif params != None and data == None:
-        res = requests.get(endpoint, headers=config._header, params=params)
+        res = requests.get(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.get(endpoint, headers=config._header, data=data)
+        res = requests.get(endpoint, headers=headers, data=data)
     elif params != None and data != None:
-        res = requests.get(endpoint, headers=config._header,
+        res = requests.get(endpoint, headers=headers,
                            params=params, data=data)
     try:
         res_json = res.json()
@@ -76,17 +76,17 @@ def _postData(endpoint: str, params: dict = None, data: dict = None, headers: di
     """
     Abstraction for posting data
     """
-    if headers is not None:
-        config._header.update(headers)
+    if headers is None:
+        headers = config._header
     if params == None and data == None:
-        res = requests.post(endpoint, headers=config._header)
+        res = requests.post(endpoint, headers=headers)
     elif params != None and data == None:
-        res = requests.post(endpoint, headers=config._header, params=params)
+        res = requests.post(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.post(endpoint, headers=config._header,
+        res = requests.post(endpoint, headers=headers,
                             data=json.dumps(data))
     elif params != None and data != None:
-        res = requests.post(endpoint, headers=config._header,
+        res = requests.post(endpoint, headers=headers,
                             params=params, data=json.dumps(data))
     try:
         res_json = res.json()
@@ -100,17 +100,17 @@ def _patchData(endpoint: str, params: dict = None, data: dict = None, headers: d
     """
     Abstraction for patching data
     """
-    if headers is not None:
-        config._header.update(headers)
+    if headers is None:
+        headers = config._header
     if params == None and data == None:
-        res = requests.patch(endpoint, headers=config._header)
+        res = requests.patch(endpoint, headers=headers)
     elif params != None and data == None:
-        res = requests.patch(endpoint, headers=config._header, params=params)
+        res = requests.patch(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.patch(endpoint, headers=config._header,
+        res = requests.patch(endpoint, headers=headers,
                              data=json.dumps(data))
     elif params != None and data != None:
-        res = requests.patch(endpoint, headers=config._header,
+        res = requests.patch(endpoint, headers=headers,
                              params=params, data=json.dumps(data))
     try:
         res_json = res.json()
@@ -124,17 +124,17 @@ def _deleteData(endpoint: str, params: dict = None, data=None, headers: dict = N
     """
     Abstraction for deleting data
     """
-    if headers is not None:
-        config._header.update(headers)
+    if headers is None:
+        headers = config._header
     if params == None and data == None:
-        res = requests.delete(endpoint, headers=config._header)
+        res = requests.delete(endpoint, headers=headers)
     elif params != None and data == None:
-        res = requests.delete(endpoint, headers=config._header, params=params)
+        res = requests.delete(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.delete(endpoint, headers=config._header,
+        res = requests.delete(endpoint, headers=headers,
                               data=json.dumps(data))
     elif params != None and data != None:
-        res = requests.delete(endpoint, headers=config._header,
+        res = requests.delete(endpoint, headers=headers,
                               params=params, data=json.dumps(data=data))
     try:
         status_code = res.status_code
@@ -148,15 +148,15 @@ def _putData(endpoint: str, params: dict = None, data=None, headers: dict = None
     """
     Abstraction for deleting data
     """
-    if headers is not None:
-        config._header.update(headers)
+    if headers is None:
+        headers = config._header
     if params != None and data == None:
-        res = requests.put(endpoint, headers=config._header, params=params)
+        res = requests.put(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.put(endpoint, headers=config._header,
+        res = requests.put(endpoint, headers=headers,
                            data=json.dumps(data))
     elif params != None and data != None:
-        res = requests.put(endpoint, headers=config._header,
+        res = requests.put(endpoint, headers=headers,
                            params=params, data=json.dumps(data=data))
     try:
         status_code = res.json()

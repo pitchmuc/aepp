@@ -13,6 +13,9 @@ _header = {"Accept": "application/json",
            }
 
 # endpoints
-_endpoint = 'https://platform.adobe.io'
-_endpoint_schema = '/data/foundation/schemaregistry'
+_endpoint = "https://platform.adobe.io"
+_endpoint_schema = "/data/foundation/schemaregistry"
 _endpoint_query = "/data/foundation/query"
+_endpoint_catalog = "/data/foundation/catalog"
+_endpoint_dule = "/data/foundation/dulepolicy"
+_endpoint_export = "/data/foundation/export"
