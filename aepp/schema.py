@@ -4,11 +4,21 @@ from aepp import config
 from copy import deepcopy
 import re
 import typing
+from dataclasses import dataclass
 
 json_extend = [{'op': 'replace',
                 'path': '/meta:intendedToExtend',
                 'value': ['https://ns.adobe.com/xdm/context/profile',
                           'https://ns.adobe.com/xdm/context/experienceevent']}]
+
+
+@dataclass
+class _Data:
+
+    def __init__(self):
+        self.ids = {}
+        self.schemas = {}
+        self.paths = {}
 
 
 class Schema:
@@ -19,7 +29,7 @@ class Schema:
     """
     schemas = {}
     schemasPaths = {}
-    schemaClasses = {
+    _schemaClasses = {
         "event": "https://ns.adobe.com/xdm/context/experienceevent",
         "profile": "https://ns.adobe.com/xdm/context/profile"
     }
@@ -29,6 +39,7 @@ class Schema:
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
         self.endpoint = config._endpoint+config._endpoint_schema
+        self.data = _Data()
 
     def _getPaths(self, myDict: dict, path: list = None, key: str = None, list_path: list = None, verbose: bool = False):
         """
@@ -82,6 +93,7 @@ class Schema:
         path = '/tenant/schemas/'
         res = aepp._getData(self.endpoint+path, headers=self.header)
         data = res['results']
+        self.data.ids = {key['title']: key['$id'] for key in data}
         return data
 
     def getSchema(self, schema_id: str = None, version: int = 1, save: bool = False, findPaths: bool = False, **kwargs):
@@ -107,16 +119,19 @@ class Schema:
             from urllib import parse
             schema_id = parse.quote_plus(schema_id)
         path = f'/tenant/schemas/{schema_id}'
-        res = aepp._getData(self.endpoint + path)
+        res = aepp._getData(self.endpoint + path, headers=self.header)
         del self.header['Accept-Encoding']
         self.header['Accept'] = "application/json"
+        if "title" not in res.keys():
+            print('Issue with the request. See response.')
+            return res
         if save:
             with open(f'{res["title"]}.json', 'w') as f:
                 f.write(aepp.json.dumps(res, indent=4))
-        self.schemas[res['title']] = res
+        self.data.schemas[res['title']] = res
         if findPaths:
             paths = self._getPaths(res)
-            self.schemasPaths[res['title']] = paths
+            self.data.paths[res['title']] = paths
         return res
 
     def patchSchema(self, schema_id: str = None, changes: list = None, **kwargs):
@@ -203,10 +218,10 @@ class Schema:
             paths : OPTIONAL : list of all of the paths.
         """
         if type(schema) == str:
-            if schema in self.schemasPaths.keys():
-                paths = self.schemasPaths[schema]
-            elif schema in self.schemas.keys():
-                schema = self.schemas[schema]
+            if schema in self.data.paths.keys():
+                paths = self.data.paths[schema]
+            elif schema in self.data.schemas.keys():
+                schema = self.data.schemas[schema]
                 paths = self._getPaths(schema)
             else:
                 raise Exception(
@@ -214,6 +229,7 @@ class Schema:
         elif type(schema) == dict:
             try:
                 paths = self._getPaths(schema)
+                data.paths[schema['title']] = paths
             except:
                 print('Issue with the schema reading. Verifiy your schema structure.')
                 return None
@@ -222,6 +238,30 @@ class Schema:
         elements = (element for element in paths if re.search(
             f".*{filter}.*", str(element)) is not None)
         return list(elements)
+
+    def pathType(self, path: str = None, schema: typing.Union[dict, str] = None):
+        """
+        Returns the XDM Type of the path that has been passed with the schema.
+        Arguments:
+            path : REQUIRED : the path that you want to check. Ex : "_tenant.schema.something"
+            schema : REQUIRED : Either the full schema definition or title reference to the schema.
+            if the title reference has been provided, make sure you have downloaded it before with getSchema method.
+        """
+        if type(schema) == str:
+            if schema not in self.data.schemas.keys():
+                raise Exception(
+                    "Expecting a reference to a schema already downloaded.")
+            else:
+                schema = self.data.schemas[schema]
+        split_path = path.split('.')
+        if len(path) == 0:
+            return schema["meta:xdmType"]
+        elif split_path[0] in schema.keys():
+            result = self.pathType(
+                '.'.join(split_path[1:]), schema[split_path[0]])
+        elif "properties" in schema.keys():
+            result = self.pathType('.'.join(split_path), schema['properties'])
+        return result
 
     def getClasses(self):
         """

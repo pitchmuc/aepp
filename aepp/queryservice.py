@@ -232,7 +232,7 @@ class InteractiveQuery:
             "passwd": self.passwd,
             "port": self.port,
         }
-        self.db = DB(**config_object)
+        self.db = DB(**self.config_object)
 
     def query(self, sql: str = None, format: str = "raw"):
         """

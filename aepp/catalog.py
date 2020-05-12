@@ -3,12 +3,23 @@ from aepp import config
 from copy import deepcopy
 import re
 import typing
+from dataclasses import dataclass
+
+
+@dataclass
+class _Data:
+
+    def __init__(self):
+        self.table_names = {}
+        self.schema_ref = {}
+        self.ids = {}
 
 
 class Catalog:
     """
     Catalog class from the AEP API. This class helps you to find where the data are coming from in AEP.
     More details here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#
+    It possess a data attribute that is containing information about your datasets. 
     """
 
     def __init__(self, **kwargs):
@@ -16,6 +27,7 @@ class Catalog:
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
         self.endpoint = config._endpoint+config._endpoint_catalog
+        self.data = _Data()
 
     def getAccounts(self, **kwargs):
         """
@@ -28,7 +40,8 @@ class Catalog:
             updated : Filter by the Unix timestamp (in milliseconds) for the time of last modification.
             createdUser : Filter by the ID of the user who created this object.
             property : Regex used to filter objects in the response. Ex. property=name~^test.
-        more details : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Accounts/get_accounts
+        # /Accounts/get_accounts
+        more details : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
         path = "/accounts/"
         params = {**kwargs}
@@ -53,7 +66,7 @@ class Catalog:
         Create a new account.
         Arguments:
             data : REQUIRED : Object that should describe the new connector.
-        More information on data requirement can be found here : 
+        More information on data requirement can be found here :
         https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Accounts/post_account
         """
         if type(data) != dict:
@@ -68,8 +81,8 @@ class Catalog:
     def updateAccount(self, account_id: str = None, data: dict = None):
         """
         Update an account.
-        Arguments: 
-            account_id : REQUIRED : account id to be udpated. 
+        Arguments:
+            account_id : REQUIRED : account id to be udpated.
             data : REQUIRED : Object that should describe the new connector.
         """
         if account_id is None:
@@ -86,7 +99,7 @@ class Catalog:
     def deleteAccount(self, account_id: str = None):
         """
         Delete an account.
-        Arguments: 
+        Arguments:
             account_id : REQUIRED : account id to be deleted.
         """
         if account_id is None:
@@ -108,7 +121,8 @@ class Catalog:
             dataSet : Used to filter on the related object: &dataSet=dataSetId.
             version : Filter by Semantic version of the account. Updated when the object is modified.
             property : Regex used to filter objects in the response. Ex. property=name~^test.
-        more details : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Batches/get_batch
+        # /Batches/get_batch
+        more details : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
         path = "/batches"
         params = {**kwargs}
@@ -119,8 +133,8 @@ class Catalog:
     def getBatch(self, batch_id: str = None):
         """
         Get a specific batch id.
-        Arguments: 
-            batch_id : REQUIRED : batch ID to be retrieved. 
+        Arguments:
+            batch_id : REQUIRED : batch ID to be retrieved.
         """
         if batch_id is None:
             raise Exception("batch_id parameter is required.")
@@ -150,7 +164,7 @@ class Catalog:
         """
         Returns a scpecific connector details and its stats if required in the parameter.
         Arguments:
-            connector_id : REQUIRED : connector id for the connector to be retrieved. 
+            connector_id : REQUIRED : connector id for the connector to be retrieved.
             stats : OPTIONAL : If set to True, return a 2nd object with the stat of the connector.
         """
         if connector_id is None:
@@ -167,7 +181,7 @@ class Catalog:
         """
         Retrieve the stats for a specific connector.
         Arguments:
-            connector_id : REQUIRED : connector id for the connector stats to be retrieved. 
+            connector_id : REQUIRED : connector id for the connector stats to be retrieved.
         """
         if connector_id is None:
             raise Exception("Expected a connector_id parameter.")
@@ -187,7 +201,8 @@ class Catalog:
             enabled : Indicates the status of the Connection. Should be interpreted as disabled or suspended when set to false.
             created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
             limit : Limit response to a specified positive number of objects. Ex. limit=10
-        More info can be found here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Connections/get_connections
+        # /Connections/get_connections
+        More info can be found here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
         path = "/connections"
         params = {**kwargs}
@@ -199,7 +214,7 @@ class Catalog:
         """
         Retrieve a specific connection
         Arguments:
-            connection_id : REQUIRED : ID of the connection to retrieve. 
+            connection_id : REQUIRED : ID of the connection to retrieve.
         """
         if connection_id is None:
             raise Exception("Expected a connection_id parameter")
@@ -210,7 +225,7 @@ class Catalog:
 
     def createConnection(self, data: dict = None):
         """
-        create a new connection for data ingestion. 
+        create a new connection for data ingestion.
         """
         if type(data) != dict:
             raise TypeError("data should a dictionary")
@@ -237,7 +252,7 @@ class Catalog:
 
     def deleteConnection(self, connection_id: str = None):
         """
-        Delete a connection. 
+        Delete a connection.
         Argument:
             connection_id : REQUIRED : ID of the connection to be deleted.
         """
@@ -270,12 +285,26 @@ class Catalog:
             namespace : One of the registered platform acronyms that identify the platform.
             version : Filter by Semantic version of the account. Updated when the object is modified.
             property : Regex used to filter objects in the response. Ex. property=name~^test.
-            more possibilities : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Datasets/get_data_sets
+            # /Datasets/get_data_sets
+            more possibilities : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
         path = "/dataSets"
         params = {**kwargs}
         res = aepp._getData(self.endpoint+path,
                             headers=self.header, params=params)
+        try:
+            self.data.table_names = {
+                res[key]['name']: res[key]['tags']['adobe/pqs/table'] for key in res}
+            self.data.schema_ref = {
+                res[key]['name']: res[key]['schemaRef']
+                for key in res if 'schemaRef' in res[key].keys()
+            }
+            self.data.ids = {
+                res[key]['name']: key for key in res
+            }
+        except Exception as e:
+            print(e)
+            print("Couldn't populate the data object from the instance.")
         return res
 
     def createDataSets(self, data: dict = None, **kwargs):

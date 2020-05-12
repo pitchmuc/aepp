@@ -56,6 +56,7 @@ def _checkToken(func):
         now = aepp.time.time()
         if now > config._date_limit - 1000:
             config._token = retrieveToken(*args, **kwargs)
+            kwargs['headers']['Authorization'] = "Bearer "+config._token
             return func(*args, **kwargs)
         else:  # need to return the function for decorator to return something
             return func(*args, **kwargs)
