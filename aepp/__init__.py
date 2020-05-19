@@ -14,6 +14,8 @@ from pathlib import Path
 from aepp import config
 from aepp import adobeio_auth
 
+__version__ = "0.0.2"
+
 
 def createConfigFile(verbose: object = False)->None:
     """
