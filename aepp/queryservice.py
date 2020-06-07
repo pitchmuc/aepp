@@ -234,23 +234,23 @@ class InteractiveQuery:
         }
         self.db = DB(**self.config_object)
 
-    def query(self, sql: str = None, format: str = "raw"):
+    def query(self, sql: str = None, output: str = "dataframe"):
         """
         Query the database and return different type of data, depending the format parameters.
         Requests are limited to return 50 K rows
         Arguments:
             sql : REQUIRED : the SQL request you want to realize. 
-            format : OPTIONAL : the format you would like to be returned.
+            output : OPTIONAL : the format you would like to be returned.
             Possible format:
-                "raw" : return the instance of the query object
-                "dataframe" : return a dataframe with the data.
+                "raw" : return the instance of the query object.
+                "dataframe" : return a dataframe with the data. (default)
         """
         if sql is None:
             raise Exception("Required a SQL query")
         query = self.db.query(sql)
-        if format == "raw":
+        if output == "raw":
             return query
-        elif format == "dataframe":
+        elif output == "dataframe":
             data = query.getresult()
             columns = query.listfields()
             df = aepp.pd.DataFrame(data, columns=columns)
