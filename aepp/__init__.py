@@ -15,6 +15,8 @@ from aepp import config
 from aepp import adobeio_auth
 
 
+__version__ = "0.0.3"
+
 def createConfigFile(verbose: object = False)->None:
     """
     This function will create a 'config_admin.json' file where you can store your access data. 
@@ -163,3 +165,18 @@ def _putData(endpoint: str, params: dict = None, data=None, headers: dict = None
     except:
         status_code = {'error': 'Request Error'}
     return status_code
+
+
+def home(product: str = None, limit: int = 50):
+    """
+    Return the IMS Organization setup and the container existing for the organization
+    Arguments:
+        product : OPTIONAL : specify one or more product contexts for which to return containers. If absent, containers for all contexts that you have rights to will be returned. The product parameter can be repeated for multiple contexts. An example of this parameter is product=acp
+        limit : OPTIONAL : Optional limit on number of results returned (default = 50).
+    """
+    endpoint = config._endpoint+"/data/core/xcore/"
+    params = {"product": product, "limit": limit}
+    myHeader = deepcopy(config._header)
+    myHeader["Accept"] = "application/vnd.adobe.platform.xcore.home.hal+json"
+    res = _getData(endpoint, params=params, headers=myHeader)
+    return res

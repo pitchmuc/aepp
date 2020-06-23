@@ -3,7 +3,6 @@ import aepp
 from aepp import config
 from copy import deepcopy
 import typing
-from dataclasses import dataclass
 from concurrent import futures as _futures
 
 
@@ -221,21 +220,6 @@ class Segmentation:
             total_pages = res['page']["totalPages"]
         del self.header["x-ups-search-version"]
         return data
-
-    # def profileLookup(self, entityId: str = None, schema: str = "_xdm.context.profile", entityIdNS: str = "ecid"):
-    #     """
-    #     Retrieve information on a profile by using namespace and entity ID.
-    #     Arguments:
-    #         entityId : REQUIRED : ID of the user to retrieved
-    #         schema : OPTIONAL : type of information to be retrieved (default _xdm.context.profile)
-    #         namespace : OPTIONAL : Namespace in which it is look for (default ecid)
-    #     """
-    #     path = "/access/entities"
-    #     params = {"schema.name": schema,
-    #               "entityIdNS": entityIdNS, "entityId": entityId}
-    #     res = res = aepp._getData(self.endpoint+path,
-    #                               headers=self.header, params=params)
-    #     return res
 
     def getSchedules(self):
         """
