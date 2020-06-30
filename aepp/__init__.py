@@ -15,8 +15,6 @@ from aepp import config
 from aepp import adobeio_auth
 
 
-__version__ = "0.0.3"
-
 def createConfigFile(verbose: object = False)->None:
     """
     This function will create a 'config_admin.json' file where you can store your access data. 

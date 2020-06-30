@@ -229,8 +229,9 @@ class Schema:
         elif type(schema) == dict:
             try:
                 paths = self._getPaths(schema)
-                data.paths[schema['title']] = paths
-            except:
+                self.data.paths[schema['title']] = paths
+            except Exception as e:
+                print(e)
                 print('Issue with the schema reading. Verifiy your schema structure.')
                 return None
         if filter is None:
