@@ -34,11 +34,17 @@ class Schema:
         "profile": "https://ns.adobe.com/xdm/context/profile"
     }
 
-    def __init__(self, **kwargs):
+    def __init__(self, container_id: str = "tenant", **kwargs):
+        """
+        Copy the token and header and initiate the object to retrieve schema elements.
+        Arguments:
+            container_id : OPTIONAL : "tenant"(default) or "global" 
+        """
         self.header = deepcopy(aepp.config._header)
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
         self.endpoint = config._endpoint+config._endpoint_schema
+        self.container = container_id
         self.data = _Data()
 
     def _getPaths(self, myDict: dict, path: list = None, key: str = None, list_path: list = None, verbose: bool = False):
@@ -90,7 +96,7 @@ class Schema:
         """
         Returns a lit of the schemas hosted in this instance.
         """
-        path = '/tenant/schemas/'
+        path = f'/{self.container}/schemas/'
         res = aepp._getData(self.endpoint+path, headers=self.header)
         data = res['results']
         self.data.ids = {key['title']: key['$id'] for key in data}
@@ -118,7 +124,7 @@ class Schema:
         if schema_id.startswith('https://'):
             from urllib import parse
             schema_id = parse.quote_plus(schema_id)
-        path = f'/tenant/schemas/{schema_id}'
+        path = f'/{self.container}/schemas/{schema_id}'
         res = aepp._getData(self.endpoint + path, headers=self.header)
         del self.header['Accept-Encoding']
         self.header['Accept'] = "application/json"
@@ -142,7 +148,7 @@ class Schema:
             change : REQUIRED : List of changes that need to take place.
         information : http://jsonpatch.com/
         """
-        path = f'/ tenant/schemas/{schema_id}'
+        path = f'/{self.container}/schemas/{schema_id}'
         if schema_id is None:
             raise Exception("Require an ID for the schema")
         if type(changes) == dict:
@@ -165,7 +171,7 @@ class Schema:
             #/Schemas/replace_schema
             More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
-        path = f'/ tenant/schemas/{schema_id}'
+        path = f'/{self.container}/schemas/{schema_id}'
         if schema_id is None:
             raise Exception("Require an ID for the schema")
         if schema_id.startswith('https://'):
@@ -184,7 +190,7 @@ class Schema:
             #/Schemas/replace_schema
             More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
-        path = f'/ tenant/schemas/{schema_id}'
+        path = f'/{self.container}/schemas/{schema_id}'
         if schema_id is None:
             raise Exception("Require an ID for the schema")
         if schema_id.startswith('https://'):
@@ -199,7 +205,7 @@ class Schema:
         Arguments:
             schema : REQUIRED : The schema definition that needs to be created.
         """
-        path = '/ tenant/schemas/'
+        path = f'/{self.container}/schemas/'
         if type(schema) != dict:
             raise TypeError("Expecting a dictionary")
         if "allOf" not in schema.keys():
@@ -231,8 +237,8 @@ class Schema:
                 paths = self._getPaths(schema)
                 self.data.paths[schema['title']] = paths
             except Exception as e:
-                print(e)
                 print('Issue with the schema reading. Verifiy your schema structure.')
+                print(e)
                 return None
         if filter is None:
             return paths
@@ -268,8 +274,12 @@ class Schema:
         """
         return the classes of the AEP Instances.
         """
-        path = '/tenant/classes/'
+        self.header.update({
+            "Accept": "application/vnd.adobe.xdm-id+json"})
+        path = f'/{self.container}/classes/'
         res = aepp._getData(self.endpoint+path, headers=self.header)
+        self.header.update({
+            "Accept": "application/json"})
         return res
 
     def getClass(self, class_id: str = None, version: int = 1):
@@ -281,16 +291,14 @@ class Schema:
         """
         if class_id is None:
             raise Exception("Require a class_id")
-        header = self.header
         if class_id.startswith('https://'):
             from urllib import parse
             class_id = parse.quote_plus(class_id)
         self.header['Accept-Encoding'] = 'identity'
         self.header.update({
-            "Accept": "application/vnd.adobe.xed-full+json; version="+str(version)})
-        path = f'/tenant/classes/{class_id}'
-        res = aepp._getData(self.endpoint + path, headers=header)
-        del header['Accept-Encoding']
+            "Accept": "application/vnd.adobe.xdm-full+json; version="+str(version)})
+        path = f'/{self.container}/classes/{class_id}'
+        res = aepp._getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
         return res
@@ -299,7 +307,7 @@ class Schema:
         """
         returns the mixin of the account
         """
-        path = '/tenant/mixins/'
+        path = f'/{self.container}/mixins/'
         res = aepp._getData(self.endpoint+path, headers=self.header)
         return res
 
@@ -310,16 +318,14 @@ class Schema:
             mixin_id : meta:altId or $id
             version : version of the mixin
         """
-        header = self.header
         if mixin_id.startswith('https://'):
             from urllib import parse
             mixin_id = parse.quote_plus(mixin_id)
         self.header['Accept-Encoding'] = 'identity'
         self.header.update({
-            "Accept": "application/vnd.adobe.xed-full+json; version="+str(version)})
-        path = f'/tenant/mixins/{mixin_id}'
-        res = aepp._getData(self.endpoint + path, headers=header)
-        del header['Accept-Encoding']
+            "Accept": "application/vnd.adobe.xdm-full+json; version="+str(version)})
+        path = f'/{self.container}/mixins/{mixin_id}'
+        res = aepp._getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
         return res
@@ -331,7 +337,7 @@ class Schema:
         """
         if mixin_id is None:
             raise Exception("Require an ID")
-        path = f'/tenant/mixins/{mixin_id}'
+        path = f'/{self.container}/mixins/{mixin_id}'
         if mixin_id.startswith('https://'):
             from urllib import parse
             mixin_id = parse.quote_plus(mixin_id)
@@ -347,7 +353,7 @@ class Schema:
         """
         if mixin_id is None or changes is None:
             raise Exception("Require an ID and changes")
-        path = f'/tenant/mixins/{mixin_id}'
+        path = f'/{self.container}/mixins/{mixin_id}'
         if type(changes) == dict:
             changes = list(changes)
         res = aepp._patchData(self.endpoint+path,
@@ -361,7 +367,7 @@ class Schema:
 
         Possibility to add option using kwargs
         """
-        path = '/tenant/unions'
+        path = f'/{self.container}/unions'
         params = {}
         if len(kwargs) > 0:
             for key in kwargs.key():
@@ -386,9 +392,9 @@ class Schema:
         if union_id.startswith('https://'):
             from urllib import parse
             union_id = parse.quote_plus(union_id)
-        path = f'/tenant/unions/{union_id}'
+        path = f'/{self.container}/unions/{union_id}'
         self.header.update({
-            "Accept": "application/vnd.adobe.xed-full+json; version="+str(version)})
+            "Accept": "application/vnd.adobe.xdm-full+json; version="+str(version)})
         res = aepp._getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
@@ -400,4 +406,39 @@ class Schema:
         """
         path = "/tenant/schemas?property=meta:immutableTags==union&property=meta:class==https://ns.adobe.com/xdm/context/profile"
         res = aepp._getData(self.endpoint + path, headers=self.header)
+        return res
+
+    def getDataTypes(self, **kwargs):
+        """
+        Get the data types from a container.
+        Possible kwargs:
+            properties : str :limit the amount of properties return by comma separated list.
+        """
+        path = f"/{self.container}/datatypes/"
+        if kwargs.get('properties', None) is not None:
+            params = {'properties': kwargs.get('properties', 'title,$id')}
+        self.header.update({
+            "Accept": "application/vnd.adobe.xdm-id+json"})
+        res = aepp._getData(self.endpoint + path, headers=self.header)
+        self.header.update({
+            "Accept": "application/json"})
+        return res
+
+    def getDataType(self, dataTypeId: str = None, version: str = "1"):
+        """
+        Retrieve a specific data type id
+        Argument: 
+            dataTypeId : REQUIRED : The resource meta:altId or URL encoded $id URI.
+        """
+        if dataTypeId is None:
+            raise Exception("Require a dataTypeId")
+        if dataTypeId.startswith('https://'):
+            from urllib import parse
+            mixin_id = parse.quote_plus(mixin_id)
+        self.header.update({
+            "Accept": "application/vnd.adobe.xdm-full+json; version="+version})
+        path = f"/{self.container}/datatypes/{dataTypeId}"
+        res = aepp._getData(self.endpoint + path, headers=self.header)
+        self.header.update({
+            "Accept": "application/json"})
         return res
