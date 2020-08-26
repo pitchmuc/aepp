@@ -38,9 +38,11 @@ class Schema:
         """
         Copy the token and header and initiate the object to retrieve schema elements.
         Arguments:
-            container_id : OPTIONAL : "tenant"(default) or "global" 
+            container_id : OPTIONAL : "tenant"(default) or "global"
+        possible kwargs:
+            x-sandbox-name : name of the sandbox you want to use (default : "prod").
         """
-        self.header = deepcopy(aepp.config._header)
+        self.header = deepcopy(aepp.config.header)
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
         self.endpoint = config._endpoint+config._endpoint_schema
@@ -84,7 +86,7 @@ class Schema:
                     return path
             return list_path
 
-    def getStats(self):
+    def getStats(self)->list:
         """
         Returns a list of the last actions realized on the Schema for this instance of AEP. 
         """
@@ -92,17 +94,30 @@ class Schema:
         res = aepp._getData(self.endpoint+path, headers=self.header)
         return res
 
-    def getSchemas(self):
+    def getTenantId(self)->str:
         """
-        Returns a lit of the schemas hosted in this instance.
+        Return the tenantID for the AEP instance.
+        """
+        res = self.getStats()
+        tenant = res['tenantId']
+        return tenant
+
+    def getSchemas(self, **kwargs)->list:
+        """
+        Returns the list of schemas retrieved for that instances in a "results" list.
         """
         path = f'/{self.container}/schemas/'
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        start = kwargs.get("start", 0)
+        params = {"start": start}
+        res = aepp._getData(self.endpoint+path,
+                            params=params, headers=self.header)
         data = res['results']
-        self.data.ids = {key['title']: key['$id'] for key in data}
+        page = res['_page']
+        while page['next'] is not None:
+            data += self.getSchemas(start=page['next'])
         return data
 
-    def getSchema(self, schema_id: str = None, version: int = 1, save: bool = False, findPaths: bool = False, **kwargs):
+    def getSchema(self, schema_id: str = None, version: int = 1, save: bool = False, full: bool = True, desc: bool = False, findPaths: bool = False, **kwargs)->dict:
         """
         Get the Schema. Requires a schema id.
         Response provided depends on the header set, you can change the Accept header with kwargs.
@@ -110,14 +125,26 @@ class Schema:
             schema_id : REQUIRED : $id or meta:altId
             version : OPTIONAL : Version of the Schema asked (default 1)
             save : OPTIONAL : save the result in json file (default False)
-            findPaths : find the paths present in your schema.
+            full : OPTIONAL : True (default) will return the full schema.False just the relationships.
+            desc : OPTIONAL : If set to True, return the identity used as the descriptor.
+            findPaths : OPTIONAL : find the paths present in your schema. (BETA)
         Possible kwargs:
             Accept : Accept header to change the type of response.
             # /Schemas/lookup_schema
             more details held here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
-        self.header["Accept"] = "application/vnd.adobe.xed-full+json; version=" + \
-            str(version)
+        if schema_id is None:
+            raise Exception("Require a schema_id as a parameter")
+        if full:
+            update_full = "-full"
+        else:
+            update_full = ""
+        if desc:
+            update_desc = "-desc"
+        else:
+            update_desc = ""
+        accept_update = f"application/vnd.adobe.xdm{update_full}{update_desc}+json; version={version}"
+        self.header["Accept"] = accept_update
         if kwargs.get('Accept', None) is not None:
             header['Accept'] = kwargs.get('Accept', header['Accept'])
         self.header['Accept-Encoding'] = 'identity'
@@ -132,15 +159,40 @@ class Schema:
             print('Issue with the request. See response.')
             return res
         if save:
-            with open(f'{res["title"]}.json', 'w') as f:
-                f.write(aepp.json.dumps(res, indent=4))
+            aepp.saveFile(module='schema', file=res,
+                          filename=res['title'], type_file='json')
         self.data.schemas[res['title']] = res
         if findPaths:
             paths = self._getPaths(res)
             self.data.paths[res['title']] = paths
         return res
 
-    def patchSchema(self, schema_id: str = None, changes: list = None, **kwargs):
+    def getSchemaSample(self, schema_id: str = None, save: bool = False, version: int = 1) -> dict:
+        """
+        Generate a sample data from a schema id.
+        Arguments:
+            schema_id : REQUIRED : The schema ID for the sample data to be created.
+            save : OPTIONAL : save the result in json file (default False)
+        """
+        import random
+        rand_number = random.randint(1, 10e10)
+        if schema_id is None:
+            raise Exception("Require an ID for the schema")
+        if schema_id.startswith('https://'):
+            from urllib import parse
+            schema_id = parse.quote_plus(schema_id)
+        path = f'/rpc/sampledata/{schema_id}'
+        accept_update = f"application/vnd.adobe.xed+json; version={version}"
+        self.header["Accept"] = accept_update
+        res = aepp._getData(self.endpoint + path, headers=self.header)
+        if save:
+            schema = self.getSchema(schema_id=schema_id, full=False)
+            aepp.saveFile(module='schema', file=res,
+                          filename=f"{schema['title']}_{rand_number}", type_file='json')
+        self.header['Accept'] = "application/json"
+        return res
+
+    def patchSchema(self, schema_id: str = None, changes: list = None, **kwargs)->dict:
         """
         Enable to patch the Schema with operation.
         Arguments:
@@ -148,9 +200,9 @@ class Schema:
             change : REQUIRED : List of changes that need to take place.
         information : http://jsonpatch.com/
         """
-        path = f'/{self.container}/schemas/{schema_id}'
         if schema_id is None:
             raise Exception("Require an ID for the schema")
+        path = f'/{self.container}/schemas/{schema_id}'
         if type(changes) == dict:
             changes = list(changes)
         if schema_id.startswith('https://'):
@@ -160,7 +212,7 @@ class Schema:
                               data=changes, headers=self.header)
         return res
 
-    def putSchema(self, schema_id: str = None, changes: dict = None, **kwargs):
+    def putSchema(self, schema_id: str = None, changes: dict = None, **kwargs)->dict:
         """
         A PUT request essentially re-writes the schema, therefore the request body must include all fields required to create (POST) a schema.
         This is especially useful when updating a lot of information in the schema at once.
@@ -181,7 +233,7 @@ class Schema:
                             data=changes, headers=self.header)
         return res
 
-    def deleteSchema(self, schema_id: str = None, **kwargs):
+    def deleteSchema(self, schema_id: str = None, **kwargs)->str:
         """
         Delete the request
         Arguments:
@@ -190,16 +242,16 @@ class Schema:
             #/Schemas/replace_schema
             More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
-        path = f'/{self.container}/schemas/{schema_id}'
         if schema_id is None:
             raise Exception("Require an ID for the schema")
         if schema_id.startswith('https://'):
             from urllib import parse
             schema_id = parse.quote_plus(schema_id)
+        path = f'/{self.container}/schemas/{schema_id}'
         res = aepp._deleteData(self.endpoint+path, headers=self.header)
         return res
 
-    def createSchema(self, schema: dict = None):
+    def createSchema(self, schema: dict = None)->dict:
         """
         Create a Schema based on the data that are passed in the Argument.
         Arguments:
@@ -270,23 +322,31 @@ class Schema:
             result = self.pathType('.'.join(split_path), schema['properties'])
         return result
 
-    def getClasses(self):
+    def getClasses(self, **kwargs):
         """
         return the classes of the AEP Instances.
         """
         self.header.update({
             "Accept": "application/vnd.adobe.xdm-id+json"})
+        start = kwargs.get("start", 0)
+        params = {"start": start}
         path = f'/{self.container}/classes/'
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = aepp._getData(self.endpoint+path,
+                            headers=self.header, params=params)
         self.header.update({
             "Accept": "application/json"})
-        return res
+        data = res['results']
+        page = res['_page']
+        while page['next'] is not None:
+            data += self.getSchemas(start=page['next'])
+        return data
 
-    def getClass(self, class_id: str = None, version: int = 1):
+    def getClass(self, class_id: str = None, full: bool = True, version: int = 1, save: bool = False):
         """
         Return a specific class.
         Arguments: 
             class_id : REQUIRED : the meta:altId or $id from the class
+            full : OPTIONAL : True (default) will return the full schema.False just the relationships. 
             version : OPTIONAL : the version of the class to retrieve.
         """
         if class_id is None:
@@ -301,33 +361,85 @@ class Schema:
         res = aepp._getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
+        if save:
+            aepp.saveFile(module='schema', file=res,
+                          filename=res['title'], type_file='json')
         return res
 
-    def getMixins(self):
+    def createClass(self, class_obj: dict = None, **kwargs):
+        """
+        Create a class based on the object pass. It should include the "allOff" element.
+        Arguments:
+            class_obj : REQUIRED : object to create a class, include a title and a "allOf" element.
+        """
+        path = f'/{self.container}/classes/'
+        if type(class_obj) != dict:
+            raise TypeError("Expecting a dictionary")
+        if "allOf" not in class_obj.keys():
+            raise Exception(
+                "The class object must include an ‘allOf’ attribute (a list) referencing the $id of the base class the schema will implement.")
+        res = aepp._postData(self.endpoint+path,
+                             headers=self.header, data=class_obj)
+        return res
+
+    def getMixins(self, **kwargs):
         """
         returns the mixin of the account
         """
         path = f'/{self.container}/mixins/'
-        res = aepp._getData(self.endpoint+path, headers=self.header)
-        return res
+        start = kwargs.get("start", 0)
+        params = {"start": start}
+        res = aepp._getData(self.endpoint+path,
+                            headers=self.header, params=params)
+        data = res['results']
+        page = res['_page']
+        while page['next'] is not None:
+            data += self.getSchemas(start=page['next'])
+        return data
 
-    def getMixin(self, mixin_id: str = None, version: int = 1):
+    def getMixin(self, mixin_id: str = None, version: int = 1, full: bool = True, save: bool = False):
         """
         Returns a specific mixin.
         Arguments:
-            mixin_id : meta:altId or $id
-            version : version of the mixin
+            mixin_id : REQUIRED : meta:altId or $id
+            version : OPTIONAL : version of the mixin
+            full : OPTIONAL : True (default) will return the full schema.False just the relationships. 
         """
         if mixin_id.startswith('https://'):
             from urllib import parse
             mixin_id = parse.quote_plus(mixin_id)
         self.header['Accept-Encoding'] = 'identity'
+        if full:
+            accept_full = "-full"
+        else:
+            accept_full = ""
+        update_accept = f"application/vnd.adobe.xed{accept_full}+json; version={version}"
         self.header.update({
-            "Accept": "application/vnd.adobe.xdm-full+json; version="+str(version)})
+            "Accept": update_accept})
         path = f'/{self.container}/mixins/{mixin_id}'
         res = aepp._getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
+        if save:
+            aepp.saveFile(module='schema', file=res,
+                          filename=res['title'], type_file='json')
+        return res
+
+    def createMixin(self, mixin_obj: dict = None):
+        """
+        Create a mixin based on the dictionary passed.
+        Arguments :
+            mixin_obj : REQUIRED : the object required for creating the mixin.
+            Should contain title, type, definitions
+        """
+        if mixin_obj is None:
+            raise Exception("Require a mixin object")
+        if "title" not in mixin_obj or "type" not in mixin_obj or "definitions" not in mixin_obj:
+            raise AttributeError(
+                "Require to have at least title, type, definitions set in the object.")
+        path = f'/{self.container}/mixins/'
+        res = aepp._postData(self.endpoint + path,
+                             data=mixin_obj, headers=self.header)
         return res
 
     def deleteMixin(self, mixin_id: str = None):
@@ -337,10 +449,10 @@ class Schema:
         """
         if mixin_id is None:
             raise Exception("Require an ID")
-        path = f'/{self.container}/mixins/{mixin_id}'
         if mixin_id.startswith('https://'):
             from urllib import parse
             mixin_id = parse.quote_plus(mixin_id)
+        path = f'/{self.container}/mixins/{mixin_id}'
         res = aepp._deleteData(self.endpoint+path, headers=self.header)
         return res
 
@@ -422,9 +534,13 @@ class Schema:
         res = aepp._getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
-        return res
+        data = res['results']
+        page = res['_page']
+        while page['next'] is not None:
+            data += self.getSchemas(start=page['next'])
+        return data
 
-    def getDataType(self, dataTypeId: str = None, version: str = "1"):
+    def getDataType(self, dataTypeId: str = None, version: str = "1", save: bool = False):
         """
         Retrieve a specific data type id
         Argument: 
@@ -441,4 +557,78 @@ class Schema:
         res = aepp._getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
+        if save:
+            aepp.saveFile(module='schema', file=res,
+                          filename=res['title'], type_file='json')
         return res
+
+    def createDataType(self, dataType_obj: dict = None):
+        """
+        Create Data Type based on the object passed.
+        """
+        if dataType_obj is None:
+            raise Exception("Require a dictionary to create the Data Type")
+        path = f"/{self.container}/datatypes/"
+        res = aepp._postData(self.endpoint + path,
+                             data=dataType_obj, headers=self.header)
+        return res
+
+    def getDescriptors(self, type_desc: str = None, id_desc: bool = False, link_desc: bool = False, **kwargs)->list:
+        """
+        Return a list of all descriptors contains in that tenant id.
+        By default return a v2 for pagination.
+        Arguments:
+            type_desc : OPTIONAL : if you want to filter for a specific type of descriptor.
+            An example is "xdm:descriptorIdentity"
+            id_desc : OPTIONAL : if you want to return only the id.
+            link_desc : OPTIONAL : if you want to return only the paths.
+        """
+        path = f"/{self.container}/descriptors/"
+        params = {'start': kwargs.get("start", 0)}
+        if type_desc is not None:
+            params['property'] = f"@type=={type_desc}"
+        if id_desc:
+            update_id = "-id"
+        else:
+            update_id = ""
+        if link_desc:
+            update_link = "-link"
+        else:
+            update_link = ""
+        self.header['Accept'] = f"application/vnd.adobe.xdm-v2{update_link}{update_id}+json"
+        res = aepp._getData(self.endpoint + path,
+                            params=params, headers=self.header)
+        self.header.update({
+            "Accept": "application/json"})
+        data = res['results']
+        page = res['_page']
+        while page['next'] is not None:
+            data += self.getSchemas(start=page['next'])
+        return data
+
+    def getDescriptor(self, descriptor_id: str = None)->dict:
+        """
+        Return a specific descriptor
+        Arguments:
+            descriptor_id : REQUIRED : descriptor ID to return (@id).
+        """
+        if descriptor_id is None:
+            raise Exception("Require a descriptor id")
+        path = f"/{self.container}/descriptors/{descriptor_id}"
+        self.header['Accept'] = f"application/vnd.adobe.xdm+json"
+        res = aepp._getData(self.endpoint + path, headers=self.header)
+        self.header.update({
+            "Accept": "application/json"})
+        return res
+
+    def createDescriptor(self, desc_type: str = "xdm:descriptorIdentity", sourceSchema: str = None, sourceProperty: str = None, namespace: str = None, property: str = "xdm:code", primary: bool = False):
+        """
+        Create a descriptor attached to a specific schema.
+        Arguments:
+            desc_type : REQUIRED : the type of descriptor to create.(default Identity)
+            sourceSchema : REQUIRED : the schema attached to your identity
+            sourceProperty : REQUIRED : the path to the field
+            namespace : REQUIRED : the namespace used for the identity
+            property : REQUIRED : xdm code for the descriptor (default : xdm:code)
+            primary : REQUIRED : Boolean to define if it is a primary identity or not (default False).
+        """

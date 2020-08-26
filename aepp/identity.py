@@ -16,7 +16,7 @@ class Identity:
         By default, the NLD2 will be selected. (other choice : va7)
         more info : https://docs.adobe.com/content/help/en/experience-platform/identity/api/getting-started.html
         """
-        self.header = deepcopy(config._header)
+        self.header = deepcopy(config.header)
         self.header.update(**kwargs)
         self.endpoint = f"https://platform-{region}.adobe.io" + \
             config._endpoint_identity
@@ -25,12 +25,13 @@ class Identity:
         """
         Given the namespace and an ID in that namespace, returns XID string.
         Arguments:
-            id_str : REQUIRED : Id in given namespace
+            id_str : REQUIRED : Id in given namespace (ECID value)
             nsid : REQUIRED : namespace id. (e.g. 411)
             namespace : OPTIONAL : namespace code (e.g. adcloud)
         """
         if id_str is None or nsid is None:
-            raise("Expecting that id_str and namespace arguments to be filled.")
+            raise Exception(
+                "Expecting that id_str and namespace arguments to be filled.")
         params = {'id': id_str, 'nsid': nsid}
         if namespace is not None:
             params['namespace'] = namespace
@@ -43,26 +44,39 @@ class Identity:
         self.header['Accept'] = "application/json"
         return res
 
-    def getIdentities(self):
+    def getIdentities(self, only_custom: bool = False, save: bool = False):
         """
-        Get the list of all identity namespace available in the organization.
+        Get the list of all identity namespaces available in the organization.
+        Arguments:
+            only_custom : OPTIONAL : if set to True, return only customer made identities (default False)
+            save : OPTIONAL : if set to True, save the result in its respective folder (default False)
         """
         path = "/idnamespace/identities"
         res = aepp._getData(self.endpoint + path,
                             headers=self.header)
+        if only_custom:
+            res = [identity for identity in res if identity['custom'] == True]
+        if save:
+            aepp.saveFile(module='identity', file=res,
+                          filename='identities', type_file='json')
         return res
 
-    def getIdentityDetail(self, id_str: str = None):
+    def getIdentityDetail(self, id_str: str = None, save: bool = False):
         """
         List details of a specific identity namespace by its ID.
         Arguments:
             id_str : REQUIRED : identity of the "id" field.
+            save : OPTIONAL : if set to True, save the result in a file, in its respective folder (default False)
         """
         if id_str is None:
             raise Exception("Expected an id for the Identity")
         path = f"/idnamespace/identities/{id_str}"
         res = aepp._getData(self.endpoint + path,
                             headers=self.header)
+        if save:
+            filename = f"identity_{res['code']}"
+            aepp.saveFile(module='identity', file=res,
+                          filename=filename, type_file='json')
         return res
 
     def createIdentity(self, name: str = None, code: str = None, idType: str = None, description: str = None, dict_identity: dict = None):
@@ -71,7 +85,7 @@ class Identity:
         Arguments:
             name : REQUIRED : Display name of the identity 
             code : REQUIRED : Identity Symbol for user interface.
-            idType : REQUIRED : one of those : Cookie, Cross-device, Device, Email, Mobile, Non-people, or Phone
+            idType : REQUIRED : one of those : COOKIE, CROSS_DEVICE, DEVICE, EMAIL, MOBILE, NON_PEOPLE or PHONE.
             description : OPTIONAL : description for this identity
             dict_identity : OPTIONAL : you can use this to directly pass the dictionary.
         """
@@ -87,12 +101,12 @@ class Identity:
         if ' ' in code:
             raise TypeError(
                 "code can only contain one word with letter and numbers")
-        if idType not in ["Cookie", "Cross-device", "Device", "Email", "Mobile", "Non-people", "Phone"]:
+        if idType not in ["COOKIE", "CROSS_DEVICE", "DEVICE", "EMAIL", "MOBILE", "NON_PEOPLE", "PHONE"]:
             raise TypeError(
-                "idType could only be one of those : Cookie, Cross-device, Device, Email, Mobile, Non-people, or Phone")
+                "idType could only be one of those : COOKIE, CROSS_DEVICE, DEVICE, EMAIL, MOBILE, NON_PEOPLE, PHONE")
         if dict_identity is not None:
             creation_dict = dict_identity
         path = "/idnamespace/identities"
         res = aepp._postData(self.endpoint + path,
-                             headers=self.header, body=creation_dict)
+                             headers=self.header, data=creation_dict)
         return res

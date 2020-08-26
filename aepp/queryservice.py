@@ -11,7 +11,7 @@ class QueryService:
     """
 
     def __init__(self, **kwargs):
-        self.header = deepcopy(aepp.config._header)
+        self.header = deepcopy(aepp.config.header)
         self.header.update({"Accept": "application/json"})
         self.header.update(**kwargs)
         self.endpoint = config._endpoint+config._endpoint_query
@@ -60,10 +60,11 @@ class QueryService:
             config._endpoint+config._endpoint_query+path, params=arguments, headers=self.header)
         return res
 
-    def postQueries(self, name: str = None, dbname: str = None, sql_query: str = None, templateId: str = None, queryParameters: dict = None, ctasParameters: dict = None, description: str = ""):
+    def postQueries(self, data: dict = None, name: str = None, dbname: str = None, sql: str = None, templateId: str = None, queryParameters: dict = None, insertIntoParameters: dict = None, ctasParameters: dict = None, description: str = "", **kwargs):
         """
         Create a query.
         Arguments:
+            data : OPTIONAL : If you want to pass the full query statement. 
             name : REQUIRED : Name of the query
             dbname : REQUIRED : the dataset name
             sql: REQUIRED : the SQL query as a string.
@@ -71,26 +72,29 @@ class QueryService:
             ctasParameters: OPTIONAL : in case you want to create a dataset out of that query, dictionary is required with "datasetName" and "description".
         """
         path = '/queries'
-        if sql_query is None or name is None:
-            raise AttributeError("You are missing required arguments.")
-        if type(ctasParameters) is dict:
-            if "datasetName" not in ctasParameters.keys() or "description" not in ctasParameters.keys():
-                raise KeyError(
-                    'Expecting "datasetName" and "description" as part of the the ctasParameters dictionary.')
-        data = {
-            "name": name,
-            "description": description,
-            "dbName": dbname,
-            "sql": sql_query,
-        }
-        if templateId is not None:
-            data["templateId"] = templateId
-        if queryParameters is not None:
-            data["queryParameters"] = queryParameters
-        if ctasParameters is not None:
-            data["ctasParameters"] = ctasParameters
-        res = aepp._postData(
-            config._endpoint+config._endpoint_query+path, data=data, headers=self.header)
+        if data is None:
+            if sql is None or name is None:
+                raise AttributeError("You are missing required arguments.")
+            if type(ctasParameters) is dict:
+                if "datasetName" not in ctasParameters.keys() or "description" not in ctasParameters.keys():
+                    raise KeyError(
+                        'Expecting "datasetName" and "description" as part of the the ctasParameters dictionary.')
+            data = {
+                "name": name,
+                "description": description,
+                "dbName": dbname,
+                "sql": sql,
+            }
+            if templateId is not None:
+                data["templateId"] = templateId
+            if queryParameters is not None:
+                data["queryParameters"] = queryParameters
+            if ctasParameters is not None:
+                data["ctasParameters"] = ctasParameters
+            if insertIntoParameters is not None:
+                data["insertIntoParameters"] = insertIntoParameters
+        res = aepp._postData(self.endpoint + path,
+                             data=data, headers=self.header)
         return res
 
     def getQuery(self, queryid: str = None):
@@ -101,9 +105,8 @@ class QueryService:
         """
         if queryid is None:
             raise AttributeError('Expected "queryid" to be filled')
-        path = '/queries/{queryid}'
-        res = aepp._getData(
-            config._endpoint+config._endpoint_query+path, headers=self.header)
+        path = f'/queries/{queryid}'
+        res = aepp._getData(self.endpoint + path, headers=self.header)
         return res
 
     def getSchedules(self, **kwargs):
@@ -156,12 +159,74 @@ class QueryService:
 
     def deleteSchedule(self, scheduleId: str = None):
         """
-        Delete a schedule query.
+        Delete a scheduled query.
         Arguments: 
             scheduleId : REQUIRED : id of the schedule. 
         """
+        if scheduleId is None:
+            raise Exception("Missing scheduleId")
         path = f"/schedules/{scheduleId}"
         res = aepp._deleteData(self.endpoint + path)
+        return res
+
+    def disableSchedule(self, scheduleId: str = None):
+        """
+        Disable a scheduled query.
+        Arguments: 
+            scheduleId : REQUIRED : id of the schedule. 
+        """
+        if scheduleId is None:
+            raise Exception("Missing scheduleId")
+        obj = {
+            "body": [
+                {
+                    "op": "replace",
+                    "path": "/state",
+                    "value": "disable"
+                }
+            ]
+        }
+        path = f"/schedules/{scheduleId}"
+        res = aepp._patchData(self.endpoint + path,
+                              data=obj, headers=self.header)
+        return res
+
+    def enableSchedule(self, scheduleId: str = None):
+        """
+        Enable a scheduled query.
+        Arguments: 
+            scheduleId : REQUIRED : id of the schedule. 
+        """
+        if scheduleId is None:
+            raise Exception("Missing scheduleId")
+        obj = {
+            "body": [
+                {
+                    "op": "replace",
+                    "path": "/state",
+                    "value": "enable"
+                }
+            ]
+        }
+        path = f"/schedules/{scheduleId}"
+        res = aepp._patchData(self.endpoint + path,
+                              data=obj, headers=self.header)
+        return res
+
+    def updateSchedule(self, scheduleId: str = None, update_obj: list = None):
+        """
+        Update the schedule query with the object pass.
+        Arguments:
+            scheduleId : REQUIRED : id of the schedule. 
+            update_obj : REQUIRED : List of patch operations
+        """
+        if scheduleId is None:
+            raise Exception("Missing scheduleId")
+        if update_obj is None:
+            raise Exception("Missing update_obj to generate the operation.")
+        path = f"/schedules/{scheduleId}"
+        res = aepp._patchData(self.endpoint + path,
+                              data=update_obj, headers=self.header)
         return res
 
     def getTemplates(self, **kwargs):

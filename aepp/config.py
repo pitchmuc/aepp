@@ -4,13 +4,13 @@ _TokenEndpoint = "https://ims-na1.adobelogin.com/ims/exchange/jwt"
 _cwd = aepp.Path.as_posix(aepp.Path.cwd())
 _date_limit = 0
 _token = ''
-_header = {"Accept": "application/json",
-           "Content-Type": "application/json",
-           "Authorization": "",
-           "X-Api-Key": _api_key,
-           "x-gw-ims-org-id": _org_id,
-           "x-sandbox-name": "prod"
-           }
+header = {"Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "",
+          "X-Api-Key": _api_key,
+          "x-gw-ims-org-id": _org_id,
+          "x-sandbox-name": "prod"
+          }
 
 # endpoints
 _endpoint = "https://platform.adobe.io"
@@ -21,3 +21,4 @@ _endpoint_dule = "/data/foundation/dulepolicy"
 _endpoint_export = "/data/foundation/export"
 _endpoint_segmentation = "/data/core/ups"
 _endpoint_identity = "/data/core/"
+_endpoint_sandboxes = "/data/foundation/sandbox-management"

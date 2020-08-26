@@ -9,7 +9,7 @@ from concurrent import futures as _futures
 class Segmentation:
 
     def __init__(self, **kwargs):
-        self.header = deepcopy(aepp.config._header)
+        self.header = deepcopy(aepp.config.header)
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
         self.endpoint = config._endpoint+config._endpoint_segmentation

@@ -10,16 +10,20 @@ import pandas as pd
 import requests
 import jwt
 from pathlib import Path
+import os
 # Internal Library
 from aepp import config
 from aepp import adobeio_auth
 
-__version__ = "0.0.4"
+__version__ = "0.0.5"
 
 
-def createConfigFile(verbose: object = False)->None:
+def createConfigFile(sandbox: bool = False, verbose: object = False, **kwargs)->None:
     """
-    This function will create a 'config_admin.json' file where you can store your access data. 
+    This function will create a 'config_admin.json' file where you can store your access data.
+    Arguments:
+        sandbox : OPTIONAL : consider to add a parameter for sandboxes
+        verbose : OPTIONAL : set to true, gives you a print stateent where is the location.
     """
     json_data = {
         'org_id': '<orgID>',
@@ -28,26 +32,32 @@ def createConfigFile(verbose: object = False)->None:
         'secret': "<YourSecret>",
         'pathToKey': '<path/to/your/privatekey.key>',
     }
-    with open('config_admin.json', 'w') as cf:
+    if sandbox:
+        json_data['sandbox-name'] = "<your_sandbox_name>"
+    filename = f"{kwargs.get('filename', 'config_aep')}.json"
+    with open(filename, 'w') as cf:
         cf.write(json.dumps(json_data, indent=4))
     if verbose:
-        print(' file created at this location : ' +
-              config._cwd + '/config_admin.json')
+        print(f'File created at this location :{config._cwd}/{filename}')
 
 
 def importConfigFile(file: str)-> None:
     """
-    This function will read the 'config_admin.json' to retrieve the information to be used by this module. 
+    This function will read the 'config_admin.json' to retrieve the information to be used by this module.
     """
     with open(Path(file), 'r') as file:
         f = json.load(file)
         config._org_id = f['org_id']
-        config._header["x-gw-ims-org-id"] = config._org_id
+        config.header["x-gw-ims-org-id"] = config._org_id
         config._api_key = f['api_key']
-        config._header["X-Api-Key"] = config._api_key
+        config.header["X-Api-Key"] = config._api_key
         config._tech_id = f['tech_id']
         config._secret = f['secret']
         config._pathToKey = f['pathToKey']
+        if 'sandbox-name' in f.keys():
+            config.header["x-sandbox-name"] = f['sandbox-name']
+        else:
+            config.header["x-sandbox-name"] = "prod"
 
 
 @adobeio_auth._checkToken
@@ -56,7 +66,7 @@ def _getData(endpoint: str, params: dict = None, data: dict = None, headers: dic
     Abstraction for getting data
     """
     if headers is None:
-        headers = config._header
+        headers = config.header
     if params == None and data == None:
         res = requests.get(endpoint, headers=headers)
     elif params != None and data == None:
@@ -79,7 +89,7 @@ def _postData(endpoint: str, params: dict = None, data: dict = None, headers: di
     Abstraction for posting data
     """
     if headers is None:
-        headers = config._header
+        headers = config.header
     if params == None and data == None:
         res = requests.post(endpoint, headers=headers)
     elif params != None and data == None:
@@ -103,7 +113,7 @@ def _patchData(endpoint: str, params: dict = None, data: dict = None, headers: d
     Abstraction for patching data
     """
     if headers is None:
-        headers = config._header
+        headers = config.header
     if params == None and data == None:
         res = requests.patch(endpoint, headers=headers)
     elif params != None and data == None:
@@ -127,7 +137,7 @@ def _deleteData(endpoint: str, params: dict = None, data=None, headers: dict = N
     Abstraction for deleting data
     """
     if headers is None:
-        headers = config._header
+        headers = config.header
     if params == None and data == None:
         res = requests.delete(endpoint, headers=headers)
     elif params != None and data == None:
@@ -151,7 +161,7 @@ def _putData(endpoint: str, params: dict = None, data=None, headers: dict = None
     Abstraction for deleting data
     """
     if headers is None:
-        headers = config._header
+        headers = config.header
     if params != None and data == None:
         res = requests.put(endpoint, headers=headers, params=params)
     elif params == None and data != None:
@@ -160,6 +170,28 @@ def _putData(endpoint: str, params: dict = None, data=None, headers: dict = None
     elif params != None and data != None:
         res = requests.put(endpoint, headers=headers,
                            params=params, data=json.dumps(data=data))
+    try:
+        status_code = res.json()
+    except:
+        status_code = {'error': 'Request Error'}
+    return status_code
+
+
+@adobeio_auth._checkToken
+def _patchData(endpoint: str, params: dict = None, data=None, headers: dict = None, *args, **kwargs):
+    """
+    Abstraction for deleting data
+    """
+    if headers is None:
+        headers = config.header
+    if params != None and data == None:
+        res = requests.patch(endpoint, headers=headers, params=params)
+    elif params == None and data != None:
+        res = requests.patch(endpoint, headers=headers,
+                             data=json.dumps(data))
+    elif params != None and data != None:
+        res = requests.patch(endpoint, headers=headers,
+                             params=params, data=json.dumps(data=data))
     try:
         status_code = res.json()
     except:
@@ -176,7 +208,37 @@ def home(product: str = None, limit: int = 50):
     """
     endpoint = config._endpoint+"/data/core/xcore/"
     params = {"product": product, "limit": limit}
-    myHeader = deepcopy(config._header)
+    myHeader = deepcopy(config.header)
     myHeader["Accept"] = "application/vnd.adobe.platform.xcore.home.hal+json"
     res = _getData(endpoint, params=params, headers=myHeader)
     return res
+
+
+def saveFile(module: str = None, file: object = None, filename: str = None, type_file: str = 'json'):
+    """
+  Save the file in the approriate folder depending on the module sending the information.
+   Arguments:
+        module: REQUIRED: Module requesting the save file.
+        file: REQUIRED: an object containing the file to save.
+        filename: REQUIRED: the filename to be used.
+        type_file: REQUIRED: the type of file to be saveed(default: json)
+    """
+    if module is None:
+        raise ValueError("Require the module to create a folder")
+    if file is None or filename is None:
+        raise ValueError("Require a object for file and a name for the file")
+    here = Path(Path.cwd())
+    folder = module.capitalize()
+    new_location = Path.joinpath(here, folder)
+    if new_location.exists() == False:
+        new_location.mkdir()
+    if type_file == 'json':
+        filename = f"{filename}.json"
+        complete_path = Path.joinpath(new_location, filename)
+        with open(complete_path, 'w') as f:
+            f.write(json.dumps(file, indent=4))
+    else:
+        filename = f"{filename}.txt"
+        complete_path = Path.joinpath(new_location, filename)
+        with open(complete_path, 'w') as f:
+            f.write(file)

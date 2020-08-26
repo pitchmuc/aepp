@@ -34,7 +34,7 @@ def retrieveToken(verbose: bool = False, save: bool = False, **kwargs)->str:
     json_response = response.json()
     token = json_response['access_token']
     aepp.config._token = token
-    aepp.config._header.update({"Authorization": "Bearer "+token})
+    aepp.config.header.update({"Authorization": "Bearer "+token})
     expire = json_response['expires_in']
     config._date_limit = aepp.time.time() + expire/1000 - \
         500  # end of time for the token
@@ -56,7 +56,8 @@ def _checkToken(func):
         now = aepp.time.time()
         if now > config._date_limit - 1000:
             config._token = retrieveToken(*args, **kwargs)
-            kwargs['headers']['Authorization'] = "Bearer "+config._token
+            if "headers" in kwargs:
+                kwargs['headers']['Authorization'] = "Bearer "+config._token
             return func(*args, **kwargs)
         else:  # need to return the function for decorator to return something
             return func(*args, **kwargs)

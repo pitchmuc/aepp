@@ -11,7 +11,7 @@ class Dule:
     """
 
     def __init__(self, **kwargs):
-        self.header = deepcopy(config._header)
+        self.header = deepcopy(config.header)
         self.header.update(**kwargs)
         self.endpoint = config._endpoint+config._endpoint_dule
 
