@@ -166,12 +166,12 @@ class Schema:
         """
         if schema_id is None:
             raise Exception("Require an ID for the schema")
-        path = f'/{self.container}/schemas/{schema_id}'
         if type(changes) == dict:
             changes = list(changes)
         if schema_id.startswith('https://'):
             from urllib import parse
             schema_id = parse.quote_plus(schema_id)
+        path = f'/{self.container}/schemas/{schema_id}'
         res = aepp._patchData(self.endpoint+path,
                               data=changes, headers=self.header)
         return res

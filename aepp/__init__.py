@@ -16,7 +16,7 @@ def createConfigFile(sandbox: bool = False, verbose: object = False, **kwargs)->
     """
     json_data = {
         'org_id': '<orgID>',
-        'api_key': "<APIkey>",
+        'client_id': "<client_id>",
         'tech_id': "<something>@techacct.adobe.com",
         'secret': "<YourSecret>",
         'pathToKey': '<path/to/your/privatekey.key>',
@@ -38,10 +38,13 @@ def importConfigFile(file: str)-> None:
         f = modules.json.load(file)
         config.org_id = f['org_id']
         config.header["x-gw-ims-org-id"] = config.org_id
-        config._api_key = f['api_key']
-        config.header["X-Api-Key"] = config._api_key
+        if 'api_key' in f.keys():
+            config.client_id = f['api_key']
+        elif 'client_id' in f.keys():
+            config.client_id = f['client_id']
+        config.header["X-Api-Key"] = config.client_id
         config.header['Authorization'] = ''
-        config._tech_id = f['tech_id']
+        config.tech_id = f['tech_id']
         config._secret = f['secret']
         config._pathToKey = f['pathToKey']
         config.date_limit = 0

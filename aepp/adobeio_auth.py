@@ -16,15 +16,15 @@ def retrieveToken(verbose: bool = False, save: bool = False, **kwargs)->str:
     jwtPayload = {
         # Expiration set to 24 hours
         "exp": round(24*60*60 + int(aepp.modules.time.time())),
-        "iss": aepp.config._org_id,  # org_id
-        "sub": aepp.config._tech_id,  # technical_account_id
+        "iss": aepp.config.org_id,  # org_id
+        "sub": aepp.config.tech_id,  # technical_account_id
         "https://ims-na1.adobelogin.com/s/ent_dataservices_sdk": True,
-        "aud": "https://ims-na1.adobelogin.com/c/"+aepp.config._api_key
+        "aud": "https://ims-na1.adobelogin.com/c/"+aepp.config.client_id
     }
     encoded_jwt = aepp.modules.jwt.encode(
         jwtPayload, private_key_unencrypted, algorithm='RS256')  # working algorithm
     payload = {
-        "client_id": aepp.config._api_key,
+        "client_id": aepp.config.client_id,
         "client_secret": aepp.config._secret,
         "jwt_token": encoded_jwt.decode("utf-8")
     }

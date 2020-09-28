@@ -1,5 +1,5 @@
 import aepp
-org_id, _api_key, _tech_id, _pathToKey, _secret, _companyid = "", "", "", "", "", ""
+org_id, client_id, tech_id, _pathToKey, _secret, _companyid = "", "", "", "", "", ""
 _TokenEndpoint = "https://ims-na1.adobelogin.com/ims/exchange/jwt"
 _cwd = aepp.modules.Path.as_posix(aepp.modules.Path.cwd())
 date_limit = 0
@@ -7,7 +7,7 @@ _token = ''
 header = {"Accept": "application/json",
           "Content-Type": "application/json",
           "Authorization": "",
-          "X-Api-Key": _api_key,
+          "X-Api-Key": client_id,
           "x-gw-ims-org-id": org_id,
           "x-sandbox-name": "prod"
           }
