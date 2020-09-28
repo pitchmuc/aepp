@@ -1,18 +1,14 @@
 # Internal Library
 import aepp
-from aepp import config
-from copy import deepcopy
-import typing
-from concurrent import futures as _futures
 
 
 class Segmentation:
 
     def __init__(self, **kwargs):
-        self.header = deepcopy(aepp.config.header)
+        self.header = aepp.modules.deepcopy(aepp.config.header)
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
-        self.endpoint = config._endpoint+config._endpoint_segmentation
+        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_segmentation
 
     def getSegments(self, **kwargs):
         """
@@ -34,7 +30,7 @@ class Segmentation:
             list_parameters = [{'page': str(
                 x), **params} for x in range(2, total_pages+1)]
             urls = [self.endpoint+path for x in range(2, total_pages+1)]
-            with _futures.ThreadPoolExecutor(max_workers) as executor:
+            with aepp.modules.futures.ThreadPoolExecutor(max_workers) as executor:
                 res = executor.map(lambda x, y: aepp._getData(
                     x, params=y), urls, list_parameters)
             res = list(res)

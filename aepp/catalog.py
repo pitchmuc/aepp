@@ -1,8 +1,4 @@
 import aepp
-from aepp import config
-from copy import deepcopy
-import re
-import typing
 from dataclasses import dataclass
 
 
@@ -23,10 +19,10 @@ class Catalog:
     """
 
     def __init__(self, **kwargs):
-        self.header = deepcopy(aepp.config.header)
+        self.header = aepp.modules.deepcopy(aepp.config.header)
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
-        self.endpoint = config._endpoint+config._endpoint_catalog
+        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_catalog
         self.data = _Data()
 
     def getAccounts(self, **kwargs):

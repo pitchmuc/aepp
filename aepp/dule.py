@@ -1,6 +1,4 @@
 import aepp
-from aepp import config
-from copy import deepcopy
 import typing
 
 
@@ -11,9 +9,9 @@ class Dule:
     """
 
     def __init__(self, **kwargs):
-        self.header = deepcopy(config.header)
+        self.header = aepp.modules.deepcopy(aepp.config.header)
         self.header.update(**kwargs)
-        self.endpoint = config._endpoint+config._endpoint_dule
+        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_dule
 
     def getPoliciesCore(self, **kwargs):
         """

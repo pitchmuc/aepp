@@ -1,19 +1,16 @@
 # Internal Library
 import aepp
-from aepp import config
-from copy import deepcopy
-import typing
-from concurrent import futures as _futures
+from aepp import modules
 
 
 class Profile:
 
     def __init__(self, **kwargs):
-        self.header = deepcopy(aepp.config.header)
+        self.header = aepp.modules.deepcopy(aepp.config.header)
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
         # same endpoint than segmentation
-        self.endpoint = config._endpoint+config._endpoint_segmentation
+        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_segmentation
 
     def getEntity(self, schema_name: str = "_xdm.context.profile", entityId: str = None, entityIdNS: str = None, mergePoliciyId: str = None, **kwargs):
         """

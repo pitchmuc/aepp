@@ -1,20 +1,116 @@
 # Internal Library
 import aepp
 from aepp import config
+from aepp import modules
 from pg import DB
-from copy import deepcopy
 
 
 class QueryService:
     """
-    QueryService class is to be used 
+    QueryService class is to be used in order to generate queries, scheduled queries or retrieve past queries.
     """
+    QUERYSAMPLE = {
+        "dbName": "string",
+        "sql": "SELECT $key from $key1 where $key > $key2;",
+        "queryParameters": {
+            "key": "value",
+            "key1": "value1",
+            "key2": "value2"
+        },
+        "templateId": "123",
+        "name": "string",
+        "description": "powered by aepp",
+        "insertIntoParameters": {
+            "datasetName": "string"
+        },
+        "ctasParameters": {
+            "datasetName": "myDatasetName",
+            "description": "powered by aepp",
+            "targetSchemaTitle": "mySchemaName"
+        }
+    }
+    SCHEDULESAMPLE = {
+        "query": {
+            "dbName": "string",
+            "sql": "SELECT $key from $key1 where $key > $key2;",
+            "queryParameters": {
+                "key": "value",
+                "key1": "value1",
+                "key2": "value2"
+            },
+            "templateId": "123",
+            "name": "string",
+            "description": "string",
+            "insertIntoParameters": {
+                "datasetName": "string"
+            },
+            "ctasParameters": {
+                "datasetName": "string",
+                "description": "string",
+                "targetSchemaTitle": "mySchemaName"
+            }
+        },
+        "schedule": {
+            "schedule": "string",
+            "startDate": "string",
+            "endDate": "string",
+            "maxActiveRuns": 0
+        }
+    }
 
     def __init__(self, **kwargs):
-        self.header = deepcopy(aepp.config.header)
+        self.header = aepp.modules.deepcopy(aepp.config.header)
         self.header.update({"Accept": "application/json"})
         self.header.update(**kwargs)
-        self.endpoint = config._endpoint+config._endpoint_query
+        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_query
+        self.TEMPLATES = {
+            'post': {
+                "dbName": "string",
+                "sql": "SELECT $key from $key1 where $key > $key2;",
+                "queryParameters": {
+                    "key": "value",
+                    "key1": "value1",
+                    "key2": "value2"
+                },
+                "templateId": "123",
+                "name": "string",
+                "description": "string",
+                "insertIntoParameters": {
+                    "datasetName": "string"
+                },
+                "ctasParameters": {
+                    "datasetName": "string",
+                    "description": "string"
+                }
+            },
+            'schedule': {
+                "query": {
+                    "dbName": "string",
+                    "sql": "SELECT $key from $key1 where $key > $key2;",
+                    "queryParameters": {
+                        "key": "value",
+                        "key1": "value1",
+                        "key2": "value2"
+                    },
+                    "templateId": "123",
+                    "name": "string",
+                    "description": "string",
+                    "insertIntoParameters": {
+                        "datasetName": "string"
+                    },
+                    "ctasParameters": {
+                        "datasetName": "string",
+                        "description": "string"
+                    }
+                },
+                "schedule": {
+                    "schedule": "string",
+                    "startDate": "string",
+                    "endDate": "string",
+                    "maxActiveRuns": 0
+                }
+            }
+        }
 
     def connection(self):
         """
@@ -22,7 +118,7 @@ class QueryService:
         """
         path = "/connection_parameters"
         res = aepp._getData(
-            config._endpoint+config._endpoint_query+path, headers=self.header)
+            aepp.config._endpoint+aepp.config._endpoint_query+path, headers=self.header)
         return res
 
     def getQueries(self, orderby: str = None, limit: int = 1000, start: int = None, **kwargs):
@@ -57,16 +153,16 @@ class QueryService:
             arguments['isPrevLink'] = kwargs.get(
                 "isPrevLink", '')
         res = aepp._getData(
-            config._endpoint+config._endpoint_query+path, params=arguments, headers=self.header)
+            aepp.config._endpoint+aepp.config._endpoint_query+path, params=arguments, headers=self.header)
         return res
 
-    def postQueries(self, data: dict = None, name: str = None, dbname: str = None, sql: str = None, templateId: str = None, queryParameters: dict = None, insertIntoParameters: dict = None, ctasParameters: dict = None, description: str = "", **kwargs):
+    def postQueries(self, data: dict = None, name: str = None, dbname: str = "prod:all", sql: str = None, templateId: str = None, queryParameters: dict = None, insertIntoParameters: dict = None, ctasParameters: dict = None, description: str = "", **kwargs):
         """
         Create a query.
         Arguments:
             data : OPTIONAL : If you want to pass the full query statement. 
             name : REQUIRED : Name of the query
-            dbname : REQUIRED : the dataset name
+            dbname : REQUIRED : the dataset name (default prod:all)
             sql: REQUIRED : the SQL query as a string.
             queryParameters : OPTIONAL : in case you are using template, providing the paramter in a dictionary.
             ctasParameters: OPTIONAL : in case you want to create a dataset out of that query, dictionary is required with "datasetName" and "description".
@@ -141,13 +237,64 @@ class QueryService:
         res = aepp._getData(self.endpoint + path)
         return res
 
-    def createSchedule(self, scheduleQuery: dict = None):
+    def getScheduleJobs(self, scheduleId: str = None):
+        """
+        Get the different jobs ran for this schedule
+        Arguments:
+            scheduleId : REQUIRED : the schedule id
+        """
+        if scheduleId is None:
+            raise Exception("scheduleId is required")
+        path = f"/schedules/{scheduleId}/runs"
+        res = aepp._getData(self.endpoint + path)
+        return res
+
+    def getScheduleJob(self, scheduleId: str = None, jobId: str = None):
+        """
+        Get the different jobs ran for this schedule
+        Arguments:
+            scheduleId : REQUIRED : the schedule id
+        """
+        if scheduleId is None or jobId is None:
+            raise Exception("scheduleId and jobId are required")
+        path = f"/schedules/{scheduleId}/runs/{jobId}"
+        res = aepp._getData(self.endpoint + path)
+        return res
+
+    def createSchedule(self, scheduleQuery: dict = None, name: str = None, dbname: str = "prod:all", sql: str = None, templateId: str = None, queryParameters: dict = None, insertIntoParameters: dict = None, ctasParameters: dict = None, schedule: dict = None, description: str = "", **kwargs):
         """
         Create a scheduled query.
         Arguments:
-            scheduleQuery: REQUIRED : a dictionary containing the query and the schedule. 
+            scheduleQuery: REQUIRED : a dictionary containing the query and the schedule.
+            name : OPTIONAL : Name of the query
+            dbname : OPTIONAL : the dataset name (default prod:all)
+            sql: OPTIONAL : the SQL query as a string.
+            queryParameters : OPTIONAL : in case you are using template, providing the paramter in a dictionary.
+            ctasParameters: OPTIONAL : in case you want to create a dataset out of that query, dictionary is required with "datasetName" and "description".
+            schedule : OPTIONAL : Dictionary giving the instruction to schedule the query.
         """
-        if type(scheduleQuery) != dict or scheduleQuery is None:
+        if scheduleQuery is None:
+            if name is None or sql is None or schedule is None:
+                raise Exception(
+                    "Expecting either scheduleQUery dictionary or data in parameters")
+            scheduleQuery = {
+                "query": {
+                    "name": name,
+                    "description": description,
+                    "dbName": dbname,
+                    "sql": sql
+                },
+                "schedule": schedule
+            }
+            if templateId is not None:
+                scheduleQuery["query"]["templateId"] = templateId
+            if queryParameters is not None:
+                scheduleQuery["query"]["queryParameters"] = queryParameters
+            if ctasParameters is not None:
+                scheduleQuery["query"]["ctasParameters"] = ctasParameters
+            if insertIntoParameters is not None:
+                scheduleQuery["query"]["insertIntoParameters"] = insertIntoParameters
+        if type(scheduleQuery) != dict:
             raise Exception(
                 "scheduleQuery is required and should be dictionary. ")
         if "query" not in scheduleQuery.keys() or "schedule" not in scheduleQuery.keys():
@@ -318,7 +465,7 @@ class InteractiveQuery:
         elif output == "dataframe":
             data = query.getresult()
             columns = query.listfields()
-            df = aepp.pd.DataFrame(data, columns=columns)
+            df = aepp.modules.pd.DataFrame(data, columns=columns)
             return df
         else:
             raise KeyError("You didn't specify a correct value.")
@@ -329,5 +476,5 @@ class InteractiveQuery:
         """
         data = query.getresult()
         columns = query.listfields()
-        df = aepp.pd.DataFrame(data, columns=columns)
+        df = aepp.modules.pd.DataFrame(data, columns=columns)
         return df

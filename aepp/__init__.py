@@ -1,21 +1,10 @@
-import time
-import json
-from collections import defaultdict
-from concurrent import futures
-from copy import deepcopy
-from typing import Union, IO
-from datetime import datetime
-# Non standard libraries
-import pandas as pd
-import requests
-import jwt
-from pathlib import Path
-import os
+
 # Internal Library
+from aepp import modules
 from aepp import config
 from aepp import adobeio_auth
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 
 def createConfigFile(sandbox: bool = False, verbose: object = False, **kwargs)->None:
@@ -36,7 +25,7 @@ def createConfigFile(sandbox: bool = False, verbose: object = False, **kwargs)->
         json_data['sandbox-name'] = "<your_sandbox_name>"
     filename = f"{kwargs.get('filename', 'config_aep')}.json"
     with open(filename, 'w') as cf:
-        cf.write(json.dumps(json_data, indent=4))
+        cf.write(modules.json.dumps(json_data, indent=4))
     if verbose:
         print(f'File created at this location :{config._cwd}/{filename}')
 
@@ -45,19 +34,23 @@ def importConfigFile(file: str)-> None:
     """
     This function will read the 'config_admin.json' to retrieve the information to be used by this module.
     """
-    with open(Path(file), 'r') as file:
-        f = json.load(file)
-        config._org_id = f['org_id']
-        config.header["x-gw-ims-org-id"] = config._org_id
+    with open(modules.Path(file), 'r') as file:
+        f = modules.json.load(file)
+        config.org_id = f['org_id']
+        config.header["x-gw-ims-org-id"] = config.org_id
         config._api_key = f['api_key']
         config.header["X-Api-Key"] = config._api_key
+        config.header['Authorization'] = ''
         config._tech_id = f['tech_id']
         config._secret = f['secret']
         config._pathToKey = f['pathToKey']
+        config.date_limit = 0
         if 'sandbox-name' in f.keys():
             config.header["x-sandbox-name"] = f['sandbox-name']
+            config.sandbox = f['sandbox-name']
         else:
             config.header["x-sandbox-name"] = "prod"
+            config.sandbox = "prod"
 
 
 @adobeio_auth._checkToken
@@ -68,14 +61,14 @@ def _getData(endpoint: str, params: dict = None, data: dict = None, headers: dic
     if headers is None:
         headers = config.header
     if params == None and data == None:
-        res = requests.get(endpoint, headers=headers)
+        res = modules.requests.get(endpoint, headers=headers)
     elif params != None and data == None:
-        res = requests.get(endpoint, headers=headers, params=params)
+        res = modules.requests.get(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.get(endpoint, headers=headers, data=data)
+        res = modules.requests.get(endpoint, headers=headers, data=data)
     elif params != None and data != None:
-        res = requests.get(endpoint, headers=headers,
-                           params=params, data=data)
+        res = modules.requests.get(endpoint, headers=headers,
+                                   params=params, data=data)
     try:
         res_json = res.json()
     except:
@@ -91,15 +84,15 @@ def _postData(endpoint: str, params: dict = None, data: dict = None, headers: di
     if headers is None:
         headers = config.header
     if params == None and data == None:
-        res = requests.post(endpoint, headers=headers)
+        res = modules.requests.post(endpoint, headers=headers)
     elif params != None and data == None:
-        res = requests.post(endpoint, headers=headers, params=params)
+        res = modules.requests.post(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.post(endpoint, headers=headers,
-                            data=json.dumps(data))
+        res = modules.requests.post(endpoint, headers=headers,
+                                    data=modules.json.dumps(data))
     elif params != None and data != None:
-        res = requests.post(endpoint, headers=headers,
-                            params=params, data=json.dumps(data))
+        res = modules.requests.post(endpoint, headers=headers,
+                                    params=params, data=modules.json.dumps(data))
     try:
         res_json = res.json()
     except:
@@ -115,15 +108,15 @@ def _patchData(endpoint: str, params: dict = None, data: dict = None, headers: d
     if headers is None:
         headers = config.header
     if params == None and data == None:
-        res = requests.patch(endpoint, headers=headers)
+        res = modules.requests.patch(endpoint, headers=headers)
     elif params != None and data == None:
-        res = requests.patch(endpoint, headers=headers, params=params)
+        res = modules.requests.patch(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.patch(endpoint, headers=headers,
-                             data=json.dumps(data))
+        res = modules.requests.patch(endpoint, headers=headers,
+                                     data=modules.json.dumps(data))
     elif params != None and data != None:
-        res = requests.patch(endpoint, headers=headers,
-                             params=params, data=json.dumps(data))
+        res = modules.requests.patch(endpoint, headers=headers,
+                                     params=params, data=modules.json.dumps(data))
     try:
         res_json = res.json()
     except:
@@ -139,15 +132,15 @@ def _deleteData(endpoint: str, params: dict = None, data=None, headers: dict = N
     if headers is None:
         headers = config.header
     if params == None and data == None:
-        res = requests.delete(endpoint, headers=headers)
+        res = modules.requests.delete(endpoint, headers=headers)
     elif params != None and data == None:
-        res = requests.delete(endpoint, headers=headers, params=params)
+        res = modules.requests.delete(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.delete(endpoint, headers=headers,
-                              data=json.dumps(data))
+        res = modules.requests.delete(endpoint, headers=headers,
+                                      data=modules.json.dumps(data))
     elif params != None and data != None:
-        res = requests.delete(endpoint, headers=headers,
-                              params=params, data=json.dumps(data=data))
+        res = modules.requests.delete(endpoint, headers=headers,
+                                      params=params, data=modules.json.dumps(data=data))
     try:
         status_code = res.status_code
     except:
@@ -163,13 +156,13 @@ def _putData(endpoint: str, params: dict = None, data=None, headers: dict = None
     if headers is None:
         headers = config.header
     if params != None and data == None:
-        res = requests.put(endpoint, headers=headers, params=params)
+        res = modules.requests.put(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.put(endpoint, headers=headers,
-                           data=json.dumps(data))
+        res = modules.requests.put(endpoint, headers=headers,
+                                   data=modules.json.dumps(data))
     elif params != None and data != None:
-        res = requests.put(endpoint, headers=headers,
-                           params=params, data=json.dumps(data=data))
+        res = modules.requests.put(endpoint, headers=headers,
+                                   params=params, data=modules.json.dumps(data=data))
     try:
         status_code = res.json()
     except:
@@ -185,13 +178,13 @@ def _patchData(endpoint: str, params: dict = None, data=None, headers: dict = No
     if headers is None:
         headers = config.header
     if params != None and data == None:
-        res = requests.patch(endpoint, headers=headers, params=params)
+        res = modules.requests.patch(endpoint, headers=headers, params=params)
     elif params == None and data != None:
-        res = requests.patch(endpoint, headers=headers,
-                             data=json.dumps(data))
+        res = modules.requests.patch(endpoint, headers=headers,
+                                     data=modules.json.dumps(data))
     elif params != None and data != None:
-        res = requests.patch(endpoint, headers=headers,
-                             params=params, data=json.dumps(data=data))
+        res = modules.requests.patch(endpoint, headers=headers,
+                                     params=params, data=modules.json.dumps(data=data))
     try:
         status_code = res.json()
     except:
@@ -208,7 +201,7 @@ def home(product: str = None, limit: int = 50):
     """
     endpoint = config._endpoint+"/data/core/xcore/"
     params = {"product": product, "limit": limit}
-    myHeader = deepcopy(config.header)
+    myHeader = modules.deepcopy(config.header)
     myHeader["Accept"] = "application/vnd.adobe.platform.xcore.home.hal+json"
     res = _getData(endpoint, params=params, headers=myHeader)
     return res
@@ -227,18 +220,18 @@ def saveFile(module: str = None, file: object = None, filename: str = None, type
         raise ValueError("Require the module to create a folder")
     if file is None or filename is None:
         raise ValueError("Require a object for file and a name for the file")
-    here = Path(Path.cwd())
+    here = modules.Path(modules.Path.cwd())
     folder = module.capitalize()
-    new_location = Path.joinpath(here, folder)
+    new_location = modules.Path.joinpath(here, folder)
     if new_location.exists() == False:
         new_location.mkdir()
     if type_file == 'json':
         filename = f"{filename}.json"
-        complete_path = Path.joinpath(new_location, filename)
+        complete_path = modules.Path.joinpath(new_location, filename)
         with open(complete_path, 'w') as f:
-            f.write(json.dumps(file, indent=4))
+            f.write(modules.json.dumps(file, indent=4))
     else:
         filename = f"{filename}.txt"
-        complete_path = Path.joinpath(new_location, filename)
+        complete_path = modules.Path.joinpath(new_location, filename)
         with open(complete_path, 'w') as f:
             f.write(file)

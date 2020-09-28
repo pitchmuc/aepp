@@ -1,9 +1,5 @@
 # Internal Library
 import aepp
-from aepp import config
-from copy import deepcopy
-import re
-import typing
 from dataclasses import dataclass
 
 json_extend = [{'op': 'replace',
@@ -42,49 +38,12 @@ class Schema:
         possible kwargs:
             x-sandbox-name : name of the sandbox you want to use (default : "prod").
         """
-        self.header = deepcopy(aepp.config.header)
+        self.header = aepp.modules.deepcopy(aepp.config.header)
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
-        self.endpoint = config._endpoint+config._endpoint_schema
+        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_schema
         self.container = container_id
         self.data = _Data()
-
-    def _getPaths(self, myDict: dict, path: list = None, key: str = None, list_path: list = None, verbose: bool = False):
-        """
-        Function to find the different paths existing in a schema
-        Arguments:
-            myDict : REQUIRED : Schema that needs to be analyzed
-            paths : Not required - path being built on run time
-            key : key pass to the lower iteration in case.
-            list_path : what is returned at the end of the recursion
-            verbose : OPTIONAL : In case you need to see something
-        """
-        if path is None:
-            path = []
-        if list_path is None:
-            list_path = []
-        if type(myDict) == dict:
-            if "properties" in myDict.keys():  # have the properties in dict
-                if key is not None:
-                    path.append(key)
-                res = self._getPaths(myDict['properties'],
-                                     key=key, path=path, list_path=list_path, verbose=verbose)
-            elif type(myDict) == dict:  # 2 have not the property option
-                if myDict.get("type", 'object') == "object":
-                    for key, value in myDict.items():
-                        recurs = self._getPaths(value, path=path,
-                                                key=key, list_path=list_path, verbose=verbose)
-                        if key in path:
-                            path.pop()
-                else:  # last level Not object type.
-                    path.append(key)
-                    full_path = ".".join(path)
-                    if verbose:
-                        print(full_path)
-                    list_path.append(full_path)
-                    path.pop()
-                    return path
-            return list_path
 
     def getStats(self)->list:
         """
@@ -105,12 +64,17 @@ class Schema:
     def getSchemas(self, **kwargs)->list:
         """
         Returns the list of schemas retrieved for that instances in a "results" list.
+        Kwargs:
+            debug : if set to true, will print the result when error happens
         """
         path = f'/{self.container}/schemas/'
         start = kwargs.get("start", 0)
         params = {"start": start}
         res = aepp._getData(self.endpoint+path,
                             params=params, headers=self.header)
+        if kwargs.get('debug', False):
+            if "results" not in res.keys():
+                print(res)
         data = res['results']
         page = res['_page']
         while page['next'] is not None:
@@ -266,61 +230,6 @@ class Schema:
         res = aepp._postData(self.endpoint+path,
                              headers=self.header, data=schema)
         return res
-
-    def findPath(self, schema: typing.Union[str, dict] = None, filter: str = None):
-        """
-        Return a list of the paths containing your filter.
-        Arguments:
-            schema : Schema JSON or title reference
-            filter : REQUIRED : element you would like to find in your path.
-            paths : OPTIONAL : list of all of the paths.
-        """
-        if type(schema) == str:
-            if schema in self.data.paths.keys():
-                paths = self.data.paths[schema]
-            elif schema in self.data.schemas.keys():
-                schema = self.data.schemas[schema]
-                paths = self._getPaths(schema)
-            else:
-                raise Exception(
-                    "Schema reference doesn't exist.\nMake sure to retrieve the schema you want to use beforehand")
-        elif type(schema) == dict:
-            try:
-                paths = self._getPaths(schema)
-                self.data.paths[schema['title']] = paths
-            except Exception as e:
-                print('Issue with the schema reading. Verifiy your schema structure.')
-                print(e)
-                return None
-        if filter is None:
-            return paths
-        elements = (element for element in paths if re.search(
-            f".*{filter}.*", str(element)) is not None)
-        return list(elements)
-
-    def pathType(self, path: str = None, schema: typing.Union[dict, str] = None):
-        """
-        Returns the XDM Type of the path that has been passed with the schema.
-        Arguments:
-            path : REQUIRED : the path that you want to check. Ex : "_tenant.schema.something"
-            schema : REQUIRED : Either the full schema definition or title reference to the schema.
-            if the title reference has been provided, make sure you have downloaded it before with getSchema method.
-        """
-        if type(schema) == str:
-            if schema not in self.data.schemas.keys():
-                raise Exception(
-                    "Expecting a reference to a schema already downloaded.")
-            else:
-                schema = self.data.schemas[schema]
-        split_path = path.split('.')
-        if len(path) == 0:
-            return schema["meta:xdmType"]
-        elif split_path[0] in schema.keys():
-            result = self.pathType(
-                '.'.join(split_path[1:]), schema[split_path[0]])
-        elif "properties" in schema.keys():
-            result = self.pathType('.'.join(split_path), schema['properties'])
-        return result
 
     def getClasses(self, **kwargs):
         """
@@ -573,15 +482,15 @@ class Schema:
                              data=dataType_obj, headers=self.header)
         return res
 
-    def getDescriptors(self, type_desc: str = None, id_desc: bool = False, link_desc: bool = False, **kwargs)->list:
+    def getDescriptors(self, type_desc: str = "xdm:descriptorIdentity", id_desc: bool = False, link_desc: bool = False, save: bool = False, **kwargs)->list:
         """
         Return a list of all descriptors contains in that tenant id.
         By default return a v2 for pagination.
         Arguments:
-            type_desc : OPTIONAL : if you want to filter for a specific type of descriptor.
-            An example is "xdm:descriptorIdentity"
+            type_desc : OPTIONAL : if you want to filter for a specific type of descriptor. (default : "xdm:descriptorIdentity")
             id_desc : OPTIONAL : if you want to return only the id.
             link_desc : OPTIONAL : if you want to return only the paths.
+            save : OPTIONAL : Boolean that would save your descriptors in the schema folder. (default False)
         """
         path = f"/{self.container}/descriptors/"
         params = {'start': kwargs.get("start", 0)}
@@ -604,13 +513,17 @@ class Schema:
         page = res['_page']
         while page['next'] is not None:
             data += self.getSchemas(start=page['next'])
+        if save:
+            aepp.saveFile(module="schema", file=data,
+                          filename='descriptors', type_file='json')
         return data
 
-    def getDescriptor(self, descriptor_id: str = None)->dict:
+    def getDescriptor(self, descriptor_id: str = None, save: bool = False)->dict:
         """
         Return a specific descriptor
         Arguments:
             descriptor_id : REQUIRED : descriptor ID to return (@id).
+            save : OPTIONAL : Boolean that would save your descriptors in the schema folder. (default False)
         """
         if descriptor_id is None:
             raise Exception("Require a descriptor id")
@@ -619,16 +532,77 @@ class Schema:
         res = aepp._getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
+        if save:
+            aepp.saveFile(module="schema", file=res,
+                          filename=f'{res["@id"]}_descriptors', type_file='json')
         return res
 
-    def createDescriptor(self, desc_type: str = "xdm:descriptorIdentity", sourceSchema: str = None, sourceProperty: str = None, namespace: str = None, property: str = "xdm:code", primary: bool = False):
+    def createDescriptor(self, desc_type: str = "xdm:descriptorIdentity", sourceSchema: str = None, sourceProperty: str = None, namespace: str = None, xdmProperty: str = "xdm:code", primary: bool = False, **kwargs)->dict:
         """
         Create a descriptor attached to a specific schema.
         Arguments:
             desc_type : REQUIRED : the type of descriptor to create.(default Identity)
-            sourceSchema : REQUIRED : the schema attached to your identity
+            sourceSchema : REQUIRED : the schema attached to your identity ()
             sourceProperty : REQUIRED : the path to the field
             namespace : REQUIRED : the namespace used for the identity
-            property : REQUIRED : xdm code for the descriptor (default : xdm:code)
-            primary : REQUIRED : Boolean to define if it is a primary identity or not (default False).
+            xdmProperty : OPTIONAL : xdm code for the descriptor (default : xdm:code)
+            primary : OPTIONAL : Boolean to define if it is a primary identity or not (default False).
+        possible kwargs:
+            version : version of the creation (default 1)
         """
+        path = f"/{self.container}/descriptors"
+        if sourceSchema is None or sourceProperty is None or namespace is None:
+            raise Exception("Missing required arguments.")
+        obj = {
+            "@type": desc_type,
+            "xdm:sourceSchema": sourceSchema,
+            "xdm:sourceVersion": kwargs.get("version", 1),
+            "xdm:sourceProperty": sourceProperty,
+            "xdm:namespace":  namespace,
+            "xdm:property": xdmProperty,
+            "xdm:isPrimary": primary}
+        res = aepp._postData(self.endpoint+path, data=obj, headers=self.header)
+        return res
+
+    def deleteDescriptor(self, descriptor_id: str = None)->str:
+        """
+        Delete a specific descriptor.
+        Arguments:
+            descriptor_id : REQUIRED : the descriptor id to delete
+        """
+        if descriptor_id is None:
+            raise Exception("Require a descriptor id")
+        path = f"/{self.container}/descriptors/{descriptor_id}"
+        self.header['Accept'] = f"application/vnd.adobe.xdm+json"
+        res = aepp._deleteData(self.endpoint + path, headers=self.header)
+        self.header.update({
+            "Accept": "application/json"})
+        return res
+
+    def putDescriptor(self, descriptor_id: str = None, desc_type: str = "xdm:descriptorIdentity", sourceSchema: str = None, sourceProperty: str = None, namespace: str = None, xdmProperty: str = "xdm:code", primary: bool = False)->dict:
+        """
+        Replace the descriptor with the new definition. It updates the whole definition.
+        Arguments:
+            descriptor_id : REQUIRED : the descriptor id to delete
+            desc_type : REQUIRED : the type of descriptor to create.(default Identity)
+            sourceSchema : REQUIRED : the schema attached to your identity ()
+            sourceProperty : REQUIRED : the path to the field
+            namespace : REQUIRED : the namespace used for the identity
+            xdmProperty : OPTIONAL : xdm code for the descriptor (default : xdm:code)
+            primary : OPTIONAL : Boolean to define if it is a primary identity or not (default False).
+        """
+        if descriptor_id is None:
+            raise Exception("Require a descriptor id")
+        path = f"/{self.container}/descriptors/{descriptor_id}"
+        if sourceSchema is None or sourceProperty is None or namespace is None:
+            raise Exception("Missing required arguments.")
+        obj = {
+            "@type": desc_type,
+            "xdm:sourceSchema": sourceSchema,
+            "xdm:sourceVersion": 1,
+            "xdm:sourceProperty": sourceProperty,
+            "xdm:namespace":  namespace,
+            "xdm:property": xdmProperty,
+            "xdm:isPrimary": primary}
+        res = aepp._putData(self.endpoint+path, data=obj, headers=self.header)
+        return res

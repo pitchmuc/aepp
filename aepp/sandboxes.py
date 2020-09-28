@@ -1,5 +1,4 @@
 import aepp
-from aepp import config
 
 """
 This module doesn't contain a class.
@@ -11,7 +10,7 @@ def getSandboxes()->list:
     """
     Return the list of all the sandboxes
     """
-    path = config._endpoint + config._endpoint_sandboxes + "/sandboxes"
+    path = aepp.config._endpoint + aepp.config._endpoint_sandboxes + "/sandboxes"
     res = aepp._getData(path)
     data = res['sandboxes']
     return data
@@ -27,7 +26,7 @@ def createSandbox(name: str = None, title: str = None, type_sandbox: str = "deve
     """
     if name is None or title is None:
         raise Exception('name and title cannot be empty')
-    path = config._endpoint + config._endpoint_sandboxes + "/sandboxes"
+    path = aepp.config._endpoint + aepp.config._endpoint_sandboxes + "/sandboxes"
     data = {
         "name": name,
         "title": title,
@@ -45,7 +44,8 @@ def getSandbox(name: str)->dict:
     """
     if name is None:
         raise Exception('Expected a name as parameter')
-    path = config._endpoint + config._endpoint_sandboxes + f"/sandboxes/{name}"
+    path = aepp.config._endpoint + \
+        aepp.config._endpoint_sandboxes + f"/sandboxes/{name}"
     res = aepp._getData(path)
     return res
 
@@ -58,7 +58,8 @@ def deleteSandbox(name: str)->dict:
     """
     if name is None:
         raise Exception('Expected a name as parameter')
-    path = config._endpoint + config._endpoint_sandboxes + f"/sandboxes/{name}"
+    path = aepp.config._endpoint + \
+        aepp.config._endpoint_sandboxes + f"/sandboxes/{name}"
     res = aepp._deleteData(path)
     return res
 
@@ -71,6 +72,7 @@ def resetSandbox(name: str)->dict:
     """
     if name is None:
         raise Exception('Expected a name as parameter')
-    path = config._endpoint + config._endpoint_sandboxes + f"/sandboxes/{name}"
+    path = aepp.config._endpoint + \
+        aepp.config._endpoint_sandboxes + f"/sandboxes/{name}"
     res = aepp._putData(path)
     return res
