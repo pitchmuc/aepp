@@ -24,7 +24,6 @@ class Schema:
 
     """
     schemas = {}
-    schemasPaths = {}
     _schemaClasses = {
         "event": "https://ns.adobe.com/xdm/context/experienceevent",
         "profile": "https://ns.adobe.com/xdm/context/profile"
@@ -112,7 +111,7 @@ class Schema:
         accept_update = f"application/vnd.adobe.{schema_type}{update_full}{update_desc}+json; version={version}"
         self.header["Accept"] = accept_update
         if kwargs.get('Accept', None) is not None:
-            header['Accept'] = kwargs.get('Accept', header['Accept'])
+            self.header['Accept'] = kwargs.get('Accept', self.header['Accept'])
         self.header['Accept-Encoding'] = 'identity'
         if schema_id.startswith('https://'):
             from urllib import parse
@@ -120,14 +119,17 @@ class Schema:
         path = f'/{self.container}/schemas/{schema_id}'
         res = aepp._getData(self.endpoint + path, headers=self.header)
         del self.header['Accept-Encoding']
-        self.header['Accept'] = "application/json"
-        if "title" not in res.keys():
+        if "title" not in res.keys() and 'notext' not in self.header['Accept']:
             print('Issue with the request. See response.')
             return res
+        self.header['Accept'] = "application/json"
         if save:
             aepp.saveFile(module='schema', file=res,
                           filename=res['title'], type_file='json')
-        self.data.schemas[res['title']] = res
+        if 'title' in res.keys():
+            self.data.schemas[res['title']] = res
+        else:
+            print("no title in the response. Not saved in the data object.")
         return res
 
     def getSchemaSample(self, schema_id: str = None, save: bool = False, version: int = 1) -> dict:
