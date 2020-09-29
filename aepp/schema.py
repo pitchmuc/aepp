@@ -81,7 +81,7 @@ class Schema:
             data += self.getSchemas(start=page['next'])
         return data
 
-    def getSchema(self, schema_id: str = None, version: int = 1, save: bool = False, full: bool = True, desc: bool = False, findPaths: bool = False, **kwargs)->dict:
+    def getSchema(self, schema_id: str = None, version: int = 1, save: bool = False, full: bool = True, desc: bool = False, schema_type: str = 'xdn', **kwargs)->dict:
         """
         Get the Schema. Requires a schema id.
         Response provided depends on the header set, you can change the Accept header with kwargs.
@@ -91,7 +91,7 @@ class Schema:
             save : OPTIONAL : save the result in json file (default False)
             full : OPTIONAL : True (default) will return the full schema.False just the relationships.
             desc : OPTIONAL : If set to True, return the identity used as the descriptor.
-            findPaths : OPTIONAL : find the paths present in your schema. (BETA)
+            schema_type : OPTIONAL : set the type of output you want (xdm or xed) Default : xdm. 
         Possible kwargs:
             Accept : Accept header to change the type of response.
             # /Schemas/lookup_schema
@@ -107,7 +107,9 @@ class Schema:
             update_desc = "-desc"
         else:
             update_desc = ""
-        accept_update = f"application/vnd.adobe.xdm{update_full}{update_desc}+json; version={version}"
+        if schema_type != 'xdm' and schema_type != 'xed':
+            raise ValueError("schema_type parameter can only be xdm or xed")
+        accept_update = f"application/vnd.adobe.{schema_type}{update_full}{update_desc}+json; version={version}"
         self.header["Accept"] = accept_update
         if kwargs.get('Accept', None) is not None:
             header['Accept'] = kwargs.get('Accept', header['Accept'])
@@ -126,9 +128,6 @@ class Schema:
             aepp.saveFile(module='schema', file=res,
                           filename=res['title'], type_file='json')
         self.data.schemas[res['title']] = res
-        if findPaths:
-            paths = self._getPaths(res)
-            self.data.paths[res['title']] = paths
         return res
 
     def getSchemaSample(self, schema_id: str = None, save: bool = False, version: int = 1) -> dict:
