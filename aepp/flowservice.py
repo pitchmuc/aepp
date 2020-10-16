@@ -20,11 +20,19 @@ class FlowService:
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["flow"]
     
 
-    def getConnections(self) -> list:
+    def getConnections(self,limit:int=20,count:bool=False,**kwargs) -> list:
         """
         Returns the list of connections available.
+        Arguments:
+            limit : OPTIONAL : number of result returned
+            count : OPTIONAL : if set to True, just returns the number of connections
+        kwargs will be added as query parameters 
         """
-        params = {'count': True}
+        params = {"limit":limit}
+        if count:
+            params['count'] = count
+        for kwarg in kwargs:
+            params[kwarg] = kwargs[kwarg]
         path = "/connections"
         res = self.connector.getData(self.endpoint + path, params=params, header=self.header)
         try:

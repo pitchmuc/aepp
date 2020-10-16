@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="aepp",  # Replace with your own username
-    version="0.0.5",
+    version="0.0.7",
     author="Julien Piccini",
     author_email="piccini.julien@gmail.com",
     description="Package to manage AEP API endpoint and some helper functions",
