@@ -1,14 +1,21 @@
 # Internal Library
 import aepp
-
+from aepp import connector
 
 class Segmentation:
 
-    def __init__(self, **kwargs):
-        self.header = aepp.modules.deepcopy(aepp.config.header)
+    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+        """
+        Instanciate the segmentation API methods class-
+        Arguments:
+            config : OPTIONAL : config object in the config module. 
+            header : OPTIONAL : header object  in the config module.
+        """
+        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        self.header = self.connector.header
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
-        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_segmentation
+        self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["segmentation"]
 
     def getSegments(self, **kwargs):
         """
@@ -18,7 +25,7 @@ class Segmentation:
         """
         params = {'limit': kwargs.get('limit', 100)}
         path = "/segment/definitions"
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         if 'segments' in res.keys():
             data = res['segments']
         else:
@@ -31,7 +38,7 @@ class Segmentation:
                 x), **params} for x in range(2, total_pages+1)]
             urls = [self.endpoint+path for x in range(2, total_pages+1)]
             with aepp.modules.futures.ThreadPoolExecutor(max_workers) as executor:
-                res = executor.map(lambda x, y: aepp._getData(
+                res = executor.map(lambda x, y: self.connector.getData(
                     x, params=y), urls, list_parameters)
             res = list(res)
             append_data = [val for sublist in [data['data'] for data in res]
@@ -49,7 +56,7 @@ class Segmentation:
             raise Exception(
                 "Expecting a segment ID to fetch the segment definition.")
         path = f"/segment/definitions/{segment_id}"
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
     def createSegment(self, segment_data: dict = None):
@@ -69,7 +76,7 @@ class Segmentation:
             raise Exception(
                 "Segment data doesn't hold one or several mandatory fields:\n\
                 name, description, expression, schema, ttlInDays")
-        res = aepp._postData(self.endpoint+path,
+        res = self.connector.postData(self.endpoint+path,
                              data=segment_data, headers=self.header)
         return res
 
@@ -83,7 +90,7 @@ class Segmentation:
             raise Exception(
                 "Expecting a segment ID to delete the segment.")
         path = f"/segment/definitions/{segment_id}"
-        res = aepp._deleteData(self.endpoint+path, headers=self.header)
+        res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
     def updateSegment(self, segment_id: str = None, segment_data: dict = None):
@@ -107,7 +114,7 @@ class Segmentation:
             raise Exception(
                 "Segment data doesn't hold one or several mandatory fields:\n\
                 name, description, expression, schema, ttlInDays")
-        update = aepp._postData(
+        update = self.connector.postData(
             self.endpoint+path, headers=self.header, data=segment_data)
         return update
 
@@ -122,7 +129,7 @@ class Segmentation:
         params = {"limit": limit}
         if status is not None and status in ['NEW', 'SUCEEDED', 'FAILED']:
             params['status'] = status
-        res = aepp._getData(self.endpoint+path,
+        res = self.connector.getData(self.endpoint+path,
                             params=params, headers=self.header)
         return res
 
@@ -136,7 +143,7 @@ class Segmentation:
         if export_data is None:
             raise Exception(
                 "Expected export data to specify segment to export.")
-        res = aepp._postData(self.endpoint+path,
+        res = self.connector.postData(self.endpoint+path,
                              data=export_data, headers=self.header)
         return res
 
@@ -149,7 +156,7 @@ class Segmentation:
         if export_id is None:
             raise Exception("Expected a export_id")
         path = f"/export/jobs/{export_id}"
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
     def deleteExport(self, export_id: str = None):
@@ -161,7 +168,7 @@ class Segmentation:
         if export_id is None:
             raise Exception("Expected a export_id")
         path = f"/export/jobs/{export_id}"
-        res = aepp._deleteData(self.endpoint+path, headers=self.header)
+        res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
     def searchNamespaces(self, query: str = None, schema: str = "_xdm.context.segmentdefinition", **kwargs):
@@ -176,7 +183,7 @@ class Segmentation:
             raise Exception("Expected a query to search for.")
         params = {"schema.name": schema, "s": query}
         self.header['x-ups-search-version'] = "1.0"
-        res = aepp._getData(self.endpoint+path,
+        res = self.connector.getData(self.endpoint+path,
                             headers=self.header, params=params)
         del self.header["x-ups-search-version"]
         return res
@@ -203,13 +210,13 @@ class Segmentation:
         self.header['x-ups-search-version'] = "1.0"
         params = {"schemaClass": schema,
                   "namespace": namespace, "s": query, "entityId": entityId, "limit": limit, "page": page}
-        res = aepp._getData(self.endpoint+path,
+        res = self.connector.getData(self.endpoint+path,
                             headers=self.header, params=params)
         data = res['entities']
         curr_page = res['page']["pageOffset"]
         total_pages = res['page']["totalPages"]
         while curr_page <= page_limit - 1 or curr_page == total_pages:
-            res = aepp._getData(self.endpoint+path,
+            res = self.connector.getData(self.endpoint+path,
                                 headers=self.header, params=params)
             data += res['entities']
             curr_page = res['page']["pageOffset"]
@@ -222,7 +229,7 @@ class Segmentation:
         Return the list of scheduled segments.
         """
         path = "/config/schedules"
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
     def createSchedule(self, schedule_data: dict = None):
@@ -240,7 +247,7 @@ class Segmentation:
         if len(set(min_requirements) & set(schedule_data.keys())) != len(min_requirements):
             raise Exception(
                 "Missing one minimal requirements : name, type, properties, schedule")
-        res = aepp._postData(self.endpoint+path,
+        res = self.connector.postData(self.endpoint+path,
                              data=schedule_data, headers=self.header)
         return res
 
@@ -253,7 +260,7 @@ class Segmentation:
         if schedule_id is None:
             raise Exception("Expected a schedule_id")
         path = f"/config/schedules/{schedule_id}"
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
     def deleteSchedule(self, schedule_id: str = None):
@@ -265,7 +272,7 @@ class Segmentation:
         if schedule_id is None:
             raise Exception("Expected a schedule_id")
         path = f"/config/schedules/{schedule_id}"
-        res = aepp._deleteData(self.endpoint+path, headers=self.header)
+        res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
     def getJobs(self, name: str = None, status: str = None, limit: int = 100, **kwargs):
@@ -278,7 +285,7 @@ class Segmentation:
         """
         path = "/segment/jobs"
         params = {"snapshot.name": name, "status": status, "limit": limit}
-        res = aepp._getData(self.endpoint+path,
+        res = self.connector.getData(self.endpoint+path,
                             params=params, headers=self.header)
         return res
 
@@ -291,7 +298,7 @@ class Segmentation:
         path = "/segment/jobs"
         if job_data is None or type(job_data) != list:
             raise Exception("Expecting a list of segment ID to run.")
-        res = aepp._postData(self.endpoint+path,
+        res = self.connector.postData(self.endpoint+path,
                              data=job_data, headers=self.header)
         return res
 
@@ -302,7 +309,7 @@ class Segmentation:
             job_id: REQUIRED : The job ID to retrieve.
         """
         path = f"/segment/jobs/{job_id}"
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
     def deleteJob(self, job_id: str = None):
@@ -312,5 +319,5 @@ class Segmentation:
             job_id: REQUIRED : The job ID to delete.
         """
         path = f"/segment/jobs/{job_id}"
-        res = aepp._deleteData(self.endpoint+path, headers=self.header)
+        res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res

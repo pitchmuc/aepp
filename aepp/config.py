@@ -1,26 +1,36 @@
 import aepp
-org_id, client_id, tech_id, _pathToKey, _secret, _companyid = "", "", "", "", "", ""
-_TokenEndpoint = "https://ims-na1.adobelogin.com/ims/exchange/jwt"
-_cwd = aepp.modules.Path.as_posix(aepp.modules.Path.cwd())
-date_limit = 0
-_token = ''
+
+config_object = {
+    "org_id": "",
+    "client_id": "",
+    "tech_id": "",
+    "pathToKey": "",
+    "secret": "",
+    "date_limit" : 0,
+    "sandbox": "",
+    "token": "",
+    "tokenEndpoint" : "https://ims-na1.adobelogin.com/ims/exchange/jwt"
+}
 header = {"Accept": "application/json",
           "Content-Type": "application/json",
           "Authorization": "",
-          "X-Api-Key": client_id,
-          "x-gw-ims-org-id": org_id,
+          "x-api-key": config_object["client_id"],
+          "x-gw-ims-org-id": config_object["org_id"],
           "x-sandbox-name": "prod"
           }
-sandbox = ""
 
 # endpoints
-_endpoint = "https://platform.adobe.io"
-_endpoint_schema = "/data/foundation/schemaregistry"
-_endpoint_query = "/data/foundation/query"
-_endpoint_catalog = "/data/foundation/catalog"
-_endpoint_dule = "/data/foundation/dulepolicy"
-_endpoint_export = "/data/foundation/export"
-_endpoint_segmentation = "/data/core/ups"
-_endpoint_identity = "/data/core/"
-_endpoint_sandboxes = "/data/foundation/sandbox-management"
-_endpoint_sensei = "/data/sensei"
+endpoints = {
+    "global": "https://platform.adobe.io",
+    "schemas": "/data/foundation/schemaregistry",
+    "query": "/data/foundation/query",
+    "catalog": "/data/foundation/catalog",
+    "dule": "/data/foundation/dulepolicy",
+    "segmentation": "/data/core/ups",
+    "export": "/data/foundation/export",
+    "identity": "/data/core/",
+    "sandboxes": "/data/foundation/sandbox-management",
+    "sensei": "/data/sensei",
+    "access": "/data/foundation/access-control",
+    "flow" : "/data/foundation/flowservice"
+}

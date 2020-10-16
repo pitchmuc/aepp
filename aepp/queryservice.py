@@ -2,6 +2,7 @@
 import aepp
 from aepp import config
 from aepp import modules
+from aepp import connector
 from pg import DB
 
 
@@ -58,11 +59,20 @@ class QueryService:
         }
     }
 
-    def __init__(self, **kwargs):
-        self.header = aepp.modules.deepcopy(aepp.config.header)
-        self.header.update({"Accept": "application/json"})
+    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+        """
+        Instanciate the class for Query Service call.
+        Arguments:
+            config : OPTIONAL : config object in the config module. 
+            header : OPTIONAL : header object  in the config module.
+        kwargs:
+            kwargs will update the header
+        """
+        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        self.header = self.connector.header
+        #self.header.update({"Accept": "application/json"})
         self.header.update(**kwargs)
-        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_query
+        self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["query"]
         self.TEMPLATES = {
             'post': {
                 "dbName": "string",
@@ -117,8 +127,7 @@ class QueryService:
         Create a connection for interactive interface. 
         """
         path = "/connection_parameters"
-        res = aepp._getData(
-            aepp.config._endpoint+aepp.config._endpoint_query+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
     def getQueries(self, orderby: str = None, limit: int = 1000, start: int = None, **kwargs):
@@ -152,8 +161,7 @@ class QueryService:
                 "excludeHidden", True)
             arguments['isPrevLink'] = kwargs.get(
                 "isPrevLink", '')
-        res = aepp._getData(
-            aepp.config._endpoint+aepp.config._endpoint_query+path, params=arguments, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, params=arguments, headers=self.header)
         return res
 
     def postQueries(self, data: dict = None, name: str = None, dbname: str = "prod:all", sql: str = None, templateId: str = None, queryParameters: dict = None, insertIntoParameters: dict = None, ctasParameters: dict = None, description: str = "", **kwargs):
@@ -189,7 +197,7 @@ class QueryService:
                 data["ctasParameters"] = ctasParameters
             if insertIntoParameters is not None:
                 data["insertIntoParameters"] = insertIntoParameters
-        res = aepp._postData(self.endpoint + path,
+        res = self.connector.postData(self.endpoint + path,
                              data=data, headers=self.header)
         return res
 
@@ -202,7 +210,7 @@ class QueryService:
         if queryid is None:
             raise AttributeError('Expected "queryid" to be filled')
         path = f'/queries/{queryid}'
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         return res
 
     def getSchedules(self, **kwargs):
@@ -222,7 +230,7 @@ class QueryService:
                 kwargs.get("orderby", "-") == "%2B"
         path = "/schedules"
         params = {**kwargs}
-        res = aepp._getData(self.endpoint + path, params=params)
+        res = self.connector.getData(self.endpoint + path, params=params)
         return res
 
     def getSchedule(self, scheduleId: str = None):
@@ -234,7 +242,7 @@ class QueryService:
         if scheduleId is None:
             raise Exception("scheduleId is required")
         path = f"/schedules/{scheduleId}"
-        res = aepp._getData(self.endpoint + path)
+        res = self.connector.getData(self.endpoint + path)
         return res
 
     def getScheduleJobs(self, scheduleId: str = None):
@@ -246,7 +254,7 @@ class QueryService:
         if scheduleId is None:
             raise Exception("scheduleId is required")
         path = f"/schedules/{scheduleId}/runs"
-        res = aepp._getData(self.endpoint + path)
+        res = self.connector.getData(self.endpoint + path)
         return res
 
     def getScheduleJob(self, scheduleId: str = None, jobId: str = None):
@@ -258,7 +266,7 @@ class QueryService:
         if scheduleId is None or jobId is None:
             raise Exception("scheduleId and jobId are required")
         path = f"/schedules/{scheduleId}/runs/{jobId}"
-        res = aepp._getData(self.endpoint + path)
+        res = self.connector.getData(self.endpoint + path)
         return res
 
     def createSchedule(self, scheduleQuery: dict = None, name: str = None, dbname: str = "prod:all", sql: str = None, templateId: str = None, queryParameters: dict = None, insertIntoParameters: dict = None, ctasParameters: dict = None, schedule: dict = None, description: str = "", **kwargs):
@@ -301,7 +309,7 @@ class QueryService:
             raise Exception(
                 'scheduleQuery dictonary is expected to contain "schedule" or "query" keys.')
         path = "/schedules"
-        res = aepp._postData(self.endpoint + path, data=scheduleQuery)
+        res = self.connector.postData(self.endpoint + path, data=scheduleQuery)
         return res
 
     def deleteSchedule(self, scheduleId: str = None):
@@ -313,7 +321,7 @@ class QueryService:
         if scheduleId is None:
             raise Exception("Missing scheduleId")
         path = f"/schedules/{scheduleId}"
-        res = aepp._deleteData(self.endpoint + path)
+        res = self.connector.deleteData(self.endpoint + path)
         return res
 
     def disableSchedule(self, scheduleId: str = None):
@@ -334,7 +342,7 @@ class QueryService:
             ]
         }
         path = f"/schedules/{scheduleId}"
-        res = aepp._patchData(self.endpoint + path,
+        res = self.connector.patchData(self.endpoint + path,
                               data=obj, headers=self.header)
         return res
 
@@ -356,7 +364,7 @@ class QueryService:
             ]
         }
         path = f"/schedules/{scheduleId}"
-        res = aepp._patchData(self.endpoint + path,
+        res = self.connector.patchData(self.endpoint + path,
                               data=obj, headers=self.header)
         return res
 
@@ -372,7 +380,7 @@ class QueryService:
         if update_obj is None:
             raise Exception("Missing update_obj to generate the operation.")
         path = f"/schedules/{scheduleId}"
-        res = aepp._patchData(self.endpoint + path,
+        res = self.connector.patchData(self.endpoint + path,
                               data=update_obj, headers=self.header)
         return res
 
@@ -395,7 +403,7 @@ class QueryService:
         path = "/query-templates"
         params = {**kwargs}
         params['limit'] = kwargs.get('limit', 50)
-        res = aepp._getData(self.endpoint + path,
+        res = self.connector.getData(self.endpoint + path,
                             headers=self.header, params=params)
         return res
 
@@ -413,7 +421,7 @@ class QueryService:
                     "Minimum key value are not respected.\nPlease see here for more info :\nhttps://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Query-Templates/create_query_template ")
         else:
             raise Exception("expected a dictionary for queryData")
-        res = aepp._postData(self.endpoint + path,
+        res = self.connector.postData(self.endpoint + path,
                              headers=self.header, data=queryData)
         return res
 

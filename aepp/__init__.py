@@ -2,10 +2,10 @@
 # Internal Library
 from aepp import modules
 from aepp import config
-from aepp import adobeio_auth
+from aepp import connector
 
-__version__ = "0.0.6"
-
+__version__ = "0.0.7"
+connection = None
 
 def createConfigFile(sandbox: bool = False, verbose: object = False, **kwargs)->None:
     """
@@ -13,6 +13,8 @@ def createConfigFile(sandbox: bool = False, verbose: object = False, **kwargs)->
     Arguments:
         sandbox : OPTIONAL : consider to add a parameter for sandboxes
         verbose : OPTIONAL : set to true, gives you a print stateent where is the location.
+    Possible kwargs:
+        filename : name of the config file.
     """
     json_data = {
         'org_id': '<orgID>',
@@ -36,163 +38,25 @@ def importConfigFile(file: str)-> None:
     """
     with open(modules.Path(file), 'r') as file:
         f = modules.json.load(file)
-        config.org_id = f['org_id']
-        config.header["x-gw-ims-org-id"] = config.org_id
+        config.config_object["org_id"] = f['org_id']
+        config.header["x-gw-ims-org-id"] = config.config_object["org_id"]
         if 'api_key' in f.keys():
-            config.client_id = f['api_key']
+            config.config_object["client_id"] = f['api_key']
         elif 'client_id' in f.keys():
-            config.client_id = f['client_id']
-        config.header["X-Api-Key"] = config.client_id
+            config.config_object["client_id"] = f['client_id']
+        config.header["x-api-key"] = config.config_object["client_id"] 
         config.header['Authorization'] = ''
-        config.tech_id = f['tech_id']
-        config._secret = f['secret']
-        config._pathToKey = f['pathToKey']
+        config.config_object["tech_id"] = f['tech_id']
+        config.config_object["secret"] = f['secret']
+        config.config_object["pathToKey"] = f['pathToKey']
+        config.config_object["token"] = ""
         config.date_limit = 0
         if 'sandbox-name' in f.keys():
             config.header["x-sandbox-name"] = f['sandbox-name']
-            config.sandbox = f['sandbox-name']
+            config.config_object["sandbox"] = f['sandbox-name']
         else:
             config.header["x-sandbox-name"] = "prod"
-            config.sandbox = "prod"
-
-
-@adobeio_auth._checkToken
-def _getData(endpoint: str, params: dict = None, data: dict = None, headers: dict = None, *args, **kwargs):
-    """
-    Abstraction for getting data
-    """
-    if headers is None:
-        headers = config.header
-    if params == None and data == None:
-        res = modules.requests.get(endpoint, headers=headers)
-    elif params != None and data == None:
-        res = modules.requests.get(endpoint, headers=headers, params=params)
-    elif params == None and data != None:
-        res = modules.requests.get(endpoint, headers=headers, data=data)
-    elif params != None and data != None:
-        res = modules.requests.get(endpoint, headers=headers,
-                                   params=params, data=data)
-    try:
-        res_json = res.json()
-    except:
-        res_json = {'error': 'Request Error'}
-    return res_json
-
-
-@adobeio_auth._checkToken
-def _postData(endpoint: str, params: dict = None, data: dict = None, headers: dict = None, * args, **kwargs):
-    """
-    Abstraction for posting data
-    """
-    if headers is None:
-        headers = config.header
-    if params == None and data == None:
-        res = modules.requests.post(endpoint, headers=headers)
-    elif params != None and data == None:
-        res = modules.requests.post(endpoint, headers=headers, params=params)
-    elif params == None and data != None:
-        res = modules.requests.post(endpoint, headers=headers,
-                                    data=modules.json.dumps(data))
-    elif params != None and data != None:
-        res = modules.requests.post(endpoint, headers=headers,
-                                    params=params, data=modules.json.dumps(data))
-    try:
-        res_json = res.json()
-    except:
-        res_json = {'error': 'Request Error'}
-    return res_json
-
-
-@adobeio_auth._checkToken
-def _patchData(endpoint: str, params: dict = None, data: dict = None, headers: dict = None, *args, **kwargs):
-    """
-    Abstraction for patching data
-    """
-    if headers is None:
-        headers = config.header
-    if params == None and data == None:
-        res = modules.requests.patch(endpoint, headers=headers)
-    elif params != None and data == None:
-        res = modules.requests.patch(endpoint, headers=headers, params=params)
-    elif params == None and data != None:
-        res = modules.requests.patch(endpoint, headers=headers,
-                                     data=modules.json.dumps(data))
-    elif params != None and data != None:
-        res = modules.requests.patch(endpoint, headers=headers,
-                                     params=params, data=modules.json.dumps(data))
-    try:
-        res_json = res.json()
-    except:
-        res_json = {'error': 'Request Error'}
-    return res_json
-
-
-@adobeio_auth._checkToken
-def _deleteData(endpoint: str, params: dict = None, data=None, headers: dict = None, *args, **kwargs):
-    """
-    Abstraction for deleting data
-    """
-    if headers is None:
-        headers = config.header
-    if params == None and data == None:
-        res = modules.requests.delete(endpoint, headers=headers)
-    elif params != None and data == None:
-        res = modules.requests.delete(endpoint, headers=headers, params=params)
-    elif params == None and data != None:
-        res = modules.requests.delete(endpoint, headers=headers,
-                                      data=modules.json.dumps(data))
-    elif params != None and data != None:
-        res = modules.requests.delete(endpoint, headers=headers,
-                                      params=params, data=modules.json.dumps(data=data))
-    try:
-        status_code = res.status_code
-    except:
-        status_code = {'error': 'Request Error'}
-    return status_code
-
-
-@adobeio_auth._checkToken
-def _putData(endpoint: str, params: dict = None, data=None, headers: dict = None, *args, **kwargs):
-    """
-    Abstraction for deleting data
-    """
-    if headers is None:
-        headers = config.header
-    if params != None and data == None:
-        res = modules.requests.put(endpoint, headers=headers, params=params)
-    elif params == None and data != None:
-        res = modules.requests.put(endpoint, headers=headers,
-                                   data=modules.json.dumps(data))
-    elif params != None and data != None:
-        res = modules.requests.put(endpoint, headers=headers,
-                                   params=params, data=modules.json.dumps(data=data))
-    try:
-        status_code = res.json()
-    except:
-        status_code = {'error': 'Request Error'}
-    return status_code
-
-
-@adobeio_auth._checkToken
-def _patchData(endpoint: str, params: dict = None, data=None, headers: dict = None, *args, **kwargs):
-    """
-    Abstraction for deleting data
-    """
-    if headers is None:
-        headers = config.header
-    if params != None and data == None:
-        res = modules.requests.patch(endpoint, headers=headers, params=params)
-    elif params == None and data != None:
-        res = modules.requests.patch(endpoint, headers=headers,
-                                     data=modules.json.dumps(data))
-    elif params != None and data != None:
-        res = modules.requests.patch(endpoint, headers=headers,
-                                     params=params, data=modules.json.dumps(data=data))
-    try:
-        status_code = res.json()
-    except:
-        status_code = {'error': 'Request Error'}
-    return status_code
+            config.config_object["sandbox"] = "prod"
 
 
 def home(product: str = None, limit: int = 50):
@@ -202,11 +66,13 @@ def home(product: str = None, limit: int = 50):
         product : OPTIONAL : specify one or more product contexts for which to return containers. If absent, containers for all contexts that you have rights to will be returned. The product parameter can be repeated for multiple contexts. An example of this parameter is product=acp
         limit : OPTIONAL : Optional limit on number of results returned (default = 50).
     """
-    endpoint = config._endpoint+"/data/core/xcore/"
+    global connection
+    connection = connector.AdobeRequest(config_object=config.config_object,header=config.header)
+    endpoint = config.endpoints['global']+"/data/core/xcore/"
     params = {"product": product, "limit": limit}
-    myHeader = modules.deepcopy(config.header)
+    myHeader = modules.deepcopy(connection.header)
     myHeader["Accept"] = "application/vnd.adobe.platform.xcore.home.hal+json"
-    res = _getData(endpoint, params=params, headers=myHeader)
+    res = connection.getData(endpoint, params=params, headers=myHeader)
     return res
 
 

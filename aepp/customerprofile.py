@@ -1,16 +1,26 @@
 # Internal Library
 import aepp
 from aepp import modules
+from aepp import connector
 
 
 class Profile:
 
-    def __init__(self, **kwargs):
-        self.header = aepp.modules.deepcopy(aepp.config.header)
+    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+        """
+        This will instantiate the profile class 
+        Arguments:
+            config : OPTIONAL : config object in the config module. 
+            header : OPTIONAL : header object  in the config module.
+    kwargs:
+        kwargsvaluewillupdatetheheader
+        """
+        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        self.header = self.connector.header
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
         # same endpoint than segmentation
-        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_segmentation
+        self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["segmentation"]
 
     def getEntity(self, schema_name: str = "_xdm.context.profile", entityId: str = None, entityIdNS: str = None, mergePoliciyId: str = None, **kwargs):
         """
@@ -44,7 +54,7 @@ class Profile:
             params["startTime"] = kwargs.get("startTime", None)
             params["endTime"] = kwargs.get("endTime", None)
         params["fields"] = kwargs.get("fields", None)
-        res = aepp._getData(self.endpoint+path,
+        res = self.connector.getData(self.endpoint+path,
                             params=params, headers=self.header)
         return res
 
@@ -82,7 +92,7 @@ class Profile:
         path = "/access/entities"
         if request_data is None or type(request_data) != dict:
             raise Exception("Expected a dictionary to fetch entities")
-        res = aepp._postData(self.endpoint + path,
+        res = self.connector.postData(self.endpoint + path,
                              data=request_data, headers=self.header)
         return res
 
@@ -104,7 +114,7 @@ class Profile:
             params["entityId"] = entityId
         if entityIdNS is not None:
             params["entityIdNS"] = entityIdNS
-        res = aepp._getData(self.endpoint+path,
+        res = self.connector.deleteData(self.endpoint+path,
                             params=params, headers=self.header)
 
     def getMergePolicies(self, limit: int = 100):
@@ -115,7 +125,7 @@ class Profile:
         """
         path = "/config/mergePolicies"
         params = {"limit": limit}
-        res = aepp._getData(self.endpoint+path,
+        res = self.connector.getData(self.endpoint+path,
                             params=params, headers=self.header)
         return res
 
@@ -128,5 +138,5 @@ class Profile:
         if policy_id is None:
             raise Exception("Missing the policy id")
         path = f"/config/mergePolicies/{policy_id}"
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res

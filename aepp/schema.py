@@ -1,6 +1,7 @@
 # Internal Library
 import aepp
 from dataclasses import dataclass
+from aepp import connector
 
 json_extend = [{'op': 'replace',
                 'path': '/meta:intendedToExtend',
@@ -29,18 +30,21 @@ class Schema:
         "profile": "https://ns.adobe.com/xdm/context/profile"
     }
 
-    def __init__(self, container_id: str = "tenant", **kwargs):
+    def __init__(self, container_id: str = "tenant",config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
         """
         Copy the token and header and initiate the object to retrieve schema elements.
         Arguments:
             container_id : OPTIONAL : "tenant"(default) or "global"
+            config : OPTIONAL : config object in the config module. 
+            header : OPTIONAL : header object  in the config module. 
         possible kwargs:
             x-sandbox-name : name of the sandbox you want to use (default : "prod").
         """
-        self.header = aepp.modules.deepcopy(aepp.config.header)
+        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        self.header = self.connector.header
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
-        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_schema
+        self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["schemas"]
         self.container = container_id
         self.data = _Data()
 
@@ -49,7 +53,7 @@ class Schema:
         Returns a list of the last actions realized on the Schema for this instance of AEP. 
         """
         path = '/stats/'
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
     def getTenantId(self)->str:
@@ -69,8 +73,9 @@ class Schema:
         path = f'/{self.container}/schemas/'
         start = kwargs.get("start", 0)
         params = {"start": start}
-        res = aepp._getData(self.endpoint+path,
-                            params=params, headers=self.header)
+        verbose = kwargs.get("debug",False)
+        res = self.connector.getData(self.endpoint+path,
+                            params=params, headers=self.header,verbose=verbose)
         if kwargs.get('debug', False):
             if "results" not in res.keys():
                 print(res)
@@ -80,7 +85,7 @@ class Schema:
             data += self.getSchemas(start=page['next'])
         return data
 
-    def getSchema(self, schema_id: str = None, version: int = 1, save: bool = False, full: bool = True, desc: bool = False, schema_type: str = 'xdn', **kwargs)->dict:
+    def getSchema(self, schema_id: str = None, version: int = 1, save: bool = False, full: bool = True, desc: bool = False, schema_type: str = 'xdm', **kwargs)->dict:
         """
         Get the Schema. Requires a schema id.
         Response provided depends on the header set, you can change the Accept header with kwargs.
@@ -117,7 +122,7 @@ class Schema:
             from urllib import parse
             schema_id = parse.quote_plus(schema_id)
         path = f'/{self.container}/schemas/{schema_id}'
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         del self.header['Accept-Encoding']
         if "title" not in res.keys() and 'notext' not in self.header['Accept']:
             print('Issue with the request. See response.')
@@ -149,7 +154,7 @@ class Schema:
         path = f'/rpc/sampledata/{schema_id}'
         accept_update = f"application/vnd.adobe.xed+json; version={version}"
         self.header["Accept"] = accept_update
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         if save:
             schema = self.getSchema(schema_id=schema_id, full=False)
             aepp.saveFile(module='schema', file=res,
@@ -173,7 +178,7 @@ class Schema:
             from urllib import parse
             schema_id = parse.quote_plus(schema_id)
         path = f'/{self.container}/schemas/{schema_id}'
-        res = aepp._patchData(self.endpoint+path,
+        res = self.connector.patchData(self.endpoint+path,
                               data=changes, headers=self.header)
         return res
 
@@ -194,7 +199,7 @@ class Schema:
         if schema_id.startswith('https://'):
             from urllib import parse
             schema_id = parse.quote_plus(schema_id)
-        res = aepp._putData(self.endpoint+path,
+        res = self.connector.putData(self.endpoint+path,
                             data=changes, headers=self.header)
         return res
 
@@ -213,7 +218,7 @@ class Schema:
             from urllib import parse
             schema_id = parse.quote_plus(schema_id)
         path = f'/{self.container}/schemas/{schema_id}'
-        res = aepp._deleteData(self.endpoint+path, headers=self.header)
+        res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
     def createSchema(self, schema: dict = None)->dict:
@@ -228,23 +233,29 @@ class Schema:
         if "allOf" not in schema.keys():
             raise Exception(
                 "The schema must include an ‘allOf’ attribute (a list) referencing the $id of the base class the schema will implement.")
-        res = aepp._postData(self.endpoint+path,
+        res = self.connector.postData(self.endpoint+path,
                              headers=self.header, data=schema)
         return res
 
     def getClasses(self, **kwargs):
         """
         return the classes of the AEP Instances.
+        kwargs:
+            debug : if set to True, will print result for errors
         """
         self.header.update({
             "Accept": "application/vnd.adobe.xdm-id+json"})
         start = kwargs.get("start", 0)
         params = {"start": start}
         path = f'/{self.container}/classes/'
-        res = aepp._getData(self.endpoint+path,
-                            headers=self.header, params=params)
+        verbose = kwargs.get("verbose",False)
+        res = self.connector.getData(self.endpoint+path,
+                            headers=self.header, params=params,verbose=verbose)
         self.header.update({
             "Accept": "application/json"})
+        if kwargs.get('debug', False):
+            if "results" not in res.keys():
+                print(res)
         data = res['results']
         page = res['_page']
         while page['next'] is not None:
@@ -268,7 +279,7 @@ class Schema:
         self.header.update({
             "Accept": "application/vnd.adobe.xdm-full+json; version="+str(version)})
         path = f'/{self.container}/classes/{class_id}'
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
         if save:
@@ -288,19 +299,25 @@ class Schema:
         if "allOf" not in class_obj.keys():
             raise Exception(
                 "The class object must include an ‘allOf’ attribute (a list) referencing the $id of the base class the schema will implement.")
-        res = aepp._postData(self.endpoint+path,
+        res = self.connector.postData(self.endpoint+path,
                              headers=self.header, data=class_obj)
         return res
 
     def getMixins(self, **kwargs):
         """
         returns the mixin of the account
+        kwargs:
+            debug : if set to True, will print result for errors
         """
         path = f'/{self.container}/mixins/'
         start = kwargs.get("start", 0)
         params = {"start": start}
-        res = aepp._getData(self.endpoint+path,
-                            headers=self.header, params=params)
+        verbose=kwargs.get("debug", False)
+        res = self.connector.getData(self.endpoint+path,
+                            headers=self.header, params=params,verbose=verbose)
+        if kwargs.get('debug', False):
+            if "results" not in res.keys():
+                print(res)
         data = res['results']
         page = res['_page']
         while page['next'] is not None:
@@ -327,7 +344,7 @@ class Schema:
         self.header.update({
             "Accept": update_accept})
         path = f'/{self.container}/mixins/{mixin_id}'
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
         if save:
@@ -348,7 +365,7 @@ class Schema:
             raise AttributeError(
                 "Require to have at least title, type, definitions set in the object.")
         path = f'/{self.container}/mixins/'
-        res = aepp._postData(self.endpoint + path,
+        res = self.connector.postData(self.endpoint + path,
                              data=mixin_obj, headers=self.header)
         return res
 
@@ -363,7 +380,7 @@ class Schema:
             from urllib import parse
             mixin_id = parse.quote_plus(mixin_id)
         path = f'/{self.container}/mixins/{mixin_id}'
-        res = aepp._deleteData(self.endpoint+path, headers=self.header)
+        res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
     def updateMixin(self, mixin_id: str = None, changes: list = None):
@@ -378,7 +395,7 @@ class Schema:
         path = f'/{self.container}/mixins/{mixin_id}'
         if type(changes) == dict:
             changes = list(changes)
-        res = aepp._patchData(self.endpoint+path,
+        res = self.connector.patchData(self.endpoint+path,
                               data=changes, headers=self.header)
         return res
 
@@ -397,7 +414,7 @@ class Schema:
                     if int(kwargs['limit']) > 500:
                         kwargs['limit'] = 500
                 params[key] = kwargs.get(key, '')
-        res = aepp._getData(self.endpoint+path,
+        res = self.connector.getData(self.endpoint+path,
                             params=params, headers=self.header)
         data = res['results']  # issue when requesting directly results.
         return data
@@ -417,7 +434,7 @@ class Schema:
         path = f'/{self.container}/unions/{union_id}'
         self.header.update({
             "Accept": "application/vnd.adobe.xdm-full+json; version="+str(version)})
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
         return res
@@ -427,7 +444,7 @@ class Schema:
         Returns a list of all schemas that are part of the XDM Individual Profile.
         """
         path = "/tenant/schemas?property=meta:immutableTags==union&property=meta:class==https://ns.adobe.com/xdm/context/profile"
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         return res
 
     def getDataTypes(self, **kwargs):
@@ -441,7 +458,7 @@ class Schema:
             params = {'properties': kwargs.get('properties', 'title,$id')}
         self.header.update({
             "Accept": "application/vnd.adobe.xdm-id+json"})
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
         data = res['results']
@@ -464,7 +481,7 @@ class Schema:
         self.header.update({
             "Accept": "application/vnd.adobe.xdm-full+json; version="+version})
         path = f"/{self.container}/datatypes/{dataTypeId}"
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
         if save:
@@ -479,7 +496,7 @@ class Schema:
         if dataType_obj is None:
             raise Exception("Require a dictionary to create the Data Type")
         path = f"/{self.container}/datatypes/"
-        res = aepp._postData(self.endpoint + path,
+        res = self.connector.postData(self.endpoint + path,
                              data=dataType_obj, headers=self.header)
         return res
 
@@ -506,7 +523,7 @@ class Schema:
         else:
             update_link = ""
         self.header['Accept'] = f"application/vnd.adobe.xdm-v2{update_link}{update_id}+json"
-        res = aepp._getData(self.endpoint + path,
+        res = self.connector.getData(self.endpoint + path,
                             params=params, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
@@ -530,7 +547,7 @@ class Schema:
             raise Exception("Require a descriptor id")
         path = f"/{self.container}/descriptors/{descriptor_id}"
         self.header['Accept'] = f"application/vnd.adobe.xdm+json"
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
         if save:
@@ -562,7 +579,7 @@ class Schema:
             "xdm:namespace":  namespace,
             "xdm:property": xdmProperty,
             "xdm:isPrimary": primary}
-        res = aepp._postData(self.endpoint+path, data=obj, headers=self.header)
+        res = self.connector.postData(self.endpoint+path, data=obj, headers=self.header)
         return res
 
     def deleteDescriptor(self, descriptor_id: str = None)->str:
@@ -575,7 +592,7 @@ class Schema:
             raise Exception("Require a descriptor id")
         path = f"/{self.container}/descriptors/{descriptor_id}"
         self.header['Accept'] = f"application/vnd.adobe.xdm+json"
-        res = aepp._deleteData(self.endpoint + path, headers=self.header)
+        res = self.connector.deleteData(self.endpoint + path, headers=self.header)
         self.header.update({
             "Accept": "application/json"})
         return res
@@ -605,5 +622,5 @@ class Schema:
             "xdm:namespace":  namespace,
             "xdm:property": xdmProperty,
             "xdm:isPrimary": primary}
-        res = aepp._putData(self.endpoint+path, data=obj, headers=self.header)
+        res = self.connector.putData(self.endpoint+path, data=obj, headers=self.header)
         return res

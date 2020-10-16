@@ -1,6 +1,6 @@
 import aepp
 import typing
-
+from aepp import connector
 
 class Dule:
     """
@@ -8,10 +8,17 @@ class Dule:
     This is based on the following API reference : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/
     """
 
-    def __init__(self, **kwargs):
-        self.header = aepp.modules.deepcopy(aepp.config.header)
+    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+        """
+        Instantiate the class to manage DULE rules and statement directly.
+        Arguments:
+            config : OPTIONAL : config object in the config module. 
+            header : OPTIONAL : header object  in the config module.
+        """
+        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        self.header = self.connector.header
         self.header.update(**kwargs)
-        self.endpoint = aepp.config._endpoint+aepp.config._endpoint_dule
+        self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["dule"]
 
     def getPoliciesCore(self, **kwargs):
         """
@@ -28,7 +35,7 @@ class Dule:
         """
         path = "/policies/core"
         params = {**kwargs}
-        res = aepp._getData(self.endpoint+path,
+        res = self.connector.getData(self.endpoint+path,
                             params=params, headers=self.header)
         return res
 
@@ -41,7 +48,7 @@ class Dule:
         if policy_id is None:
             raise Exception("Expected a policy id")
         path = f"/policies/core/{policy_id}"
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
     def getPoliciesCustom(self, **kwargs):
@@ -59,7 +66,7 @@ class Dule:
         """
         path = "/policies/custom"
         params = {**kwargs}
-        res = aepp._getData(self.endpoint+path,
+        res = self.connector.getData(self.endpoint+path,
                             params=params, headers=self.header)
         return res
 
@@ -72,7 +79,7 @@ class Dule:
         if policy_id is None:
             raise Exception("Expected a policy id")
         path = f"/policies/custom/{policy_id}"
-        res = aepp._getData(self.endpoint+path, headers=self.header)
+        res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
     def createPolicy(self, policy: typing.Union(dict, typing.IO) = None):

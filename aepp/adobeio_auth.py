@@ -7,7 +7,7 @@ def retrieveToken(verbose: bool = False, save: bool = False, **kwargs)->str:
     Argument : 
         verbose : OPTIONAL : Default False. If set to True, print information.
     """
-    if aepp.config._pathToKey.startswith('/'):
+    if aepp.config.config_object["pathToKey"].startswith('/'):
         aepp.config._pathToKey = "."+aepp.config._pathToKey
     with open(aepp.modules.Path(aepp.config._pathToKey), 'r') as f:
         private_key_unencrypted = f.read()

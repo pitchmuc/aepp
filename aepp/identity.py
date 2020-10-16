@@ -1,5 +1,5 @@
 import aepp
-
+from aepp import connector
 
 class Identity:
     """
@@ -8,16 +8,22 @@ class Identity:
     This is based on the following API reference : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
     """
 
-    def __init__(self, region: str = "nld2", **kwargs):
+    def __init__(self, region: str = "nld2", config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
         """
         Require a region.
         By default, the NLD2 will be selected. (other choice : va7)
+        Additional kwargs will update the header.
         more info : https://docs.adobe.com/content/help/en/experience-platform/identity/api/getting-started.html
+        Arguments:
+            region : REQUIRED : either nld2 or va7
+            config : OPTIONAL : config object in the config module. 
+            header : OPTIONAL : header object  in the config module.
         """
-        self.header = aepp.modules.deepcopy(aepp.config.header)
+        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        self.header = self.connector.header
         self.header.update(**kwargs)
         self.endpoint = f"https://platform-{region}.adobe.io" + \
-            aepp.config._endpoint_identity
+            aepp.config.endpoints["identity"]
 
     def getIdentity(self, id_str: str = None, nsid: str = None, namespace: str = None)->dict:
         """
@@ -36,7 +42,7 @@ class Identity:
         path = "/identity/identity"
         self.header["Accept"] = "application/vnd.adobe.identity+json;version=1.2"
         self.header["x-uis-cst-ctx"] = "stub"
-        res = aepp._getData(self.endpoint + path,
+        res = self.connector.getData(self.endpoint + path,
                             headers=self.header, params=params)
         del self.header["x-uis-cst-ctx"]
         self.header['Accept'] = "application/json"
@@ -50,7 +56,7 @@ class Identity:
             save : OPTIONAL : if set to True, save the result in its respective folder (default False)
         """
         path = "/idnamespace/identities"
-        res = aepp._getData(self.endpoint + path,
+        res = self.connector.getData(self.endpoint + path,
                             headers=self.header)
         if only_custom:
             res = [identity for identity in res if identity['custom'] == True]
@@ -69,7 +75,7 @@ class Identity:
         if id_str is None:
             raise Exception("Expected an id for the Identity")
         path = f"/idnamespace/identities/{id_str}"
-        res = aepp._getData(self.endpoint + path,
+        res = self.connector.getData(self.endpoint + path,
                             headers=self.header)
         if save:
             filename = f"identity_{res['code']}"
@@ -105,7 +111,7 @@ class Identity:
         if dict_identity is not None:
             creation_dict = dict_identity
         path = "/idnamespace/identities"
-        res = aepp._postData(self.endpoint + path,
+        res = self.connector.postData(self.endpoint + path,
                              headers=self.header, data=creation_dict)
         return res
 
@@ -134,7 +140,7 @@ class Identity:
             "idType": idType,
             "description": description
         }
-        res = aepp._putData(self.endpoint + path,
+        res = self.connector.putData(self.endpoint + path,
                             headers=self.header, data=data)
         return res
 
@@ -143,7 +149,7 @@ class Identity:
         Returns all identities from the IMS Org itself.
         """
         path = f"/idnamespace/orgs/{aepp.config.org_id}/identities"
-        res = aepp._getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
         return res
 
     def getClustersMembers(self, xid: str = None, nsid: str = "411", namespace: str = "adcloud", id_value: str = None, graphType: str = "private"
@@ -167,7 +173,7 @@ class Identity:
         if xid is not None:
             params['xid'] = xid
             params['graph-type'] = graphType
-            res = aepp._getData(self.endpoint + path,
+            res = self.connector.getData(self.endpoint + path,
                                 params=params, headers=temp_header)
             return res
         elif xid is None and id_value is not None:
@@ -175,7 +181,7 @@ class Identity:
             params['namespace'] = namespace
             params['id'] = id_value
             params['graph-type'] = graphType
-            res = aepp._getData(self.endpoint + path,
+            res = self.connector.getData(self.endpoint + path,
                                 params=params, headers=temp_header)
             return res
 
@@ -195,7 +201,7 @@ class Identity:
             raise TypeError("xids must be of type list")
         list_body = [{'xid': [{'xid': xid}],
                       "graph-type": graphType, "version": version} for xid in xids]
-        res = aepp._postData(self.endpoint + path,
+        res = self.connector.postData(self.endpoint + path,
                              data=list_body, headers=temp_header)
         return res
 
@@ -227,7 +233,7 @@ class Identity:
             params['namespace'] = namespace
             params['id'] = id_value
             params['graph-type'] = graphType
-            res = aepp._getData(self.endpoint + path,
+            res = self.connector.getData(self.endpoint + path,
                                 params=params, headers=temp_header)
             return res
 
@@ -252,7 +258,7 @@ class Identity:
             params['xid'] = xid
             params['graph-type'] = graphType
             params['targetNs'] = targetNs
-            res = aepp._getData(self.endpoint + path,
+            res = self.connector.getData(self.endpoint + path,
                                 params=params, headers=temp_header)
             return res
         elif xid is None and id_value is not None:
@@ -261,7 +267,7 @@ class Identity:
             params['id'] = id_value
             params['targetNs'] = targetNs
             params['graph-type'] = graphType
-            res = aepp._getData(self.endpoint + path,
+            res = self.connector.getData(self.endpoint + path,
                                 params=params, headers=temp_header)
             return res
 
@@ -279,6 +285,6 @@ class Identity:
             raise TypeError("xids must be of type list")
         list_body = [{'xid': [{'xid': xid}],
                       "version": version, "targetNs": targetNs} for xid in xids]
-        res = aepp._postData(self.endpoint + path,
+        res = self.connector.postData(self.endpoint + path,
                              data=list_body, headers=temp_header)
         return res
