@@ -4,7 +4,7 @@ from aepp import modules
 from aepp import config
 from aepp import connector
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 connection = None
 
 def createConfigFile(sandbox: bool = False, verbose: object = False, **kwargs)->None:
