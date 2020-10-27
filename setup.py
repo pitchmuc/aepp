@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="aepp",  # Replace with your own username
-    version="0.0.8",
+    version="0.0.9",
     author="Julien Piccini",
     author_email="piccini.julien@gmail.com",
     description="Package to manage AEP API endpoint and some helper functions",
@@ -22,7 +22,7 @@ setuptools.setup(
         "Topic :: Software Development :: Libraries",
         "Development Status :: 2 - Pre-Alpha"
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.6',
     install_requires=['pandas', "requests",
                       "PyJWT", "pathlib2", "pathlib", "PyJWT[crypto]", "PyGreSQL"],
 )
