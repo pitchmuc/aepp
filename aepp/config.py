@@ -32,5 +32,7 @@ endpoints = {
     "sandboxes": "/data/foundation/sandbox-management",
     "sensei": "/data/sensei",
     "access": "/data/foundation/access-control",
-    "flow" : "/data/foundation/flowservice"
+    "flow": "/data/foundation/flowservice",
+    "privacy":"/data/core/privacy"
+    
 }

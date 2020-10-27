@@ -30,13 +30,18 @@ class Catalog:
         self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["catalog"]
         self.data = _Data()
 
-    def getBatches(self, **kwargs):
+    def getBatches(self, n_results:int=None,**kwargs):
         """
         Retrieve a list of batches.
+        Arguments:
+            n_results : OPTIONAL :  number of result you want to get in total. (will loop)
         Possible kwargs:
             created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
-            createdAfter : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
-            limit : Limit response to a specified positive number of objects. Ex. limit=10
+            createdAfter : Exclusively filter records created after this timestamp. 
+            createdBefore : Exclusively filter records created before this timestamp.
+            start : Returns results from a specific offset of objects. This was previously called offset. (see next line)
+                offset : Will offset to the next limit (sort of pagination)
+            limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
             updated : Filter by the Unix timestamp (in milliseconds) for the time of last modification.
             createdUser : Filter by the ID of the user who created this object.
             dataSet : Used to filter on the related object: &dataSet=dataSetId.
@@ -52,6 +57,20 @@ class Catalog:
         """
         path = "/batches"
         params = {**kwargs}
+        ## looping to retrieve pagination
+        if n_results is not None:
+            list_results = []
+            params['limit'] = 100
+            params['start'] = 0
+            res = self.connector.getData(self.endpoint+path,
+                            headers=self.header, params=params)
+            list_results += res
+            while len(list_results) < n_results and res != 0:
+                params['start'] += 100
+                res = self.connector.getData(self.endpoint+path,
+                            headers=self.header, params=params)
+                list_results += res
+            return list_results
         res = self.connector.getData(self.endpoint+path,
                             headers=self.header, params=params)
         return res

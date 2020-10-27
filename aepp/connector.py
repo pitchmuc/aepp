@@ -6,7 +6,7 @@ class AdobeRequest:
     Handle request to Audience Manager and taking care that the request have a valid token set each time.
     """
 
-    def __init__(self, config_object: dict = config.config_object, header: dict = config.header, verbose: bool = False, retry: int = 0)->None:
+    def __init__(self, config_object: dict = config.config_object, header: dict = config.header, verbose: bool = False, retry: int = 0,**kwargs)->None:
         """
         Set the connector to be used for handling request to AAM
         Arguments:
@@ -22,7 +22,10 @@ class AdobeRequest:
         self.header = modules.deepcopy(header)
         self.retry = retry
         if self.config['token'] == "" or modules.time.time() > self.config['date_limit']:
-            self.token = self.retrieveToken(verbose=verbose)
+            if 'aepScope' in kwargs.keys() and "privacyScope" in kwargs.keys():
+                self.token = self.retrieveToken(verbose=verbose,aepScope=kwargs.get('aepScope'),privacyScope=kwargs.get('privacyScope'))
+            else:
+                self.token = self.retrieveToken(verbose=verbose)
     
     def _find_path(self,path: str) -> modules.Optional[modules.Path]:
         """Checks if the file denoted by the specified `path` exists and returns the Path object
@@ -46,6 +49,9 @@ class AdobeRequest:
         """ Retrieve the token by using the information provided by the user during the import importConfigFile function. 
         Argument : 
             verbose : OPTIONAL : Default False. If set to True, print information.
+        kwargs:
+            privacyScope : if set to True, add the Privacy scope into the token request.
+            aepScope : if set to False, remove the AEP JWT scope from token request.
         """
         private_key_path = self._find_path(self.config['pathToKey'])
         if private_key_path is None:
@@ -64,6 +70,14 @@ class AdobeRequest:
             "https://ims-na1.adobelogin.com/s/ent_dataservices_sdk": True,
             "aud": "https://ims-na1.adobelogin.com/c/"+self.config['client_id']
         }
+        #privacy topic
+        if kwargs.get("privacyScope", False):
+            jwtPayload["https://ims-na1.adobelogin.com/s/ent_gdpr_sdk"] = True
+        if kwargs.get("aepScope", True)==False:
+            del jwtPayload["https://ims-na1.adobelogin.com/s/ent_dataservices_sdk"]
+        if verbose:
+            print('JWT Payload')
+            print(jwtPayload)
         encoded_jwt = modules.jwt.encode(
             jwtPayload, private_key_unencrypted, algorithm='RS256')  # working algorithm
         payload = {
