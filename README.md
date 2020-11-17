@@ -36,13 +36,13 @@ At the moment the current wrapper is containing the following sub modules:
 * sandboxes
 * segmentation
 * sensei
-* privacyservice**
+* privacyservice (see 2nd note below)
 
 ## queryservice module
 
 The queryservice Module contains 2 classes:
 
-#### QueryService
+#### QueryService module
 
 The QueryService class is the wrapper around the AEP Query Service API.\
 It provides access to the different endpoints available from the API.
@@ -54,7 +54,7 @@ At the moment the capability to scheduled query is only accessible from the API.
 This class is based on the pyGreSQL module for python.\
 It provides you the capability to realize query directly from your local Jupyter notebook and returns a dataframe.
 
-## privacyservice module
+## PrivacyService module
 
 The privacy service module is part of the AEP python wrapper but requires a different JWT connection in console.adobe.io.
 Be careful that your JWT connection has the correct setup to access this API endpoints.
