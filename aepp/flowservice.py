@@ -34,7 +34,7 @@ class FlowService:
         for kwarg in kwargs:
             params[kwarg] = kwargs[kwarg]
         path = "/connections"
-        res = self.connector.getData(self.endpoint + path, params=params, header=self.header)
+        res = self.connector.getData(self.endpoint + path, params=params)
         try:
             data = res['items']
             return data
@@ -61,7 +61,7 @@ class FlowService:
             if 'name' not in data.keys() or "auth" not in data.keys() or "connectionSpec" not in data.keys():
                 raise Exception("Require some keys to be present : name, auth, connectionSpec")
             obj = data
-            res = self.connector.postData(self.endpoint + path, data=obj, header=self.header)
+            res = self.connector.postData(self.endpoint + path, data=obj)
             return res
         elif data is None:
             if "specName" not in auth.keys() or "params" not in auth.keys():
@@ -76,7 +76,7 @@ class FlowService:
                 "connectionSpec" : connectionSpec
 
             }
-            res = self.connector.postData(self.endpoint + path, data=obj, header=self.header)
+            res = self.connector.postData(self.endpoint + path, data=obj)
             return res
     
     def getConnection(self, connectionId: str = None) -> dict:
@@ -88,7 +88,7 @@ class FlowService:
         if connectionId is None:
             raise Exception("Require a connectionId to be present")
         path = f"/connections/{connectionId}"
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path)
         return res
     
     def connectionTest(self, connectionId: str = None) -> dict:
@@ -100,7 +100,7 @@ class FlowService:
         if connectionId is None:
             raise Exception("Require a connectionId to be present")
         path:str = f"/connections/{connectionId}/test"
-        res:dict = self.connector.getData(self.endpoint + path, headers=self.header)
+        res:dict = self.connector.getData(self.endpoint + path)
         return res
 
     def deleteConnection(self, connectionId: str = None) -> dict:
@@ -112,7 +112,7 @@ class FlowService:
         if connectionId is None:
             raise Exception("Require a connectionId to be present")
         path:str = f"/connections/{connectionId}"
-        res:dict = self.connector.deleteData(self.endpoint + path, headers=self.header)
+        res:dict = self.connector.deleteData(self.endpoint + path)
         return res
     
     def getConnectionSpecs(self)->list:
@@ -121,7 +121,7 @@ class FlowService:
         If that doesn't work, return the response.
         """
         path:str = "/connectionSpecs"
-        res:dict = self.connector.getData(self.endpoint + path, headers=self.header)
+        res:dict = self.connector.getData(self.endpoint + path)
         try:
             data:list = res['items']
             return data
@@ -137,7 +137,7 @@ class FlowService:
         if specId is None:
             raise Exception("Require a specId to be present")
         path:str = f"/connectionSpecs/{specId}"
-        res:dict = self.connector.getData(self.endpoint + path, headers=self.header)
+        res:dict = self.connector.getData(self.endpoint + path)
         return res 
 
     def getFlows(self,limit:int=10,prop:str=None,**kwargs)->list:
@@ -155,13 +155,13 @@ class FlowService:
         if kwargs.get("continuationToken",False) != False:
             params['continuationToken'] = kwargs.get("continuationToken")
         path:str = "/flows"
-        res:dict = self.connector.getData(self.endpoint + path,params=params,headers=self.header) 
+        res:dict = self.connector.getData(self.endpoint + path,params=params) 
         items = res['items']
         if res['_links']["next"].get("href","") != "":
             token:str = res['_links']["next"].get("href","")
             continuationToken = token.split("=")[1]
             params["continuationToken"] = continuationToken
-            items += self.connector.getData(self.endpoint + path,params=params,headers=self.header)
+            items += self.connector.getData(self.endpoint + path,params=params)
         return items
     
     def getFlow(self,flowId:str=None)->dict:
@@ -173,7 +173,7 @@ class FlowService:
         if flowId is None:
             raise Exception("Require a flowId to be present")
         path:str = f"/flows/{flowId}"
-        res:dict = self.connector.getData(self.endpoint+path,headers=self.header)
+        res:dict = self.connector.getData(self.endpoint+path)
         return res
 
     def deleteFlow(self,flowId:str=None)->dict:
@@ -185,7 +185,7 @@ class FlowService:
         if flowId is None:
             raise Exception("Require a flowId to be present")
         path:str = f"/flows/{flowId}"
-        res:dict = self.connector.deleteData(self.endpoint+path,headers=self.header)
+        res:dict = self.connector.deleteData(self.endpoint+path)
         return res
     
     def createFlow(self,obj:dict=None)->dict:
@@ -211,7 +211,7 @@ class FlowService:
         if "scheduleParams" not in obj.keys():
             raise KeyError("missing 'scheduleParams' parameter in the dictionary")
         path:str = "/flows"
-        res:dict = self.connector.postData(self.endpoint + path, data=obj, header=self.header)
+        res:dict = self.connector.postData(self.endpoint + path, data=obj)
         return res
     
     def getFlowSpecs(self, prop:str=None)->list:
@@ -226,7 +226,7 @@ class FlowService:
         params = {}
         if prop is not None:
             params['property'] = prop
-        res:dict = self.connector.getData(self.endpoint + path,params=params,headers=self.header)
+        res:dict = self.connector.getData(self.endpoint + path,params=params)
         items:list = res['items']
         return items
     
@@ -239,7 +239,7 @@ class FlowService:
         if flowSpecId is None:
             raise Exception("Require a flowSpecId to be present")
         path:str = f"/flowSpecs/{flowSpecId}"
-        res:dict = self.connector.getData(self.endpoint + path, headers=self.header)
+        res:dict = self.connector.getData(self.endpoint + path)
         return res
 
     def getRuns(self,limit:int = 10,max:int = 100,prop:str=None, **kwargs)->list:
@@ -259,13 +259,13 @@ class FlowService:
         if kwargs.get("continuationToken",False):
             params['continuationToken'] = kwargs.get("continuationToken")
         itemsDone = kwargs.get('nbItems',0)
-        res:dict = self.connector.getData(self.endpoint + path, params=params,headers=self.header)
+        res:dict = self.connector.getData(self.endpoint + path, params=params)
         items:list = res['items']
         if res['_links']["next"].get("href","") != "":
             token:str = res['_links']["next"].get("href","")
             continuationToken:str = token.split("=")[1]
             params["continuationToken"] = continuationToken
-            items += self.connector.getData(self.endpoint + path,params=params,headers=self.header)
+            items += self.connector.getData(self.endpoint + path,params=params)
         return items
     
     def createRun(self,flowId:str=None,status:str="active")->dict:
@@ -279,7 +279,7 @@ class FlowService:
         if flowId is None:
             raise Exception("Require a flowId to be present")
         obj = {"flowId":flowId,"status":status}
-        res:dict = self.connector.postData(self.endpoint + path, data=obj, headers=self.header)
+        res:dict = self.connector.postData(self.endpoint + path, data=obj)
         return res
     
     def getRun(self,runId:str=None)->dict:
@@ -291,7 +291,7 @@ class FlowService:
         if runId is None:
             raise Exception("Require a runId to be present")
         path:str = f"runs/{runId}"
-        res:dict = self.connector.getData(self.endpoint + path,headers=self.header)
+        res:dict = self.connector.getData(self.endpoint + path)
         return res
     
     def getSourceConnection(self,sourceConnectionId:str=None)->dict:
@@ -303,7 +303,7 @@ class FlowService:
         if sourceConnectionId is None:
             raise Exception("Require a sourceConnectionId to be present")
         path:str = f"/sourceConnections/{sourceConnectionId}"
-        res:dict = self.connector.getData(self.endpoint + path, headers=self.header)
+        res:dict = self.connector.getData(self.endpoint + path)
         return res
     
     def deleteSourceConnection(self,sourceConnectionId:str=None)->dict:
@@ -315,7 +315,7 @@ class FlowService:
         if sourceConnectionId is None:
             raise Exception("Require a sourceConnectionId to be present")
         path:str = f"/sourceConnections/{sourceConnectionId}"
-        res:dict = self.connector.deleteData(self.endpoint + path, headers=self.header)
+        res:dict = self.connector.deleteData(self.endpoint + path)
         return res
 
     def createSourceConnection(self,obj:dict=None)->dict:
@@ -339,9 +339,94 @@ class FlowService:
         if "connectionSpec" in obj.keys():
             raise KeyError("Require a 'connectionSpec' key in the dictionary passed")
         path:str = f"/sourceConnections"
-        res:dict = self.connector.postData(self.endpoint + path, data=obj, headers=self.header)
+        res:dict = self.connector.postData(self.endpoint + path, data=obj)
+        return res
+
+    def updateSourceConnection(self,sourceConnectionId:str=None,etag:str=None,obj:dict=None)->dict:
+        """
+        Update a source connection based on the ID provided with the object provided.
+        Arguments:
+            sourceConnectionId : REQUIRED : The source connection ID to be updated
+            etag: REQUIRED : A header containing the etag value of the connection or flow to be updated.
+            obj : REQUIRED : The operation call used to define the action needed to update the connection. Operations include add, replace, and remove.
+        """
+        if sourceConnectionId is None:
+            raise Exception("Require a sourceConnection to be present")
+        if etag is None:
+            raise Exception("Require etag to be present")
+        if obj is None:
+            raise Exception("Require a dictionary with data to be present")
+        if "op" not in obj.keys() or "value" not in obj.keys():
+            raise KeyError("Require op ")
+        params = {"if-match":etag}
+        path:str = f"/sourceConnections/{sourceConnectionId}"
+        res:dict = self.connector.patchData(self.endpoint + path, params=params, data=obj)
         return res
 
 
+    def getTargetConnection(self,targetConnectionId:str=None)->dict:
+        """
+        Retrieve a specific Target connection detail.
+        Arguments:
+            targetConnectionId : REQUIRED : The target connection ID is a unique identifier used to create a flow.
+        """
+        if targetConnectionId is None:
+            raise Exception("Require a target connection ID to be present")
+        path:str = f"/targetConnections/{targetConnectionId}"
+        res:dict = self.connector.getData(self.endpoint+path)
+        return res
 
+    def deleteTargetConnection(self,targetConnectionId:str=None)->dict:
+        """
+        Delete a specific Target connection detail
+        Arguments:
+             targetConnectionId : REQUIRED : The target connection ID to be deleted
+        """
+        if targetConnectionId is None:
+            raise Exception("Require a target connection ID to be present")
+        path:str = f"/targetConnections/{targetConnectionId}"
+        res:dict = self.connector.deleteData(self.endpoint+path)
+        return res
 
+    def createTargetConnection(self,obj:dict=None)->dict:
+        """
+        Create a new target connection
+        Arguments:
+            obj : REQUIRED : the data to be passed for creation of the Target Connection.
+                Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Target_connections/postTargetConnection 
+                requires following keys : name, data, params, connectionSpec. 
+        """
+        if obj is None:
+            raise Exception("Require a dictionary with data to be present")
+        if "name" in obj.keys():
+            raise KeyError("Require a 'name' key in the dictionary passed")
+        if "data" in obj.keys():
+            raise KeyError("Require a 'data' key in the dictionary passed")
+        if "params" in obj.keys():
+            raise KeyError("Require a 'params' key in the dictionary passed")
+        if "connectionSpec" in obj.keys():
+            raise KeyError("Require a 'connectionSpec' key in the dictionary passed")
+        path:str = f"/targetConnections"
+        res:dict = self.connector.postData(self.endpoint + path, data=obj)
+        return res
+
+    def updateTargetConnection(self,targetConnectionId:str=None,etag:str=None,obj:dict=None)->dict:
+        """
+        Update a target connection based on the ID provided with the object provided.
+        Arguments:
+            targetConnectionId : REQUIRED : The target connection ID to be updated
+            etag: REQUIRED : A header containing the etag value of the connection or flow to be updated.
+            obj : REQUIRED : The operation call used to define the action needed to update the connection. Operations include add, replace, and remove.
+        """
+        if targetConnectionId is None:
+            raise Exception("Require a sourceConnection to be present")
+        if etag is None:
+            raise Exception("Require etag to be present")
+        if obj is None:
+            raise Exception("Require a dictionary with data to be present")
+        if "op" not in obj.keys() or "value" not in obj.keys():
+            raise KeyError("Require op")
+        params = {"if-match":etag}
+        path:str = f"/targetConnections/{targetConnectionId}"
+        res:dict = self.connector.patchData(self.endpoint + path, params=params, data=obj)
+        return res

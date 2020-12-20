@@ -113,6 +113,17 @@ class AdobeRequest:
         now = modules.time.time()
         if now > self.config['date_limit']:
             self.retrieveToken()
+    
+    def updateSandbox(self,sandbox:str)->None:
+        """
+        Update the sandbox used for the request
+        Arguments:
+            sandbox : REQUIRED : the sandbox to use for the requests
+        """
+        if not sandbox:
+            raise Exception("require a sandbox")
+        self.header["x-sandbox-name"] = sandbox
+
 
     def getData(self, endpoint: str, params: dict = None, data: dict = None, headers: dict = None, *args, **kwargs):
         """
