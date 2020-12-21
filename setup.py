@@ -1,11 +1,28 @@
+import codecs
+import os
+
 import setuptools
+
+def read(rel_path: str):
+    here = os.path.abspath(os.path.dirname(__file__))
+    with codecs.open(os.path.join(here, rel_path), 'r') as fp:
+        return fp.read()
+
+
+def get_version(rel_path: str):
+    for line in read(rel_path).splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="aepp",  # Replace with your own username
-    version="0.0.9",
+    version=get_version("aepp/__version__.py"),
     author="Julien Piccini",
     author_email="piccini.julien@gmail.com",
     description="Package to manage AEP API endpoint and some helper functions",
