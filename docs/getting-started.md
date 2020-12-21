@@ -28,7 +28,7 @@ The following examples will be python code sample that shows you how to use the 
 
 ```python
 import aepp
-aepp.createConfigFile(filename='template_config.json',sandbox=True)
+aepp.createConfigFile(destination='template_config.json',)
 ```
 
 This line of code will create a config file where you will enter the different information related to your JWT integration.\
@@ -41,20 +41,43 @@ Normally your config file will look like this:
     "tech_id": "<something>@techacct.adobe.com",
     "secret": "<YourSecret>",
     "pathToKey": "<path/to/your/privatekey.key>",
-    "sandbox-name": "<your_sandbox_name>"
+    "sandbox-name": "prod"
 }
 ```
 
-**Note** that you have the sandbox-name to fill. If you don't know what that is and what it means. You can drop the parameter `sandbox=True` in the createConfigFile function. The default will be set to "prod".
+**Note** By default, we are setting the sandbox name to "prod". If you don't know what that value, you can override it via a paramter.
 
 ### Importing the config file and working with a sub module
 
-Once your config file has been generated, you can import it in your script and use sub module.
+Once your config file has been generated, you can import it in your script.
 
 ```python
 import aepp
 aepp.importConfigFile('myConfig_file.json')
 ```
+
+### Alternative method for cloud configuration
+
+You can also use the configure method to setup the connection directly on the aepp setup.\
+This approach is better if you don't want to use a file in your system.\
+In that case, you can directly pass the elements in the configure method.
+
+```python
+import aepp
+aepp.configure(org_id=my_org_id,tech_id=my_tech_id, secret=my_secret,path_to_key=my_path_to_key,client_id=my_client_id)
+```
+
+In case you do not want to use a private.key file, you can also provide the private key as a string.
+
+```python
+import aepp
+aepp.configure(org_id=my_org_id,tech_id=my_tech_id, secret=my_secret,private_key=my_key_as_string,client_id=my_client_id)
+```
+
+**NOTE** : In both case, I didn't provide a `sandbox` parameter but this parameter does exist and can be used to setup a specific sandbox.\
+By default, the prod sandbox will be used.
+
+### Importing a module to work with
 
 You can then import the sub module and you will require to instantiate the class inside that module.\
 The class has usually the same name than the sub module but with a capital letter.
