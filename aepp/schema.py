@@ -48,6 +48,16 @@ class Schema:
         self.container = container_id
         self.data = _Data()
 
+    def updateSandbox(self,sandbox:str=None)->None:
+        """
+        Update the sandbox used in your request.
+        Arguments:
+            sandbox : REQUIRED : name of the sandbox to be used
+        """
+        if not sandbox:
+            raise ValueError("`sandbox` must be specified in the arguments.")
+        self.header['x-sandbox-name'] = sandbox
+
     def getStats(self)->list:
         """
         Returns a list of the last actions realized on the Schema for this instance of AEP. 
