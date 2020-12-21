@@ -487,7 +487,7 @@ class Schema:
             raise Exception("Require a dataTypeId")
         if dataTypeId.startswith('https://'):
             from urllib import parse
-            mixin_id = parse.quote_plus(mixin_id)
+            dataTypeId = parse.quote_plus(dataTypeId)
         self.header.update({
             "Accept": "application/vnd.adobe.xdm-full+json; version="+version})
         path = f"/{self.container}/datatypes/{dataTypeId}"
@@ -633,4 +633,19 @@ class Schema:
             "xdm:property": xdmProperty,
             "xdm:isPrimary": primary}
         res = self.connector.putData(self.endpoint+path, data=obj, headers=self.header)
+        return res
+
+    def getAuditLogs(self,resourceId:str=None)->list:
+        """
+        Returns the list of the changes made to a ressource (schema, class, mixin).
+        Arguments:
+            resourceId : REQUIRED : The "$id" or "meta:altId" of the resource.
+        """
+        if not resourceId:
+            raise ValueError("resourceId should be included as a parameter")
+        if resourceId.startswith('https://'):
+            from urllib import parse
+            resourceId = parse.quote_plus(resourceId)
+        path:str = f"/rpc/auditlog/{resourceId}"
+        res:list = self.connector.getData(self.endpoint + path,headers=self.header)
         return res

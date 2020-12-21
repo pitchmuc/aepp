@@ -133,6 +133,7 @@ def configure(org_id: str = None,
     if not path_to_key and not private_key:
         raise ValueError("`pathToKey` or `private_key` must be specified in the configuration.")
     config_object["org_id"] = org_id
+    header["x-gw-ims-org-id"] = org_id
     config_object["client_id"] = client_id
     header["x-api-key"] = client_id
     config_object["tech_id"] = tech_id

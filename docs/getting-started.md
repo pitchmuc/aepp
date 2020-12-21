@@ -5,7 +5,7 @@
 You would need to install the module in your environment.\
 You can use the pip command to do so.
 
-```
+```shell
 pip install aepp --ugrade
 ```
 
