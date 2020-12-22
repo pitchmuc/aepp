@@ -30,8 +30,8 @@ You can find this documentation [here](./docs/getting-started.md)
 
 At the moment the current wrapper is containing the following sub modules:
 
-* [schema](.docs/schema.md)
-* [queryservice](.docs/queryservice.md) (see note below)
+* [schema](./docs/schema.md)
+* [queryservice](./docs/queryservice.md) (see note below)
 * dule
 * customerprofile
 * catalog
