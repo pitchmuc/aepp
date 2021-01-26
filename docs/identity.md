@@ -91,11 +91,11 @@ It can be useful when you want to connect to multiple sandboxes with the same JW
 In that case, the 2 instances will be created as such:
 
 ```python
-myIds1 = queryservice.QueryService({"region":"va7","x-sandbox-name":"mySandbox1"})
+myIds1 = queryservice.Identity({"region":"va7","x-sandbox-name":"mySandbox1"})
 ```
 
 ```python
-myIds2 = queryservice.QueryService({"region":"va7","x-sandbox-name":"mySandbox2"})
+myIds2 = queryservice.Identity({"region":"va7","x-sandbox-name":"mySandbox2"})
 ```
 
 **Note**: Sandbox can be setup in the configuration file and when calling the `configure` method.
@@ -132,6 +132,8 @@ You will need to provide at least:
 * a type; the type can only be one of those: COOKIE, CROSS_DEVICE, DEVICE, EMAIL, MOBILE, NON_PEOPLE or PHONE.
 
 Please refer to the docstring for more information.
+
+**Important**: You cannot delete an identity once it has been created!
 
 ### Get cluster of IDs for a specific ID
 
