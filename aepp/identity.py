@@ -144,11 +144,15 @@ class Identity:
                             headers=self.header, data=data)
         return res
 
-    def getIdentitiesIMS(self)->list:
+    def getIdentitiesIMS(self,imsOrg:str=None)->list:
         """
         Returns all identities from the IMS Org itself.
+        Only shared ones if IMS Org doesn't match the IMS Org sent in the header.
+        Arguments:
+            imsOrg : OPTIONAL : the IMS org. If not set, takes the current one automatically.
         """
-        path = f"/idnamespace/orgs/{aepp.config.org_id}/identities"
+        ims_org = imsOrg or self.connector.config['org_id']
+        path = f"/idnamespace/orgs/{ims_org}/identities"
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         return res
 
