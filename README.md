@@ -32,14 +32,15 @@ At the moment the current wrapper is containing the following sub modules:
 
 * [schema](./docs/schema.md)
 * [queryservice](./docs/queryservice.md) (see note below)
+* [identity](./docs/identity.md)
+* [sandboxes](./docs/sandboxes.md)
+* [dataaccess](./docs/dataaccess.md)
+* [catalog](./docs/catalog.md)
+* segmentation
 * dule
 * customerprofile
-* catalog
 * accesscontrol
 * flowservice
-* identity
-* sandboxes
-* segmentation
 * sensei
 * privacyservice (see 2nd note below)
 

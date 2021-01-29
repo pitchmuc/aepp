@@ -16,7 +16,7 @@ class DataAccess:
         self.header.update(**kwargs)
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["dataaccess"]
 
-    def getBatchesFiles(self,batchId:str=None,**kwargs)->list:
+    def getBatchFiles(self,batchId:str=None,**kwargs)->list:
         """
         List all dataset files under a batch.
         Arguments:
@@ -37,7 +37,7 @@ class DataAccess:
         data = res['data']
         return data
     
-    def getBatchesFailed(self,batchId:str=None,path:str=None,**kwargs)->list:
+    def getBatchFailed(self,batchId:str=None,path:str=None,**kwargs)->list:
         """
         Lists all the dataset files under a failed batch.
         Arguments:  
@@ -62,7 +62,7 @@ class DataAccess:
         data = res['data']
         return data
     
-    def getBatchesMeta(self,batchId:str=None,path:str=None,**kwargs)->dict:
+    def getBatchMeta(self,batchId:str=None,path:str=None,**kwargs)->dict:
         """
         Lists files under a batch’s meta directory or download a specific file under it. The files under a batch’s meta directory may include the following:
             row_errors: A directory containing 0 or more files with parsing, conversion, and/or validation errors found at the row level.
