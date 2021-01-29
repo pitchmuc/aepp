@@ -174,6 +174,26 @@ class AdobeRequest:
                         res_json = self.getData(endpoint,params,data,headers,**kwargs)
         return res_json
 
+    def headData(self,endpoint: str, params: dict = None, headers: dict = None,*args, **kwargs):
+        """
+        Abstraction for the head method.
+        """
+        self._checkingDate()
+        if headers is None:
+            headers = self.header
+        if params is None:
+            res = requests.head(endpoint, headers=headers)
+        if params is not None:
+            res = requests.head(endpoint, headers=headers, params=params)
+        try:
+            res_json = res.json()
+        except:
+            if kwargs.get('verbose',False):
+                print(res.text)
+            res_json = {'error': 'Request Error'}
+        return res_json
+        
+
     def postData(self, endpoint: str, params: dict = None, data: dict = None, headers: dict = None, * args, **kwargs):
         """
         Abstraction for posting data
