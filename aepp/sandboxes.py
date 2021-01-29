@@ -1,9 +1,5 @@
 import aepp
 from aepp import connector
-"""
-This module doesn't contain a class.
-Every method can be used directly from 
-"""
 
 class Sandbox:
 

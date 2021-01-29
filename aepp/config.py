@@ -33,6 +33,7 @@ endpoints = {
     "sensei": "/data/sensei",
     "access": "/data/foundation/access-control",
     "flow": "/data/foundation/flowservice",
-    "privacy":"/data/core/privacy"
+    "privacy":"/data/core/privacy",
+    "dataaccess": "/data/foundation/export"
     
 }
