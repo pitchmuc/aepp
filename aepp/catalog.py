@@ -1,6 +1,7 @@
 import aepp
 from dataclasses import dataclass
 from aepp import connector
+import pandas as pd
 
 @dataclass
 class _Data:
@@ -93,6 +94,7 @@ class Catalog:
         Create a new batch.
         Arguments:
             object : REQUIRED : Object that define the data to be onboarded.
+                see reference here: https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Batches/postBatch
         """
         if object is None:
             raise Exception('expecting a definition of the data to be uploaded.')
@@ -101,7 +103,7 @@ class Catalog:
                             headers=self.header)
         return res
 
-    def getResources(self, **kwargs):
+    def getResources(self, **kwargs)->list:
         """
         Retrieve a list of resource links for the Catalog Service.
         Possible kwargs:
@@ -118,9 +120,11 @@ class Catalog:
         return res
 
 
-    def getDataSets(self, **kwargs):
+    def getDataSets(self,output:str="raw",**kwargs)->dict:
         """
         Return a list of a datasets.
+        Arguments:
+            output : OPTIONAL : Default is "raw", other option is "df" for dataframe output
         Possible kwargs:
             state : The state related to a dataset.
             created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
@@ -149,6 +153,8 @@ class Catalog:
         except Exception as e:
             print(e)
             print("Couldn't populate the data object from the instance.")
+        if output == "df":
+            res = pd.DataFrame(res).T
         return res
 
     def createDataSets(self, data: dict = None, **kwargs):
@@ -191,6 +197,7 @@ class Catalog:
         res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
+    ## Apparently deprecated.
     def getDataSetViews(self, dataset_id: str = None, **kwargs):
         """
         Get views of the datasets.
@@ -204,7 +211,7 @@ class Catalog:
         """
         if dataset_id is None:
             raise Exception("Expected a dataset_id argument")
-        path = f"dataSets/{dataset_id}/views"
+        path = f"/dataSets/{dataset_id}/views"
         params = {**kwargs}
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
@@ -218,7 +225,7 @@ class Catalog:
         """
         if dataset_id is None or view_id is None:
             raise Exception("Expected a dataset_id and an view_id argument")
-        path = f"dataSets/{dataset_id}/views/{view_id}"
+        path = f"/dataSets/{dataset_id}/views/{view_id}"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
@@ -231,6 +238,6 @@ class Catalog:
         """
         if dataset_id is None or view_id is None:
             raise Exception("Expected a dataset_id and an view_id argument")
-        path = f"dataSets/{dataset_id}/views/{view_id}/files"
+        path = f"/dataSets/{dataset_id}/views/{view_id}/files"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
