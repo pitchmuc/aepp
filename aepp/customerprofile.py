@@ -1,7 +1,7 @@
 # Internal Library
 import aepp
-from aepp import modules
 from aepp import connector
+from copy import deepcopy
 
 
 class Profile:
@@ -22,7 +22,7 @@ class Profile:
         # same endpoint than segmentation
         self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["segmentation"]
 
-    def getEntity(self, schema_name: str = "_xdm.context.profile", entityId: str = None, entityIdNS: str = None, mergePoliciyId: str = None, **kwargs):
+    def getEntity(self, schema_name: str = "_xdm.context.profile", entityId: str = None, entityIdNS: str = None, mergePoliciyId: str = None, **kwargs)->dict:
         """
         Returns an entity by ID or Namespace.
         Arguments:
@@ -58,7 +58,7 @@ class Profile:
                             params=params, headers=self.header)
         return res
 
-    def getEntities(self, request_data: dict = None):
+    def getEntities(self, request_data: dict = None)->dict:
         """
         Get a number of different identities from ID or namespaces.
         Argument:
@@ -86,7 +86,9 @@ class Profile:
                     "startTime": 1539838505,
                     "endTime": 1539838510
                 },
-                "limit": 10
+                "limit": 10,
+                "orderby": "-timestamp",
+                "withCA": True
                 }
         """
         path = "/access/entities"
@@ -96,7 +98,7 @@ class Profile:
                              data=request_data, headers=self.header)
         return res
 
-    def deleteEntity(self, schema_name: str = None, entityId: str = None, entityIdNS: str = None):
+    def deleteEntity(self, schema_name: str = None, entityId: str = None, entityIdNS: str = None)->str:
         """
         Delete a specific entity
         Arguments:
@@ -117,7 +119,7 @@ class Profile:
         res = self.connector.deleteData(self.endpoint+path,
                             params=params, headers=self.header)
 
-    def getMergePolicies(self, limit: int = 100):
+    def getMergePolicies(self, limit: int = 100)->dict:
         """
         Returns the list of merge policies hosted in this instance.
         Arguments:
@@ -127,9 +129,17 @@ class Profile:
         params = {"limit": limit}
         res = self.connector.getData(self.endpoint+path,
                             params=params, headers=self.header)
-        return res
+        data = res['children']
+        nextPage = res['_links']['next'].get('href','')
+        while nextPage != "":
+            path = "/config/mergePolicies?" + nextPage.split('?')[1]
+            res = self.connector.getData(self.endpoint+path,
+                            params=params, headers=self.header)
+            data += res['children']
+            nextPage = res['_links']['next'].get('href','')
+        return data
 
-    def getMergePolicy(self, policy_id: str = None):
+    def getMergePolicy(self, policy_id: str = None)->dict:
         """
         Return a specific merge policy.
         Arguments:
@@ -140,3 +150,203 @@ class Profile:
         path = f"/config/mergePolicies/{policy_id}"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
+    
+    def createMergePolicy(self,policy:dict=None)->dict:
+        """
+        Arguments:
+            policy: REQUIRED : The dictionary defining the policy
+        Refer to the documentation : https://experienceleague.adobe.com/docs/experience-platform/profile/api/merge-policies.html
+        Example of JSON:
+        {
+            "name": "real-time-customer-profile-default",
+            "imsOrgId": "1BD6382559DF0C130A49422D@AdobeOrg",
+            "schema": {
+                "name": "_xdm.context.profile"
+            },
+            "default": False,
+            "identityGraph": {
+                "type": "pdg"
+            },
+            "attributeMerge": {
+                "type": "timestampOrdered",
+                "order": [
+                "string"
+                ]
+            },
+            "updateEpoch": 1234567890
+        }
+        """
+        path = "/config/mergePolicies"
+        if policy is None:
+            raise ValueError("Require a dictionary")
+        res = self.connector.postData(self.endpoint+path,data=policy,headers=self.header)
+        return res
+    
+    def updateMergePolicy(self,mergePolicyId:str=None,policy:dict=None)->dict:
+        """
+        Update a merge policy by replacing its definition. (PUT method)
+        Arguments:
+            mergePolicyId : REQUIRED : The merge Policy Id
+            policy : REQUIRED : a dictionary giving the definition of the merge policy
+            Refer to the documentation : https://experienceleague.adobe.com/docs/experience-platform/profile/api/merge-policies.html
+        Example of JSON:
+        {
+            "name": "real-time-customer-profile-default",
+            "imsOrgId": "1BD6382559DF0C130A49422D@AdobeOrg",
+            "schema": {
+                "name": "_xdm.context.profile"
+            },
+            "default": False,
+            "identityGraph": {
+                "type": "pdg"
+            },
+            "attributeMerge": {
+                "type": "timestampOrdered",
+                "order": [
+                "string"
+                ]
+            },
+            "updateEpoch": 1234567890
+        }
+        """
+        if mergePolicyId is None:
+            raise ValueError("Require a mergePolicyId")
+        if policy is None or type(policy) != dict:
+            raise ValueError("Require a dictionary to update the merge policy")
+        path = f"/config/mergePolicies/{mergePolicyId}"
+        res = self.connector.putData(self.endpoint+path,data=policy,headers=self.header)
+        return res
+    
+    def patchMergePolicy(self,mergePolicyId:str=None,operations:list=None)->str:
+        """
+        Update a merge policy by replacing its definition.
+        Arguments:
+            mergePolicyId : REQUIRED : The merge Policy Id
+            operations : REQUIRED : a list of operations to realize on the merge policy 
+            Refer to the documentation : https://experienceleague.adobe.com/docs/experience-platform/profile/api/merge-policies.html
+        Example of operation:
+        [
+            {
+                "op": "add",
+                "path": "/identityGraph.type",
+                "value": "pdg"
+            }
+        ]
+        """
+        if mergePolicyId is None:
+            raise ValueError("Require a mergePolicyId")
+        if operations is None or type(operations) != list:
+            raise ValueError("Require a dictionary to update the merge policy")
+        path = f"/config/mergePolicies/{mergePolicyId}"
+        res = self.connector.patchData(self.endpoint+path,data=operations,headers=self.header)
+        return res
+
+    def deleteMergePolicy(self,mergePolicyId:str=None)->str:
+        """
+        Delete a merge policy by its ID.
+        Arguments:
+            mergePolicyId : REQUIRED : The merge Policy to be deleted
+        """
+        if mergePolicyId is None:
+            raise ValueError("Require a mergePolicyId")
+        path = f"/config/mergePolicies/{mergePolicyId}"
+        res = self.connector.deleteData(self.endpoint+path)
+        return res
+
+    def getPreviewStatus(self)->dict:
+        """
+        View the details for the last successful sample job that was run for the IMS Organization.
+        """
+        path = "/previewsamplestatus"
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = 'application/json'
+        res = self.connector.getData(self.endpoint + path,headers=privateHeader)
+        return res
+    
+    def getPreviewDataSet(self,date:str=None)->dict:
+        """
+        View a report showing the distribution of profiles by dataset.
+        Arguments:
+            date : OPTIONAL : Format: YYYY-MM-DD. 
+                If multiple reports were run on the date, the most recent report for that date will be returned. 
+                If a report does not exist for the specified date, a 404 error will be returned. 
+                If no date is specified, the most recent report will be returned. 
+                Example: date=2024-12-31
+        """
+        path = "/previewsamplestatus/report/dataset"
+        params={}
+        if date is not None:
+            params['date'] = date
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = 'application/json'
+        res = self.connector.getData(self.endpoint + path,headers=privateHeader)
+        return res
+    
+    def getPreviewNamespace(self,date:str=None)->dict:
+        """
+        View a report showing the distribution of profiles by namespace.
+        Arguments:
+            date : OPTIONAL : Format: YYYY-MM-DD. 
+                If multiple reports were run on the date, the most recent report for that date will be returned. 
+                If a report does not exist for the specified date, a 404 error will be returned. 
+                If no date is specified, the most recent report will be returned. 
+                Example: date=2024-12-31
+        """
+        path = "/previewsamplestatus/report/namespace"
+        params={}
+        if date is not None:
+            params['date'] = date
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = 'application/json'
+        res = self.connector.getData(self.endpoint + path,headers=privateHeader)
+        return res
+    
+    def createDeleteSystemJob(self,dataSetId:str=None,batchId:str=None)->dict:
+        """
+        Delete all the data for a batch or a dataSet based on their ids.
+        Note: you cannot delete batch from record type dataset. You can overwrite them to correct the issue.
+        Only Time Series and record type datasets can be deleted.
+        Arguments:
+            dataSetId : REQUIRED : dataSetId to be deleted
+            batchId : REQUIRED : batchId to be deleted.
+        More info: https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Profile_System_Jobs/createDeleteRequest
+        """
+        path = "/system/jobs"
+        if dataSetId is not None:
+            obj = {
+                "dataSetId": dataSetId
+            }
+            res = self.connector.postData(self.endpoint+path,data=obj)
+            return res
+        elif batchId is not None:
+            obj = {
+                "batchId": batchId
+            }
+            res = self.connector.postData(self.endpoint+path,data=obj)
+            return res
+        else:
+            raise ValueError("Require a dataSetId or a batchId")
+    
+    def getDeleteSystemJobs(self,page:int=0,limit:int=100,n_results:int=100)->dict:
+        """
+        Retrieve a list of all delete requests (Profile System Jobs) created by your organization.
+        Arguments:
+            page : OPTIONAL : Return a specific page of results, as per the create time of the request. For example, page=0
+            limit : OPTIONAL : Limit response to a specific number of objects. Must be a positive number. For example, limit=10
+            n_results : OPTIONAL : Number of total result to retrieve.
+        """
+        path = "/system/jobs"
+        params = {"page":page,"limit":limit}
+        res = self.connector.getData(self.endpoint+path,params=params)
+        data = res['children']
+        count = len(data)
+        nextPage = res['_page'].get('next','')
+        while nextPage != "" and count < n_results:
+            page += 1 
+            params = {"page":page,"limit":limit}
+            res = self.connector.getData(self.endpoint+path,
+                            params=params, headers=self.header)
+            count += len(res['children'])
+            data += res['children']
+            nextPage = res['_page'].get('next','')
+        return data
