@@ -2,6 +2,7 @@
 import aepp
 from aepp import connector
 from copy import deepcopy
+import pandas as pd
 
 
 class Profile:
@@ -263,7 +264,7 @@ class Profile:
         res = self.connector.getData(self.endpoint + path,headers=privateHeader)
         return res
     
-    def getPreviewDataSet(self,date:str=None)->dict:
+    def getPreviewDataSet(self,date:str=None,output:str="raw")->dict:
         """
         View a report showing the distribution of profiles by dataset.
         Arguments:
@@ -272,6 +273,7 @@ class Profile:
                 If a report does not exist for the specified date, a 404 error will be returned. 
                 If no date is specified, the most recent report will be returned. 
                 Example: date=2024-12-31
+            output : OPTIONAL : if you want to have a dataframe returns. Use "df", default "raw"
         """
         path = "/previewsamplestatus/report/dataset"
         params={}
@@ -280,6 +282,9 @@ class Profile:
         privateHeader = deepcopy(self.header)
         privateHeader['Accept'] = 'application/json'
         res = self.connector.getData(self.endpoint + path,headers=privateHeader)
+        if output == "df":
+            df = pd.DataFrame(res['data'])
+            return df
         return res
     
     def getPreviewNamespace(self,date:str=None)->dict:
@@ -350,3 +355,210 @@ class Profile:
             data += res['children']
             nextPage = res['_page'].get('next','')
         return data
+    
+    def getDeleteSystemJob(self,jobId:str=None)->dict:
+        """
+        Get a specific delete system job by its ID.
+        Arguments:
+            jobId : REQUIRED : Job ID to be retrieved.
+        """
+        if jobId is None:
+            raise ValueError("Require a system Job ID")
+        path = f"/system/jobs/{jobId}"
+        res = self.connector.getData(self.endpoint + path, headers=self.header)
+        return res
+    
+    def deleteDeleteSystemJob(self,jobId:str=None)->dict:
+        """
+        Delete a specific delete system job by its ID.
+        Arguments:
+            jobId : REQUIRED : Job ID to be deleted.
+        """
+        if jobId is None:
+            raise ValueError("Require a system Job ID")
+        path = f"/system/jobs/{jobId}"
+        res = self.connector.deleteData(self.endpoint + path, headers=self.header)
+        return res
+
+    def getComputedAttributes(self)->list:
+        """
+        Retrieve the list of computed attributes set up in your organization.
+        """
+        path = "/config/computedAttributes"
+        res = self.connector.getData(self.endpoint + path)
+        data = res['children']
+        nextPage = res['_page'].get('next','')
+        # while nextPage != "":
+        #     res = self.connector.getData(self.endpoint+path,
+        #                     params=params, headers=self.header)
+        #     data += res['children']
+        #     nextPage = res['_page'].get('next','')
+        return data
+    
+    def getComputedAttribute(self,attributeId:str=None)->dict:
+        """
+        Returns a single computed attribute.
+        Arguments:
+            attributeId : REQUIRED : The computed attribute ID.
+        """
+        if attributeId is None:
+            raise ValueError("Require a computed attribute ID")
+        path = f"/config/computedAttributes/{attributeId}"
+        res = self.connector.getData(self.endpoint+path)
+        return res
+    
+    def deleteComputedAttribute(self,attributeId:str=None)->dict:
+        """
+        Delete a specific computed attribute.
+        Arguments:
+            attributeId : REQUIRED : The computed attribute ID to be deleted.
+        """
+        if attributeId is None:
+            raise ValueError("Require a computed attribute ID")
+        path = f"/config/computedAttributes/{attributeId}"
+        res = self.connector.deleteData(self.endpoint+path)
+        return res
+
+    def getDestinations(self)->dict:
+        """
+        Retrieve a list of edge projection destinations. The latest definitions are returned.
+        """
+        path = "/config/destinations"
+        res = self.connector.getData(self.endpoint+path)
+        return res
+    
+    def createDestination(self,destinationConfig:dict=None)->dict:
+        """
+        Create a new edge projection destination. Assume that there is time between creation and propagation of this information to the edge.
+        Arguments:
+            destinationConfig : REQUIRED : the destination configuration
+        """
+        privateHeader = deepcopy(self.header)
+        privateHeader['Content-Type'] = 'application/vnd.adobe.platform.projectionDestination+json; version=1'
+        if destinationConfig is None:
+            raise ValueError("Require a destination configuration object")
+        path = "/config/destinations"
+        res = self.connector.postData(self.endpoint + path, data=destinationConfig,headers=privateHeader)
+        return res
+
+    def getDestination(self,destinationId:str=None)->dict:
+        """
+        Get a specific destination based on its ID.
+        Arguments:
+            destinationId : REQUIRED : The destination ID to be retrieved 
+        """
+        if destinationId is None:
+            raise ValueError("Require a destination ID")
+        path = f"/config/destinations/{destinationId}"
+        res = self.connector.getData(self.endpoint + path)
+        return res
+
+    def deleteDestination(self, destinationId:str=None)->dict:
+        """
+        Delete a specific destination based on its ID.
+        Arguments:
+            destinationId : REQUIRED : The destination ID to be deleted 
+        """
+        if destinationId is None:
+            raise ValueError("Require a destination ID")
+        path = f"/config/destinations/{destinationId}"
+        res = self.connector.deleteData(self.endpoint + path)
+        return res
+    
+    def updateDestination(self,destinationId:str=None,destinationConfig:dict=None)->dict:
+        """
+        Update a specific destination based on its ID. (PUT request)
+        Arguments:
+            destinationId : REQUIRED : The destination ID to be updated
+            destinationConfig : REQUIRED : the destination config object to replace the old one.
+        """
+        if destinationId is None:
+            raise ValueError("Require a destination ID")
+        if destinationConfig is None:
+            raise ValueError("Require a dictionation for updating the destination")
+        privateHeader = deepcopy(self.header)
+        privateHeader['Content-Type'] = 'application/vnd.adobe.platform.projectionDestination+json'
+        path = f"/config/destinations/{destinationId}"
+        res = self.connector.putData(self.endpoint + path,data=destinationConfig,headers=privateHeader)
+        return res
+
+    
+    def getProjections(self,schemaName:str=None,name:str=None)->dict:
+        """
+        Retrieve a list of edge projection configurations. The latest definitions are returned.
+        Arguments:
+            schemaName : OPTIONAL : The name of the schema class associated with the projection configuration you want to access.
+                example : _xdm.context.profile
+            name : OPTIONAL : The name of the projection configuration you want to access.
+                if name is specified, schemaName is also required.
+        """
+        path = "/config/projections"
+        params={}
+        if name is not None and schemaName is None:
+            raise AttributeError("You must specify a schema name when setting a projection name")
+        if schemaName is not None:
+            params['schemaName'] = schemaName
+        if name is not None:
+            params['name'] = name
+        res = self.connector.getData(self.endpoint+path,params=params,headers=self.headers)
+        return res
+
+    def getProjection(self,projectionId:str=None)->dict:
+        """
+        Retrieve a single projection based on its ID.
+        Arguments:
+            projectionId : REQUIRED : the projection ID to be retrieved.
+        """
+        if projectionId is None:
+            raise ValueError("Require a projection ID")
+        path = f"/config/projections/{projectionId}"
+        res = self.connector.getData(self.endpoint+path)
+        return res
+    
+    def deleteProjection(self,projectionId:str=None)->dict:
+        """
+        Delete a single projection based on its ID.
+        Arguments:
+            projectionId : REQUIRED : the projection ID to be deleted.
+        """
+        if projectionId is None:
+            raise ValueError("Require a projection ID")
+        path = f"/config/projections/{projectionId}"
+        res = self.connector.deleteData(self.endpoint+path)
+        return res
+    
+    def createProjection(self,schemaName:str=None,projectionConfig:dict=None)->dict:
+        """
+        Create a projection
+        Arguments:
+            schemaName : REQUIRED : XDM schema namess
+            projectionConfig : REQUIRED : the object definiing the projection
+        """
+        if schemaName is None:
+            raise ValueError("Require a schema name specified")
+        if projectionConfig is None:
+            raise ValueError("Require a projection configuration")
+        path = "/config/projections"
+        params = {'schemaName' : schemaName}
+        privateHeader = deepcopy(self.header)
+        privateHeader['Content-Type'] = 'application/vnd.adobe.platform.projectionConfig+json; version=1'
+        res = self.connector.postData(self.endpoint + path, params=params, data=projectionConfig, privateHeader=privateHeader)
+        return res
+    
+    def updateProjection(self,projectionId:str=None,projectionConfig:dict=None)->dict:
+        """
+        Update a projection based on its ID.(PUT request)
+        Arguments:
+            projectionId : REQUIRED : The ID of the projection to be updated.
+            projectionConfig : REQUIRED : the object definiing the projection
+        """
+        if projectionId is None:
+            raise ValueError("Require a projectionId")
+        if projectionConfig is None:
+            raise ValueError("Require a projection Configuration object")
+        privateHeader = deepcopy(self.header)
+        privateHeader['Content-Type'] = 'application/vnd.adobe.platform.projectionConfig+json'
+        path = f"/config/projections/{projectionId}"
+        res = self.connector.putData(self.endpoint+path,data=projectionConfig,headers=privateHeader)
+        return res
+
