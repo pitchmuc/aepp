@@ -28,8 +28,8 @@ class Profile:
         Returns an entity by ID or Namespace.
         Arguments:
             schema_name : REQUIRED : class name of the schema to be retrieved. default : _xdm.context.profile
-            entityId : OPTIONAL : idenitity ID
-            entityIdNS : OPTIONAL : Identity Namespace code. Required if entityId is used.
+            entityId : OPTIONAL : identity ID
+            entityIdNS : OPTIONAL : Identity Namespace code. Required if entityId is used (except for native identity)
             mergePoliciyId : OPTIONAL : Id of the merge policy.
         Possible kwargs:
             fields : path of the elements to be retrieved, separated by comma. Ex : "person.name.firstName,person.name.lastName"
@@ -90,7 +90,7 @@ class Profile:
                 "limit": 10,
                 "orderby": "-timestamp",
                 "withCA": True
-                }
+            }
         """
         path = "/access/entities"
         if request_data is None or type(request_data) != dict:
@@ -209,6 +209,7 @@ class Profile:
             },
             "updateEpoch": 1234567890
         }
+        attributeMerge can be "dataSetPrecedence" or "timestampOrdered". Please provide a list of dataSetId on "order" when using the first option.
         """
         if mergePolicyId is None:
             raise ValueError("Require a mergePolicyId")
@@ -287,7 +288,7 @@ class Profile:
             return df
         return res
     
-    def getPreviewNamespace(self,date:str=None)->dict:
+    def getPreviewNamespace(self,date:str=None,output:str="raw")->dict:
         """
         View a report showing the distribution of profiles by namespace.
         Arguments:
@@ -296,6 +297,7 @@ class Profile:
                 If a report does not exist for the specified date, a 404 error will be returned. 
                 If no date is specified, the most recent report will be returned. 
                 Example: date=2024-12-31
+            output : OPTIONAL : if you want to have a dataframe returns. Use "df", default "raw"
         """
         path = "/previewsamplestatus/report/namespace"
         params={}
@@ -304,6 +306,9 @@ class Profile:
         privateHeader = deepcopy(self.header)
         privateHeader['Accept'] = 'application/json'
         res = self.connector.getData(self.endpoint + path,headers=privateHeader)
+        if output == "df":
+            df = pd.DataFrame(res['data'])
+            return df
         return res
     
     def createDeleteSystemJob(self,dataSetId:str=None,batchId:str=None)->dict:

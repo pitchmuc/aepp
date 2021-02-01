@@ -36,9 +36,9 @@ At the moment the current wrapper is containing the following sub modules:
 * [sandboxes](./docs/sandboxes.md)
 * [dataaccess](./docs/dataaccess.md)
 * [catalog](./docs/catalog.md)
+* [customerprofile](./docs/customerprofile.md)
 * segmentation
 * dule
-* customerprofile
 * accesscontrol
 * flowservice
 * sensei
