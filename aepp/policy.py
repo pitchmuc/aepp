@@ -2,7 +2,7 @@ import aepp
 import typing
 from aepp import connector
 
-class Dule:
+class Policy:
     """
     Class to manage and retrieve DULE policy.
     This is based on the following API reference : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/
@@ -18,7 +18,7 @@ class Dule:
         self.connector = connector.AdobeRequest(config_object=config, header=header)
         self.header = self.connector.header
         self.header.update(**kwargs)
-        self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["dule"]
+        self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["policy"]
 
     def getPoliciesCore(self, **kwargs):
         """
@@ -86,6 +86,100 @@ class Dule:
         """
         Create a custom policy.
         Arguments:
-            policy : REQURED : A dictionary contaning the policy you would like to implement.
+            policy : REQUIRED : A dictionary contaning the policy you would like to implement.
         """
         path = "/policies/custom"
+        res = self.connector.postData(self.endpoint+path,data = policy)
+        return res
+
+
+    def getCoreLabels(self,prop:str=None,limit:int=100)->list:
+        """
+        Retrieve a list of core labels.
+        Arguments:
+            prop : OPTIONAL : Filters responses based on whether a specific property exists, or whose value passes a conditional expression 
+                Example: prop="name==C1".
+                Only the “name” property is supported for core resources.
+            limit : OPTIONAL : number of results to be returned. Default 100
+        """
+        params = {"limit":limit}
+        if prop is not None:
+            params['property'] = prop
+        path = "/labels/core"
+        res = self.connector.getData(self.endpoint+path,params=params, headers=self.header)
+        data = res['children']
+        nextPage=res['_links']['page'].get('href','')
+        while nextPage != "":
+            params['start'] = nextPage
+            res = self.connector.getData(self.endpoint+path,params=params, headers=self.header)
+            data += res['children']
+            nextPage=res['_links']['page'].get('href','')
+        return data
+    
+    def getCoreLabel(self,labelName:str=None)->dict:
+        """
+        Returns a specific Label by its name.
+        Argument:
+            labelName : REQUIRED : The name of the core label.
+        """
+        if labelName is None:
+            raise ValueError("Require a label name")
+        path = f"/labels/core/{labelName}"
+        res = self.connector.getData(self.endpoint+path)
+        return res
+    
+    def getCustomLabels(self,prop:str=None,limit:int=100)->list:
+        """
+        Retrieve a list of custom labels.
+        Arguments:
+            prop : OPTIONAL : Filters responses based on whether a specific property exists, or whose value passes a conditional expression 
+                Example: prop="name==C1".
+                Property values include "status", "created", "createdClient", "createdUser", "updated", "updatedClient", and "updatedUser".
+            limit : OPTIONAL : number of results to be returned. Default 100
+        """
+        params = {"limit":limit}
+        if prop is not None:
+            params['property'] = prop
+        path = "/labels/custom"
+        res = self.connector.getData(self.endpoint+path,params=params, headers=self.header)
+        data = res['children']
+        nextPage=res['_links']['page'].get('href','')
+        while nextPage != "":
+            params['start'] = nextPage
+            res = self.connector.getData(self.endpoint+path,params=params, headers=self.header)
+            data += res['children']
+            nextPage=res['_links']['page'].get('href','')
+        return data
+    def getCustomLabel(self,labelName:str=None)->dict:
+        """
+        Returns a specific Label by its name.
+        Argument:
+            labelName : REQUIRED : The name of the custom label.
+        """
+        if labelName is None:
+            raise ValueError("Require a label name")
+        path = f"/labels/custom/{labelName}"
+        res = self.connector.getData(self.endpoint+path)
+        return res
+    
+    def updateCustomLabel(self,labelName:str=None,data:dict=None)->dict:
+        """
+        Update a specific Label by its name. (PUT method)
+        Argument:
+            labelName : REQUIRED : The name of the custom label.
+            data : REQUIRED : Data to replace the old definition
+                Example:
+                {
+                    "name": "L2",
+                    "category": "Custom",
+                    "friendlyName": "Purchase History Data",
+                    "description": "Data containing information on past transactions"
+                }
+        """
+        if labelName is None:
+            raise ValueError("Require a label name")
+        if data is None or type(data)!= dict:
+            raise ValueError("Require a dictionary data to be passed")
+        path = f"/labels/custom/{labelName}"
+        res = self.connector.putData(self.endpoint+path,data=data)
+        return res

@@ -110,7 +110,7 @@ def configure(org_id: str = None,
               client_id: str = None,
               path_to_key: str=None,
               private_key: str = None,
-              sandbox:str="prod",
+              sandbox:str="prod"
               ):
     """Performs programmatic configuration of the API using provided values.
     Arguments:

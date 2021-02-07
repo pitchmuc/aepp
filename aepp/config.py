@@ -25,7 +25,7 @@ endpoints = {
     "schemas": "/data/foundation/schemaregistry",
     "query": "/data/foundation/query",
     "catalog": "/data/foundation/catalog",
-    "dule": "/data/foundation/dulepolicy",
+    "policy": "/data/foundation/dulepolicy",
     "segmentation": "/data/core/ups",
     "export": "/data/foundation/export",
     "identity": "/data/core/",
@@ -34,6 +34,8 @@ endpoints = {
     "access": "/data/foundation/access-control",
     "flow": "/data/foundation/flowservice",
     "privacy":"/data/core/privacy",
-    "dataaccess": "/data/foundation/export"
+    "dataaccess": "/data/foundation/export",
+    "mapping":"/data/foundation/conversion",
+    "policy":"/data/foundation/dulepolicy"
     
 }

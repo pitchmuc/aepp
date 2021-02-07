@@ -4,7 +4,7 @@ from aepp import connector
 
 class Segmentation:
 
-    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs)->None:
         """
         Instanciate the segmentation API methods class-
         Arguments:
@@ -17,13 +17,17 @@ class Segmentation:
         self.header.update(**kwargs)
         self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["segmentation"]
 
-    def getSegments(self, **kwargs):
+    def getSegments(self, onlyRealTime:bool=False,**kwargs)->list:
         """
         Return segment definitions in your experience platfom instance.
+        Arguments:
+            onlyRealTime : OPTIONAL : If you wish to retrieve only real time compatible segment. (default False)
         Possible arguments:
             - limit : number of segment returned per page
         """
         params = {'limit': kwargs.get('limit', 100)}
+        if onlyRealTime:
+            params['evaluationInfo.continuous.enabled'] = True
         path = "/segment/definitions"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         if 'segments' in res.keys():

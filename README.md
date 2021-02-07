@@ -38,7 +38,8 @@ At the moment the current wrapper is containing the following sub modules:
 * [catalog](./docs/catalog.md)
 * [customerprofile](./docs/customerprofile.md)
 * segmentation
-* dule
+* mapping
+* policy
 * accesscontrol
 * flowservice
 * sensei
