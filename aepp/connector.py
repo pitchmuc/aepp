@@ -27,7 +27,7 @@ class AdobeRequest:
         """
         if config_object['org_id'] == "":
             raise Exception(
-                'You have to upload the configuration file with importConfigFile method.')
+                'You have to upload the configuration file with importConfigFile or configure method.')
         self.config = deepcopy(config_object)
         self.header = deepcopy(header)
         self.retry = retry

@@ -1,6 +1,7 @@
 # Internal Library
 import aepp
 from aepp import connector
+import time
 
 class Segmentation:
 
@@ -13,9 +14,19 @@ class Segmentation:
         """
         self.connector = connector.AdobeRequest(config_object=config, header=header)
         self.header = self.connector.header
-        self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
         self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["segmentation"]
+        self.SCHEDULE_TEMPLATE = {
+            "name":"profile-default",
+            "type":"batch_segmentation-OR-export",
+            "properties":{
+                "segments":[
+                    "*"
+                ]
+            },
+            "schedule":"0 0 1 * * ?",
+            "state":"inactive"
+        }'
 
     def getSegments(self, onlyRealTime:bool=False,**kwargs)->list:
         """
@@ -50,7 +61,7 @@ class Segmentation:
             data = data + append_data
         return data
 
-    def getSegment(self, segment_id: str = None):
+    def getSegment(self, segment_id: str = None)->dict:
         """
         Return a specific segment definition.
         Argument:
@@ -63,7 +74,7 @@ class Segmentation:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def createSegment(self, segment_data: dict = None):
+    def createSegment(self, segment_data: dict = None)->dict:
         """
         Create a segment based on the information provided by the dictionary passed.
         Argument :
@@ -84,7 +95,7 @@ class Segmentation:
                              data=segment_data, headers=self.header)
         return res
 
-    def deleteSegment(self, segment_id: str = None):
+    def deleteSegment(self, segment_id: str = None)->dict:
         """
         Delete a specific segment definition.
         Argument:
@@ -97,7 +108,7 @@ class Segmentation:
         res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
-    def updateSegment(self, segment_id: str = None, segment_data: dict = None):
+    def updateSegment(self, segment_id: str = None, segment_data: dict = None)->dict:
         """
         Update the segment characteristics from the definition pass to that method.
         Arguments:
@@ -122,7 +133,7 @@ class Segmentation:
             self.endpoint+path, headers=self.header, data=segment_data)
         return update
 
-    def exportJobs(self, limit: int = 100, status: str = None):
+    def exportJobs(self, limit: int = 100, status: str = None)->dict:
         """
         Retrieve a list of all export jobs.
         Arguments:
@@ -137,21 +148,22 @@ class Segmentation:
                             params=params, headers=self.header)
         return res
 
-    def createExport(self, export_data: dict = None):
+    def createExport(self, export_request: dict = None)->dict:
         """
-        Retrieve a list of all export jobs.
+        Create an exportJob
         Arguments:
-            export_data : REQUIRED : number of jobs to be returned (default 100)
+            export_request : REQUIRED : number of jobs to be returned (default 100)
+            information on the structure of the request here: https://experienceleague.adobe.com/docs/experience-platform/segmentation/api/export-jobs.html?lang=en#get 
         """
         path = "/export/jobs"
-        if export_data is None:
+        if export_request is None:
             raise Exception(
                 "Expected export data to specify segment to export.")
         res = self.connector.postData(self.endpoint+path,
-                             data=export_data, headers=self.header)
+                             data=export_request, headers=self.header)
         return res
 
-    def getExport(self, export_id: str = None):
+    def getExport(self, export_id: str = None)->dict:
         """
         Retrieve a specific export Job.
         Arguments:
@@ -163,7 +175,7 @@ class Segmentation:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def deleteExport(self, export_id: str = None):
+    def deleteExport(self, export_id: str = None)->dict:
         """
         Cancel or delete an export Job.
         Arguments:
@@ -175,7 +187,7 @@ class Segmentation:
         res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
-    def searchNamespaces(self, query: str = None, schema: str = "_xdm.context.segmentdefinition", **kwargs):
+    def searchNamespaces(self, query: str = None, schema: str = "_xdm.context.segmentdefinition", **kwargs)->dict:
         """
         Return a list of search count results, queried across all namespaces.
         Arguments:
@@ -192,7 +204,7 @@ class Segmentation:
         del self.header["x-ups-search-version"]
         return res
 
-    def searchEntity(self, query: str = None, namespace: str = "ECID", entityId: str = None, schema: str = "_xdm.context.segmentdefinition", **kwargs):
+    def searchEntity(self, query: str = None, namespace: str = "ECID", entityId: str = None, schema: str = "_xdm.context.segmentdefinition", **kwargs)->dict:
         """
         Return the list of objects that are contained  within a namespace.
         Arguments:
@@ -228,7 +240,7 @@ class Segmentation:
         del self.header["x-ups-search-version"]
         return data
 
-    def getSchedules(self):
+    def getSchedules(self)->dict:
         """
         Return the list of scheduled segments.
         """
@@ -236,7 +248,7 @@ class Segmentation:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def createSchedule(self, schedule_data: dict = None):
+    def createSchedule(self, schedule_data: dict = None)->dict:
         """
         Schedule a segment to run.
         Arguments:
@@ -255,7 +267,7 @@ class Segmentation:
                              data=schedule_data, headers=self.header)
         return res
 
-    def getSchedule(self, schedule_id: str = None):
+    def getSchedule(self, schedule_id: str = None)->dict:
         """
         Get a specific schedule definition.
         Argument:
@@ -267,7 +279,7 @@ class Segmentation:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def deleteSchedule(self, schedule_id: str = None):
+    def deleteSchedule(self, schedule_id: str = None)->dict:
         """
         Delete a specific schedule definition.
         Argument:
@@ -279,7 +291,7 @@ class Segmentation:
         res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
-    def getJobs(self, name: str = None, status: str = None, limit: int = 100, **kwargs):
+    def getJobs(self, name: str = None, status: str = None, limit: int = 100, **kwargs)->dict:
         """
         Returns the list of segment jobs.
         Arguments: 
@@ -293,20 +305,21 @@ class Segmentation:
                             params=params, headers=self.header)
         return res
 
-    def createJob(self, job_data: list = None):
+    def createJob(self, segmentIds: list = None)->dict:
         """
         Create a new job for a segment.
         Argument: 
-            job_data : REQUIRED : a list describing the job to be created.
+            segmentIds : REQUIRED : a list of segmentIds.
         """
         path = "/segment/jobs"
-        if job_data is None or type(job_data) != list:
+        if segmentIds is None or type(segmentIds) != list:
             raise Exception("Expecting a list of segment ID to run.")
+        jobData = [{"segmentId":segId}for segId in segmentIds]
         res = self.connector.postData(self.endpoint+path,
-                             data=job_data, headers=self.header)
+                             data=jobData, headers=self.header)
         return res
 
-    def getJob(self, job_id: str = None):
+    def getJob(self, job_id: str = None)->dict:
         """
         Retrieve a Segment job by ID.
         Argument:
@@ -316,7 +329,7 @@ class Segmentation:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def deleteJob(self, job_id: str = None):
+    def deleteJob(self, job_id: str = None)->dict:
         """
         deleteJob a Segment job by ID.
         Argument:
@@ -325,3 +338,79 @@ class Segmentation:
         path = f"/segment/jobs/{job_id}"
         res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
+    
+    def createPreview(self,pql:str=None,model:str="_xdm.context.profile")->dict:
+        """
+        Given a PQL expression genereate a preview of how much data there would be.
+        Arguments:
+            pql : REQUIRED : The PQL statement that would be your segment definition
+            model : OPTIONAL : XDM class the statement is based on. Default : _xdm.context.profile
+        """
+        if pql is None:
+            ValueError("Require a PQL statement for creation")
+        path = "/preview"
+        obj = {
+            "predicateExpression": pql,
+            "predicateType": "pql/text",
+            "predicateModel": model,
+            "graphType": "pdg"
+        }
+        res = self.connector.postData(self.endpoint+path,data=obj)
+        return res
+    
+    def getPreview(self,previewId:str=None)->dict:
+        """
+        Retrieve the preview once it has been created by the createPreview method.
+        Arguments:
+            previewId : REQUIRED : The preview ID to used.
+        """
+        if previewId is None:
+            raise Exception("require a preview ID")
+        path = f"/preview/{previewId}"
+        res = self.connector.getData(self.endpoint+path)
+        return res
+
+    def deletePreview(self,previewId:str=None)->dict:
+        """
+        Delete the preview based on its ID.
+        Arguments:
+            previewId : REQUIRED : The preview ID to deleted.
+        """
+        if previewId is None:
+            raise Exception("require a preview ID")
+        path = f"/preview/{previewId}"
+        res = self.connector.deleteData(self.endpoint+path)
+        return res
+
+    def getEstimate(self,previewId:str=None)->dict:
+        """
+        Based on the preview ID generated by createPreview, you can look at statistical information of a segment.
+        Arguments:
+            previewId : REQUIRED : The preview ID to used for estimation  
+        """
+        if previewId is None:
+            raise Exception("require a preview ID")
+        path = f"/estimate/{previewId}"
+        res = self.connector.getData(self.endpoint+path)
+        return res
+    
+    def estimateExpression(self,pql:str=None,model:str="_xdm.context.profile",wait:int=60)->dict:
+        """
+        This method is a combination of the createPreview and getEstimate method so you don't have to build a pipeline for it.
+        It automatically fetch the estimate based on the PQL statement passed. Run a loop every minute to fetch the result.
+        Arguments:
+            pql : REQUIRED : The PQL statement that would be your segment definition
+            model : OPTIONAL : XDM class the statement is based on. Default : _xdm.context.profile
+            wait : OPTIONAL : How many seconds to wait between 2 call to getEstimate when result are not ready.
+        """
+        preview = self.createPreview(pql=pql,model=model)
+        try:
+            previewId = preview["previewId"]
+        except:
+            print(preview)
+            raise KeyError("Couldn't retrieve the previewId from the response")
+        estimate = self.getEstimate(previewId)
+        while estimate['state'] != "RESULT_READY" or estimate['state'] != "ERROR":
+            time.sleep(60)
+            estimate = self.getEstimate(previewId)
+        return estimate

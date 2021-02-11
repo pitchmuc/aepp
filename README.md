@@ -37,7 +37,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [dataaccess](./docs/dataaccess.md)
 * [catalog](./docs/catalog.md)
 * [customerprofile](./docs/customerprofile.md)
-* segmentation
+* [segmentation](./docs/segmentation.md)
 * mapping
 * policy
 * accesscontrol
