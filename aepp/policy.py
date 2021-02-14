@@ -20,7 +20,44 @@ class Policy:
         self.header.update(**kwargs)
         self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["policy"]
 
-    def getPoliciesCore(self, **kwargs):
+    
+    def getEnabledCorePolicies(self)->dict:
+        """
+        Retrieve a list of all enabled core policies.
+        """
+        path = "/enabledCorePolicies"
+        res = self.connector.getData(self.endpoint+path)
+        return res
+
+    def createEnabledCorePolicies(self,policyIds:list)->dict:
+        """
+        Create or update the list of enabled core policies. (PUT)
+        Argument:
+            policyIds : REQUIRED : list of core policy ID to enable
+        """
+        path = "/enabledCorePolicies"
+        if policyIds is None or type(policyIds) != list:
+            raise ValueError("Require a list of policy ID")
+        obj = policyIds
+        res = self.connector.putData(self.endpoint+path,data=obj)
+        return res
+
+    def bulkEval(self,data:dict=None)->dict:
+        """
+        Enable to pass a list of policies to check against a list of dataSet.
+        Argument:
+            data : REQUIRED : Dictionary describing the set of label and datasets.
+                see https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Bulk_evaluation/bulkEvalPost
+        """
+        path = "/bulk-eval"
+        if data is None:
+            raise Exception("Requires a dictionary to set the labels and dataSets to check")
+        res = self.connector.postData(self.endpoint+path,data=data)
+        return res
+
+
+
+    def getPoliciesCore(self, **kwargs)->dict:
         """
         Returns the core policies in place in the Organization.
         Possible kwargs:
@@ -183,3 +220,26 @@ class Policy:
         path = f"/labels/custom/{labelName}"
         res = self.connector.putData(self.endpoint+path,data=data)
         return res
+    
+    def getMarketingActionsCore(self,prop:str=None,limit:int=10,**kwargs)->list:
+        """
+        Retrieve a list of core marketing actions.
+        Arguments:
+            prop : OPTIONAL : Filters responses based on whether a specific property exists, or whose value passes a conditional expression (e.g. "prop=name==C1"). 
+            Only the “name” property is supported for core resources. 
+            limit : OPTIONAL : number of results to be returned.
+        """
+        path = "/marketingActions/core"
+        params = {"limit":limit}
+        if prop is not None:
+            params['property'] = prop
+        res = self.connector.getData(self.endpoint+path,params=params)
+        data = res['children']
+        nextPage = res['_links']['page'].get('href','')
+        while nextPage != "":
+            params['start'] = nextPage
+            res = self.connector.getData(self.endpoint+path,params=params)
+            data += res['children']
+            nextPage = res['_links']['page'].get('href','')
+        return data
+

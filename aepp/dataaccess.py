@@ -5,7 +5,7 @@ class DataAccess:
 
     def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
         """
-        Instantiate the sandbox class.
+        Instantiate the DataAccess class.
         Arguments:
             config : OPTIONAL : config object in the config module. 
             header : OPTIONAL : header object  in the config module.

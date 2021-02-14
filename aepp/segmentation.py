@@ -26,7 +26,7 @@ class Segmentation:
             },
             "schedule":"0 0 1 * * ?",
             "state":"inactive"
-        }'
+        }
 
     def getSegments(self, onlyRealTime:bool=False,**kwargs)->list:
         """

@@ -13,7 +13,7 @@ You can install the module directly from a pypi command:
 pip install aepp
 ```
 
-The version of the wrapper can be seen by the following command (once loaded): 
+The version of the wrapper can be seen by the following command (once loaded):
 
 ```python
 import aepp
@@ -38,6 +38,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [catalog](./docs/catalog.md)
 * [customerprofile](./docs/customerprofile.md)
 * [segmentation](./docs/segmentation.md)
+* datasets
 * mapping
 * policy
 * accesscontrol
@@ -49,17 +50,16 @@ At the moment the current wrapper is containing the following sub modules:
 
 The queryservice Module contains 2 classes:
 
-#### QueryService module
+### QueryService class
 
 The QueryService class is the wrapper around the AEP Query Service API.\
 It provides access to the different endpoints available from the API.
 
 Use-Case example : At the moment the capability to scheduled query is only accessible from the API.
 
-Detail documentation
+[Detail documentation]((./docs/queryservice.md))
 
-
-#### InteractiveQuery
+#### InteractiveQuery class
 
 This class is based on the pyGreSQL module for python.\
 It provides you the capability to realize query directly from your local Jupyter notebook and returns a dataframe.

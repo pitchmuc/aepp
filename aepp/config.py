@@ -36,6 +36,7 @@ endpoints = {
     "privacy":"/data/core/privacy",
     "dataaccess": "/data/foundation/export",
     "mapping":"/data/foundation/conversion",
-    "policy":"/data/foundation/dulepolicy"
+    "policy":"/data/foundation/dulepolicy",
+    "dataset":"/data/foundation/dataset"
     
 }

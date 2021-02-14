@@ -1,6 +1,6 @@
 # Segmentation module in aepp
 
-This documentation will provide you some explanation on how to use the Data Access module and different methods supported by this module.\
+This documentation will provide you some explanation on how to use the segmentation module and different methods supported by this module.\
 It will include some examples but be aware that not all methods will be documented here.\
 To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/segmentation.yaml).\
 Alternatively, you can use the docstring in the methods to have more information.
