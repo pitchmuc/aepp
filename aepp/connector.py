@@ -194,7 +194,7 @@ class AdobeRequest:
         return res_json
         
 
-    def postData(self, endpoint: str, params: dict = None, data: dict = None, headers: dict = None, * args, **kwargs):
+    def postData(self, endpoint: str, params: dict = None, data: dict = None, bytesData : bytes =None, headers: dict = None, * args, **kwargs):
         """
         Abstraction for posting data
         """
@@ -213,6 +213,9 @@ class AdobeRequest:
         elif params != None and data != None:
             res = requests.post(endpoint, headers=headers,
                                              params=params, data=json.dumps(data))
+        elif bytesData != None :
+            res = requests.post(endpoint, headers=headers,
+                                             params=params, data=bytesData)
         try:
             res_json = res.json()
         except:

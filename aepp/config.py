@@ -37,6 +37,10 @@ endpoints = {
     "dataaccess": "/data/foundation/export",
     "mapping":"/data/foundation/conversion",
     "policy":"/data/foundation/dulepolicy",
-    "dataset":"/data/foundation/dataset"
-    
+    "dataset":"/data/foundation/dataset",
+    "ingestion":"/data/foundation/import",
+    "streaming": {
+        "inlet": "https://platform.adobe.io/data/core/edge",
+        "collection" : "https://dcs.adobedc.net"
+    }
 }
