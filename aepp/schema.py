@@ -361,8 +361,50 @@ class Schema:
             aepp.saveFile(module='schema', file=res,
                           filename=res['title'], type_file='json')
         return res
+    
+    def copyMixin(self,mixin:dict = None,tenantId:str=None)->dict:
+        """
+        Copy the dictionary returned by getMixin to the only required elements for copying it over.
+        Arguments:
+            mixin : REQUIRED : the object retrieved from the getMixin.
+            tenantId : OPTIONAL : if you want to change the tenantId
+        """
+        from copy import deepcopy
+        if mixin is None:
+            raise ValueError("Require a mixin  object")
+        mixin_obj = deepcopy(mixin)
+        oldTenant = mixin_obj["meta:tenantNamespace"]
+        if 'definitions' in mixin_obj.keys():
+            obj = {
+                "type": mixin_obj['type'],
+                "title": mixin_obj['title'],
+                "description": mixin_obj['description'],
+                "meta:intendedToExtend": mixin_obj['meta:intendedToExtend'],
+                "definitions": mixin_obj.get('definitions'),
+                "allOf": mixin_obj.get('allOf',{'$ref': '#/definitions/property',
+                                                'type': 'object',
+                                                'meta:xdmType': 'object'})
+                }
+        elif 'properties' in mixin_obj.keys():
+            obj = {
+                "type": mixin_obj['type'],
+                "title": mixin_obj['title'],
+                "description": mixin_obj['description'],
+                "meta:intendedToExtend": mixin_obj['meta:intendedToExtend'],
+                "definitions": {'property':{'properties':mixin_obj['properties'],"type":"object","['meta:xdmType']" : "object"}},
+                "allOf": mixin_obj.get('allOf',{'$ref': '#/definitions/property',
+                                                'type': 'object',
+                                                'meta:xdmType': 'object'})
+                }
+        if tenantId is not None:
+            if tenantId.startswith('_') == False:
+                tenantId = f"_{tenantId}"
+            obj['definitions']['property']['properties'][tenantId] = obj['definitions']['property']['properties'][oldTenant]
+            del obj['definitions']['property']['properties'][oldTenant]
+        return obj
 
-    def createMixin(self, mixin_obj: dict = None):
+
+    def createMixin(self, mixin_obj: dict = None)->dict:
         """
         Create a mixin based on the dictionary passed.
         Arguments :
