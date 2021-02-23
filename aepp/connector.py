@@ -172,6 +172,8 @@ class AdobeRequest:
                     if 'error' in res_json.keys():
                         time.sleep(5)
                         res_json = self.getData(endpoint,params,data,headers,**kwargs)
+        if 'errorMessage' in res_json.keys():
+            print(f"status code : {res.status_code}")
         return res_json
 
     def headData(self,endpoint: str, params: dict = None, headers: dict = None,*args, **kwargs):
@@ -189,8 +191,15 @@ class AdobeRequest:
             res_json = res.json()
         except:
             if kwargs.get('verbose',False):
+                print('error generating the JSON response')
+                print(f'status: {res.status_code}')
                 print(res.text)
-            res_json = {'error': 'Request Error'}
+            if res.status_code != 200:
+                res_json = {'error': 'Request Error'}
+            else:
+                res_json = {}
+        if 'errorMessage' in res_json.keys():
+            print(f"status code : {res.status_code}")
         return res_json
         
 
@@ -220,8 +229,15 @@ class AdobeRequest:
             res_json = res.json()
         except:
             if kwargs.get('verbose',False):
+                print('error generating the JSON response')
+                print(f'status: {res.status_code}')
                 print(res.text)
-            res_json = {'error': 'Request Error'}
+            if res.status_code != 200:
+                res_json = {'error': 'Request Error'}
+            else:
+                res_json = {}
+        if 'errorMessage' in res_json.keys():
+            print(f"status code : {res.status_code}")
         return res_json
 
     def patchData(self, endpoint: str, params: dict = None, data=None, headers: dict = None, *args, **kwargs):
@@ -241,12 +257,17 @@ class AdobeRequest:
             res = requests.patch(endpoint, headers=headers,
                                               params=params, data=json.dumps(data=data))
         try:
-            status_code = res.json()
+            res_json = res.json()
         except:
             if kwargs.get('verbose',False):
+                print('error generating the JSON response')
+                print(f'status: {res.status_code}')
                 print(res.text)
-            status_code = {'error': 'Request Error'}
-        return status_code
+            if res.status_code != 200:
+                res_json = {'error': 'Request Error'}
+            else:
+                res_json = {}
+        return res_json
 
     def putData(self, endpoint: str, params: dict = None, data=None, headers: dict = None, *args, **kwargs):
         """
@@ -265,12 +286,17 @@ class AdobeRequest:
             res = requests.put(endpoint, headers=headers,
                                             params=params, data=json.dumps(data=data))
         try:
-            status_code = res.json()
+            res_json = res.json()
         except:
             if kwargs.get('verbose',False):
+                print('error generating the JSON response')
+                print(f'status: {res.status_code}')
                 print(res.text)
-            status_code = {'error': 'Request Error'}
-        return status_code
+            if res.status_code != 200:
+                res_json = {'error': 'Request Error'}
+            else:
+                res_json = {}
+        return res_json
 
     def deleteData(self, endpoint: str, params: dict = None, headers: dict = None, *args, **kwargs):
         """
@@ -290,5 +316,5 @@ class AdobeRequest:
         except:
             if kwargs.get('verbose',False):
                 print(res.text)
-            status_code = {'error': 'Request Error'}
+            status_code = "unknown"
         return status_code

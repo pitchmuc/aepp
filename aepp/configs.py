@@ -63,23 +63,6 @@ def importConfigFile(path: str) -> None:
     "./config.json"
     "/my-folder/config.json"
     """
-
-    import_config_file(path)
-
-
-def import_config_file(path: str) -> None:
-    """Reads the file denoted by the supplied `path` and retrieves the configuration information
-    from it.
-
-    Arguments:
-        path: REQUIRED : path to the configuration file. Can be either a fully-qualified or relative.
-
-    Example of path value.
-    "config.json"
-    "./config.json"
-    "/my-folder/config.json"
-    """
-
     config_file_path: Optional[Path] = find_path(path)
     if config_file_path is None:
         raise FileNotFoundError(
@@ -102,7 +85,6 @@ def import_config_file(path: str) -> None:
             path_to_key=provided_config['pathToKey'],
             client_id=client_id
         )
-
 
 def configure(org_id: str = None,
               tech_id: str = None,

@@ -2,6 +2,7 @@ import aepp
 from dataclasses import dataclass
 from aepp import connector
 import pandas as pd
+from copy import deepcopy
 
 @dataclass
 class _Data:
@@ -120,10 +121,11 @@ class Catalog:
         return res
 
 
-    def getDataSets(self,output:str="raw",**kwargs)->dict:
+    def getDataSets(self,limit:int=100,output:str="raw",**kwargs)->dict:
         """
         Return a list of a datasets.
         Arguments:
+            limit : REQUIRED : amount of dataset to be retrieved per call. 
             output : OPTIONAL : Default is "raw", other option is "df" for dataframe output
         Possible kwargs:
             state : The state related to a dataset.
@@ -137,9 +139,18 @@ class Catalog:
             more possibilities : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
         path = "/dataSets"
-        params = {**kwargs}
+        params = {"limit":limit,**kwargs}
         res = self.connector.getData(self.endpoint+path,
                             headers=self.header, params=params)
+        data = deepcopy(res)
+        ## prepare pagination if needed
+        start = 1
+        while len(res) == limit:
+            start +=limit
+            params = {"limit":limit,"start":start,**kwargs}
+            res = self.connector.getData(self.endpoint+path,
+                            headers=self.header, params=params)
+            data += deepcopy(res)
         try:
             self.data.table_names = {
                 res[key]['name']: res[key]['tags']['adobe/pqs/table'] for key in res}

@@ -2,6 +2,7 @@ import aepp
 from aepp import connector
 from copy import deepcopy
 import requests
+from typing import IO, Union
 
 class DataIngestion:
 
@@ -58,54 +59,42 @@ class DataIngestion:
             }
         }
     
-    def createBatch(self,data:dict=None)->dict:
+    def createBatch(self,datasetId:str=None,format:str='json',multiline:bool=False,enableDiagnostic:bool=False,partialIngestionPercentage:int=0)->dict:
         """
         Create a new batch in Catalog Service.
         Arguments:
-            data : REQUIRED : Dictionary that contains information needed to create a batch.
-                Example:
-                {
-                    "datasetId": "string",
-                    "externalId": "string",
-                    "inputFormat": {
-                        "format": "JSON"
-                    },
-                    "replay": {
-                        "reason": "string",
-                        "predecessors": [
-                        "string"
-                        ],
-                        "predecessorsByExternalId": [
-                        "string"
-                        ]
-                    },
-                    "tags": {
-                        "additionalProp1": [
-                        "string"
-                        ],
-                        "additionalProp2": [
-                        "string"
-                        ],
-                        "additionalProp3": [
-                        "string"
-                        ]
-                    }
-                }
+            datasetId : REQUIRED : The Dataset ID for the batch to upload data to.
+            format : REQUIRED : the format of the data send.(default json)
+            multiline : OPTIONAL : If you wish to upload multi-line JSON.
         """
-        if data is None or type(data)!=dict:
-            raise ValueError("Require a dictionary to pass data to the ")
+        if datasetId is None:
+            raise ValueError("Require a dataSetId ")
+        obj = {
+            "datasetId": datasetId,
+            "inputFormat": {
+                "format": format,
+                "isMultiLineJson":False
+           }
+        }
+        if multiline is True:
+            obj['inputFormat']['isMultiLineJson'] = True
+        if enableDiagnostic != False:
+            obj["enableErrorDiagnostics"] = True
+        if partialIngestionPercentage > 0:
+            obj["partialIngestionPercentage"] = partialIngestionPercentage
         path = "/batches"
-        res = self.connector.postData(self.endpoint+path,data=data)
+        res = self.connector.postData(self.endpoint+path,data=obj)
         return res
     
-    def uploadSmallFile(self,batchId:str=None,datasetId:str=None,filePath:str=None,data:dict=None)->dict:
+    def uploadSmallFile(self,batchId:str=None,datasetId:str=None,filePath:str=None,data:Union[list,dict]=None,verbose:bool=False)->dict:
         """
         Upload a small file (<256 MB) to the filePath location in the dataset.
         Arguments:
             batchId : REQUIRED : The batchId referencing the batch processed created beforehand.
             datasetId : REQUIRED : The dataSetId related to where the data are ingested to.
             filePath : REQUIRED : the filePath that will store the value.
-            data : REQUIRED : The data to be uploaded (following the type provided) 
+            data : REQUIRED : The data to be uploaded (following the type provided). List or Dictionary, depending if multiline is enabled.
+            verbose: OPTIONAL : if you wish to see comments around the
         """
         if batchId is None:
             raise Exception("require a batchId")
@@ -115,13 +104,15 @@ class DataIngestion:
             raise Exception("require a filePath value")
         if data is None:
             raise Exception("require data to be passed")
+        if verbose:
+            print(f"Your data is in {type(data)} format")
         privateHeader = deepcopy(self.header)
         privateHeader['Content-Type'] = "application/octet-stream"
         path = f"/batches/{batchId}/datasets/{datasetId}/files/{filePath}"
         res = self.connector.putData(self.endpoint+path,data=data,headers=privateHeader)
         return res
     
-    def uploadSmallFileFinish(self,batchId:str=None,action:str="COMPLETE")->dict:
+    def uploadSmallFileFinish(self,batchId:str=None,action:str="COMPLETE",verbose:bool=False)->dict:
         """
         Send an action to signify that the import is done.
         Arguments:
@@ -138,18 +129,17 @@ class DataIngestion:
             raise Exception("Not a valid action has been passed")
         path = f"/batches/{batchId}"
         params = {"action" : action}
-        res = self.connector.postData(self.endpoint+path,params=params)
+        res = self.connector.postData(self.endpoint+path,params=params,verbose=verbose)
         return res
     
-    def uploadLargeFileStart(self,batchId:str=None,datasetId:str=None,filePath:str=None,data:bytes=None,contentRange:str=None)->dict:
+    def uploadLargeFileStartEnd(self,batchId:str=None,datasetId:str=None,filePath:str=None,action:str="INITIALIZE")->dict:
         """
-        Start / End the upload of a large file with a POST method. 
+        Start / End the upload of a large file with a POST method defining the action (see parameter)
         Arguments:
             batchId : REQUIRED : The batchId referencing the batch processed created beforehand.
             datasetId : REQUIRED : The dataSetId related to where the data are ingested to.
             filePath : REQUIRED : the filePath that will store the value.
-            data : REQUIRED : The data to be uploaded (in bytes) 
-            contentRange : REQUIRED : The range of bytes of the file being uploaded with this request.
+            action : REQUIRED : Action to either INITIALIZE or COMPLETE the upload.
         """
         if batchId is None:
             raise Exception("require a batchId")
@@ -157,17 +147,10 @@ class DataIngestion:
             raise Exception("require a dataSetId")
         if filePath is None:
             raise Exception("require a filePath value")
-        if data is None:
-            raise Exception("require data to be passed")
-        if contentRange is None:
-            raise Exception("require the content range to be passed")
-        privateHeader = deepcopy(self.header)
-        privateHeader['Content-Type'] = "application/octet-stream"
-        privateHeader['Content-Range'] = contentRange
+        params = {"action":action}
         path = f"/batches/{batchId}/datasets/{datasetId}/files/{filePath}"
-        res = requests.post(self.endpoint+path,bytesData=data,headers=privateHeader)
-        res_json = res.json()
-        return res_json
+        res = self.connector.postData(self.endpoint+path,params=params)
+        return res
 
 
     def uploadLargeFilePart(self,batchId:str=None,datasetId:str=None,filePath:str=None,data:bytes=None,contentRange:str=None)->dict:
@@ -225,7 +208,7 @@ class DataIngestion:
         escape:str = "\\",
         charset:str = "utf-8",
         header:bool =True,
-        nrow:int = 10
+        nrow:int = 5
         )->dict:
         """
         Generates a data preview for the files uploaded to the batch so far. The preview can be generated for all the batch datasets collectively or for the selected datasets.
@@ -238,7 +221,7 @@ class DataIngestion:
             escape : OPTIONAL : The escape character to use while parsing data.
             charset : OPTIONAL : The encoding to be used (default utf-8)
             header : OPTIONAL : The flag to indicate if the header is supplied in the dataset files.
-            nrow : OPTIONAL : The number of rows to parse. (default 10)
+            nrow : OPTIONAL : The number of rows to parse. (default 5) - cannot be 10 or greater
         """
         if batchId is None:
             raise Exception("require a batchId")

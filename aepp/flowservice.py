@@ -79,6 +79,47 @@ class FlowService:
             res = self.connector.postData(self.endpoint + path, data=obj)
             return res
     
+    def createStreamingConnection(self,name:str=None,sourceId:str=None,dataType:str="xdm",paramName:str=None,description:str="",**kwargs)->dict:
+        """
+        Create a Streaming connection
+        Arguments:
+            name : REQUIRED : Name of the Connection.
+            sourceId : REQUIRED : The ID of the streaming connection you want to create.
+            dataType : REQUIRED : The type of data to ingest (default xdm)
+            paramName : REQUIRED : The name of the streaming connection you want to create.
+            description : OPTIONAL : if you want to add a description
+        kwargs possibility:
+            specName : if you want to modify the specification Name.(Default : "Streaming Connection")
+        """
+        if name is None:
+            raise ValueError("Require a name for the connection")
+        if sourceId is None:
+            raise Exception("Require an ID for the connection")
+        if dataType is None:
+            raise Exception("Require a dataType specified")
+        if paramName is None:
+            raise ValueError("Require a name for the Streaming Connection")
+        obj = {
+            "name": name,
+            "providerId": "521eee4d-8cbe-4906-bb48-fb6bd4450033",
+            "description": description,
+            "connectionSpec": {
+                "id": "bc7b00d6-623a-4dfc-9fdb-f1240aeadaeb",
+                "version": "1.0"
+            },
+            "auth": {
+                "specName": kwargs.get("specName","Streaming Connection"),
+                "params": {
+                    "sourceId": sourceId,
+                    "dataType": dataType,
+                    "name": paramName
+                }
+            }
+        }
+        res = self.createConnection(data=obj)
+        return res
+
+    
     def getConnection(self, connectionId: str = None) -> dict:
         """
         Returns a specific connection object.
@@ -294,6 +335,24 @@ class FlowService:
         res:dict = self.connector.getData(self.endpoint + path)
         return res
     
+    def getSourceConnections(self,**kwargs)->dict:
+        """
+        Return the list of source connections
+        Kwargs will be added as parameterss
+        """
+        params = {**kwargs}
+        path:str = f"/sourceConnections"
+        res:dict = self.connector.getData(self.endpoint + path,params=params)
+        data:list = res["items"]
+        nextPage = res["_links"].get("next",{}).get("href",'')
+        while nextPage != "":
+            continuationToken = nextPage.split("=")[1]
+            params["continuationToken"] = continuationToken
+            res:dict = self.connector.getData(self.endpoint + path,params=params)
+            data += res["items"]
+            nextPage = res["_links"].get("next",{}).get("href",'')
+        return data
+
     def getSourceConnection(self,sourceConnectionId:str=None)->dict:
         """
         Return detail of the sourceConnection ID
@@ -318,7 +377,7 @@ class FlowService:
         res:dict = self.connector.deleteData(self.endpoint + path)
         return res
 
-    def createSourceConnection(self,obj:dict=None)->dict:
+    def createSourceConnection(self,data:dict=None)->dict:
         """
         Create a sourceConnection based on the dictionary passed.
         Arguments:
@@ -326,21 +385,41 @@ class FlowService:
                 Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Source_connections/postSourceConnection 
                 requires following keys : name, baseConnectionId, data, params, connectionSpec. 
         """
-        if obj is None:
+        if data is None:
             raise Exception("Require a dictionary with data to be present")
-        if "name" in obj.keys():
+        if "name" not in data.keys():
             raise KeyError("Require a 'name' key in the dictionary passed")
-        if "baseConnectionId" in obj.keys():
-            raise KeyError("Require a 'baseConnectionId' key in the dictionary passed")
-        if "data" in obj.keys():
-            raise KeyError("Require a 'data' key in the dictionary passed")
-        if "params" in obj.keys():
-            raise KeyError("Require a 'params' key in the dictionary passed")
-        if "connectionSpec" in obj.keys():
+        if "connectionSpec" not in data.keys():
             raise KeyError("Require a 'connectionSpec' key in the dictionary passed")
         path:str = f"/sourceConnections"
-        res:dict = self.connector.postData(self.endpoint + path, data=obj)
+        res:dict = self.connector.postData(self.endpoint + path, data=data)
         return res
+
+    def createSourceConnectionStreaming(self,connectionId:str=None,name:str=None,format:str="delimited",description:str="")->dict:
+        """
+        Create a source connection based on streaming connection created.
+        Arguments:
+            connectionId : REQUIRED : The Streaming connection ID.
+            name : REQUIRED : Name of the Connection.
+            format : REQUIRED : format of the data sent (default : delimited)
+            description : OPTIONAL : Description of of the Connection Source.
+        """
+        obj = {
+            "name": name,
+            "providerId": "521eee4d-8cbe-4906-bb48-fb6bd4450033",
+            "description": description,
+            "baseConnectionId": connectionId,
+            "connectionSpec": {
+                "id": "bc7b00d6-623a-4dfc-9fdb-f1240aeadaeb",
+                "version": "1.0"
+            },
+            "data": {
+                "format": "delimited"
+            }
+        }
+        res = self.createSourceConnection(data=obj)
+        return res
+
 
     def updateSourceConnection(self,sourceConnectionId:str=None,etag:str=None,obj:dict=None)->dict:
         """
@@ -362,6 +441,25 @@ class FlowService:
         path:str = f"/sourceConnections/{sourceConnectionId}"
         res:dict = self.connector.patchData(self.endpoint + path, params=params, data=obj)
         return res
+
+
+    def getTargetConnections(self,**kwargs)->dict:
+        """
+        Return the target connections
+        Kwargs will be added as parameterss
+        """
+        params = {**kwargs}
+        path:str = f"/targetConnections"
+        res:dict = self.connector.getData(self.endpoint + path,params=params)
+        data:list = res["items"]
+        nextPage = res["_links"].get("next",{}).get("href",'')
+        while nextPage != "":
+            continuationToken = nextPage.split("=")[1]
+            params["continuationToken"] = continuationToken
+            res:dict = self.connector.getData(self.endpoint + path,params=params)
+            data += res["items"]
+            nextPage = res["_links"].get("next",{}).get("href",'')
+        return data
 
 
     def getTargetConnection(self,targetConnectionId:str=None)->dict:
@@ -388,27 +486,77 @@ class FlowService:
         res:dict = self.connector.deleteData(self.endpoint+path)
         return res
 
-    def createTargetConnection(self,obj:dict=None)->dict:
+    def createTargetConnection(self, name:str=None, connectionSpecId:str=None,datasetId:str=None,format:str="parquet_xdm",version:str="1.0",description:str="",data:dict = None)->dict:
         """
         Create a new target connection
         Arguments:
-            obj : REQUIRED : the data to be passed for creation of the Target Connection.
-                Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Target_connections/postTargetConnection 
-                requires following keys : name, data, params, connectionSpec. 
+                name : REQUIRED : The name of the target connection
+                connectionSpecId : REQUIRED : The connectionSpecId to use.
+                datasetId : REQUIRED : The dataset ID that is the target
+                version : REQUIRED : version to be used (1.0 by default)
+                format : REQUIRED : Data format to be used (parquet_xdm by default)
+                description : OPTIONAL : description of your target connection
+                data : OPTIONAL : If you pass the complete dictionary for creation 
+        Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Target_connections/postTargetConnection 
+        requires following keys : name, data, params, connectionSpec. 
         """
-        if obj is None:
-            raise Exception("Require a dictionary with data to be present")
-        if "name" in obj.keys():
-            raise KeyError("Require a 'name' key in the dictionary passed")
-        if "data" in obj.keys():
-            raise KeyError("Require a 'data' key in the dictionary passed")
-        if "params" in obj.keys():
-            raise KeyError("Require a 'params' key in the dictionary passed")
-        if "connectionSpec" in obj.keys():
-            raise KeyError("Require a 'connectionSpec' key in the dictionary passed")
         path:str = f"/targetConnections"
-        res:dict = self.connector.postData(self.endpoint + path, data=obj)
+        if data is not None and type(data) == dict:
+            obj = data
+            res:dict = self.connector.postData(self.endpoint + path, data=obj)
+        else:
+            if name is None:
+                raise ValueError("Require a name to be passed")
+            if connectionSpecId is None:
+                raise ValueError("Require a connectionSpec Id to be passed")
+            if datasetId is None:
+                raise ValueError("Require a datasetId to be passed")
+            obj = {
+                "name": name,
+                "description": description,
+                "connectionSpec": {
+                    "id": connectionSpecId,
+                    "version": version
+                },
+                "data": {
+                    "format": format
+                },
+                "params": {
+                "dataSetId": datasetId
+                }
+            }
+            res:dict = self.connector.postData(self.endpoint + path, data=obj)        
         return res
+    
+    def createTargetConnectionDataLake(self,name:str=None,datasetId:str=None,schemaId:str=None,format:str='delimited',version:str="1.0",description:str="")->dict:
+        """
+        Create a target connection to the AEP Data Lake.
+        Arguments:
+            name : REQUIRED : The name of your target Destination
+            datasetId : REQUIRED : the dataset ID of your target destination.
+            schemaId : REQUIRED : The schema ID of your dataSet. (NOT meta:altId)
+            format : REQUIRED : format of your data inserted
+            version : REQUIRED : version of your target destination
+            description : OPTIONAL : description of your target destination.
+        """
+        targetObj = {
+            "name": name,
+            "description": description,
+            "data": {
+                "format": format,
+                "schema": {
+                "id": schemaId,
+                "version": "application/vnd.adobe.xed-full+json;version=1.0"
+                }
+            },
+            "params": {
+                "dataSetId": datasetId
+            },
+            "connectionSpec": {
+                "id": "feae26d8-4968-4074-b2ca-d182fc050729",
+                "version": version
+            }
+        }
 
     def updateTargetConnection(self,targetConnectionId:str=None,etag:str=None,obj:dict=None)->dict:
         """
