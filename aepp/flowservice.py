@@ -553,10 +553,12 @@ class FlowService:
                 "dataSetId": datasetId
             },
             "connectionSpec": {
-                "id": "feae26d8-4968-4074-b2ca-d182fc050729",
+                "id": "c604ff05-7f1a-43c0-8e18-33bf874cb11c",
                 "version": version
             }
         }
+        res = self.createTargetConnection(data=targetObj)
+        return res
 
     def updateTargetConnection(self,targetConnectionId:str=None,etag:str=None,obj:dict=None)->dict:
         """

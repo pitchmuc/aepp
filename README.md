@@ -38,11 +38,11 @@ At the moment the current wrapper is containing the following sub modules:
 * [catalog](./docs/catalog.md)
 * [customerprofile](./docs/customerprofile.md)
 * [segmentation](./docs/segmentation.md)
+* [mapping](./docs/mapping.md)
+* [flowservice](./docs/flowservice.md)
+* [policy](./docs/policy.md)
 * datasets
-* mapping
-* policy
 * accesscontrol
-* flowservice
 * sensei
 * privacyservice (see 2nd note below)
 

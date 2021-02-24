@@ -2,6 +2,8 @@ import aepp
 from aepp import connector
 from copy import deepcopy
 import pandas as pd
+from typing import Union
+import re
 
 class Mapping:
 
@@ -101,6 +103,39 @@ class Mapping:
         res = self.connector.getData(self.endpoint+path,params=params)
         return res
 
+    def copyMapping(self,mapping:Union[dict,list]=None,tenantId:str=None)->list:
+        """
+        create a copy of the mapping based on the mapping information passed.
+        Argument:
+            mapping : REQUIRED : either the list of mapping or the dictionary returned from the getMappingSetMapping
+            tenantid : REQUIRED : in case tenant is present, replace the existing one with new one.
+        """
+        if tenantId.startswith('_') == False:
+            tenantId = f"_{tenantId}"
+        if mapping is None:
+            raise ValueError("Require a mapping object")
+        if type(mapping) == list:
+            new_list = [{
+                "sourceType": map["sourceType"],
+                "source": map["source"],
+            "destination": re.sub('^_[\w]+\.',f"{tenantId}.",map["destination"])
+            } for map in mapping]
+            return new_list
+        if type(mapping) == dict:
+            if 'mappings' in mapping.keys():
+                mappings = mapping['mappings']
+                new_list = [{
+                "sourceType": map["sourceType"],
+                "source": map["source"],
+                "destination": re.sub('^_[\w]+\.',f"{tenantId}.",map["destination"])
+                } for map in mappings]
+                return new_list
+            else:
+                print("Couldn't find a mapping information to copy")
+                return None
+
+
+
     def getMappingSets(self,name:str=None,prop:str=None,limit:int=100)->list:
         """
         Returns all mapping sets for given IMS Org Id
@@ -161,7 +196,7 @@ class Mapping:
         res = self.connector.deleteData(self.endpoint+path)
         return res
 
-    def createMappingSet(self,mappingSet:dict=None,validate:bool=False)->dict:
+    def createMappingSet(self,mappingSet:dict=None,validate:bool=False,verbose:bool=False)->dict:
         """
         Create a mapping set.
         Arguments:
@@ -173,7 +208,7 @@ class Mapping:
         if mappingSet is None or type(mappingSet) != dict:
             raise ValueError("Require a dictionary as mapping set")
         params = {'validate':validate}
-        res = self.connector.postData(self.endpoint + path,params=params)
+        res = self.connector.postData(self.endpoint + path,params=params,data=mappingSet,verbose=verbose)
         return res
     
     def updateMappingSet(self,mappingSetId:str=None,mappingSet:dict=None)->dict:
@@ -203,7 +238,7 @@ class Mapping:
         res = self.connector.getData(self.endpoint+path)
         return res
     
-    def createMappingSetMapping(self,mappingSetId:str=None,mapping:dict=None)->dict:
+    def createMappingSetMapping(self,mappingSetId:str=None,mapping:dict=None,verbose:bool=False)->dict:
         """
         Create mappings for a mapping set
         Arguments:
@@ -215,7 +250,7 @@ class Mapping:
         if mapping is None or type(mapping)!=dict:
             raise Exception("Require a dictionary as mapping")
         path = f"/mappingSets/{mappingSetId}/mappings"
-        res = self.connector.postData(self.endpoint+path,data=mapping)
+        res = self.connector.postData(self.endpoint+path,data=mapping,verbose=verbose)
         return res
 
     def getMappingSetMapping(self,mappingSetId:str=None,mappingId:str=None)->dict:

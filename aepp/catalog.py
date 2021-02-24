@@ -140,48 +140,64 @@ class Catalog:
         """
         path = "/dataSets"
         params = {"limit":limit,**kwargs}
-        res = self.connector.getData(self.endpoint+path,
-                            headers=self.header, params=params)
+        res = self.connector.getData(self.endpoint+path, params=params)
         data = deepcopy(res)
         ## prepare pagination if needed
         start = 1
         while len(res) == limit:
             start +=limit
             params = {"limit":limit,"start":start,**kwargs}
-            res = self.connector.getData(self.endpoint+path,
-                            headers=self.header, params=params)
-            data += deepcopy(res)
+            res = self.connector.getData(self.endpoint+path, params=params)
+            data.update(res)
         try:
             self.data.table_names = {
-                res[key]['name']: res[key]['tags']['adobe/pqs/table'] for key in res}
+                data[key]['name']: data[key]['tags']['adobe/pqs/table'] for key in data}
             self.data.schema_ref = {
-                res[key]['name']: res[key]['schemaRef']
-                for key in res if 'schemaRef' in res[key].keys()
+                data[key]['name']: data[key]['schemaRef']
+                for key in data if 'schemaRef' in data[key].keys()
             }
             self.data.ids = {
-                res[key]['name']: key for key in res
+                data[key]['name']: key for key in data
             }
         except Exception as e:
             print(e)
             print("Couldn't populate the data object from the instance.")
         if output == "df":
-            res = pd.DataFrame(res).T
-        return res
+            df = pd.DataFrame(data).T
+            return df
+        return data
 
-    def createDataSets(self, data: dict = None, **kwargs):
+    def createDataSets(self, name:str=None, schemaId:str=None, data: dict = None, **kwargs):
         """
-        Create a new dataSets.
+        Create a new dataSets based either on preconfigured setup or by passing the full dictionary for creation.
         Arguments:
-            data : REQUIRED : Data set to be posted
+            name : REQUIRED : if you wish to create a dataset via autocompletion. Provide a name.
+            schemaId : REQUIRED : The schema $id reference for creating your dataSet.
+            data : REQUIRED : If you want to pass the dataset object directly (not require the name and schemaId then)
+                more info: https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Datasets/postDataset
         possible kwargs
             requestDataSource : Set to true if you want Catalog to create a dataSource on your behalf; otherwise, pass a dataSourceId in the body.
         """
         path = "/dataSets"
-        if data is None or isinstance(data, dict) == False:
-            raise Exception("Excepting data of type dictionary")
         params = {"requestDataSource": kwargs.get("requestDataSource", False)}
-        res = self.connector.postData(self.endpoint+path, params=params,
-                             data=data, headers=self.header)
+        if data is not None or isinstance(data, dict) == True:
+            res = self.connector.postData(self.endpoint+path, params=params,
+                             data=data)
+        elif name is not None and schemaId is not None:
+            data = {
+                "name":name,
+                "schemaRef": {
+                    "id": schemaId,
+                    "contentType": "application/vnd.adobe.xed+json;version=1"
+                },
+                "fileDescription": {
+                    "persisted": True,
+                    "containerFormat": "parquet",
+                    "format": "parquet"
+                }
+            }
+            res = self.connector.postData(self.endpoint+path, params=params,
+                             data=data)
         return res
 
     def getDataSet(self, dataset_id: str = None):

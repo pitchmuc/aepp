@@ -172,8 +172,11 @@ class AdobeRequest:
                     if 'error' in res_json.keys():
                         time.sleep(5)
                         res_json = self.getData(endpoint,params,data,headers,**kwargs)
-        if 'errorMessage' in res_json.keys():
-            print(f"status code : {res.status_code}")
+        try: ## sometimes list is being returned
+            if 'errorMessage' in res_json.keys():
+                print(f"status code : {res.status_code}")
+        except:
+            pass
         return res_json
 
     def headData(self,endpoint: str, params: dict = None, headers: dict = None,*args, **kwargs):
@@ -198,8 +201,11 @@ class AdobeRequest:
                 res_json = {'error': 'Request Error'}
             else:
                 res_json = {}
-        if 'errorMessage' in res_json.keys():
-            print(f"status code : {res.status_code}")
+        try: ## sometimes list is being returned
+            if 'errorMessage' in res_json.keys():
+                print(f"status code : {res.status_code}")
+        except:
+            pass
         return res_json
         
 
@@ -236,8 +242,11 @@ class AdobeRequest:
                 res_json = {'error': 'Request Error'}
             else:
                 res_json = {}
-        if 'errorMessage' in res_json.keys():
-            print(f"status code : {res.status_code}")
+        try: ## sometimes list is being returned
+            if 'errorMessage' in res_json.keys():
+                print(f"status code : {res.status_code}")
+        except:
+            pass
         return res_json
 
     def patchData(self, endpoint: str, params: dict = None, data=None, headers: dict = None, *args, **kwargs):

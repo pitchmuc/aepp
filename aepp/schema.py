@@ -2,6 +2,7 @@
 import aepp
 from dataclasses import dataclass
 from aepp import connector
+from copy import deepcopy
 
 json_extend = [{'op': 'replace',
                 'path': '/meta:intendedToExtend',
@@ -13,9 +14,10 @@ json_extend = [{'op': 'replace',
 class _Data:
 
     def __init__(self):
-        self.ids = {}
-        self.schemas = {}
-        self.paths = {}
+        self.schemas_id = {}
+        self.schemas_altId = {}
+        self.mixin_id = {}
+        self.schemas_altId = {}
 
 
 class Schema:
@@ -74,16 +76,31 @@ class Schema:
         tenant = res['tenantId']
         return tenant
 
-    def getSchemas(self, **kwargs)->list:
+    def getSchemas(self,classFilter:str=None,excludeAdhoc:bool=False, **kwargs)->list:
         """
         Returns the list of schemas retrieved for that instances in a "results" list.
-        Kwargs:
+        Arguments:
+            classFilter : OPTIONAL : filter to a specific class.
+                Example :
+                    https://ns.adobe.com/xdm/context/experienceevent
+                    https://ns.adobe.com/xdm/context/profile 
+                    https://ns.adobe.com/xdm/data/adhoc
+            excludeAdhoc : OPTIONAL : exclude the adhoc schemas
+        Possible kwargs:
             debug : if set to true, will print the result when error happens
+            format : if set to "xed", returns the full JSON for each resource (default : "xed-id" -  short summary)
         """
         path = f'/{self.container}/schemas/'
         start = kwargs.get("start", 0)
         params = {"start": start}
+        if classFilter is not None:
+            params['property'] = f"meta:intendedToExtend=={classFilter}"
+        if excludeAdhoc:
+            params['property'] ="meta:extends!=https://ns.adobe.com/xdm/data/adhoc"
         verbose = kwargs.get("debug",False)
+        privateHeader = deepcopy(self.header)
+        format = kwargs.get('format',"xed-id")
+        privateHeader['Accept'] = f"application/vnd.adobe.{format}+json"
         res = self.connector.getData(self.endpoint+path,
                             params=params, headers=self.header,verbose=verbose)
         if kwargs.get('debug', False):
@@ -93,6 +110,8 @@ class Schema:
         page = res['_page']
         while page['next'] is not None:
             data += self.getSchemas(start=page['next'])
+        self.data.schemas_id = {schem['title']:schem['$id'] for schem in data}
+        self.data.schemas_altId = {schem['title']:schem['meta:altId'] for schem in data}
         return data
 
     def getSchema(self, schema_id: str = None, version: int = 1, save: bool = False, full: bool = True, desc: bool = False, schema_type: str = 'xdm', **kwargs)->dict:
@@ -246,6 +265,55 @@ class Schema:
         res = self.connector.postData(self.endpoint+path,
                              headers=self.header, data=schema)
         return res
+    
+    def createExperienceEventSchema(self,name:str=None,mixinIds:list=None,description:str="")->dict:
+        """
+        Create an ExperienceEvent schema based on the list mixin ID provided.
+        Arguments:
+            name : REQUIRED : Name of your schema
+            mixinIds : REQUIRED : List of mixins $id to create the schema on
+            description : OPTIONAL : Schema description
+        """
+        if name is None:
+            raise ValueError("Require a name")
+        if mixinIds is None or type(mixinIds) != list:
+            raise ValueError("Require a list for mixin ids")
+        obj = {
+            'title': name,
+            'description' : description,
+            'allOf': [{'$ref': 'https://ns.adobe.com/xdm/context/experienceevent',
+                'type': 'object',
+                'meta:xdmType': 'object'}]
+            }
+        for mixin in mixinIds:
+            obj['allOf'].append({'$ref':mixin})
+        res = self.createSchema(obj)
+        return res
+    
+    def createProfileSchema(self,name:str=None,mixinIds:list=None,description:str="")->dict:
+        """
+        Create an IndividualProfile schema based on the list mixin ID provided.
+        Arguments:
+            name : REQUIRED : Name of your schema
+            mixinIds : REQUIRED : List of mixins $id to create the schema on
+            description : OPTIONAL : Schema description
+        """
+        if name is None:
+            raise ValueError("Require a name")
+        if mixinIds is None or type(mixinIds) != list:
+            raise ValueError("Require a list for mixin ids")
+        obj = {
+            'title': name,
+            'description' : description,
+            'allOf': [{'$ref': "https://ns.adobe.com/xdm/context/profile",
+                'type': 'object',
+                'meta:xdmType': 'object'}]
+            }
+        for mixin in mixinIds:
+            obj['allOf'].append({'$ref':mixin})
+        res = self.createSchema(obj)
+        return res
+        
 
     def getClasses(self, **kwargs):
         """
@@ -253,23 +321,22 @@ class Schema:
         kwargs:
             debug : if set to True, will print result for errors
         """
-        self.header.update({
+        privateHeader = deepcopy(self.header)
+        privateHeader.update({
             "Accept": "application/vnd.adobe.xdm-id+json"})
         start = kwargs.get("start", 0)
         params = {"start": start}
         path = f'/{self.container}/classes/'
         verbose = kwargs.get("verbose",False)
         res = self.connector.getData(self.endpoint+path,
-                            headers=self.header, params=params,verbose=verbose)
-        self.header.update({
-            "Accept": "application/json"})
+                            headers=privateHeader, params=params,verbose=verbose)
         if kwargs.get('debug', False):
             if "results" not in res.keys():
                 print(res)
         data = res['results']
         page = res['_page']
         while page['next'] is not None:
-            data += self.getSchemas(start=page['next'])
+            data += self.getClasses(start=page['next'])
         return data
 
     def getClass(self, class_id: str = None, full: bool = True, version: int = 1, save: bool = False):
@@ -286,12 +353,11 @@ class Schema:
             from urllib import parse
             class_id = parse.quote_plus(class_id)
         self.header['Accept-Encoding'] = 'identity'
-        self.header.update({
+        privateHeader = deepcopy(self.header)
+        privateHeader.update({
             "Accept": "application/vnd.adobe.xdm-full+json; version="+str(version)})
         path = f'/{self.container}/classes/{class_id}'
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
-        self.header.update({
-            "Accept": "application/json"})
+        res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         if save:
             aepp.saveFile(module='schema', file=res,
                           filename=res['title'], type_file='json')
@@ -331,7 +397,9 @@ class Schema:
         data = res['results']
         page = res['_page']
         while page['next'] is not None:
-            data += self.getSchemas(start=page['next'])
+            data += self.getMixins(start=page['next'])
+        self.data.mixin_id = {mix['title']:mix['$id'] for mix in data}
+        self.data.mixin_altId = {mix['title']:mix['meta:altId'] for mix in data}
         return data
 
     def getMixin(self, mixin_id: str = None, version: int = 1, full: bool = True, save: bool = False):
@@ -345,31 +413,30 @@ class Schema:
         if mixin_id.startswith('https://'):
             from urllib import parse
             mixin_id = parse.quote_plus(mixin_id)
-        self.header['Accept-Encoding'] = 'identity'
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept-Encoding'] = 'identity'
         if full:
             accept_full = "-full"
         else:
             accept_full = ""
         update_accept = f"application/vnd.adobe.xed{accept_full}+json; version={version}"
-        self.header.update({
+        privateHeader.update({
             "Accept": update_accept})
         path = f'/{self.container}/mixins/{mixin_id}'
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
-        self.header.update({
-            "Accept": "application/json"})
+        res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         if save:
             aepp.saveFile(module='schema', file=res,
                           filename=res['title'], type_file='json')
         return res
     
-    def copyMixin(self,mixin:dict = None,tenantId:str=None)->dict:
+    def copyMixin(self,mixin:dict = None,tenantId:str=None,name:str=None)->dict:
         """
         Copy the dictionary returned by getMixin to the only required elements for copying it over.
         Arguments:
             mixin : REQUIRED : the object retrieved from the getMixin.
             tenantId : OPTIONAL : if you want to change the tenantId
+            name : OPTIONAL : rename your mixin
         """
-        from copy import deepcopy
         if mixin is None:
             raise ValueError("Require a mixin  object")
         mixin_obj = deepcopy(mixin)
@@ -377,7 +444,7 @@ class Schema:
         if 'definitions' in mixin_obj.keys():
             obj = {
                 "type": mixin_obj['type'],
-                "title": mixin_obj['title'],
+                "title": name or mixin_obj['title'],
                 "description": mixin_obj['description'],
                 "meta:intendedToExtend": mixin_obj['meta:intendedToExtend'],
                 "definitions": mixin_obj.get('definitions'),
@@ -484,11 +551,10 @@ class Schema:
             from urllib import parse
             union_id = parse.quote_plus(union_id)
         path = f'/{self.container}/unions/{union_id}'
-        self.header.update({
+        privateHeader = deepcopy(self.header)
+        privateHeader.update({
             "Accept": "application/vnd.adobe.xdm-full+json; version="+str(version)})
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
-        self.header.update({
-            "Accept": "application/json"})
+        res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         return res
 
     def getXDMprofileSchema(self):
@@ -508,15 +574,14 @@ class Schema:
         path = f"/{self.container}/datatypes/"
         if kwargs.get('properties', None) is not None:
             params = {'properties': kwargs.get('properties', 'title,$id')}
-        self.header.update({
+        privateHeader = deepcopy(self.header)
+        privateHeader.update({
             "Accept": "application/vnd.adobe.xdm-id+json"})
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
-        self.header.update({
-            "Accept": "application/json"})
+        res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         data = res['results']
         page = res['_page']
         while page['next'] is not None:
-            data += self.getSchemas(start=page['next'])
+            data += self.getDataTypes(start=page['next'])
         return data
 
     def getDataType(self, dataTypeId: str = None, version: str = "1", save: bool = False):
@@ -530,12 +595,11 @@ class Schema:
         if dataTypeId.startswith('https://'):
             from urllib import parse
             dataTypeId = parse.quote_plus(dataTypeId)
-        self.header.update({
+        privateHeader = deepcopy(self.header)
+        privateHeader.update({
             "Accept": "application/vnd.adobe.xdm-full+json; version="+version})
         path = f"/{self.container}/datatypes/{dataTypeId}"
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
-        self.header.update({
-            "Accept": "application/json"})
+        res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         if save:
             aepp.saveFile(module='schema', file=res,
                           filename=res['title'], type_file='json')
@@ -574,11 +638,9 @@ class Schema:
             update_link = "-link"
         else:
             update_link = ""
-        self.header['Accept'] = f"application/vnd.adobe.xdm-v2{update_link}{update_id}+json"
-        res = self.connector.getData(self.endpoint + path,
-                            params=params, headers=self.header)
-        self.header.update({
-            "Accept": "application/json"})
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = f"application/vnd.adobe.xdm-v2{update_link}{update_id}+json"
+        res = self.connector.getData(self.endpoint + path,params=params, headers=privateHeader)
         data = res['results']
         page = res['_page']
         while page['next'] is not None:
@@ -598,10 +660,9 @@ class Schema:
         if descriptor_id is None:
             raise Exception("Require a descriptor id")
         path = f"/{self.container}/descriptors/{descriptor_id}"
-        self.header['Accept'] = f"application/vnd.adobe.xdm+json"
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
-        self.header.update({
-            "Accept": "application/json"})
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = f"application/vnd.adobe.xdm+json"
+        res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         if save:
             aepp.saveFile(module="schema", file=res,
                           filename=f'{res["@id"]}_descriptors', type_file='json')
@@ -643,10 +704,9 @@ class Schema:
         if descriptor_id is None:
             raise Exception("Require a descriptor id")
         path = f"/{self.container}/descriptors/{descriptor_id}"
-        self.header['Accept'] = f"application/vnd.adobe.xdm+json"
-        res = self.connector.deleteData(self.endpoint + path, headers=self.header)
-        self.header.update({
-            "Accept": "application/json"})
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = f"application/vnd.adobe.xdm+json"
+        res = self.connector.deleteData(self.endpoint + path, headers=privateHeader)
         return res
 
     def putDescriptor(self, descriptor_id: str = None, desc_type: str = "xdm:descriptorIdentity", sourceSchema: str = None, sourceProperty: str = None, namespace: str = None, xdmProperty: str = "xdm:code", primary: bool = False)->dict:
