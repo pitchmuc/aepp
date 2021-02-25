@@ -214,3 +214,90 @@ However, this is part of another API and I will recommend you to read the [mappe
 ### Creating a Flow
 
 Once you have finalized your Source, Target and Mapper service, you can combine all of them into a Flow that will serve as a pipeline for your data into or out of AEP.\
+In order to create a flow, you need to first retrieve the different flowSpec ID and select the one associated with your flow.\
+You can realize that with the `getFlowSpecs` method of the module.\
+At the moment of that writing, it will provide you with these different options:
+
+```python
+flowSpecs = flw.getFlowSpecs()
+[spec['name'] for spec in flowSpecs]
+## output
+['AudienceManagerToPlatform',
+ 'MockCloudStorage',
+ 'Analytics Classification Flow Spec',
+ 'OdiToAEP',
+ 'CloudStorageToAEP',
+ 'CRMToAEP',
+ 'FileUpload',
+ 'BizibleToPlatform',
+ 'BifrostFlowSpec',
+ 'dataset_to_ups',
+ 'dataset_to_uis',
+ 'Launch Flow Spec',
+ 'Mapper POC',
+ 'Live Streaming Flow',
+ 'Mapper POC Backfill Flow',
+ 'Backfill Flow',
+ 'UPStoGoogleDBM',
+ 'UPStoAppNexus',
+ 'UPStoProfileBasedDestination',
+ 'UPStoTradeDesk',
+ 'UPS to Mapper based Self Service Destination',
+ 'UPStoExactTargetFile',
+ 'UPStoSegmentBasedDestination',
+ 'DataLakeToOdiDestination',
+ 'UPStoGoogleMock',
+ 'upsToCampaign',
+ 'UPStoFacebookAudiences',
+ 'UPStoEloquaFile',
+ 'UPStoResponsysFile',
+ 'UPStoMicrosoftBing',
+ 'Stream data without transformation',
+ 'Steam data with transformation',
+ 'Stream data with optional transformation',
+ 'MarketoToPlatform']
+```
+
+You can see that there is some flowSpec with mapping and without mapping.\
+Be mindful on the one you select.
+
+By selecting the correct ID attached to your flow specification, you can then create the following object.\
+
+```python
+flowObj = {
+    "name": "Test Flow",
+    "description": "",
+    "flowSpec": {
+        "id": "<flowSpecId>",
+        "version": "1.0"
+    },
+    "sourceConnectionIds": [
+        "<sourceConnectionIds>"
+    ],
+    "targetConnectionIds": [
+        "<targetConnectionIds>"
+    ],
+    "transformations": [
+    {
+      "name": "Mapping",
+      "params": {
+        "mappingId": "<mappingId>",
+        "mappingVersion": "0"
+      }
+    }
+  ],
+  ,
+  "scheduleParams": {
+    "startTime": 1590091157,
+    "frequency": "minute",
+    "interval": "15",
+    "backfill": "true"
+  }
+}
+```
+
+You can then use it on the `createFlow` method or use only the parameters if you prefer.
+
+```python
+myFlow = flw.createFlow(flowObj)
+```

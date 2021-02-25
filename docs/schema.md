@@ -94,3 +94,25 @@ The descriptors methods are important as they are setting which elements of your
 These identities are important to build the data model on AEP for the Unified Profile setup.\
 In addition to these identities, you need to enable the schema for unified profile.
 
+## Use Cases
+
+The module has some additional methods available to help you deal with schemas.\
+
+### Copying a mixin for ingestion
+
+The use-case was to be able to re-use an existing schema in a different sandbox or experience cloud in an easy manner.\
+We all know that the API can help us with it but it can still be cumbersome to prepare the object for that.
+
+The module provide a `copyMixin` capability that will trim down the object to the format needed for the `createMixin` method.\
+This method takes 3 arguments:
+* mixin : REQUIRED : the object retrieved from the getMixin.
+* name : OPTIONAL : rename your mixin if you want (if None, it will take the same name)
+* tenantId : OPTIONAL : if you want to change the tenantId (if None, it will take the same tenant)
+
+### Creating ExperienceEvent and Profile Schema
+
+I have included pre-made call for creating ExperienceEvent and IndividualProfile Schema.\
+For these simplified methods, you would need to pass 2 required parameters, an additional one can be passed.
+* name : REQUIRED : Name of your schema
+* mixinIds : REQUIRED : List of mixins $id to create the schema
+* description : OPTIONAL : Schema description

@@ -90,12 +90,20 @@ aepp.importConfigFile('myConfig_file.json')
 
 from aepp import schema
 
-mySchemaCon = schema.Schema()
+mySchemaInstance = schema.Schema()
 
 ```
 
 This works exactly the same for all of the sub modules mentioned in the [README page](../README.md).
-Note the queryservice and privacyservice exception mentioned on the README.
+Note the queryservice and privacyservice have exceptions mentioned on the README.
+
+The idea to have a class instanciated for each submodule has been made in order to allow to work with several sandboxes (or organization) in the same environment.\
+You can always access the sandbox used by using the instance `sandbox` attribute.\
+Following the previous example:
+
+```python
+mySchemaInstance.sandbox ## will return which sandbox is configured in that environment.
+```
 
 ### Help
 

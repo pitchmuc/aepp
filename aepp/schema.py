@@ -272,7 +272,7 @@ class Schema:
         Create an ExperienceEvent schema based on the list mixin ID provided.
         Arguments:
             name : REQUIRED : Name of your schema
-            mixinIds : REQUIRED : List of mixins $id to create the schema on
+            mixinIds : REQUIRED : List of mixins $id to create the ExperienceEvent schema 
             description : OPTIONAL : Schema description
         """
         if name is None:
@@ -296,7 +296,7 @@ class Schema:
         Create an IndividualProfile schema based on the list mixin ID provided.
         Arguments:
             name : REQUIRED : Name of your schema
-            mixinIds : REQUIRED : List of mixins $id to create the schema on
+            mixinIds : REQUIRED : List of mixins $id to create the Indiviudal Profile schema 
             description : OPTIONAL : Schema description
         """
         if name is None:
@@ -435,8 +435,8 @@ class Schema:
         Copy the dictionary returned by getMixin to the only required elements for copying it over.
         Arguments:
             mixin : REQUIRED : the object retrieved from the getMixin.
-            tenantId : OPTIONAL : if you want to change the tenantId
-            name : OPTIONAL : rename your mixin
+            tenantId : OPTIONAL : if you want to change the tenantId (if None doesn't rename)
+            name : OPTIONAL : rename your mixin (if None, doesn't rename it)
         """
         if mixin is None:
             raise ValueError("Require a mixin  object")
