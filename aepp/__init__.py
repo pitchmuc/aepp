@@ -1,10 +1,13 @@
 
 # Internal Library
-from aepp import modules
 from aepp import config
 from aepp import connector
 from .configs import *
 from .__version__ import __version__
+## other libraries
+from copy import deepcopy
+from pathlib import Path
+import json
 connection = None
 
 def home(product: str = None, limit: int = 50):
@@ -18,7 +21,7 @@ def home(product: str = None, limit: int = 50):
     connection = connector.AdobeRequest(config_object=config.config_object,header=config.header)
     endpoint = config.endpoints['global']+"/data/core/xcore/"
     params = {"product": product, "limit": limit}
-    myHeader = modules.deepcopy(connection.header)
+    myHeader = deepcopy(connection.header)
     myHeader["Accept"] = "application/vnd.adobe.platform.xcore.home.hal+json"
     res = connection.getData(endpoint, params=params, headers=myHeader)
     return res
@@ -37,18 +40,18 @@ def saveFile(module: str = None, file: object = None, filename: str = None, type
         raise ValueError("Require the module to create a folder")
     if file is None or filename is None:
         raise ValueError("Require a object for file and a name for the file")
-    here = modules.Path(modules.Path.cwd())
+    here = Path(Path.cwd())
     folder = module.capitalize()
-    new_location = modules.Path.joinpath(here, folder)
+    new_location = Path.joinpath(here, folder)
     if new_location.exists() == False:
         new_location.mkdir()
     if type_file == 'json':
         filename = f"{filename}.json"
-        complete_path = modules.Path.joinpath(new_location, filename)
+        complete_path = Path.joinpath(new_location, filename)
         with open(complete_path, 'w') as f:
-            f.write(modules.json.dumps(file, indent=4))
+            f.write(json.dumps(file, indent=4))
     else:
         filename = f"{filename}.txt"
-        complete_path = modules.Path.joinpath(new_location, filename)
+        complete_path = Path.joinpath(new_location, filename)
         with open(complete_path, 'w') as f:
             f.write(file)

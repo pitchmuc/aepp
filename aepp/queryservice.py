@@ -1,8 +1,8 @@
 # Internal Library
 import aepp
 from aepp import config
-from aepp import modules
 from aepp import connector
+import pandas as pd
 from pg import DB
 
 
@@ -474,7 +474,7 @@ class InteractiveQuery:
         elif output == "dataframe":
             data = query.getresult()
             columns = query.listfields()
-            df = aepp.modules.pd.DataFrame(data, columns=columns)
+            df = pd.DataFrame(data, columns=columns)
             return df
         else:
             raise KeyError("You didn't specify a correct value.")
@@ -485,5 +485,5 @@ class InteractiveQuery:
         """
         data = query.getresult()
         columns = query.listfields()
-        df = aepp.modules.pd.DataFrame(data, columns=columns)
+        df = pd.DataFrame(data, columns=columns)
         return df

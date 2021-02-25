@@ -1,5 +1,6 @@
 import aepp
 from aepp import connector
+from copy import deepcopy
 
 class Identity:
     """
@@ -170,7 +171,7 @@ class Identity:
             id_value : OPTIONAL : ID of the customer in given namespace.
             graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
         """
-        temp_header = aepp.modules.deepcopy(self.header)
+        temp_header = deepcopy(self.header)
         temp_header['Accept'] = "application/vnd.adobe.identity+json;version=1.2"
         temp_header['x-uis-cst-ctx'] = "stub"
         path = "/identity/cluster/members"
@@ -198,7 +199,7 @@ class Identity:
             version : OPTIONAL : Version of the clusterMembers (default 1.0)
             graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
         """
-        temp_header = aepp.modules.deepcopy(self.header)
+        temp_header = deepcopy(self.header)
         temp_header['Accept'] = "application/vnd.adobe.identity+json;version=1.2"
         temp_header['x-uis-cst-ctx'] = "stub"
         path = "/identity/cluster/members"
@@ -222,7 +223,7 @@ class Identity:
             id_value : OPTIONAL : ID of the customer in given namespace.
             graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
         """
-        temp_header = aepp.modules.deepcopy(self.header)
+        temp_header = deepcopy(self.header)
         temp_header['Accept'] = "application/vnd.adobe.identity+json;version=1.2"
         temp_header['x-uis-cst-ctx'] = "stub"
         path = "/identity/cluster/history"
@@ -254,7 +255,7 @@ class Identity:
             graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
             targetNs : OPTIONAL : The namespace you want to get the mappings from.
         """
-        temp_header = aepp.modules.deepcopy(self.header)
+        temp_header = deepcopy(self.header)
         temp_header['Accept'] = "application/vnd.adobe.identity+json;version=1.2"
         temp_header['x-uis-cst-ctx'] = "stub"
         path = "/identity/mapping"
@@ -282,7 +283,7 @@ class Identity:
         Arguments:
 
         """
-        temp_header = aepp.modules.deepcopy(self.header)
+        temp_header = deepcopy(self.header)
         temp_header['Accept'] = "application/vnd.adobe.identity+json;version=1.2"
         temp_header['x-uis-cst-ctx'] = "stub"
         path = "/identity/mapping"

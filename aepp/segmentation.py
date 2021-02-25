@@ -2,6 +2,7 @@
 import aepp
 from aepp import connector
 import time
+from concurrent import futures
 
 class Segmentation:
 
@@ -53,7 +54,7 @@ class Segmentation:
             list_parameters = [{'page': str(
                 x), **params} for x in range(2, total_pages+1)]
             urls = [self.endpoint+path for x in range(2, total_pages+1)]
-            with aepp.modules.futures.ThreadPoolExecutor(max_workers) as executor:
+            with futures.ThreadPoolExecutor(max_workers) as executor:
                 res = executor.map(lambda x, y: self.connector.getData(
                     x, params=y), urls, list_parameters)
             res = list(res)
