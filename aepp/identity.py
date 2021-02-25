@@ -22,6 +22,7 @@ class Identity:
         self.connector = connector.AdobeRequest(config_object=config, header=header)
         self.header = self.connector.header
         self.header.update(**kwargs)
+        self.sandbox = self.connector.config['sandbox']
         self.endpoint = f"https://platform-{region}.adobe.io" + \
             aepp.config.endpoints["identity"]
 

@@ -17,6 +17,7 @@ class FlowService:
         self.connector = connector.AdobeRequest(config_object=config, header=header)
         self.header = self.connector.header
         self.header.update(**kwargs)
+        self.sandbox = self.connector.config['sandbox']
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["flow"]
     
 
@@ -247,10 +248,6 @@ class FlowService:
             raise KeyError("missing 'sourceConnectionIds' parameter in the dictionary")
         if "targetConnectionIds" not in obj.keys():
             raise KeyError("missing 'targetConnectionIds' parameter in the dictionary")
-        if "transformations" not in obj.keys():
-            raise KeyError("missing 'transformations' parameter in the dictionary")
-        if "scheduleParams" not in obj.keys():
-            raise KeyError("missing 'scheduleParams' parameter in the dictionary")
         path:str = "/flows"
         res:dict = self.connector.postData(self.endpoint + path, data=obj)
         return res

@@ -19,6 +19,7 @@ class Mapping:
         self.connector = connector.AdobeRequest(config_object=config, header=header)
         self.header = self.connector.header
         self.header.update(**kwargs)
+        self.sandbox = self.connector.config['sandbox']
         # same endpoint than segmentation
         self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["mapping"]
     

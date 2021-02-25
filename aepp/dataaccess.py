@@ -14,6 +14,7 @@ class DataAccess:
         self.connector = connector.AdobeRequest(config_object=config, header=header)
         self.header = self.connector.header
         self.header.update(**kwargs)
+        self.sandbox = self.connector.config['sandbox']
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["dataaccess"]
 
     def getBatchFiles(self,batchId:str=None,**kwargs)->list:

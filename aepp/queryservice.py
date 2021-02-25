@@ -72,6 +72,7 @@ class QueryService:
         self.header = self.connector.header
         #self.header.update({"Accept": "application/json"})
         self.header.update(**kwargs)
+        self.sandbox = self.connector.config['sandbox']
         self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["query"]
         self.TEMPLATES = {
             'post': {

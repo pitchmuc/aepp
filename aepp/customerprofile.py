@@ -20,6 +20,7 @@ class Profile:
         self.header = self.connector.header
         self.header['Accept'] = "application/vnd.adobe.xdm+json"
         self.header.update(**kwargs)
+        self.sandbox = self.connector.config['sandbox']
         # same endpoint than segmentation
         self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["segmentation"]
 

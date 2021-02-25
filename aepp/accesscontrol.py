@@ -16,6 +16,7 @@ class AccessControl:
             header options
         """
         self.connector = connector.AdobeRequest(config_object=config, header=header)
+        self.sandbox = self.connector.config['sandbox']
         self.header = self.connector.header
         self.header.update(**kwargs)
         self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["access"]

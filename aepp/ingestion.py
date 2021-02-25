@@ -17,8 +17,9 @@ class DataIngestion:
         self.connector = connector.AdobeRequest(config_object=config, header=header)
         self.header = self.connector.header
         self.header.update(**kwargs)
+        self.sandbox = self.connector.config['sandbox']
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["ingestion"]
-        self.endpoint_streaming = aepp.config.endpoints["global"] + aepp.config.endpoints["streaming"]["collection"]
+        self.endpoint_streaming = aepp.config.endpoints["streaming"]["collection"]
         self.STREAMING_REFERENCE = {
             "header": {
                 "schemaRef": {

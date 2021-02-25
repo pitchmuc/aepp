@@ -20,6 +20,7 @@ class Sensei:
         self.header = self.connector.header
         self.header['Accept'] = "application/vnd.adobe.platform.sensei+json;profile=mlInstanceListing.v1.json"
         self.header.update(**kwargs)
+        self.sandbox = self.connector.config['sandbox']
         self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["sensei"]
 
     def getEngines(self, limit: int = 25, **kwargs)->list:

@@ -35,11 +35,13 @@ class AdobeRequest:
             if 'aepScope' in kwargs.keys() and "privacyScope" in kwargs.keys():
                 token_with_expiry = self.get_token_and_expiry_for_config(config=self.config, verbose=verbose,aepScope=kwargs.get('aepScope'),privacyScope=kwargs.get('privacyScope'))
                 self.token = token_with_expiry['token']
+                self.config['token'] = self.token
                 self.config['date_limit'] = time.time() + token_with_expiry['expiry'] / 1000 - 500
                 self.header.update({'Authorization': f'Bearer {self.token}'})
             else:
                 token_with_expiry = self.get_token_and_expiry_for_config(config=self.config, verbose=verbose,aepScope=kwargs.get('aepScope'),privacyScope=kwargs.get('privacyScope'))
                 self.token = token_with_expiry['token']
+                self.config['token'] = self.token
                 self.config['date_limit'] = time.time() + token_with_expiry['expiry'] / 1000 - 500
                 self.header.update({'Authorization': f'Bearer {self.token}'})
     
@@ -96,18 +98,19 @@ class AdobeRequest:
         response = requests.post(config['tokenEndpoint'], headers=header_jwt, data=payload)
         json_response = response.json()
         try:
-            token = json_response['access_token']
+            self.token = json_response['access_token']
+            self.config["token"] = self.token
         except KeyError:
             print('Issue retrieving token')
             print(json_response)
         expiry = json_response['expires_in'] -500
         if save:
             with open('token.txt', 'w') as f:
-                f.write(token)
+                f.write(self.token)
             print(f'token has been saved here: {os.getcwd()}{os.sep}token.txt')
         if verbose:
             print('token valid till : ' + time.ctime(time.time() + expiry / 1000))
-        return {'token': token, 'expiry': expiry}
+        return {'token': self.token, 'expiry': expiry}
 
 
     def _get_jwt(self,payload: dict, private_key: str) -> str:
@@ -126,9 +129,9 @@ class AdobeRequest:
         now = time.time()
         if now > self.config['date_limit']:
             token_with_expiry = self.get_token_and_expiry_for_config(config=self.config)
-            token = token_with_expiry['token']
-            self.config['token'] = token
-            self.header.update({'Authorization': f'Bearer {token}'})
+            self.token = token_with_expiry['token']
+            self.config['token'] = self.token
+            self.header.update({'Authorization': f'Bearer {self.token}'})
             self.config['date_limit'] = time.time() + token_with_expiry['expiry'] / 1000 - 500
     
     def updateSandbox(self,sandbox:str)->None:
