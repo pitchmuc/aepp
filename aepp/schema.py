@@ -282,8 +282,8 @@ class Schema:
         """
         if name is None:
             raise ValueError("Require a name")
-        if mixinIds is None or type(mixinIds) != dict:
-            raise ValueError("Require a dictionary for mixin ids")
+        if mixinIds is None:
+            raise ValueError("Require a mixin ids")
         obj = {
             'title': name,
             'description' : description,
@@ -317,8 +317,8 @@ class Schema:
         """
         if name is None:
             raise ValueError("Require a name")
-        if mixinIds is None or type(mixinIds) != dict:
-            raise ValueError("Require a dictionary for mixin ids")
+        if mixinIds is None:
+            raise ValueError("Require mixin ids")
         obj = {
             'title': name,
             'description' : description,

@@ -111,8 +111,9 @@ This method takes 3 arguments:
 
 ### Creating ExperienceEvent and Profile Schema
 
-I have included pre-made call for creating ExperienceEvent and IndividualProfile Schema.\
-For these simplified methods, you would need to pass 2 required parameters, an additional one can be passed.
+I have included pre-made call for creating ExperienceEvents and IndividualProfile class in Schema.\
+For these simplified methods, you would need to pass 2 required parameters, an additional one can also be passed.
 * name : REQUIRED : Name of your schema
-* mixinIds : REQUIRED : List of mixins $id to create the schema
+* mixinIds : REQUIRED : List of mixins $id to create the schema or a dictionary giving the mixin $id and the type you want to create (object or array)
+    example of value `{"$id1":"object","$id2":"array"}` or `["$id1","$id2"]`
 * description : OPTIONAL : Schema description
