@@ -3,6 +3,7 @@ import aepp
 from dataclasses import dataclass
 from aepp import connector
 from copy import deepcopy
+from typing import Union
 
 json_extend = [{'op': 'replace',
                 'path': '/meta:intendedToExtend',
@@ -14,10 +15,12 @@ json_extend = [{'op': 'replace',
 class _Data:
 
     def __init__(self):
+        self.schemas = {}
         self.schemas_id = {}
         self.schemas_altId = {}
-        self.mixin_id = {}
-        self.schemas_altId = {}
+        self.mixins_id = {}
+        self.mixins_altId = {}
+        self.mixins = {}
 
 
 class Schema:
@@ -267,18 +270,20 @@ class Schema:
                              headers=self.header, data=schema)
         return res
     
-    def createExperienceEventSchema(self,name:str=None,mixinIds:list=None,description:str="")->dict:
+    def createExperienceEventSchema(self,name:str=None,mixinIds:Union[list,dict]=None,description:str="")->dict:
         """
         Create an ExperienceEvent schema based on the list mixin ID provided.
         Arguments:
             name : REQUIRED : Name of your schema
-            mixinIds : REQUIRED : List of mixins $id to create the ExperienceEvent schema 
+            mixinIds : REQUIRED : dict of mixins $id and their type ["object" or "array"] to create the ExperienceEvent schema 
+                Example {'mixinId1':'object','mixinId2':'array'}
+                if just a list is passed, it infers a 'object type'
             description : OPTIONAL : Schema description
         """
         if name is None:
             raise ValueError("Require a name")
-        if mixinIds is None or type(mixinIds) != list:
-            raise ValueError("Require a list for mixin ids")
+        if mixinIds is None or type(mixinIds) != dict:
+            raise ValueError("Require a dictionary for mixin ids")
         obj = {
             'title': name,
             'description' : description,
@@ -286,23 +291,34 @@ class Schema:
                 'type': 'object',
                 'meta:xdmType': 'object'}]
             }
-        for mixin in mixinIds:
-            obj['allOf'].append({'$ref':mixin})
+        if type(mixinIds) == list:
+            for mixin in mixinIds:
+                obj['allOf'].append({'$ref':mixin,'type': 'object','meta:xdmType': 'object'})
+        if type(mixinIds) == dict:
+            for mixin in mixinIds:
+                    if mixinIds[mixin] == 'array':
+                        subObj = {'$ref':mixin,'type': mixinIds[mixin],'meta:xdmType': mixinIds[mixin],"items":{'$ref':mixin}}
+                        obj['allOf'].append(subObj)
+                    else:
+                        subObj = {'$ref':mixin,'type': mixinIds[mixin],'meta:xdmType': mixinIds[mixin]}
+                        obj['allOf'].append(subObj)
         res = self.createSchema(obj)
         return res
     
-    def createProfileSchema(self,name:str=None,mixinIds:list=None,description:str="")->dict:
+    def createProfileSchema(self,name:str=None,mixinIds:Union[list,dict]=None,description:str="")->dict:
         """
         Create an IndividualProfile schema based on the list mixin ID provided.
         Arguments:
             name : REQUIRED : Name of your schema
-            mixinIds : REQUIRED : List of mixins $id to create the Indiviudal Profile schema 
+            mixinIds : REQUIRED : List of mixins $id to create the Indiviudal Profile schema
+                Example {'mixinId1':'object','mixinId2':'array'}
+                if just a list is passed, it infers a 'object type'
             description : OPTIONAL : Schema description
         """
         if name is None:
             raise ValueError("Require a name")
-        if mixinIds is None or type(mixinIds) != list:
-            raise ValueError("Require a list for mixin ids")
+        if mixinIds is None or type(mixinIds) != dict:
+            raise ValueError("Require a dictionary for mixin ids")
         obj = {
             'title': name,
             'description' : description,
@@ -310,8 +326,17 @@ class Schema:
                 'type': 'object',
                 'meta:xdmType': 'object'}]
             }
-        for mixin in mixinIds:
-            obj['allOf'].append({'$ref':mixin})
+        if type(mixinIds) == list:
+            for mixin in mixinIds:
+                obj['allOf'].append({'$ref':mixin,'type': 'object','meta:xdmType': 'object'})
+        if type(mixinIds) == dict:
+            for mixin in mixinIds:
+                    if mixinIds[mixin] == 'array':
+                        subObj = {'$ref':mixin,'type': mixinIds[mixin],'meta:xdmType': mixinIds[mixin],"items":{'$ref':mixin}}
+                        obj['allOf'].append(subObj)
+                    else:
+                        subObj = {'$ref':mixin,'type': mixinIds[mixin],'meta:xdmType': mixinIds[mixin]}
+                        obj['allOf'].append(subObj)
         res = self.createSchema(obj)
         return res
         
@@ -399,8 +424,8 @@ class Schema:
         page = res['_page']
         while page['next'] is not None:
             data += self.getMixins(start=page['next'])
-        self.data.mixin_id = {mix['title']:mix['$id'] for mix in data}
-        self.data.mixin_altId = {mix['title']:mix['meta:altId'] for mix in data}
+        self.data.mixins_id = {mix['title']:mix['$id'] for mix in data}
+        self.data.mixins_altId = {mix['title']:mix['meta:altId'] for mix in data}
         return data
 
     def getMixin(self, mixin_id: str = None, version: int = 1, full: bool = True, save: bool = False):
@@ -428,6 +453,8 @@ class Schema:
         if save:
             aepp.saveFile(module='schema', file=res,
                           filename=res['title'], type_file='json')
+        if 'title' in res.keys():
+            self.data.mixins[res['title']] = res
         return res
     
     def copyMixin(self,mixin:dict = None,tenantId:str=None,name:str=None)->dict:
