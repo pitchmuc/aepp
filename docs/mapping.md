@@ -16,7 +16,7 @@ In order to make the best of this API, it is preferred to have knowledge on how 
 
 Before importing the module, you would need to import the configuration file, or alternatively provide the information required for the API connection through the configure method. [see getting starting](./getting-started.md)
 
-To import the module you can use the import statement with the `flowservice` keyword.
+To import the module you can use the import statement with the `mapping` keyword.
 
 ```python
 import aepp
@@ -48,4 +48,59 @@ Any additional parameters in the kwargs will be updating the header content.
 
 ## Use-cases
 
-The Mapping Service is used in order to map the incoming data to match specific field expectation.\
+The Mapping Service is used in order to map the incoming data to match specific field expectation in your scchema (type / value).\
+It can be used in 2 different ways:
+
+* `text/x.schema-path` when you want to map a specific path to a new path
+* `text/x.aep-xl` when you are doing calculation or applying function on a field.
+
+### Mapping is used with Flow Service
+
+To use the mapper, you would need to attach it to a connection flow.\
+Please reference to the [FlowService documentation for this](./flowservice.md).
+
+### Create a mapping
+
+When creating a mapping you need to pass (a list of) object that will define the transformation happening to your `source` data and the `destination` of that data.\
+An empty example of mapping would be:
+
+```JSON
+MyMapping = {
+    "sourceType": "",
+    "source": "",
+    "destination": ""
+}
+```
+
+You can find this element in the `REFERENCE_MAPPING` attribute of the `Mapping` instance.\
+The different elements means the following:
+* sourceType : as explained above it can be either `text/x.schema-path` or `text/x.aep-xl`.
+* source : the path to your value
+* destination : the path of your destination (where the data should go after transformation)
+
+You can then use that object in a list and pass it to a dictionary, specifying your outputSchema reference:
+
+```JSON
+obj = {
+    "outputSchema": {
+       "schemaRef": {
+            "id": "https://ns.adobe.com/tenant/schemas/e0b7cba00da86d10c0774a337",
+            "contentType": "application/vnd.adobe.xed-full+json;version=1"
+        }
+    },
+    "mappings": [MyMapping]
+}
+```
+
+Note : In this example above, I only had one object so I pass it in a list.\
+You can pass that object directly into the `createMappingSet` method as the following:
+```python
+mapper.createMappingSet(obj,validate=True,verbose=True)
+```
+
+What can also be done is to use the optional parameter to only pass the schema `$Id` and the list of mapping.
+
+```python
+mapper.createMappingSet(schemaId="https://ns.adobe.com/tenant/schemas/e0b7cba00da86d10c0774a337",mappingList=[MyMapping],validate=True,verbose=True)
+```
+

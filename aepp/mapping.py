@@ -22,6 +22,11 @@ class Mapping:
         self.sandbox = self.connector.config['sandbox']
         # same endpoint than segmentation
         self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["mapping"]
+        self.REFERENCE_MAPPING = {
+            "sourceType": "",
+            "source": "",
+            "destination": ""
+        }
     
     def getXDMBatchConversions(self,dataSetId:str=None,prop:str=None,batchId:str=None,status:str=None,limit:int=100)->dict:
         """
@@ -197,7 +202,7 @@ class Mapping:
         res = self.connector.deleteData(self.endpoint+path)
         return res
 
-    def createMappingSet(self,mappingSet:dict=None,validate:bool=False,verbose:bool=False)->dict:
+    def createMappingSet(self,mappingSet:dict=None,schemaId:str=None,mappingList:list=None,validate:bool=False,verbose:bool=False)->dict:
         """
         Create a mapping set.
         Arguments:
@@ -206,10 +211,22 @@ class Mapping:
             validate : OPTIONAL : Validate the mapping.
         """
         path = "/mappingSets"
-        if mappingSet is None or type(mappingSet) != dict:
-            raise ValueError("Require a dictionary as mapping set")
         params = {'validate':validate}
-        res = self.connector.postData(self.endpoint + path,params=params,data=mappingSet,verbose=verbose)
+        if (mappingSet is None or type(mappingSet) != dict) and (schemaId is None and mappingList is None):
+            raise ValueError("Require a dictionary as mapping set or some schema reference ID and a mapping list")
+        if mappingSet is not None:
+            res = self.connector.postData(self.endpoint + path,params=params,data=mappingSet,verbose=verbose)
+        elif schemaId is not None and mappingList is not None:
+            obj = {
+                "outputSchema": {
+                "schemaRef": {
+                        "id": schemaId,
+                        "contentType": "application/vnd.adobe.xed-full+json;version=1"
+                    }
+                },
+                "mappings": mappingList
+                }
+            res = self.connector.postData(self.endpoint + path,params=params,data=obj,verbose=verbose)
         return res
     
     def updateMappingSet(self,mappingSetId:str=None,mappingSet:dict=None)->dict:

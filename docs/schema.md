@@ -117,3 +117,10 @@ For these simplified methods, you would need to pass 2 required parameters, an a
 * mixinIds : REQUIRED : List of mixins $id to create the schema or a dictionary giving the mixin $id and the type you want to create (object or array)
     example of value `{"$id1":"object","$id2":"array"}` or `["$id1","$id2"]`
 * description : OPTIONAL : Schema description
+
+### Get paths from schema
+
+One of the use-case that can be useful via schema API is to retrieve the different possible paths that you have created.\
+The possible path can be used for Query Service or for Mapping service.\
+The module provide a method `getSchemaPaths` that returns a list of the paths available.\
+It takes the schemaId as parameter.
