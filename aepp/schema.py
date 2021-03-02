@@ -35,11 +35,11 @@ class Schema:
         "profile": "https://ns.adobe.com/xdm/context/profile"
     }
 
-    def __init__(self, container_id: str = "tenant",config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+    def __init__(self, containerId: str = "tenant",config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
         """
         Copy the token and header and initiate the object to retrieve schema elements.
         Arguments:
-            container_id : OPTIONAL : "tenant"(default) or "global"
+            containerId : OPTIONAL : "tenant"(default) or "global"
             config : OPTIONAL : config object in the config module. 
             header : OPTIONAL : header object  in the config module. 
         possible kwargs:
@@ -51,7 +51,7 @@ class Schema:
         self.header.update(**kwargs)
         self.sandbox = self.connector.config['sandbox']
         self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["schemas"]
-        self.container = container_id
+        self.container = containerId
         self.data = _Data()
 
     def updateSandbox(self,sandbox:str=None)->None:
@@ -118,24 +118,33 @@ class Schema:
         self.data.schemas_altId = {schem['title']:schem['meta:altId'] for schem in data}
         return data
 
-    def getSchema(self, schema_id: str = None, version: int = 1, save: bool = False, full: bool = True, desc: bool = False, schema_type: str = 'xdm', **kwargs)->dict:
+    def getSchema(self, 
+                schemaId: str = None, 
+                version: int = 1, 
+                full: bool = True, 
+                desc: bool = False, 
+                schema_type: str = 'xdm',
+                flat:bool=False, 
+                save: bool = False,
+                **kwargs)->dict:
         """
         Get the Schema. Requires a schema id.
         Response provided depends on the header set, you can change the Accept header with kwargs.
         Arguments:
-            schema_id : REQUIRED : $id or meta:altId
+            schemaId : REQUIRED : $id or meta:altId
             version : OPTIONAL : Version of the Schema asked (default 1)
-            save : OPTIONAL : save the result in json file (default False)
             full : OPTIONAL : True (default) will return the full schema.False just the relationships.
             desc : OPTIONAL : If set to True, return the identity used as the descriptor.
-            schema_type : OPTIONAL : set the type of output you want (xdm or xed) Default : xdm. 
+            flat : OPTIONAL : If set to True, return a flat schema for pathing.
+            schema_type : OPTIONAL : set the type of output you want (xdm or xed) Default : xdm.
+            save : OPTIONAL : save the result in json file (default False)
         Possible kwargs:
             Accept : Accept header to change the type of response.
             # /Schemas/lookup_schema
             more details held here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
-        if schema_id is None:
-            raise Exception("Require a schema_id as a parameter")
+        if schemaId is None:
+            raise Exception("Require a schemaId as a parameter")
         if full:
             update_full = "-full"
         else:
@@ -144,17 +153,22 @@ class Schema:
             update_desc = "-desc"
         else:
             update_desc = ""
+        if flat:
+            update_flat = "-flat"
+        else:
+            update_flat = ""
+        
         if schema_type != 'xdm' and schema_type != 'xed':
             raise ValueError("schema_type parameter can only be xdm or xed")
-        accept_update = f"application/vnd.adobe.{schema_type}{update_full}{update_desc}+json; version={version}"
+        accept_update = f"application/vnd.adobe.{schema_type}{update_full}{update_desc}{update_flat}+json; version={version}"
         self.header["Accept"] = accept_update
         if kwargs.get('Accept', None) is not None:
             self.header['Accept'] = kwargs.get('Accept', self.header['Accept'])
         self.header['Accept-Encoding'] = 'identity'
-        if schema_id.startswith('https://'):
+        if schemaId.startswith('https://'):
             from urllib import parse
-            schema_id = parse.quote_plus(schema_id)
-        path = f'/{self.container}/schemas/{schema_id}'
+            schemaId = parse.quote_plus(schemaId)
+        path = f'/{self.container}/schemas/{schemaId}'
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         del self.header['Accept-Encoding']
         if "title" not in res.keys() and 'notext' not in self.header['Accept']:
@@ -170,7 +184,20 @@ class Schema:
             print("no title in the response. Not saved in the data object.")
         return res
 
-    def getSchemaSample(self, schema_id: str = None, save: bool = False, version: int = 1) -> dict:
+    def getSchemaPaths(self,schemaId:str)->list:
+        """
+        Returns a list of the path available in your schema. BETA.
+        Arguments:
+            schemaId : REQUIRED : The schema you want to retrieve the paths for
+        """
+        if schemaId is None:
+            raise Exception("Require a schemaId as a parameter")
+        res = self.getSchema(schemaId,flat=True)
+        keys = res['properties'].keys()
+        paths = [key.replace('/','.').replace('xdm:','').replace('@','_') for key in keys]
+        return paths
+
+    def getSchemaSample(self, schemaId: str = None, save: bool = False, version: int = 1) -> dict:
         """
         Generate a sample data from a schema id.
         Arguments:
@@ -179,23 +206,23 @@ class Schema:
         """
         import random
         rand_number = random.randint(1, 10e10)
-        if schema_id is None:
+        if schemaId is None:
             raise Exception("Require an ID for the schema")
-        if schema_id.startswith('https://'):
+        if schemaId.startswith('https://'):
             from urllib import parse
-            schema_id = parse.quote_plus(schema_id)
-        path = f'/rpc/sampledata/{schema_id}'
+            schemaId = parse.quote_plus(schemaId)
+        path = f'/rpc/sampledata/{schemaId}'
         accept_update = f"application/vnd.adobe.xed+json; version={version}"
         self.header["Accept"] = accept_update
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         if save:
-            schema = self.getSchema(schema_id=schema_id, full=False)
+            schema = self.getSchema(schema_id=schemaId, full=False)
             aepp.saveFile(module='schema', file=res,
                           filename=f"{schema['title']}_{rand_number}", type_file='json')
         self.header['Accept'] = "application/json"
         return res
 
-    def patchSchema(self, schema_id: str = None, changes: list = None, **kwargs)->dict:
+    def patchSchema(self, schemaId: str = None, changes: list = None, **kwargs)->dict:
         """
         Enable to patch the Schema with operation.
         Arguments:
@@ -203,40 +230,40 @@ class Schema:
             change : REQUIRED : List of changes that need to take place.
         information : http://jsonpatch.com/
         """
-        if schema_id is None:
+        if schemaId is None:
             raise Exception("Require an ID for the schema")
         if type(changes) == dict:
             changes = list(changes)
-        if schema_id.startswith('https://'):
+        if schemaId.startswith('https://'):
             from urllib import parse
-            schema_id = parse.quote_plus(schema_id)
-        path = f'/{self.container}/schemas/{schema_id}'
+            schemaId = parse.quote_plus(schemaId)
+        path = f'/{self.container}/schemas/{schemaId}'
         res = self.connector.patchData(self.endpoint+path,
                               data=changes, headers=self.header)
         return res
 
-    def putSchema(self, schema_id: str = None, changes: dict = None, **kwargs)->dict:
+    def putSchema(self, schemaId: str = None, changes: dict = None, **kwargs)->dict:
         """
         A PUT request essentially re-writes the schema, therefore the request body must include all fields required to create (POST) a schema.
         This is especially useful when updating a lot of information in the schema at once.
         Arguments:
-            schema_id : REQUIRED : $id or meta:altId
+            schemaId : REQUIRED : $id or meta:altId
             change : REQUIRED : dictionary of the new schema.
             It requires a allOf list that contains all the attributes that are required for creating a schema.
             #/Schemas/replace_schema
             More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
-        path = f'/{self.container}/schemas/{schema_id}'
-        if schema_id is None:
+        path = f'/{self.container}/schemas/{schemaId}'
+        if schemaId is None:
             raise Exception("Require an ID for the schema")
-        if schema_id.startswith('https://'):
+        if schemaId.startswith('https://'):
             from urllib import parse
-            schema_id = parse.quote_plus(schema_id)
+            schemaId = parse.quote_plus(schemaId)
         res = self.connector.putData(self.endpoint+path,
                             data=changes, headers=self.header)
         return res
 
-    def deleteSchema(self, schema_id: str = None, **kwargs)->str:
+    def deleteSchema(self, schemaId: str = None, **kwargs)->str:
         """
         Delete the request
         Arguments:
@@ -245,12 +272,12 @@ class Schema:
             #/Schemas/replace_schema
             More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
-        if schema_id is None:
+        if schemaId is None:
             raise Exception("Require an ID for the schema")
-        if schema_id.startswith('https://'):
+        if schemaId.startswith('https://'):
             from urllib import parse
-            schema_id = parse.quote_plus(schema_id)
-        path = f'/{self.container}/schemas/{schema_id}'
+            schemaId = parse.quote_plus(schemaId)
+        path = f'/{self.container}/schemas/{schemaId}'
         res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
@@ -365,24 +392,24 @@ class Schema:
             data += self.getClasses(start=page['next'])
         return data
 
-    def getClass(self, class_id: str = None, full: bool = True, version: int = 1, save: bool = False):
+    def getClass(self, classId: str = None, full: bool = True, version: int = 1, save: bool = False):
         """
         Return a specific class.
         Arguments: 
-            class_id : REQUIRED : the meta:altId or $id from the class
+            classId : REQUIRED : the meta:altId or $id from the class
             full : OPTIONAL : True (default) will return the full schema.False just the relationships. 
             version : OPTIONAL : the version of the class to retrieve.
         """
-        if class_id is None:
+        if classId is None:
             raise Exception("Require a class_id")
-        if class_id.startswith('https://'):
+        if classId.startswith('https://'):
             from urllib import parse
-            class_id = parse.quote_plus(class_id)
+            classId = parse.quote_plus(classId)
         self.header['Accept-Encoding'] = 'identity'
         privateHeader = deepcopy(self.header)
         privateHeader.update({
             "Accept": "application/vnd.adobe.xdm-full+json; version="+str(version)})
-        path = f'/{self.container}/classes/{class_id}'
+        path = f'/{self.container}/classes/{classId}'
         res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         if save:
             aepp.saveFile(module='schema', file=res,
@@ -428,17 +455,17 @@ class Schema:
         self.data.mixins_altId = {mix['title']:mix['meta:altId'] for mix in data}
         return data
 
-    def getMixin(self, mixin_id: str = None, version: int = 1, full: bool = True, save: bool = False):
+    def getMixin(self, mixinId: str = None, version: int = 1, full: bool = True, save: bool = False):
         """
         Returns a specific mixin.
         Arguments:
-            mixin_id : REQUIRED : meta:altId or $id
+            mixinId : REQUIRED : meta:altId or $id
             version : OPTIONAL : version of the mixin
             full : OPTIONAL : True (default) will return the full schema.False just the relationships. 
         """
-        if mixin_id.startswith('https://'):
+        if mixinId.startswith('https://'):
             from urllib import parse
-            mixin_id = parse.quote_plus(mixin_id)
+            mixinId = parse.quote_plus(mixinId)
         privateHeader = deepcopy(self.header)
         privateHeader['Accept-Encoding'] = 'identity'
         if full:
@@ -448,7 +475,7 @@ class Schema:
         update_accept = f"application/vnd.adobe.xed{accept_full}+json; version={version}"
         privateHeader.update({
             "Accept": update_accept})
-        path = f'/{self.container}/mixins/{mixin_id}'
+        path = f'/{self.container}/mixins/{mixinId}'
         res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         if save:
             aepp.saveFile(module='schema', file=res,
@@ -516,30 +543,33 @@ class Schema:
                              data=mixin_obj, headers=self.header)
         return res
 
-    def deleteMixin(self, mixin_id: str = None):
+    def deleteMixin(self, mixinId: str = None):
         """
         Arguments:
-            schema_id : meta:altId or $id
+            mixinId : meta:altId or $id
         """
-        if mixin_id is None:
+        if mixinId is None:
             raise Exception("Require an ID")
-        if mixin_id.startswith('https://'):
+        if mixinId.startswith('https://'):
             from urllib import parse
-            mixin_id = parse.quote_plus(mixin_id)
-        path = f'/{self.container}/mixins/{mixin_id}'
+            mixinId = parse.quote_plus(mixinId)
+        path = f'/{self.container}/mixins/{mixinId}'
         res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
-    def updateMixin(self, mixin_id: str = None, changes: list = None):
+    def updateMixin(self, mixinId: str = None, changes: list = None):
         """
         Update the mixin with the operation described in the changes.
         Arguments:
-            schema_id : REQUIRED : meta:altId or $id
+            mixinId : REQUIRED : meta:altId or $id
             changes : REQUIRED : dictionary on what to update on that mixin.
         """
-        if mixin_id is None or changes is None:
+        if mixinId is None or changes is None:
             raise Exception("Require an ID and changes")
-        path = f'/{self.container}/mixins/{mixin_id}'
+        if mixinId.startswith('https://'):
+            from urllib import parse
+            mixinId = parse.quote_plus(mixinId)
+        path = f'/{self.container}/mixins/{mixinId}'
         if type(changes) == dict:
             changes = list(changes)
         res = self.connector.patchData(self.endpoint+path,
@@ -678,16 +708,16 @@ class Schema:
                           filename='descriptors', type_file='json')
         return data
 
-    def getDescriptor(self, descriptor_id: str = None, save: bool = False)->dict:
+    def getDescriptor(self, descriptorId: str = None, save: bool = False)->dict:
         """
         Return a specific descriptor
         Arguments:
-            descriptor_id : REQUIRED : descriptor ID to return (@id).
+            descriptorId : REQUIRED : descriptor ID to return (@id).
             save : OPTIONAL : Boolean that would save your descriptors in the schema folder. (default False)
         """
-        if descriptor_id is None:
+        if descriptorId is None:
             raise Exception("Require a descriptor id")
-        path = f"/{self.container}/descriptors/{descriptor_id}"
+        path = f"/{self.container}/descriptors/{descriptorId}"
         privateHeader = deepcopy(self.header)
         privateHeader['Accept'] = f"application/vnd.adobe.xdm+json"
         res = self.connector.getData(self.endpoint + path, headers=privateHeader)
@@ -737,11 +767,11 @@ class Schema:
         res = self.connector.deleteData(self.endpoint + path, headers=privateHeader)
         return res
 
-    def putDescriptor(self, descriptor_id: str = None, desc_type: str = "xdm:descriptorIdentity", sourceSchema: str = None, sourceProperty: str = None, namespace: str = None, xdmProperty: str = "xdm:code", primary: bool = False)->dict:
+    def putDescriptor(self, descriptorId: str = None, desc_type: str = "xdm:descriptorIdentity", sourceSchema: str = None, sourceProperty: str = None, namespace: str = None, xdmProperty: str = "xdm:code", primary: bool = False)->dict:
         """
         Replace the descriptor with the new definition. It updates the whole definition.
         Arguments:
-            descriptor_id : REQUIRED : the descriptor id to delete
+            descriptorId : REQUIRED : the descriptor id to delete
             desc_type : REQUIRED : the type of descriptor to create.(default Identity)
             sourceSchema : REQUIRED : the schema attached to your identity ()
             sourceProperty : REQUIRED : the path to the field
@@ -749,9 +779,9 @@ class Schema:
             xdmProperty : OPTIONAL : xdm code for the descriptor (default : xdm:code)
             primary : OPTIONAL : Boolean to define if it is a primary identity or not (default False).
         """
-        if descriptor_id is None:
+        if descriptorId is None:
             raise Exception("Require a descriptor id")
-        path = f"/{self.container}/descriptors/{descriptor_id}"
+        path = f"/{self.container}/descriptors/{descriptorId}"
         if sourceSchema is None or sourceProperty is None or namespace is None:
             raise Exception("Missing required arguments.")
         obj = {
