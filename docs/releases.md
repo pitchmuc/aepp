@@ -13,15 +13,15 @@ __This page will be completed once version 0.1.0 is achieved.__
     * Query Service *
     * Identity *
     * Privacy Service
-    * Sandboxes
+    * Sandboxes *
     * Segmentation *
     * Sensei
-    * Flow Service
+    * Flow Service *
     * Dule
     * Customer Profile *
     * Catalog *
     * Data Access *
-    * Mapping Service
+    * Mapping Service *
     * Datasets
     * Ingestion
 

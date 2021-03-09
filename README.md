@@ -1,7 +1,7 @@
-# Adobe Experience Platform Python Wrapper
+# Adobe Experience Platform API made for humans
 
-This repository is the work in progress AEP wrapper on python.
-It is focusing on helping accessing the different endpoint of Adobe Experience Platform API.
+This repository will document the AEP wrapper on python.
+It is focusing on helping accessing the different endpoints of Adobe Experience Platform API.
 Documentation on the different endpoints can be found here : [AEP API doc](https://www.adobe.io/apis/experienceplatform/home/api-reference.html)
 The wrapper is currently named **aepp**, it stands for Adobe Experience Platform Python.
 
@@ -19,6 +19,12 @@ The version of the wrapper can be seen by the following command (once loaded):
 import aepp
 aepp.__version__
 
+```
+
+**Consider upgrading regulary**
+
+```shell
+pip install aepp --upgrade
 ```
 
 ## Getting Started

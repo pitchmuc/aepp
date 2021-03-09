@@ -1,5 +1,6 @@
 import aepp
 from aepp import connector
+from copy import deepcopy
 
 class FlowService:
     """
@@ -182,7 +183,7 @@ class FlowService:
         res:dict = self.connector.getData(self.endpoint + path)
         return res 
 
-    def getFlows(self,limit:int=10,prop:str=None,**kwargs)->list:
+    def getFlows(self,limit:int=10,prop:str=None,filterMappingSetId:str=None,**kwargs)->list:
         """
         Returns the flows set between Source and Target connection.
         Arguments:
@@ -190,6 +191,7 @@ class FlowService:
             prop : OPTIONAL : A comma separated list of top-level object properties to be returned in the response. 
                 Used to cut down the amount of data returned in the response body. 
                 For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
+            filterMappingSetId : OPTIONAL : returns only the flow that possess this mappingSetId.
         """
         params:dict = {"limit":limit,"count":kwargs.get("count",False)}
         if property is not None:
@@ -197,13 +199,23 @@ class FlowService:
         if kwargs.get("continuationToken",False) != False:
             params['continuationToken'] = kwargs.get("continuationToken")
         path:str = "/flows"
-        res:dict = self.connector.getData(self.endpoint + path,params=params) 
+        res:dict = self.connector.getData(self.endpoint + path,params=params)
+        token:str = res['_links'].get("next",{}).get("href","")
         items = res['items']
-        if res['_links']["next"].get("href","") != "":
-            token:str = res['_links']["next"].get("href","")
+        while token != "":
             continuationToken = token.split("=")[1]
             params["continuationToken"] = continuationToken
-            items += self.connector.getData(self.endpoint + path,params=params)
+            res = self.connector.getData(self.endpoint + path,params=params)
+            token = res['_links'].get("next",{}).get("href","")
+            items += res['items']
+        if filterMappingSetId is not None:
+            filteredItems = []
+            for item in items:
+                if 'transformations' in item.keys():
+                    for element in item['transformations']:
+                        if element['params'].get('mappingId','') == filterMappingSetId:
+                            filteredItems.append(item)
+            items = filteredItems
         return items
     
     def getFlow(self,flowId:str=None)->dict:
@@ -434,9 +446,10 @@ class FlowService:
             raise Exception("Require a dictionary with data to be present")
         if "op" not in obj.keys() or "value" not in obj.keys():
             raise KeyError("Require op ")
-        params = {"if-match":etag}
+        privateHeader = deepcopy(self.header)
+        privateHeader['if-match'] = etag
         path:str = f"/sourceConnections/{sourceConnectionId}"
-        res:dict = self.connector.patchData(self.endpoint + path, params=params, data=obj)
+        res:dict = self.connector.patchData(self.endpoint + path, headers=privateHeader, data=obj)
         return res
 
 
@@ -557,7 +570,7 @@ class FlowService:
         res = self.createTargetConnection(data=targetObj)
         return res
 
-    def updateTargetConnection(self,targetConnectionId:str=None,etag:str=None,obj:dict=None)->dict:
+    def updateTargetConnection(self,targetConnectionId:str=None,etag:str=None,obj:list=None)->dict:
         """
         Update a target connection based on the ID provided with the object provided.
         Arguments:
@@ -571,9 +584,8 @@ class FlowService:
             raise Exception("Require etag to be present")
         if obj is None:
             raise Exception("Require a dictionary with data to be present")
-        if "op" not in obj.keys() or "value" not in obj.keys():
-            raise KeyError("Require op")
-        params = {"if-match":etag}
+        privateHeader = deepcopy(self.header)
+        privateHeader['if-match'] = etag
         path:str = f"/targetConnections/{targetConnectionId}"
-        res:dict = self.connector.patchData(self.endpoint + path, params=params, data=obj)
+        res:dict = self.connector.patchData(self.endpoint + path, headers=privateHeader, data=obj)
         return res

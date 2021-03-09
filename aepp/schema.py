@@ -432,9 +432,11 @@ class Schema:
                              headers=self.header, data=class_obj)
         return res
 
-    def getMixins(self, **kwargs):
+    def getMixins(self,format:str='xdm', **kwargs):
         """
         returns the mixin of the account
+        Arguments:
+            format : OPTIONAL : either "xdm" or "xed" format
         kwargs:
             debug : if set to True, will print result for errors
         """
@@ -442,9 +444,11 @@ class Schema:
         start = kwargs.get("start", 0)
         params = {"start": start}
         verbose=kwargs.get("debug", False)
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = f'application/vnd.adobe.{format}+json'
         res = self.connector.getData(self.endpoint+path,
-                            headers=self.header, params=params,verbose=verbose)
-        if kwargs.get('debug', False):
+                            headers=privateHeader, params=params,verbose=verbose)
+        if kwargs.get('verbose', False):
             if "results" not in res.keys():
                 print(res)
         data = res['results']
@@ -503,9 +507,9 @@ class Schema:
                 "description": mixin_obj['description'],
                 "meta:intendedToExtend": mixin_obj['meta:intendedToExtend'],
                 "definitions": mixin_obj.get('definitions'),
-                "allOf": mixin_obj.get('allOf',{'$ref': '#/definitions/property',
+                "allOf": mixin_obj.get('allOf',[{'$ref': '#/definitions/property',
                                                 'type': 'object',
-                                                'meta:xdmType': 'object'})
+                                                'meta:xdmType': 'object'}])
                 }
         elif 'properties' in mixin_obj.keys():
             obj = {
@@ -514,9 +518,9 @@ class Schema:
                 "description": mixin_obj['description'],
                 "meta:intendedToExtend": mixin_obj['meta:intendedToExtend'],
                 "definitions": {'property':{'properties':mixin_obj['properties'],"type":"object","['meta:xdmType']" : "object"}},
-                "allOf": mixin_obj.get('allOf',{'$ref': '#/definitions/property',
+                "allOf": mixin_obj.get('allOf',[{'$ref': '#/definitions/property',
                                                 'type': 'object',
-                                                'meta:xdmType': 'object'})
+                                                'meta:xdmType': 'object'}])
                 }
         if tenantId is not None:
             if tenantId.startswith('_') == False:

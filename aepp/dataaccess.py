@@ -17,7 +17,7 @@ class DataAccess:
         self.sandbox = self.connector.config['sandbox']
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["dataaccess"]
 
-    def getBatchFiles(self,batchId:str=None,**kwargs)->list:
+    def getBatchFiles(self,batchId:str=None,verbose:bool=False,**kwargs)->list:
         """
         List all dataset files under a batch.
         Arguments:
@@ -34,11 +34,13 @@ class DataAccess:
         if kwargs.get('start',None) is not None:
             params['start'] = str(kwargs.get('start'))
         path = f"/batches/{batchId}/files"
-        res = self.connector.getData(self.endpoint+path, headers=self.header,params=params)
-        data = res['data']
-        return data
+        res = self.connector.getData(self.endpoint+path,params=params,verbose=verbose)
+        try: 
+            return res['data']
+        except:
+            return res 
     
-    def getBatchFailed(self,batchId:str=None,path:str=None,**kwargs)->list:
+    def getBatchFailed(self,batchId:str=None,path:str=None,verbose:bool=False,**kwargs)->list:
         """
         Lists all the dataset files under a failed batch.
         Arguments:  
@@ -59,9 +61,11 @@ class DataAccess:
         if path is not None:
             params['path'] = path
         pathEndpoint = f"/batches/{batchId}/failed"
-        res = self.connector.getData(self.endpoint+pathEndpoint, headers=self.header,params=params)
-        data = res['data']
-        return data
+        res = self.connector.getData(self.endpoint+pathEndpoint,params=params,verbose=verbose)
+        try: 
+            return res['data']
+        except:
+            return res 
     
     def getBatchMeta(self,batchId:str=None,path:str=None,**kwargs)->dict:
         """
@@ -93,7 +97,7 @@ class DataAccess:
         res = self.connector.getData(self.endpoint+pathEndpoint, headers=self.header,params=params)
         return res
     
-    def getHeadFile(self,dataSetFileId:str=None,path:str=None)->dict:
+    def getHeadFile(self,dataSetFileId:str=None,path:str=None,verbose:bool=False,)->dict:
         """
         Get headers regarding a file.
         Arguments:
@@ -105,7 +109,7 @@ class DataAccess:
             raise ValueError("Require a dataSetFileId and a path for that method")
         params = {"path" : path}
         pathEndpoint = f"/files/{dataSetFileId}"
-        res = self.connector.headData(self.endpoint+pathEndpoint,params=params,headers=self.header)
+        res = self.connector.headData(self.endpoint+pathEndpoint,params=params,verbose=verbose)
         return res
 
     def getFiles(self,dataSetFileId:str=None,path:str=None,range:str=None,start:str=None,limit:int=None)->dict:
@@ -143,7 +147,19 @@ class DataAccess:
         """
         path = f"/datasets/{datasetId}/preview"
         res:dict = self.connector.getData(self.endpoint+path, headers=self.header)
-        data:list = res['data']
-        return data
+        try: 
+            return res['data']
+        except:
+            return res 
+    
+    def getResource(self,url:str=None)->object:
+        """
+        Returns a request response object based on the URL passed
+        Argument:
+            url : REQUIRED : Request URL to use
+        """
+        res = self.connector.getResource(url)
+        return res
+
     
      

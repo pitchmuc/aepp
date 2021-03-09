@@ -267,7 +267,7 @@ class AdobeRequest:
                                               data=json.dumps(data))
         elif params != None and data != None:
             res = requests.patch(endpoint, headers=headers,
-                                              params=params, data=json.dumps(data=data))
+                                              params=params, data=json.dumps(data))
         try:
             res_json = res.json()
         except:
@@ -325,6 +325,8 @@ class AdobeRequest:
                 endpoint, headers=headers, params=params)
         try:
             status_code = res.status_code
+            if status_code == 400:
+                return res.json()
         except:
             if kwargs.get('verbose',False):
                 print(res.text)

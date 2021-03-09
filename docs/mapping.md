@@ -104,3 +104,34 @@ What can also be done is to use the optional parameter to only pass the schema `
 mapper.createMappingSet(schemaId="https://ns.adobe.com/tenant/schemas/e0b7cba00da86d10c0774a337",mappingList=[MyMapping],validate=True,verbose=True)
 ```
 
+### Update a Mapping
+
+At some point, when you want to update a Mapping, the way to achieve this is to update the whole MappingSet.\
+You can then directly update the MappingSet by using the `updateMappingSet` method.
+
+```python
+updateObject = {
+  "id": "string",
+  "mappings": [
+        {
+        "sourceType": "text/x.aep-xl" or "text/x.schema-path",
+        "source": "",
+        "destination": ""
+        }
+  ],
+  "name": "string",
+  "schemaRef": {
+    "contentType": "string",
+    "id": "string"
+  },
+  "transformScript": "string",
+  "version": X
+}
+mapper.updateMappingSet('MappingId',mappingSet=updateObject)
+```
+
+### Detect where the mapping is used
+
+Detecting where your mapping is currently being used can be important if you have several mapping and data flows running.\
+However, the module doesn't support this search directly.\
+You can achieve this use-case by using the `flowservice` module.
