@@ -235,39 +235,39 @@ class DataIngestion:
         res = self.connector.getData(self.endpoint+path,params=params)
         return res
 
-    def StreamMessage(self,connectionId:str=None,data:dict=None,synchronousValidation:str=False)->dict:
+    def StreamMessage(self,inletId:str=None,data:dict=None,synchronousValidation:bool=False)->dict:
         """
         Send a dictionary to the connection for streaming ingestion.
         Arguments:
-            connectionId : REQUIRED : the connection ID to be used for ingestion
+            inletId : REQUIRED : the connection ID to be used for ingestion
             data : REQUIRED : The data that you want to ingest to Platform.
             synchronousValidation : OPTIONAL : An optional query parameter, intended for development purposes. 
                 If set to true, it can be used for immediate feedback to determine if the request was successfully sent.
         """
-        if connectionId is None:
+        if inletId is None:
             raise Exception("Require a connectionId to be present")
         if data is None and type(data) != dict:
             raise Exception("Require a dictionary to be send for ingestion")
         params = {"synchronousValidation":synchronousValidation}
-        path = f"/collection/{connectionId}"
+        path = f"/collection/{inletId}"
         res = self.connector.postData(self.endpoint_streaming+path,data=data,params=params)
         return res
     
-    def StreamMessages(self,connectionId:str=None,data:list=None,synchronousValidation:str=False)->dict:
+    def StreamMessages(self,inletId:str=None,data:list=None,synchronousValidation:bool=False)->dict:
         """
         Send a dictionary to the connection for streaming ingestion.
         Arguments:
-            connectionId : REQUIRED : the connection ID to be used for ingestion
+            inletId : REQUIRED : the connection ID to be used for ingestion
             data : REQUIRED : The list of data that you want to ingest to Platform.
             synchronousValidation : OPTIONAL : An optional query parameter, intended for development purposes. 
                 If set to true, it can be used for immediate feedback to determine if the request was successfully sent.
         """
-        if connectionId is None:
+        if inletId is None:
             raise Exception("Require a connectionId to be present")
         if data is None and type(data) != list:
             raise Exception("Require a list of dictionary to be send for ingestion")
         params = {"synchronousValidation":synchronousValidation}
-        path = f"/collection/batch/{connectionId}"
+        path = f"/collection/batch/{inletId}"
         res = self.connector.postData(self.endpoint_streaming+path,data=data,params=params)
         return res
 

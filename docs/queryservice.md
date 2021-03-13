@@ -80,15 +80,38 @@ qs2 = queryservice.QueryService({"x-sandbox-name":"mySandbox2"})
   }
  ```
 
+
 2. Time parameter are possible in the title of dataset.
  You can use `$schedule_time` in your query to name your table dynamically when using Schedule Query Service.
 
+
 3. To follow a specific schema - use a Struct command
  In order to create a structured output for matching schema, use the struct() command
- ```SQL
+
+```SQL
  Select struct(visitor_id) as _tenantId from test
- ```
- This will result in: `_tenantId.visitor_id`
+```
+
+This will result in: `_tenantId.visitor_id`
+
+4. Starting a Schedule Query
+  You would normally need to pass a dictionary (JSON object) to the `updateSchedule` schedule method in order to start your scheduled Query.\
+  This is using a PATCH request to inform AEP.\
+  I have created an easier method that automatically set the dictionary, based on the scheduleQueryId you want to start: `enableSchedule`
+
+* enableSchedule
+  Enable a scheduled query.
+  Arguments:
+  * scheduleId : REQUIRED : id of the schedule.
+
+5. Disabling a schedule Query
+  Before you can delete a schedule Query, you need to disable it.\
+  The same way than for starting a query. I have set up a shortcut method to pause a scheduled Query, based on its ID: `disableSchedule`
+
+* disableSchedule
+  Disable a scheduled query.
+  Arguments:
+  * scheduleId : REQUIRED : id of the schedule.
 
 ## InteractiveQuery
 
@@ -107,6 +130,7 @@ intQuery = queryservice.InteractiveQuery(conn)
 ```
 
 From the Interactive Query instance you can directly pass SQL query and receive either:
+
 * a dataframe (default return)
 * an object
 
@@ -125,6 +149,12 @@ df_result = intQuery.query(sql,output= "dataframe")
 result = intQuery.query(sql,output= "raw")
 ```
 
+In case you want to transform your result into a dataframe later on, you can use the `transformToDataFrame` method.
+
+```python
+mydf = intQuery.transformToDataFrame(result)
+```
+
 ### Tips for Interactive Query
 
 1. Use the LIMIT parameter in your interactive query is recommended
@@ -132,3 +162,40 @@ result = intQuery.query(sql,output= "raw")
 
 2. Using CTAS statement are possible in the Interactive Query as well
  The CTAS statement needs to be stated directly in the SQL statement.
+
+3. I have created an easy method to retrieve a specific fields based on a condition: `queryIdentity`
+  The main use-case is for debugging AEP Web SDK implementation so you can pass the ECID value and the different fields you want to retrieve with your table name.
+  It will return the query result and can be saved in a csv with the identity value name.
+
+* `queryIdentity`
+  Return the elements that you have passed in field list and return the output selected.
+  Arguments:
+  * identityId : REQUIRED : The ID you want to retrieve
+  * fields : REQUIRED : a list of fields you want to return for that ID in your table.
+      example : ['person.name']
+  * tableName : REQUIRED : The dataset table name to use
+  * output : OPTIONAL : the format you would like to be returned.
+  Possible format:
+      "raw" : return the instance of the query object.
+      "dataframe" : return a dataframe with the data. (default)
+  * fieldId : OPTIONAL : If you want your selection to be based on another field than ECID.
+  * save : OPTIONAL : will save a csv file
+  * verbose : OPTIONAL : will display some comment
+
+example:
+
+```python
+import aepp
+aepp.importConfigFile('config.json')
+from aepp import queryservice
+
+## using QueryService class to retrieve connection details
+qs = queryservice.QueryService()
+conn = qs.connection()
+
+## Using interactive query
+query = queryservice.InteractiveQuery(conn)
+fields = ['_tenant.person.fullname','_tenant_.person.sex']
+df = query.queryIdentity(identityId="21d67084-398e-4a48-8723-2fd",fields=fields,tableName='myTableName',verbose=True)
+
+```

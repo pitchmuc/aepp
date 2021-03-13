@@ -22,7 +22,7 @@ __This page will be completed once version 0.1.0 is achieved.__
     * Catalog *
     * Data Access *
     * Mapping Service *
-    * Datasets
+    * Datasets *
     * Ingestion
 
 Return to [README](../README.md)

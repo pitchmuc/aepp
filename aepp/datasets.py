@@ -3,6 +3,32 @@ from aepp import connector
 from copy import deepcopy
 
 class DataSets:
+    """
+    module that help for managing labels of the datasets.
+    """
+    REFERENCE_LABELS_CREATION = {
+        "labels": [
+            [
+            "C1",
+            "C2"
+            ]
+        ],
+        "optionalLabels": [
+            {
+            "option": {
+                "id": "https://ns.adobe.com/{TENANT_ID}/schemas/{SCHEMA_ID}",
+                "contentType": "application/vnd.adobe.xed-full+json;version=1",
+                "schemaPath": "/properties/repositoryCreatedBy"
+            },
+            "labels": [
+                [
+                "S1",
+                "S2"
+                ]
+            ]
+            }
+        ]
+    }
 
     def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
         """

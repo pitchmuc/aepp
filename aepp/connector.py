@@ -194,22 +194,17 @@ class AdobeRequest:
         if params is not None:
             res = requests.head(endpoint, headers=headers, params=params)
         try:
-            res_json = res.json()
+            res_header = res.headers()
         except:
             if kwargs.get('verbose',False):
                 print('error generating the JSON response')
                 print(f'status: {res.status_code}')
                 print(res.text)
             if res.status_code != 200:
-                res_json = {'error': 'Request Error'}
+                res_header = res.headers()
             else:
-                res_json = {}
-        try: ## sometimes list is being returned
-            if 'errorMessage' in res_json.keys():
-                print(f"status code : {res.status_code}")
-        except:
-            pass
-        return res_json
+                res_header = {}
+        return res_header
         
 
     def postData(self, endpoint: str, params: dict = None, data: dict = None, bytesData : bytes =None, headers: dict = None, * args, **kwargs):
@@ -296,7 +291,7 @@ class AdobeRequest:
                                             data=json.dumps(data))
         elif params != None and data != None:
             res = requests.put(endpoint, headers=headers,
-                                            params=params, data=json.dumps(data=data))
+                                            params=params, data=json.dumps(data))
         try:
             res_json = res.json()
         except:
@@ -325,7 +320,7 @@ class AdobeRequest:
                 endpoint, headers=headers, params=params)
         try:
             status_code = res.status_code
-            if status_code == 400:
+            if status_code >= 400:
                 return res.json()
         except:
             if kwargs.get('verbose',False):

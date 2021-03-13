@@ -34,6 +34,13 @@ class Schema:
         "event": "https://ns.adobe.com/xdm/context/experienceevent",
         "profile": "https://ns.adobe.com/xdm/context/profile"
     }
+    PATCH_OBJ = [
+                    {
+                        "op": "add",
+                        "path": "/meta:immutableTags-",
+                        "value": "union"
+                    }
+                ]
 
     def __init__(self, containerId: str = "tenant",config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
         """
@@ -228,6 +235,16 @@ class Schema:
         Arguments:
             schema_id : REQUIRED : $id or meta:altId
             change : REQUIRED : List of changes that need to take place.
+            Example:
+                [
+                    {
+                        "op": "add",
+                        "path": "/allOf",
+                        "value": {'$ref': 'https://ns.adobe.com/emeaconsulting/mixins/fb5b3cd49707d27367b93e07d1ac1f2f7b2ae8d051e65f8d',
+                    'type': 'object',
+                    'meta:xdmType': 'object'}
+                    }
+                ]
         information : http://jsonpatch.com/
         """
         if schemaId is None:
@@ -253,12 +270,12 @@ class Schema:
             #/Schemas/replace_schema
             More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
-        path = f'/{self.container}/schemas/{schemaId}'
         if schemaId is None:
             raise Exception("Require an ID for the schema")
         if schemaId.startswith('https://'):
             from urllib import parse
             schemaId = parse.quote_plus(schemaId)
+        path = f'/{self.container}/schemas/{schemaId}'
         res = self.connector.putData(self.endpoint+path,
                             data=changes, headers=self.header)
         return res
@@ -561,12 +578,23 @@ class Schema:
         res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
-    def updateMixin(self, mixinId: str = None, changes: list = None):
+    def patchMixin(self, mixinId: str = None, changes: list = None):
         """
         Update the mixin with the operation described in the changes.
         Arguments:
             mixinId : REQUIRED : meta:altId or $id
             changes : REQUIRED : dictionary on what to update on that mixin.
+            Example:
+                [
+                    {
+                        "op": "add",
+                        "path": "/allOf",
+                        "value": {'$ref': 'https://ns.adobe.com/emeaconsulting/mixins/fb5b3cd49707d27367b93e07d1ac1f2f7b2ae8d051e65f8d',
+                    'type': 'object',
+                    'meta:xdmType': 'object'}
+                    }
+                ]
+        information : http://jsonpatch.com/
         """
         if mixinId is None or changes is None:
             raise Exception("Require an ID and changes")
@@ -578,6 +606,27 @@ class Schema:
             changes = list(changes)
         res = self.connector.patchData(self.endpoint+path,
                               data=changes, headers=self.header)
+        return res
+    
+    def putMixin(self, mixinId: str = None, mixinObj: dict = None, **kwargs)->dict:
+        """
+        A PUT request essentially re-writes the schema, therefore the request body must include all fields required to create (POST) a schema.
+        This is especially useful when updating a lot of information in the schema at once.
+        Arguments:
+            mixinId : REQUIRED : $id or meta:altId
+            mixinObj : REQUIRED : dictionary of the new schema.
+            It requires a allOf list that contains all the attributes that are required for creating a schema.
+            #/Schemas/replace_schema
+            More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
+        """
+        if mixinId is None:
+            raise Exception("Require an ID for the schema")
+        if mixinId.startswith('https://'):
+            from urllib import parse
+            mixinId = parse.quote_plus(mixinId)
+        path = f'/{self.container}/schemas/{mixinId}'
+        res = self.connector.putData(self.endpoint+path,
+                            data=mixinObj, headers=self.header)
         return res
 
     def getUnions(self, **kwargs):

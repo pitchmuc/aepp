@@ -1,10 +1,10 @@
 # Internal Library
-import aepp
 from aepp import config
 from aepp import connector
 import pandas as pd
 from pg import DB
-
+from typing import Union
+import re
 
 class QueryService:
     """
@@ -59,21 +59,21 @@ class QueryService:
         }
     }
 
-    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+    def __init__(self,config_object:dict=config.config_object,header=config.header, **kwargs)->None:
         """
         Instanciate the class for Query Service call.
         Arguments:
-            config : OPTIONAL : config object in the config module. 
+            config_object : OPTIONAL : config object in the config module. 
             header : OPTIONAL : header object  in the config module.
         kwargs:
             kwargs will update the header
         """
-        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        self.connector = connector.AdobeRequest(config_object=config_object, header=header)
         self.header = self.connector.header
         #self.header.update({"Accept": "application/json"})
         self.header.update(**kwargs)
         self.sandbox = self.connector.config['sandbox']
-        self.endpoint = aepp.config.endpoints["global"]+aepp.config.endpoints["query"]
+        self.endpoint = config.endpoints["global"]+config.endpoints["query"]
         self.TEMPLATES = {
             'post': {
                 "dbName": "string",
@@ -123,7 +123,7 @@ class QueryService:
             }
         }
 
-    def connection(self):
+    def connection(self)->dict:
         """
         Create a connection for interactive interface. 
         """
@@ -131,7 +131,7 @@ class QueryService:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def getQueries(self, orderby: str = None, limit: int = 1000, start: int = None, **kwargs):
+    def getQueries(self, orderby: str = None, limit: int = 1000, start: int = None, **kwargs)->list:
         """
         Retrieve the queries from your organization.
         Arguments:
@@ -162,10 +162,21 @@ class QueryService:
                 "excludeHidden", True)
             arguments['isPrevLink'] = kwargs.get(
                 "isPrevLink", '')
-        res = self.connector.getData(self.endpoint+path, params=arguments, headers=self.header)
-        return res
+        res = self.connector.getData(self.endpoint+path, params=arguments)
+        data = res['queries']
+        nextPage = res['_links'].get('next',{}).get('href','')
+        while nextPage != '':
+            hrefParams = nextPage.split('?')[1]
+            orderBy = re.search('orderby=(.+?)(&|$)',hrefParams)
+            start = re.search('start=(.+?)(&|$)',hrefParams)
+            arguments['start'] = start.group(1)
+            arguments['orderby'] = orderBy.group(1)
+            res = self.connector.getData(self.endpoint+path, params=arguments)
+            data += res.get('queries',[])
+            nextPage = res.get('_links',{}).get('next',{}).get('href','')
+        return data
 
-    def postQueries(self, data: dict = None, name: str = None, dbname: str = "prod:all", sql: str = None, templateId: str = None, queryParameters: dict = None, insertIntoParameters: dict = None, ctasParameters: dict = None, description: str = "", **kwargs):
+    def postQueries(self, data: dict = None, name: str = None, dbname: str = "prod:all", sql: str = None, templateId: str = None, queryParameters: dict = None, insertIntoParameters: dict = None, ctasParameters: dict = None, description: str = "", **kwargs)->dict:
         """
         Create a query.
         Arguments:
@@ -202,7 +213,7 @@ class QueryService:
                              data=data, headers=self.header)
         return res
 
-    def getQuery(self, queryid: str = None):
+    def getQuery(self, queryid: str = None)->dict:
         """
         Request the query status by ID.
         Argument : 
@@ -214,7 +225,7 @@ class QueryService:
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         return res
 
-    def getSchedules(self, **kwargs):
+    def getSchedules(self, **kwargs)->list:
         """
         Retrieve a list of scheduled queries for the AEP instance.
         possibile kwargs:
@@ -232,9 +243,20 @@ class QueryService:
         path = "/schedules"
         params = {**kwargs}
         res = self.connector.getData(self.endpoint + path, params=params)
-        return res
+        data = res['schedules']
+        nextPage = res['_links'].get('next',{}).get('href','')
+        while nextPage != '':
+            hrefParams = nextPage.split('?')[1]
+            orderBy = re.search('orderby=(.+?)(&|$)',hrefParams)
+            start = re.search('start=(.+?)(&|$)',hrefParams)
+            params['start'] = start.group(1)
+            params['orderby'] = orderBy.group(1)
+            res = self.connector.getData(self.endpoint+path, params=params)
+            data += res.get('schedules',[])
+            nextPage = res['_links'].get('next',{}).get('href','')
+        return data
 
-    def getSchedule(self, scheduleId: str = None):
+    def getSchedule(self, scheduleId: str = None)->dict:
         """
         Get a details about a schedule query.
         Arguments:
@@ -246,7 +268,7 @@ class QueryService:
         res = self.connector.getData(self.endpoint + path)
         return res
 
-    def getScheduleJobs(self, scheduleId: str = None):
+    def getScheduleRuns(self, scheduleId: str = None)->list:
         """
         Get the different jobs ran for this schedule
         Arguments:
@@ -255,22 +277,35 @@ class QueryService:
         if scheduleId is None:
             raise Exception("scheduleId is required")
         path = f"/schedules/{scheduleId}/runs"
+        params = {}
         res = self.connector.getData(self.endpoint + path)
-        return res
+        data = res['runsSchedules']
+        nextPage = res['_links'].get('next',{}).get('href','')
+        while nextPage != '':
+            hrefParams = nextPage.split('?')[1]
+            orderBy = re.search('orderby=(.+?)(&|$)',hrefParams)
+            start = re.search('start=(.+?)(&|$)',hrefParams)
+            params['start'] = start.group(1)
+            params['orderby'] = orderBy.group(1)
+            res = self.connector.getData(self.endpoint+path, params=params)
+            data += res.get('runsSchedules',[])
+            nextPage = res['_links'].get('next',{}).get('href','')
+        return data
 
-    def getScheduleJob(self, scheduleId: str = None, jobId: str = None):
+    def getScheduleRun(self, scheduleId: str = None, runId: str = None)->dict:
         """
         Get the different jobs ran for this schedule
         Arguments:
             scheduleId : REQUIRED : the schedule id
+            runId : REQUIRED : the run ID you want to retrieve.
         """
-        if scheduleId is None or jobId is None:
+        if scheduleId is None or runId is None:
             raise Exception("scheduleId and jobId are required")
-        path = f"/schedules/{scheduleId}/runs/{jobId}"
+        path = f"/schedules/{scheduleId}/runs/{runId}"
         res = self.connector.getData(self.endpoint + path)
         return res
 
-    def createSchedule(self, scheduleQuery: dict = None, name: str = None, dbname: str = "prod:all", sql: str = None, templateId: str = None, queryParameters: dict = None, insertIntoParameters: dict = None, ctasParameters: dict = None, schedule: dict = None, description: str = "", **kwargs):
+    def createSchedule(self, scheduleQuery: dict = None, name: str = None, dbname: str = "prod:all", sql: str = None, templateId: str = None, queryParameters: dict = None, insertIntoParameters: dict = None, ctasParameters: dict = None, schedule: dict = None, description: str = "", **kwargs)->dict:
         """
         Create a scheduled query.
         Arguments:
@@ -313,7 +348,7 @@ class QueryService:
         res = self.connector.postData(self.endpoint + path, data=scheduleQuery)
         return res
 
-    def deleteSchedule(self, scheduleId: str = None):
+    def deleteSchedule(self, scheduleId: str = None)->Union[str,dict]:
         """
         Delete a scheduled query.
         Arguments: 
@@ -325,7 +360,7 @@ class QueryService:
         res = self.connector.deleteData(self.endpoint + path)
         return res
 
-    def disableSchedule(self, scheduleId: str = None):
+    def disableSchedule(self, scheduleId: str = None)->dict:
         """
         Disable a scheduled query.
         Arguments: 
@@ -347,7 +382,7 @@ class QueryService:
                               data=obj, headers=self.header)
         return res
 
-    def enableSchedule(self, scheduleId: str = None):
+    def enableSchedule(self, scheduleId: str = None)->dict:
         """
         Enable a scheduled query.
         Arguments: 
@@ -369,7 +404,7 @@ class QueryService:
                               data=obj, headers=self.header)
         return res
 
-    def updateSchedule(self, scheduleId: str = None, update_obj: list = None):
+    def updateSchedule(self, scheduleId: str = None, update_obj: list = None)->dict:
         """
         Update the schedule query with the object pass.
         Arguments:
@@ -385,7 +420,7 @@ class QueryService:
                               data=update_obj, headers=self.header)
         return res
 
-    def getTemplates(self, **kwargs):
+    def getTemplates(self, **kwargs)->dict:
         """
         Retrieve the list of template for this instance.
         possible kwargs:
@@ -408,7 +443,7 @@ class QueryService:
                             headers=self.header, params=params)
         return res
 
-    def createQueryTemplate(self, queryData: dict = None):
+    def createQueryTemplate(self, queryData: dict = None)->dict:
         """
         Create a query template based on the dictionary passed.
         Arguments: 
@@ -455,7 +490,7 @@ class InteractiveQuery:
         }
         self.db = DB(**self.config_object)
 
-    def query(self, sql: str = None, output: str = "dataframe"):
+    def query(self, sql: str = None, output: str = "dataframe")->Union[pd.DataFrame,object]:
         """
         Query the database and return different type of data, depending the format parameters.
         Requests are limited to return 50 K rows
@@ -479,7 +514,7 @@ class InteractiveQuery:
         else:
             raise KeyError("You didn't specify a correct value.")
 
-    def transformToDataFrame(self, query: object = None):
+    def transformToDataFrame(self, query: object = None)->pd.DataFrame:
         """
         This will return you a dataFrame 
         """
@@ -487,3 +522,51 @@ class InteractiveQuery:
         columns = query.listfields()
         df = pd.DataFrame(data, columns=columns)
         return df
+
+    def queryIdentity(self,
+                    identityId:str=None,
+                    fields:list=None,
+                    tableName:str=None,
+                    output: str = "dataframe",
+                    fieldId:str='ECID',
+                    save:bool=False,
+                    verbose:bool=False,
+                    )->Union[pd.DataFrame,object]:
+        """
+        Return the elements that you have passed in field list and return the output selected.
+        Arguments:
+            identityId : REQUIRED : The ID you want to retrieve
+            fields : REQUIRED : a list of fields you want to return for that ID in your table.
+                example : ['person.name']
+            tableName : REQUIRED : The dataset table name to use
+            output : OPTIONAL : the format you would like to be returned.
+            Possible format:
+                "raw" : return the instance of the query object.
+                "dataframe" : return a dataframe with the data. (default)
+            fieldId : OPTIONAL : If you want your selection to be based on another field than ECID in IdentityMap.
+            save : OPTIONAL : will save a csv file
+            verbose : OPTIONAL : will display some comment
+        """
+        if identityId is None:
+            raise ValueError("Require an identity value")
+        if type(fields) != list:
+            raise ValueError("Require a list of fields to be returned")
+        if tableName is None:
+            raise ValueError("Require a dataset table name")
+        if fieldId == "ECID":
+            condition = f"identityMap['ECID'][0].id = '{identityId}'"
+        else:
+            condition = f"{fieldId} = '{identityId}'"
+        sql = f"SELECT {','.join(fields)} FROM {tableName} WHERE {condition}"
+        if verbose:
+            print(sql)
+        res = self.query(sql=sql,output=output)
+        if save:
+            if isinstance(res,pd.DataFrame):
+                res.to_csv(f"{identityId}.csv",index=False)
+            else:
+                data = res.getresult()
+                columns = res.listfields()
+                df = pd.DataFrame(data, columns=columns)
+                df.to_csv(f"{identityId}.csv",index=False)
+        return res
