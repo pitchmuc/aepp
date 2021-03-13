@@ -48,6 +48,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [flowservice](./docs/flowservice.md)
 * [policy](./docs/policy.md)
 * [datasets](./docs/datasets.md)
+* [ingestion](./docs/ingestion.md)
 * accesscontrol
 * sensei
 * privacyservice (see 2nd note below)
