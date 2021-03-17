@@ -179,6 +179,7 @@ mydf = intQuery.transformToDataFrame(result)
       "raw" : return the instance of the query object.
       "dataframe" : return a dataframe with the data. (default)
   * fieldId : OPTIONAL : If you want your selection to be based on another field than ECID.
+  * limit : OPTIONAL : 
   * save : OPTIONAL : will save a csv file
   * verbose : OPTIONAL : will display some comment
 

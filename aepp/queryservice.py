@@ -529,6 +529,7 @@ class InteractiveQuery:
                     tableName:str=None,
                     output: str = "dataframe",
                     fieldId:str='ECID',
+                    limit:str=None,
                     save:bool=False,
                     verbose:bool=False,
                     )->Union[pd.DataFrame,object]:
@@ -544,6 +545,7 @@ class InteractiveQuery:
                 "raw" : return the instance of the query object.
                 "dataframe" : return a dataframe with the data. (default)
             fieldId : OPTIONAL : If you want your selection to be based on another field than ECID in IdentityMap.
+            limit : OPTIONAL : If you wish to set a LIMIT on number of row returned.
             save : OPTIONAL : will save a csv file
             verbose : OPTIONAL : will display some comment
         """
@@ -554,13 +556,21 @@ class InteractiveQuery:
         if tableName is None:
             raise ValueError("Require a dataset table name")
         if fieldId == "ECID":
-            condition = f"identityMap['ECID'][0].id = '{identityId}'"
+            condition = f"WHERE identityMap['ECID'][0].id = '{identityId}'"
+        elif fieldId != "ECID" and fieldId is not None:
+            condition = f"WHERE {fieldId} = '{identityId}'"
         else:
-            condition = f"{fieldId} = '{identityId}'"
-        sql = f"SELECT {','.join(fields)} FROM {tableName} WHERE {condition}"
+            condition = ""
+        if limit is None:
+            limit = ""
+        else:
+            limit = "LIMIT {limit}"
+        sql = f"SELECT {','.join(fields)} FROM {tableName} {condition} {limit}"
         if verbose:
             print(sql)
         res = self.query(sql=sql,output=output)
+        if verbose:
+                print("Data is returned in the {output} format")
         if save:
             if isinstance(res,pd.DataFrame):
                 res.to_csv(f"{identityId}.csv",index=False)

@@ -183,7 +183,7 @@ class FlowService:
         res:dict = self.connector.getData(self.endpoint + path)
         return res 
 
-    def getFlows(self,limit:int=10,prop:str=None,filterMappingSetId:str=None,**kwargs)->list:
+    def getFlows(self,limit:int=10,prop:str=None,filterMappingSetIds:list=None,filterSourceIds:list=None,filterTargetIds:list=None,**kwargs)->list:
         """
         Returns the flows set between Source and Target connection.
         Arguments:
@@ -191,7 +191,9 @@ class FlowService:
             prop : OPTIONAL : A comma separated list of top-level object properties to be returned in the response. 
                 Used to cut down the amount of data returned in the response body. 
                 For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
-            filterMappingSetId : OPTIONAL : returns only the flow that possess this mappingSetId.
+            filterMappingSetId : OPTIONAL : returns only the flow that possess the mappingSetId passed in a list.
+            filterSourceIds : OPTIONAL : returns only the flow that possess the sourceConnectionIds passed in a list.
+            filterTargetIds : OPTIONAL : returns only the flow that possess the targetConnectionIds passed in a list.
         """
         params:dict = {"limit":limit,"count":kwargs.get("count",False)}
         if property is not None:
@@ -200,7 +202,7 @@ class FlowService:
             params['continuationToken'] = kwargs.get("continuationToken")
         path:str = "/flows"
         res:dict = self.connector.getData(self.endpoint + path,params=params)
-        token:str = res['_links'].get("next",{}).get("href","")
+        token:str = res.get('_links',{}).get("next",{}).get("href","")
         items = res['items']
         while token != "":
             continuationToken = token.split("=")[1]
@@ -208,13 +210,28 @@ class FlowService:
             res = self.connector.getData(self.endpoint + path,params=params)
             token = res['_links'].get("next",{}).get("href","")
             items += res['items']
-        if filterMappingSetId is not None:
+        if filterMappingSetIds is not None:
             filteredItems = []
-            for item in items:
-                if 'transformations' in item.keys():
-                    for element in item['transformations']:
-                        if element['params'].get('mappingId','') == filterMappingSetId:
-                            filteredItems.append(item)
+            for mappingsetId in filterMappingSetIds:
+                for item in items:
+                    if 'transformations' in item.keys():
+                        for element in item['transformations']:
+                            if element['params'].get('mappingId','') == mappingsetId:
+                                filteredItems.append(item)
+            items = filteredItems
+        if filterSourceIds is not None:
+            filteredItems = []
+            for sourceId in filterSourceIds:
+                for item in items:
+                    if sourceId in item['sourceConnectionIds']:
+                        filteredItems.append(item)
+            items = filteredItems
+        if filterTargetIds is not None:
+            filteredItems = []
+            for targetId in filterTargetIds:
+                for item in items:
+                    if targetId in item['targetConnectionIds']:
+                        filteredItems.append(item)
             items = filteredItems
         return items
     
