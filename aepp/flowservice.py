@@ -8,6 +8,16 @@ class FlowService:
     For more information, relate to the API Documentation : 
     """
 
+    PATCH_REFERENCE = [
+            {
+                "op": "Add",
+                "path": "/auth/params",
+                "value": {
+                "description": "A new description to provide further context on a specified connection or flow."
+                }
+            }
+        ]
+
     def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
         """
         initialize the Flow Service instance.
@@ -281,6 +291,37 @@ class FlowService:
         res:dict = self.connector.postData(self.endpoint + path, data=obj)
         return res
     
+    def updateFlow(self,flowId:str=None,etag:str=None,updateObj:list=None)->dict:
+        """
+        update the flow based on the operation provided.
+        Arguments:
+            flowId : REQUIRED : the ID of the flow to Patch.
+            etag : REQUIRED : ETAG value for patching the Flow.
+            updateObj : REQUIRED : List of operation to realize on the flow.
+
+            Follow the following structure:
+            [
+                {
+                    "op": "Add",
+                    "path": "/auth/params",
+                    "value": {
+                    "description": "A new description to provide further context on a specified connection or flow."
+                    }
+                }
+            ]
+        """
+        if flowId is None:
+            raise Exception("Require a flow ID to be present")
+        if etag is None:
+            raise Exception("Require etag to be present")
+        if updateObj is None:
+            raise Exception("Require a list with data to be present")
+        privateHeader = deepcopy(self.header)
+        privateHeader['if-match'] = etag
+        path:str = f"/flows/{flowId}"
+        res:dict = self.connector.patchData(self.endpoint + path, headers=privateHeader, data=updateObj)
+        return res
+    
     def getFlowSpecs(self, prop:str=None)->list:
         """
         Returns the flow specifications.
@@ -447,26 +488,24 @@ class FlowService:
         return res
 
 
-    def updateSourceConnection(self,sourceConnectionId:str=None,etag:str=None,obj:dict=None)->dict:
+    def updateSourceConnection(self,sourceConnectionId:str=None,etag:str=None,updateObj:list=None)->dict:
         """
         Update a source connection based on the ID provided with the object provided.
         Arguments:
             sourceConnectionId : REQUIRED : The source connection ID to be updated
             etag: REQUIRED : A header containing the etag value of the connection or flow to be updated.
-            obj : REQUIRED : The operation call used to define the action needed to update the connection. Operations include add, replace, and remove.
+            updateObj : REQUIRED : The operation call used to define the action needed to update the connection. Operations include add, replace, and remove.
         """
         if sourceConnectionId is None:
             raise Exception("Require a sourceConnection to be present")
         if etag is None:
             raise Exception("Require etag to be present")
-        if obj is None:
-            raise Exception("Require a dictionary with data to be present")
-        if "op" not in obj.keys() or "value" not in obj.keys():
-            raise KeyError("Require op ")
+        if updateObj is None:
+            raise Exception("Require a list with data to be present")
         privateHeader = deepcopy(self.header)
         privateHeader['if-match'] = etag
         path:str = f"/sourceConnections/{sourceConnectionId}"
-        res:dict = self.connector.patchData(self.endpoint + path, headers=privateHeader, data=obj)
+        res:dict = self.connector.patchData(self.endpoint + path, headers=privateHeader, data=updateObj)
         return res
 
 
@@ -587,22 +626,22 @@ class FlowService:
         res = self.createTargetConnection(data=targetObj)
         return res
 
-    def updateTargetConnection(self,targetConnectionId:str=None,etag:str=None,obj:list=None)->dict:
+    def updateTargetConnection(self,targetConnectionId:str=None,etag:str=None,updateObj:list=None)->dict:
         """
         Update a target connection based on the ID provided with the object provided.
         Arguments:
             targetConnectionId : REQUIRED : The target connection ID to be updated
             etag: REQUIRED : A header containing the etag value of the connection or flow to be updated.
-            obj : REQUIRED : The operation call used to define the action needed to update the connection. Operations include add, replace, and remove.
+            updateObj : REQUIRED : The operation call used to define the action needed to update the connection. Operations include add, replace, and remove.
         """
         if targetConnectionId is None:
             raise Exception("Require a sourceConnection to be present")
         if etag is None:
             raise Exception("Require etag to be present")
-        if obj is None:
+        if updateObj is None:
             raise Exception("Require a dictionary with data to be present")
         privateHeader = deepcopy(self.header)
         privateHeader['if-match'] = etag
         path:str = f"/targetConnections/{targetConnectionId}"
-        res:dict = self.connector.patchData(self.endpoint + path, headers=privateHeader, data=obj)
+        res:dict = self.connector.patchData(self.endpoint + path, headers=privateHeader, data=updateObj)
         return res
