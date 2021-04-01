@@ -191,18 +191,25 @@ class Schema:
             print("no title in the response. Not saved in the data object.")
         return res
 
-    def getSchemaPaths(self,schemaId:str)->list:
+    def getSchemaPaths(self,schemaId:str,simplified:bool=True, save:bool = False)->list:
         """
         Returns a list of the path available in your schema. BETA.
         Arguments:
             schemaId : REQUIRED : The schema you want to retrieve the paths for
+            simplified : OPTIONAL : Default True, only returns the list of paths for your schemas.
+            save : OPTIONAL : Save your schema paths in a file. Always the NOT simplified version.
         """
         if schemaId is None:
             raise Exception("Require a schemaId as a parameter")
         res = self.getSchema(schemaId,flat=True)
         keys = res['properties'].keys()
         paths = [key.replace('/','.').replace('xdm:','').replace('@','_') for key in keys]
-        return paths
+        if save:
+            aepp.saveFile(module='schema', file=res,
+                          filename=f"{res['title']}_paths", type_file='json')
+        if simplified:
+            return paths
+        return res
 
     def getSchemaSample(self, schemaId: str = None, save: bool = False, version: int = 1) -> dict:
         """
@@ -210,6 +217,7 @@ class Schema:
         Arguments:
             schema_id : REQUIRED : The schema ID for the sample data to be created.
             save : OPTIONAL : save the result in json file (default False)
+            version : OPTIONAL : version of the schema to request
         """
         import random
         rand_number = random.randint(1, 10e10)
@@ -223,7 +231,7 @@ class Schema:
         self.header["Accept"] = accept_update
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         if save:
-            schema = self.getSchema(schema_id=schemaId, full=False)
+            schema = self.getSchema(schemaId=schemaId, full=False)
             aepp.saveFile(module='schema', file=res,
                           filename=f"{schema['title']}_{rand_number}", type_file='json')
         self.header['Accept'] = "application/json"

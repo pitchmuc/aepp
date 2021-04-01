@@ -24,5 +24,11 @@ __This page will be completed once version 0.1.0 is achieved.__
     * Mapping Service *
     * Datasets *
     * Ingestion *
+  
+Patch:
+* fix `save` option in `getSchemaSample`
+* add `save` option to `getSchemaPaths`
+* change `getBatches` method parameters to add "dataframe" and "raw" ouputs options
+* upgrading the docstring for `postQuery` method
 
 Return to [README](../README.md)

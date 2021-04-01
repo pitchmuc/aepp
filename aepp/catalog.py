@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from aepp import connector
 import pandas as pd
 from copy import deepcopy
+from typing import Union
 
 @dataclass
 class _Data:
@@ -33,18 +34,19 @@ class Catalog:
         self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["catalog"]
         self.data = _Data()
 
-    def getBatches(self, n_results:int=None,**kwargs):
+    def getBatches(self,limit:int=10, n_results:int=None,output:str='raw',**kwargs)->Union[pd.DataFrame,dict]:
         """
         Retrieve a list of batches.
         Arguments:
+            limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
             n_results : OPTIONAL :  number of result you want to get in total. (will loop)
+            output : OPTIONAL : Can be "raw" response (dict) or "dataframe".
         Possible kwargs:
             created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
             createdAfter : Exclusively filter records created after this timestamp. 
             createdBefore : Exclusively filter records created before this timestamp.
             start : Returns results from a specific offset of objects. This was previously called offset. (see next line)
-                offset : Will offset to the next limit (sort of pagination)
-            limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
+                offset : Will offset to the next limit (sort of pagination)        
             updated : Filter by the Unix timestamp (in milliseconds) for the time of last modification.
             createdUser : Filter by the ID of the user who created this object.
             dataSet : Used to filter on the related object: &dataSet=dataSetId.
@@ -59,26 +61,30 @@ class Catalog:
         more details : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
         path = "/batches"
-        params = {**kwargs}
+        limit = min([limit,100])
+        params = {'limit':limit,**kwargs}
         ## looping to retrieve pagination
         if n_results is not None:
-            list_results = []
-            params['limit'] = 100
+            list_return = {}
             params['start'] = 0
             res = self.connector.getData(self.endpoint+path,
                             headers=self.header, params=params)
-            list_results += res
-            while len(list_results) < n_results and res != 0:
-                params['start'] += 100
+            list_return.update(**res)
+            while len(list_return) < n_results and len(res) != 0:
+                params['start'] += limit
                 res = self.connector.getData(self.endpoint+path,
                             headers=self.header, params=params)
-                list_results += res
-            return list_results
+                list_return.update(**res)
+            if output=="dataframe":
+                return pd.DataFrame(list_return).T
+            return list_return
         res = self.connector.getData(self.endpoint+path,
                             headers=self.header, params=params)
+        if output=="dataframe":
+            return pd.DataFrame(res).T
         return res
 
-    def getBatch(self, batch_id: str = None):
+    def getBatch(self, batch_id: str = None)->dict:
         """
         Get a specific batch id.
         Arguments:

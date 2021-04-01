@@ -185,7 +185,17 @@ class QueryService:
             dbname : REQUIRED : the dataset name (default prod:all)
             sql: REQUIRED : the SQL query as a string.
             queryParameters : OPTIONAL : in case you are using template, providing the paramter in a dictionary.
+            insertIntoParameters : OPTIONAL : in case you want to insert the result to an existing dataset
+                example : {
+                    "datasetName": "string"
+                }
             ctasParameters: OPTIONAL : in case you want to create a dataset out of that query, dictionary is required with "datasetName" and "description".
+                example : {
+                    "datasetName": "string",
+                    "description": "string",
+                    "targetSchemaTitle":"string"
+                    }
+                    targetSchemaTitle if you want to use a precreated schema.
         """
         path = '/queries'
         if data is None:
