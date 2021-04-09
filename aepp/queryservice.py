@@ -74,54 +74,6 @@ class QueryService:
         self.header.update(**kwargs)
         self.sandbox = self.connector.config['sandbox']
         self.endpoint = config.endpoints["global"]+config.endpoints["query"]
-        self.TEMPLATES = {
-            'post': {
-                "dbName": "string",
-                "sql": "SELECT $key from $key1 where $key > $key2;",
-                "queryParameters": {
-                    "key": "value",
-                    "key1": "value1",
-                    "key2": "value2"
-                },
-                "templateId": "123",
-                "name": "string",
-                "description": "string",
-                "insertIntoParameters": {
-                    "datasetName": "string"
-                },
-                "ctasParameters": {
-                    "datasetName": "string",
-                    "description": "string"
-                }
-            },
-            'schedule': {
-                "query": {
-                    "dbName": "string",
-                    "sql": "SELECT $key from $key1 where $key > $key2;",
-                    "queryParameters": {
-                        "key": "value",
-                        "key1": "value1",
-                        "key2": "value2"
-                    },
-                    "templateId": "123",
-                    "name": "string",
-                    "description": "string",
-                    "insertIntoParameters": {
-                        "datasetName": "string"
-                    },
-                    "ctasParameters": {
-                        "datasetName": "string",
-                        "description": "string"
-                    }
-                },
-                "schedule": {
-                    "schedule": "string",
-                    "startDate": "string",
-                    "endDate": "string",
-                    "maxActiveRuns": 0
-                }
-            }
-        }
 
     def connection(self)->dict:
         """

@@ -51,6 +51,65 @@ qs1 = queryservice.QueryService({"x-sandbox-name":"mySandbox1"})
 qs2 = queryservice.QueryService({"x-sandbox-name":"mySandbox2"})
 ```
 
+### Attributes
+
+The QueryService instance will provide 2 attribute that you can use to help you create the dictionary data for your postQuery and createSchedule methods.\
+The attributes are:\
+`QUERYSAMPLE`: for postQuery method
+```JSON
+{
+        "dbName": "string",
+        "sql": "SELECT $key from $key1 where $key > $key2;",
+        "queryParameters": {
+            "key": "value",
+            "key1": "value1",
+            "key2": "value2"
+        },
+        "templateId": "123",
+        "name": "string",
+        "description": "powered by aepp",
+        "insertIntoParameters": {
+            "datasetName": "string"
+        },
+        "ctasParameters": {
+            "datasetName": "myDatasetName",
+            "description": "powered by aepp",
+            "targetSchemaTitle": "mySchemaName"
+        }
+    }
+```
+
+`SCHEDULESAMPLE`: for createSchedule
+```JSON
+"query": {
+            "dbName": "string",
+            "sql": "SELECT $key from $key1 where $key > $key2;",
+            "queryParameters": {
+                "key": "value",
+                "key1": "value1",
+                "key2": "value2"
+            },
+            "templateId": "123",
+            "name": "string",
+            "description": "string",
+            "insertIntoParameters": {
+                "datasetName": "string"
+            },
+            "ctasParameters": {
+                "datasetName": "string",
+                "description": "string",
+                "targetSchemaTitle": "mySchemaName"
+            }
+        },
+        "schedule": {
+            "schedule": "string",
+            "startDate": "string",
+            "endDate": "string",
+            "maxActiveRuns": 0
+        }
+    }
+```
+
 ### Query Service use-cases
 
 1. Scheduling queries
