@@ -224,7 +224,8 @@ mydf = intQuery.transformToDataFrame(result)
 
 3. I have created an easy method to retrieve a specific fields based on a condition: `queryIdentity`
   The main use-case is for debugging AEP Web SDK implementation so you can pass the ECID value and the different fields you want to retrieve with your table name.
-  It will return the query result and can be saved in a csv with the identity value name.
+  It will return the query result and can be saved in a csv with the identity value name.\
+  Be careful however if you are using array of objects based Schema, you would need to deconstruct them before using this method.
 
 * `queryIdentity`
   Return the elements that you have passed in field list and return the output selected.

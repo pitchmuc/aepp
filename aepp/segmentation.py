@@ -135,7 +135,7 @@ class Segmentation:
             self.endpoint+path, headers=self.header, data=segment_data)
         return update
 
-    def exportJobs(self, limit: int = 100, status: str = None)->dict:
+    def getExportJobs(self, limit: int = 100, status: str = None)->dict:
         """
         Retrieve a list of all export jobs.
         Arguments:
