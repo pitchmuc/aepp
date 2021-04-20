@@ -58,6 +58,15 @@ class QueryService:
             "maxActiveRuns": 0
         }
     }
+    TEMPLATESAMPLE = {
+        "sql": "SELECT $key from $key1 where $key > $key2;",
+        "queryParameters": {
+            "key": "value",
+            "key1": "value1",
+            "key2": "value2"
+        },
+        "name": "string"
+    }
 
     def __init__(self,config_object:dict=config.config_object,header=config.header, **kwargs)->None:
         """
@@ -414,7 +423,7 @@ class QueryService:
         """
         path = "/query-templates"
         if isinstance(queryData, dict):
-            if "sql" not in queryData.keys() or "queryParameter" not in queryData.keys() or "name" not in queryData.keys():
+            if "sql" not in queryData.keys() or "queryParameters" not in queryData.keys() or "name" not in queryData.keys():
                 raise KeyError(
                     "Minimum key value are not respected.\nPlease see here for more info :\nhttps://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Query-Templates/create_query_template ")
         else:

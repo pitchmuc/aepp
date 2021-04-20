@@ -39,6 +39,7 @@ endpoints = {
     "policy":"/data/foundation/dulepolicy",
     "dataset":"/data/foundation/dataset",
     "ingestion":"/data/foundation/import",
+    "observability":"/data/infrastructure/observability/insights",
     "streaming": {
         "inlet": "https://platform.adobe.io/data/core/edge",
         "collection" : "https://dcs.adobedc.net"

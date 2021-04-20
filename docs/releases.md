@@ -2,6 +2,12 @@
 
 __This page will be completed once version 0.1.0 is achieved.__
 
+## version 0.1.1
+
+* adding `observability` submodule
+* adding Query Service Template template as attribute: `TEMPLATESAMPLE`.
+* update `catalog` parameters for standardization.
+
 ## version 0.1.0
 
 * official release of the aepp module as beta python module with support.\
@@ -32,5 +38,6 @@ Patches:
 * upgrading the docstring for `postQuery` method
 * changing `exportJobs` to `getExportJobs`
 * removing some duplicate attributes in `QueryService` class
+* fix verification issue on queryService `createQueryTemplate` method.
 
 Return to [README](../README.md)

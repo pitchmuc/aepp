@@ -207,71 +207,71 @@ class Catalog:
                              data=data)
         return res
 
-    def getDataSet(self, dataset_id: str = None):
+    def getDataSet(self, datasetId: str = None):
         """
         Return a single dataset.
         Arguments:
-            dataset_id : REQUIRED : Id of the dataset to be retrieved.
+            datasetId : REQUIRED : Id of the dataset to be retrieved.
         """
-        if dataset_id is None:
-            raise Exception("Expected a dataset_id argument")
-        path = f"/dataSets/{dataset_id}"
+        if datasetId is None:
+            raise Exception("Expected a datasetId argument")
+        path = f"/dataSets/{datasetId}"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def deleteDataSet(self, dataset_id: str = None):
+    def deleteDataSet(self, datasetId: str = None):
         """
         Delete a dataset by its id.
         Arguments:
-            dataset_id : REQUIRED : Id of the dataset to be deleted.
+            datasetId : REQUIRED : Id of the dataset to be deleted.
         """
-        if dataset_id is None:
-            raise Exception("Expected a dataset_id argument")
-        path = f"/dataSets/{dataset_id}"
+        if datasetId is None:
+            raise Exception("Expected a datasetId argument")
+        path = f"/dataSets/{datasetId}"
         res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
 
     ## Apparently deprecated.
-    def getDataSetViews(self, dataset_id: str = None, **kwargs):
+    def getDataSetViews(self, datasetId: str = None, **kwargs):
         """
         Get views of the datasets.
         Arguments:
-            dataset_id : REQUIRED : Id of the dataset to be looked down.
+            datasetId : REQUIRED : Id of the dataset to be looked down.
         Possible kwargs:
             limit : Limit response to a specified positive number of objects. Ex. limit=10
             orderBy : Sort parameter and direction for sorting the response. Ex. orderBy=asc:created,updated.
             start : Returns results from a specific offset of objects. This was previously called offset. Ex. start=3.
             property : Regex used to filter objects in the response. Ex. property=name~^test.
         """
-        if dataset_id is None:
-            raise Exception("Expected a dataset_id argument")
-        path = f"/dataSets/{dataset_id}/views"
+        if datasetId is None:
+            raise Exception("Expected a datasetId argument")
+        path = f"/dataSets/{datasetId}/views"
         params = {**kwargs}
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def getDataSetView(self, dataset_id: str = None, view_id: str = None):
+    def getDataSetView(self, datasetId: str = None, viewId: str = None):
         """
         Get a specific view on a specific dataset.
         Arguments:
-            dataset_id : REQUIRED : ID of the dataset to be looked down.
-            view_id : REQUIRED : ID of the view to be look upon.
+            datasetId : REQUIRED : ID of the dataset to be looked down.
+            viewId : REQUIRED : ID of the view to be look upon.
         """
-        if dataset_id is None or view_id is None:
-            raise Exception("Expected a dataset_id and an view_id argument")
-        path = f"/dataSets/{dataset_id}/views/{view_id}"
+        if datasetId is None or viewId is None:
+            raise Exception("Expected a datasetId and an viewId argument")
+        path = f"/dataSets/{datasetId}/views/{viewId}"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def getDataSetViewFiles(self, dataset_id: str = None, view_id: str = None):
+    def getDataSetViewFiles(self, datasetId: str = None, viewId: str = None):
         """
         Returns the list of files attached to a view in a Dataset.
         Arguments:
-            dataset_id : REQUIRED : ID of the dataset to be looked down.
-            view_id : REQUIRED : ID of the view to be look upon.
+            datasetId : REQUIRED : ID of the dataset to be looked down.
+            viewId : REQUIRED : ID of the view to be look upon.
         """
-        if dataset_id is None or view_id is None:
-            raise Exception("Expected a dataset_id and an view_id argument")
-        path = f"/dataSets/{dataset_id}/views/{view_id}/files"
+        if datasetId is None or viewId is None:
+            raise Exception("Expected a datasetId and an viewId argument")
+        path = f"/dataSets/{datasetId}/views/{viewId}/files"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
