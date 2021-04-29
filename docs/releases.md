@@ -7,6 +7,10 @@ __This page will be completed once version 0.1.0 is achieved.__
 * adding `observability` submodule
 * adding Query Service Template template as attribute: `TEMPLATESAMPLE`.
 * update `catalog` parameters for standardization.
+* fix Stream batch
+* rename `mapping` to `dataprep`
+* fix sandbox switch on `importConfigFile`
+* change `Sandbox` class to `Sandboxes` for consistency.
 
 ## version 0.1.0
 

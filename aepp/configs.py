@@ -83,7 +83,8 @@ def importConfigFile(path: str) -> None:
             tech_id=provided_config['tech_id'],
             secret=provided_config['secret'],
             path_to_key=provided_config['pathToKey'],
-            client_id=client_id
+            client_id=client_id,
+            sandbox = provided_config.get('sandbox-name','prod'),
         )
 
 def configure(org_id: str = None,
@@ -123,6 +124,7 @@ def configure(org_id: str = None,
     config_object["pathToKey"] = path_to_key
     config_object["private_key"] = private_key
     config_object['sandbox'] = sandbox
+    header['x-sandbox-name'] = sandbox
     # ensure the reset of the state by overwriting possible values from previous import.
     config_object["date_limit"] = 0
     config_object["token"] = ""

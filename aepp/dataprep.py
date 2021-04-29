@@ -5,7 +5,7 @@ import pandas as pd
 from typing import Union
 import re
 
-class Mapping:
+class DataPrep:
 
     def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs)->None:
         """

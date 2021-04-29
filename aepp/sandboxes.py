@@ -1,7 +1,7 @@
 import aepp
 from aepp import connector
 
-class Sandbox:
+class Sandboxes:
 
     def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
         """

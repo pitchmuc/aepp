@@ -513,7 +513,7 @@ class Schema:
             self.data.mixins[res['title']] = res
         return res
     
-    def copyMixin(self,mixin:dict = None,tenantId:str=None,name:str=None)->dict:
+    def copyMixin(self,mixin:dict = None,tenantId:str=None,title:str=None)->dict:
         """
         Copy the dictionary returned by getMixin to the only required elements for copying it over.
         Arguments:
@@ -528,7 +528,7 @@ class Schema:
         if 'definitions' in mixin_obj.keys():
             obj = {
                 "type": mixin_obj['type'],
-                "title": name or mixin_obj['title'],
+                "title": title or mixin_obj['title'],
                 "description": mixin_obj['description'],
                 "meta:intendedToExtend": mixin_obj['meta:intendedToExtend'],
                 "definitions": mixin_obj.get('definitions'),
@@ -539,7 +539,7 @@ class Schema:
         elif 'properties' in mixin_obj.keys():
             obj = {
                 "type": mixin_obj['type'],
-                "title": mixin_obj['title'],
+                "title": title or mixin_obj['title'],
                 "description": mixin_obj['description'],
                 "meta:intendedToExtend": mixin_obj['meta:intendedToExtend'],
                 "definitions": {'property':{'properties':mixin_obj['properties'],"type":"object","['meta:xdmType']" : "object"}},

@@ -267,6 +267,7 @@ class DataIngestion:
         if data is None and type(data) != list:
             raise Exception("Require a list of dictionary to be send for ingestion")
         params = {"synchronousValidation":synchronousValidation}
+        data = {"messages":data}
         path = f"/collection/batch/{inletId}"
         res = self.connector.postData(self.endpoint_streaming+path,data=data,params=params)
         return res
