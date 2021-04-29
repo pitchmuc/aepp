@@ -11,6 +11,9 @@ __This page will be completed once version 0.1.0 is achieved.__
 * rename `mapping` to `dataprep`
 * fix sandbox switch on `importConfigFile`
 * change `Sandbox` class to `Sandboxes` for consistency.
+PATCH
+* fixing *`limit`* parameter for `queryIdentity` method
+* fixing verbose f string method.
 
 ## version 0.1.0
 

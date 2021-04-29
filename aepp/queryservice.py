@@ -535,13 +535,13 @@ class InteractiveQuery:
         if limit is None:
             limit = ""
         else:
-            limit = "LIMIT {limit}"
+            limit = f"LIMIT {limit}"
         sql = f"SELECT {','.join(fields)} FROM {tableName} {condition} {limit}"
         if verbose:
             print(sql)
         res = self.query(sql=sql,output=output)
         if verbose:
-                print("Data is returned in the {output} format")
+                print(f"Data is returned in the {output} format")
         if save:
             if isinstance(res,pd.DataFrame):
                 res.to_csv(f"{identityId}.csv",index=False)
