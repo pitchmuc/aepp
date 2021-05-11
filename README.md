@@ -51,7 +51,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [ingestion](./docs/ingestion.md)
 * accesscontrol
 * sensei
-* privacyservice (see 2nd note below)
+* [privacyservice](./docs/privacyservice.md) (see 2nd note below)
 
 ## queryservice module
 
