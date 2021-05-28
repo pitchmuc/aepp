@@ -179,7 +179,7 @@ class Catalog:
                 "invalidRecordsUnknown" : res[batch].get('metrics',{}).get('invalidRecordsUnknown',0),
                 "errorCode" : res[batch]['errors'][0]['code'],
                 "errorMessage" : res[batch]['errors'][0]['description'] ,
-                "flowId" : res[batch]['tags']['flowId'],
+                "flowId" : res[batch].get('tags',{}).get('flowId',''),
                 "dataSetId" : datasetId,
                 "sandbox" : res[batch]['sandboxId'],
             }
@@ -211,6 +211,19 @@ class Catalog:
         path = "/batches"
         res = self.connector.postData(self.endpoint+path,data=object,
                             headers=self.header)
+        return res
+
+    def deleteBatch(self, batchId:str=None)->str:
+        """
+        DEPRECATED
+        Delete a batch based on its id.
+        Argument:
+            batchId : REQUIRED : Batch ID to delete
+        """
+        if batchId is None:
+            raise ValueError("Require a batch ID")
+        path = f"/batches/{batchId}"
+        res = self.connector.deleteData(self.endpoint+path)
         return res
 
     def getResources(self, **kwargs)->list:

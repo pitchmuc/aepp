@@ -11,6 +11,9 @@ __This page will be completed once version 0.1.0 is achieved.__
 * adding `decodeStreamBatch` to the catalog module to decode the message returned by failed batch.
 * adding `jsonStreamMessages` to the catalog module to transform the output `decodeStreamBatch` into list of dictionary.
 * adding `getFailedBatchesDF` method to catalog module
+Patch : 
+* fix `getFailedBatchesDF` when no Flow or no Tag is used
+* adding deprecated `deleteBatch` method.
 
 ## version 0.1.1
 
