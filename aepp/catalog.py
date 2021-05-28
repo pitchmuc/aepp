@@ -4,6 +4,9 @@ from aepp import connector
 import pandas as pd
 from copy import deepcopy
 from typing import Union
+import time
+import codecs
+import json
 
 @dataclass
 class _Data:
@@ -33,6 +36,74 @@ class Catalog:
         self.sandbox = self.connector.config['sandbox']
         self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["catalog"]
         self.data = _Data()
+
+    def getResource(self,endpoint:str=None,params:dict=None,format:str='json',save:bool=False,**kwargs)->dict:
+        """
+        Template for requesting data with a GET method.
+        Arguments:
+            endpoint : REQUIRED : The URL to GET
+            params: OPTIONAL : dictionary of the params to fetch
+            format : OPTIONAL : Type of response returned. Possible values:
+                json : default
+                txt : text file
+                raw : a response object from the requests module
+        """
+        if endpoint is None:
+            raise ValueError("Require an endpoint")
+        res = self.connector.getData(endpoint,params=params,format=format)
+        if save:
+            if format == 'json':
+                aepp.saveFile(module="catalog",file=res,filename=f"resource_{int(time.time())}",type_file="json",encoding=kwargs.get("encoding",'utf-8'))
+            elif format == 'txt':
+                aepp.saveFile(module="catalog",file=res,filename=f"resource_{int(time.time())}",type_file="txt",encoding=kwargs.get("encoding",'utf-8'))
+            else:
+                print("element is an object. Output is unclear. No save made.\nPlease save this element manually")
+        return res
+    
+    def decodeStreamBatch(self,message:str)->dict:
+        """
+        Decode the full txt batch via the codecs module.
+        Usually the full batch is returned by the getResource method with format == "txt".
+        Arguments:
+            message: REQUIRED : the text file return from the failed batch message.
+        
+        return None when issue is raised
+        """
+        try: 
+            decodeMessage = codecs.escape_decode(message)[0].decode().replace('"body":"{','"body":{').replace('}","header":"{','},"header":{').replace('}","_errors":"{','},"_errors":{').replace('}"','}')
+            return decodeMessage
+        except:
+            print("Issue decoding the message.")
+            return None
+
+    def jsonStreamMessages(self,message:str,verbose:bool = False)->list:
+        """
+        Try to create a list of dictionary messages from the decoded stream batch from decodeStreamBatch method.
+        Arguments:
+            message : REQUIRED : a decoded text file, usually returned from the decodeStreamBatch method
+            verbose : OPTIONAL : print errors and information on the decoding.
+        
+        return None when issue is raised
+        """
+        try:
+            myList = []
+            myYield:iter = (line for line in message.split("\n"))
+            countLine,countErrors = 0,0
+            for element in myYield:
+                countLine +=1
+                try:
+                    myList.append(json.loads(element))
+
+                except Exception as e:
+                    countErrors+=1
+                    if verbose:
+                        print(e)
+            if verbose:
+                print(f"error rate is {(countErrors/countLine)*100:.2f}%")
+            return myList
+        except:
+            print("Issue decoding the message.")
+            return None
 
     def getBatches(self,limit:int=10, n_results:int=None,output:str='raw',**kwargs)->Union[pd.DataFrame,dict]:
         """
@@ -83,6 +154,37 @@ class Catalog:
         if output=="dataframe":
             return pd.DataFrame(res).T
         return res
+
+    def getFailedBatchesDF(self,limit:int=10,n_results: str=None)->pd.DataFrame:
+        """
+        Abstraction of getBatches method that focus on failed batches and return a dataframe with the batchId and errors.
+        Also adding some meta data information from the batch information provided.
+        Arguments:
+            limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
+            n_results : OPTIONAL :  number of result you want to get in total. (will loop)
+        """
+        res = self.getBatches(status="failed",orderBy="desc:created",limit=limit,n_results=n_results)
+        dict_failed = {}
+        for batch in res:
+            if res[batch]['relatedObjects'][0]['type'] == "dataSet":
+                datasetId = res[batch]['relatedObjects'][0]['id']
+            dict_failed[batch] = {
+                "timestamp" : res[batch]['created'],
+                "recordsSize" : res[batch].get('metrics',{}).get('recordsSize',0),
+                "invalidRecordsProfile" : res[batch].get('metrics',{}).get('invalidRecordsProfile',0),
+                "invalidRecordsIdentity" : res[batch].get('metrics',{}).get('invalidRecordsIdentity',0),
+                "invalidRecordCount" : res[batch].get('metrics',{}).get('invalidRecordCount',0),
+                "invalidRecordsStreamingValidation" : res[batch].get('metrics',{}).get('invalidRecordsStreamingValidation',0),
+                "invalidRecordsMapper" : res[batch].get('metrics',{}).get('invalidRecordsMapper',0),
+                "invalidRecordsUnknown" : res[batch].get('metrics',{}).get('invalidRecordsUnknown',0),
+                "errorCode" : res[batch]['errors'][0]['code'],
+                "errorMessage" : res[batch]['errors'][0]['description'] ,
+                "flowId" : res[batch]['tags']['flowId'],
+                "dataSetId" : datasetId,
+                "sandbox" : res[batch]['sandboxId'],
+            }
+        df = pd.DataFrame(dict_failed).T
+        return df
 
     def getBatch(self, batch_id: str = None)->dict:
         """

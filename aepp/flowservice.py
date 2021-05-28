@@ -31,6 +31,29 @@ class FlowService:
         self.sandbox = self.connector.config['sandbox']
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["flow"]
     
+    def getResource(self,endpoint:str=None,params:dict=None,format:str='json',save:bool=False,**kwargs)->dict:
+        """
+        Template for requesting data with a GET method.
+        Arguments:
+            endpoint : REQUIRED : The URL to GET
+            params: OPTIONAL : dictionary of the params to fetch
+            format : OPTIONAL : Type of response returned. Possible values:
+                json : default
+                txt : text file
+                raw : a response object from the requests module
+        """
+        if endpoint is None:
+            raise ValueError("Require an endpoint")
+        res = self.connector.getData(endpoint,params=params,format=format)
+        if save:
+            if format == 'json':
+                aepp.saveFile(module="catalog",file=res,filename=f"resource_{int(time.time())}",type_file="json",encoding=kwargs.get("encoding",'utf-8'))
+            elif format == 'txt':
+                aepp.saveFile(module="catalog",file=res,filename=f"resource_{int(time.time())}",type_file="txt",encoding=kwargs.get("encoding",'utf-8'))
+            else:
+                print("element is an object. Output is unclear. No save made.\nPlease save this element manually")
+        return res
+    
 
     def getConnections(self,limit:int=20,count:bool=False,**kwargs) -> list:
         """
@@ -49,6 +72,11 @@ class FlowService:
         res = self.connector.getData(self.endpoint + path, params=params)
         try:
             data = res['items']
+            continuationToken = res.get('_links',{}).get('next',{}).get('href','')
+            while continuationToken != '':
+                res = self.connector.getData(self.endpoint + continuationToken, params=params)
+                data += res['items']
+                continuationToken = res.get('_links',{}).get('next',{}).get('href','')
             return data
         except:
             return res
@@ -360,7 +388,7 @@ class FlowService:
                 Used to cut down the amount of data returned in the response body. 
                 For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
         """
-        path = "/runs"
+        path = "/flowservice/runs"
         params = {"limit":limit,"count":kwargs.get("count",False)}
         if prop is not None:
             params['property'] = prop
@@ -398,7 +426,7 @@ class FlowService:
         """
         if runId is None:
             raise Exception("Require a runId to be present")
-        path:str = f"runs/{runId}"
+        path:str = f"/flowservice/runs/{runId}"
         res:dict = self.connector.getData(self.endpoint + path)
         return res
     

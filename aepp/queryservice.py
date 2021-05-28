@@ -5,6 +5,8 @@ import pandas as pd
 from pg import DB
 from typing import Union
 import re
+import aepp
+import time
 
 class QueryService:
     """
@@ -83,6 +85,30 @@ class QueryService:
         self.header.update(**kwargs)
         self.sandbox = self.connector.config['sandbox']
         self.endpoint = config.endpoints["global"]+config.endpoints["query"]
+
+    def getResource(self,endpoint:str=None,params:dict=None,format:str='json',save:bool=False,**kwargs)->dict:
+        """
+        Template for requesting data with a GET method.
+        Arguments:
+            endpoint : REQUIRED : The URL to GET
+            params: OPTIONAL : dictionary of the params to fetch
+            format : OPTIONAL : Type of response returned. Possible values:
+                json : default
+                txt : text file
+                raw : a response object from the requests module
+        """
+        if endpoint is None:
+            raise ValueError("Require an endpoint")
+        res = self.connector.getData(endpoint,params=params,format=format)
+        if save:
+            if format == 'json':
+                aepp.saveFile(module="catalog",file=res,filename=f"resource_{int(time.time())}",type_file="json",encoding=kwargs.get("encoding",'utf-8'))
+            elif format == 'txt':
+                aepp.saveFile(module="catalog",file=res,filename=f"resource_{int(time.time())}",type_file="txt",encoding=kwargs.get("encoding",'utf-8'))
+            else:
+                print("element is an object. Output is unclear. No save made.\nPlease save this element manually")
+        return res
+    
 
     def connection(self)->dict:
         """

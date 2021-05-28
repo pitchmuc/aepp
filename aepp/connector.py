@@ -165,7 +165,14 @@ class AdobeRequest:
             res = requests.get(endpoint, headers=headers,
                                             params=params, data=data)
         try:
-            res_json = res.json()
+            if kwargs.get("format",'json') == "json":
+                res_json = res.json()
+            if kwargs.get("format",'json') == "txt":
+                res_json = res.text
+            elif kwargs.get("format",'json') == "raw":
+                res_json = res
+            else:            
+                res_json = res.json()
         except:
             if kwargs.get('verbose',False):
                 print(res.text)
@@ -176,8 +183,10 @@ class AdobeRequest:
                         time.sleep(5)
                         res_json = self.getData(endpoint,params,data,headers,**kwargs)
         try: ## sometimes list is being returned
-            if 'errorMessage' in res_json.keys():
-                print(f"status code : {res.status_code}")
+            if type(res_json) == dict:
+                if 'errorMessage' in res_json.keys():
+                    print(f"status code : {res.status_code}")
+                    print(f"error message : {res.errorMessage}")
         except:
             pass
         return res_json

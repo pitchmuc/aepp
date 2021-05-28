@@ -2,6 +2,16 @@
 
 __This page will be completed once version 0.1.0 is achieved.__
 
+## version 0.1.2
+
+* handling pagination on `getConnections` method in `flowService`
+* fix `getRun` and `getRuns` methods
+* adding `getResource` method on `schema`, `queryService`, `flowservice` and `catalog` module
+* exposing encoding capability on the `saveFile` method
+* adding `decodeStreamBatch` to the catalog module to decode the message returned by failed batch.
+* adding `jsonStreamMessages` to the catalog module to transform the output `decodeStreamBatch` into list of dictionary.
+* adding `getFailedBatchesDF` method to catalog module
+
 ## version 0.1.1
 
 * adding `observability` submodule

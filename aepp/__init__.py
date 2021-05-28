@@ -27,7 +27,7 @@ def home(product: str = None, limit: int = 50):
     return res
 
 
-def saveFile(module: str = None, file: object = None, filename: str = None, type_file: str = 'json'):
+def saveFile(module: str = None, file: object = None, filename: str = None, type_file: str = 'json',encoding:str='utf-8'):
     """
   Save the file in the approriate folder depending on the module sending the information.
    Arguments:
@@ -35,6 +35,7 @@ def saveFile(module: str = None, file: object = None, filename: str = None, type
         file: REQUIRED: an object containing the file to save.
         filename: REQUIRED: the filename to be used.
         type_file: REQUIRED: the type of file to be saveed(default: json)
+        encoding : OPTIONAL : encoding used to write the file.
     """
     if module is None:
         raise ValueError("Require the module to create a folder")
@@ -48,10 +49,10 @@ def saveFile(module: str = None, file: object = None, filename: str = None, type
     if type_file == 'json':
         filename = f"{filename}.json"
         complete_path = Path.joinpath(new_location, filename)
-        with open(complete_path, 'w') as f:
+        with open(complete_path, 'w',encoding=encoding) as f:
             f.write(json.dumps(file, indent=4))
     else:
         filename = f"{filename}.txt"
         complete_path = Path.joinpath(new_location, filename)
-        with open(complete_path, 'w') as f:
+        with open(complete_path, 'w',encoding=encoding) as f:
             f.write(file)
