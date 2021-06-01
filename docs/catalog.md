@@ -120,7 +120,7 @@ Monitoring failed batch for a specific dataSet:
 batches = myCat.getBatches(status='failed',dataSet="60103d1b49bb4f194a5be4c9")
 ```
 
-### Retrieve failed batches
+### Retrieve failed batches as DataFrame
 
 It is common to monitor only the batches that have failed during ingestion.\
 In order to realize that, you can use one of the methods that I presented above in the documentation for batch monitoring.\
@@ -145,6 +145,14 @@ It will provide you the following information:
 * sandboxId
 
 This method is useful as it returns a dataframe that you can save for reporting or passing along to your adobe representative.
+
+Arguments:
+  * limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
+  * n_results : OPTIONAL :  number of result you want to get in total. (will loop)
+
+```python
+failedBatches = myCat.getFailedBatchesDF(limit=50,n_results=200)
+```
 
 ### Create DataSet
 
