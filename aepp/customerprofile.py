@@ -289,6 +289,30 @@ class Profile:
             return df
         return res
     
+    def getPreviewDataSetOverlap(self,date:str=None,output:str="raw")->dict:
+        """
+        Method to find the overlap of identities with datasets.
+        Arguments:
+            date : OPTIONAL : Format: YYYY-MM-DD. 
+                If multiple reports were run on the date, the most recent report for that date will be returned. 
+                If a report does not exist for the specified date, a 404 error will be returned. 
+                If no date is specified, the most recent report will be returned. 
+                Example: date=2024-12-31
+            output : OPTIONAL : if you want to have a dataframe returns. Use "df", default "raw"
+        """
+        path = "/previewsamplestatus/report/dataset/overlap"
+        params={}
+        if date is not None:
+            params['date'] = date
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = 'application/json'
+        privateHeader['x-model-name'] = '_xdm.context.profile'
+        res = self.connector.getData(self.endpoint + path,headers=privateHeader)
+        if output == "df":
+            df = pd.DataFrame(res['data'])
+            return df
+        return res
+    
     def getPreviewNamespace(self,date:str=None,output:str="raw")->dict:
         """
         View a report showing the distribution of profiles by namespace.

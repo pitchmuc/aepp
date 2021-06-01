@@ -11,9 +11,11 @@ __This page will be completed once version 0.1.0 is achieved.__
 * adding `decodeStreamBatch` to the catalog module to decode the message returned by failed batch.
 * adding `jsonStreamMessages` to the catalog module to transform the output `decodeStreamBatch` into list of dictionary.
 * adding `getFailedBatchesDF` method to catalog module
-Patch : 
+Patch :
 * fix `getFailedBatchesDF` when no Flow or no Tag is used
 * adding deprecated `deleteBatch` method.
+* adding manifest file to include pickle files
+* adding overlap report endpoints
 
 ## version 0.1.1
 
@@ -52,6 +54,7 @@ PATCH
     * Ingestion *
   
 Patches:
+
 * fix `save` option in `getSchemaSample`
 * add `save` option to `getSchemaPaths`
 * change `getBatches` method parameters to add "dataframe" and "raw" ouputs options
