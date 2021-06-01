@@ -1,1 +1,1 @@
-include *.pickle
+include aepp/*.pickle

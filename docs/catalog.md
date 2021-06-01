@@ -147,8 +147,8 @@ It will provide you the following information:
 This method is useful as it returns a dataframe that you can save for reporting or passing along to your adobe representative.
 
 Arguments:
-  * limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
-  * n_results : OPTIONAL :  number of result you want to get in total. (will loop)
+* limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
+* n_results : OPTIONAL :  number of result you want to get in total. (will loop)
 
 ```python
 failedBatches = myCat.getFailedBatchesDF(limit=50,n_results=200)
