@@ -120,6 +120,32 @@ Monitoring failed batch for a specific dataSet:
 batches = myCat.getBatches(status='failed',dataSet="60103d1b49bb4f194a5be4c9")
 ```
 
+### Retrieve failed batches
+
+It is common to monitor only the batches that have failed during ingestion.\
+In order to realize that, you can use one of the methods that I presented above in the documentation for batch monitoring.\
+I have also created a specific failed batches monitoring method that will return you some data required for investigation.\
+Name of that method : `getFailedBatchesDF`\
+More data can be found by the `getBatch` method but this simplified method can be useful as reporting.\
+It will provide you the following information:
+
+* batchId
+* timestamp
+* recordsSize
+* invalidRecordsProfile
+* invalidRecordsIdentity
+* invalidRecordCount
+* invalidRecordsStreamingValidation
+* invalidRecordsMapper
+* invalidRecordsUnknown
+* errorCode
+* errorMessage
+* flowId (if available)
+* dataSetId
+* sandboxId
+
+This method is useful as it returns a dataframe that you can save for reporting or passing along to your adobe representative.
+
 ### Create DataSet
 
 The Catalog endpoints allows you to create DataSet programatically.\
