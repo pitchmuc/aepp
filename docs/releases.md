@@ -1,6 +1,12 @@
 # Releases information
 
-__This page will be completed once version 0.1.0 is achieved.__
+This page list all of the changes that came during the different release of the aepp module.
+
+## version 0.1.3
+
+* adding manifest file to include pickle files
+* changing setup file to include pickle files
+* adding overlap report endpoint in `customerprofile`
 
 ## version 0.1.2
 
@@ -14,8 +20,6 @@ __This page will be completed once version 0.1.0 is achieved.__
 Patch :
 * fix `getFailedBatchesDF` when no Flow or no Tag is used
 * adding deprecated `deleteBatch` method.
-* adding manifest file to include pickle files
-* adding overlap report endpoints
 
 ## version 0.1.1
 
