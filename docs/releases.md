@@ -7,6 +7,9 @@ This page list all of the changes that came during the different release of the 
 * adding manifest file to include pickle files
 * changing setup file to include pickle files
 * adding overlap report endpoint in `customerprofile`
+Patch:
+* Fix `getRuns` and `getRun` in `flowService` module
+* adding *n_results* parameter in most of global calls 
 
 ## version 0.1.2
 

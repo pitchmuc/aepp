@@ -56,11 +56,12 @@ class FlowService:
         return res
     
 
-    def getConnections(self,limit:int=20,count:bool=False,**kwargs) -> list:
+    def getConnections(self,limit:int=20,n_results:int=100,count:bool=False,**kwargs) -> list:
         """
         Returns the list of connections available.
         Arguments:
-            limit : OPTIONAL : number of result returned
+            limit : OPTIONAL : number of result returned per request (default 20)
+            n_results : OPTIONAL : number of total result returned (default 100, set to "inf" for retrieving everything)
             count : OPTIONAL : if set to True, just returns the number of connections
         kwargs will be added as query parameters 
         """
@@ -74,7 +75,7 @@ class FlowService:
         try:
             data = res['items']
             continuationToken = res.get('_links',{}).get('next',{}).get('href','')
-            while continuationToken != '':
+            while continuationToken != '' and len(data)<float(n_results):
                 res = self.connector.getData(self.endpoint + continuationToken, params=params)
                 data += res['items']
                 continuationToken = res.get('_links',{}).get('next',{}).get('href','')
@@ -222,12 +223,13 @@ class FlowService:
         res:dict = self.connector.getData(self.endpoint + path)
         return res 
 
-    def getFlows(self,limit:int=10,prop:str=None,filterMappingSetIds:list=None,filterSourceIds:list=None,filterTargetIds:list=None,**kwargs)->list:
+    def getFlows(self,limit:int=10,n_results:int=100,prop:str=None,filterMappingSetIds:list=None,filterSourceIds:list=None,filterTargetIds:list=None,**kwargs)->list:
         """
         Returns the flows set between Source and Target connection.
         Arguments:
-            limit : OPTIONAL : Number of results returned
-            prop : OPTIONAL : A comma separated list of top-level object properties to be returned in the response. 
+            limit : OPTIONAL : number of results returned
+            n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
+            prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response. 
                 Used to cut down the amount of data returned in the response body. 
                 For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
             filterMappingSetId : OPTIONAL : returns only the flow that possess the mappingSetId passed in a list.
@@ -243,7 +245,7 @@ class FlowService:
         res:dict = self.connector.getData(self.endpoint + path,params=params)
         token:str = res.get('_links',{}).get("next",{}).get("href","")
         items = res['items']
-        while token != "":
+        while token != "" and len(items)<float(n_results):
             continuationToken = token.split("=")[1]
             params["continuationToken"] = continuationToken
             res = self.connector.getData(self.endpoint + path,params=params)
@@ -379,26 +381,25 @@ class FlowService:
         res:dict = self.connector.getData(self.endpoint + path)
         return res
 
-    def getRuns(self,limit:int = 10,max:int = 100,prop:str=None, **kwargs)->list:
+    def getRuns(self,limit:int = 10,n_results:int = 100,prop:str=None, **kwargs)->list:
         """
         Returns the list of runs. Runs are instances of a flow execution.
         Arguments:
-            limit : OPTIONAL : Number of results returned per request
-            max : OPTIONAL : Maximum number of results.
-            prop : OPTIONAL : A comma separated list of top-level object properties to be returned in the response. 
+            limit : OPTIONAL : number of results returned per request
+            n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
+            prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response. 
                 Used to cut down the amount of data returned in the response body. 
                 For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
         """
-        path = "/flowservice/runs"
+        path = "/runs"
         params = {"limit":limit,"count":kwargs.get("count",False)}
         if prop is not None:
             params['property'] = prop
         if kwargs.get("continuationToken",False):
             params['continuationToken'] = kwargs.get("continuationToken")
-        itemsDone = kwargs.get('nbItems',0)
         res:dict = self.connector.getData(self.endpoint + path, params=params)
         items:list = res['items']
-        if res['_links']["next"].get("href","") != "":
+        if res['_links'].get("next",{}).get("href","") != "" and len(items) < float(n_results): 
             token:str = res['_links']["next"].get("href","")
             continuationToken:str = token.split("=")[1]
             params["continuationToken"] = continuationToken
@@ -427,21 +428,23 @@ class FlowService:
         """
         if runId is None:
             raise Exception("Require a runId to be present")
-        path:str = f"/flowservice/runs/{runId}"
+        path:str = f"/runs/{runId}"
         res:dict = self.connector.getData(self.endpoint + path)
         return res
     
-    def getSourceConnections(self,**kwargs)->dict:
+    def getSourceConnections(self,n_results:int=100,**kwargs)->list:
         """
         Return the list of source connections
-        Kwargs will be added as parameterss
+        Arguments:
+            n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
+        kwargs will be added as query parameterss
         """
         params = {**kwargs}
         path:str = f"/sourceConnections"
         res:dict = self.connector.getData(self.endpoint + path,params=params)
         data:list = res["items"]
         nextPage = res["_links"].get("next",{}).get("href",'')
-        while nextPage != "":
+        while nextPage != "" and len(data)<float(n_results):
             continuationToken = nextPage.split("=")[1]
             params["continuationToken"] = continuationToken
             res:dict = self.connector.getData(self.endpoint + path,params=params)
@@ -538,17 +541,19 @@ class FlowService:
         return res
 
 
-    def getTargetConnections(self,**kwargs)->dict:
+    def getTargetConnections(self,n_results:int=100,**kwargs)->dict:
         """
         Return the target connections
-        Kwargs will be added as parameterss
+        Arguments:
+            n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
+        kwargs will be added as query parameterss
         """
         params = {**kwargs}
         path:str = f"/targetConnections"
         res:dict = self.connector.getData(self.endpoint + path,params=params)
         data:list = res["items"]
         nextPage = res["_links"].get("next",{}).get("href",'')
-        while nextPage != "":
+        while nextPage != "" and len(data)<float(n_results):
             continuationToken = nextPage.split("=")[1]
             params["continuationToken"] = continuationToken
             res:dict = self.connector.getData(self.endpoint + path,params=params)
