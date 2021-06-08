@@ -9,7 +9,9 @@ This page list all of the changes that came during the different release of the 
 * adding overlap report endpoint in `customerprofile`
 Patch:
 * Fix `getRuns` and `getRun` in `flowService` module
-* adding *n_results* parameter in most of global calls 
+* adding *n_results* parameter in most of global calls
+* fix `streamMessage` and `streamMessages` methods wrong capitalization
+* adding docstring to `flowservice` elements
 
 ## version 0.1.2
 

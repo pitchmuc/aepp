@@ -235,7 +235,7 @@ class DataIngestion:
         res = self.connector.getData(self.endpoint+path,params=params)
         return res
 
-    def StreamMessage(self,inletId:str=None,data:dict=None,synchronousValidation:bool=False)->dict:
+    def streamMessage(self,inletId:str=None,data:dict=None,synchronousValidation:bool=False)->dict:
         """
         Send a dictionary to the connection for streaming ingestion.
         Arguments:
@@ -253,7 +253,7 @@ class DataIngestion:
         res = self.connector.postData(self.endpoint_streaming+path,data=data,params=params)
         return res
     
-    def StreamMessages(self,inletId:str=None,data:list=None,synchronousValidation:bool=False)->dict:
+    def streamMessages(self,inletId:str=None,data:list=None,synchronousValidation:bool=False)->dict:
         """
         Send a dictionary to the connection for streaming ingestion.
         Arguments:

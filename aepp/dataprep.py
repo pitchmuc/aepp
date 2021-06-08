@@ -208,6 +208,9 @@ class DataPrep:
         Arguments:
             mappingSet : REQUIRED : A dictionary that creates the mapping info.
                 see info on https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Mappings/createMappingSetUsingPOST
+            if you do not provide a dictionary for mapping set creation, you can pass the following params:
+            schemaId : OPTIONAL : schemaId to map to.
+            mappingList: OPTIONAL : List of mapping to set.
             validate : OPTIONAL : Validate the mapping.
         """
         path = "/mappingSets"

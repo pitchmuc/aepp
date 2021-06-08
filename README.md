@@ -65,7 +65,7 @@ It provides access to the different endpoints available from the API.
 
 Use-Case example : At the moment the capability to scheduled query is only accessible from the API.
 
-[Detail documentation]((./docs/queryservice.md))
+[Detail documentation](./docs/queryservice.md)
 
 #### InteractiveQuery class
 
