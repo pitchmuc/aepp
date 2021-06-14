@@ -6,7 +6,10 @@ import time
 class FlowService:
     """
     The Flow Service manage the ingestion part of the data in AEP.
-    For more information, relate to the API Documentation : 
+    For more information, relate to the API Documentation, you can directly refer to the official documentation:
+        https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/flow-service.yaml
+        https://experienceleague.adobe.com/docs/experience-platform/sources/home.html
+        https://experienceleague.adobe.com/docs/experience-platform/destinations/home.html 
     """
 
     PATCH_REFERENCE = [

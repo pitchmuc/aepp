@@ -5,6 +5,10 @@ import requests
 from typing import IO, Union
 
 class DataIngestion:
+    """
+    Class that manages sending data via authenticated methods.
+    For Batch and Streaming messages.
+    """
 
     def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
         """

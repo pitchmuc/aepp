@@ -6,6 +6,12 @@ from typing import Union
 import re
 
 class DataPrep:
+    """
+    This class instanciate the data prep capability.
+    The data prep is mostly use for the mapping service and you can find some documentation on this in the following part:
+        https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/data-prep.yaml
+        https://experienceleague.adobe.com/docs/experience-platform/data-prep/home.html 
+    """
 
     def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs)->None:
         """
@@ -14,7 +20,7 @@ class DataPrep:
             config : OPTIONAL : config object in the config module. 
             header : OPTIONAL : header object  in the config module.
     kwargs:
-        kwargsvaluewillupdatetheheader
+        kwargs value will update the header
         """
         self.connector = connector.AdobeRequest(config_object=config, header=header)
         self.header = self.connector.header
