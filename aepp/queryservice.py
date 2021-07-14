@@ -449,7 +449,7 @@ class QueryService:
             res = self.connector.getData(self.endpoint+path, params=params)
             data += res.get('templates',[])
             nextPage = res.get('_links',{}).get('next',{}).get('href','')
-        return res
+        return data
     
     def getTemplate(self,templateId:str=None)->dict:
         """
