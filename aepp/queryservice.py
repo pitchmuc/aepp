@@ -438,6 +438,41 @@ class QueryService:
         params['limit'] = kwargs.get('limit', 50)
         res = self.connector.getData(self.endpoint + path,
                             headers=self.header, params=params)
+        data = res['templates']
+        nextPage = res['_links'].get('next',{}).get('href','')
+        while nextPage != '':
+            hrefParams = nextPage.split('?')[1]
+            orderBy = re.search('orderby=(.+?)(&|$)',hrefParams)
+            start = re.search('start=(.+?)(&|$)',hrefParams)
+            params['start'] = start.group(1)
+            params['orderby'] = orderBy.group(1)
+            res = self.connector.getData(self.endpoint+path, params=params)
+            data += res.get('templates',[])
+            nextPage = res.get('_links',{}).get('next',{}).get('href','')
+        return res
+    
+    def getTemplate(self,templateId:str=None)->dict:
+        """
+        Retrieve a specific template ID.
+        Arguments:
+            templateId : REQUIRED : template ID to be retrieved.
+        """
+        if templateId is None:
+            raise ValueError("Require a template ID")
+        path = f"/query-templates/{templateId}"
+        res = self.connector.getData(self.endpoint + path)
+        return res
+
+    def deleteTemplate(self,templateId:str=None)->dict:
+        """
+        Delete a template based on its ID.
+        Arguments:
+            templateId : REQUIRED : template ID to be deleted.
+        """
+        if templateId is None:
+            raise ValueError("Require a template ID")
+        path = f"/query-templates/{templateId}"
+        res = self.connector.deleteData(self.endpoint + path)
         return res
 
     def createQueryTemplate(self, queryData: dict = None)->dict:
