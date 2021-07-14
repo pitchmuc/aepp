@@ -210,17 +210,45 @@ class QueryService:
                              data=data, headers=self.header)
         return res
 
-    def getQuery(self, queryid: str = None)->dict:
+    def getQuery(self, queryId: str = None)->dict:
         """
         Request the query status by ID.
         Argument : 
             queryid : REQUIRED : the query id to check
         """
-        if queryid is None:
-            raise AttributeError('Expected "queryid" to be filled')
-        path = f'/queries/{queryid}'
+        if queryId is None:
+            raise AttributeError('Expected "queryId" to be filled')
+        path = f'/queries/{queryId}'
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         return res
+    
+    def cancelQuery(self,queryId: str=None)->dict:
+        """
+        Cancel a specific query based on its ID.
+        Argument:
+            queryId : REQUIRED : the query ID to cancel
+        """
+        if queryId is None:
+            raise AttributeError('Expected "queryId" to be filled')
+        path = f'/queries/{queryId}'
+        data = {
+            "op": "cancel"  
+        }
+        res = self.connector.patchData(self.endpoint + path,data=data)
+        return res
+
+    def deleteQuery(self,queryId: str=None)->dict:
+        """
+        Delete a specific query based on its ID.
+        Argument:
+            queryId : REQUIRED : the query ID to delete
+        """
+        if queryId is None:
+            raise AttributeError('Expected "queryId" to be filled')
+        path = f'/queries/{queryId}'
+        res = self.connector.deleteData(self.endpoint + path)
+        return res
+
 
     def getSchedules(self, **kwargs)->list:
         """
