@@ -118,7 +118,7 @@ class QueryService:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def getQueries(self, orderby: str = None, limit: int = 1000, start: int = None, **kwargs)->list:
+    def getQueries(self, orderby: str = None, limit: int = 1000, start: int = None,property:str=None, **kwargs)->list:
         """
         Retrieve the queries from your organization.
         Arguments:
@@ -142,6 +142,8 @@ class QueryService:
             arguments['start'] = start
         if limit is not None:
             arguments['limit'] = limit
+        if property is not None:
+            arguments['property'] = property
         if len(kwargs.keys()) > 0:
             arguments['excludeSoftDeleted'] = kwargs.get(
                 "excludeSoftDeleted", True)

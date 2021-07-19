@@ -2,6 +2,12 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.1.4
+
+* adding queryTemplate endpoint (GET and DELETE)
+* adding `cancelQuery` and `deleteQuery` method
+* adding logging capability
+
 ## version 0.1.3
 
 * adding manifest file to include pickle files
