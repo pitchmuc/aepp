@@ -6,7 +6,10 @@ This page list all of the changes that came during the different release of the 
 
 * adding queryTemplate endpoint (GET and DELETE)
 * adding `cancelQuery` and `deleteQuery` method
-* adding logging capability
+* adding `property` parameter on `getQueries` method
+* modifying `deleteBatch` method location. Now part of the `ingestion` module.
+* adding `replayBatch` method to ingestion module.
+* adding logging capability (see [documentation]())
 
 ## version 0.1.3
 

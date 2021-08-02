@@ -91,6 +91,48 @@ class DataIngestion:
         res = self.connector.postData(self.endpoint+path,data=obj)
         return res
     
+    def deleteBatch(self,batchId:str=None)->str:
+        """
+        Delete a batch by applying the revert action on it.
+        Argument:
+            batchId : REQUIRED : Batch ID to be deleted
+        """
+        if batchId is None:
+            raise ValueError("Require a batchId argument")
+        path = f"/batches/{batchId}"
+        params = {"action":"REVERT"}
+        res = self.connector.postData(self.endpoint+path,params=params)
+        return res
+
+    def replayBatch(self,datasetId:str=None,batchIds:list=None)->dict:
+        """
+        You can replay a batch that has already been ingested. You need to provide the datasetId and the list of batch to be replay.
+        Once specify through that action, you will need to re-upload batch information via uploadSmallFile method with JSON format and then specify the completion.
+        You will need to re-use the batchId provided for the re-upload.
+        Arguments:
+            dataSetId : REQUIRED : The dataset ID attached to the batch
+            batchIds : REQUIRED : The list of batchID to replay.
+        """
+        if datasetId is None:
+            raise ValueError("Require a dataset ID")
+        if batchIds is None or type(batchIds) != list:
+            raise ValueError("Require a list of batch ID")
+        path = "/batches"
+        predecessors = [f"${batchId}" for batchId in batchIds]
+        data = {
+          "datasetId": datasetId,
+           "inputFormat": {
+             "format": "json"
+           },
+            "replay": {
+                "predecessors": predecessors,
+                "reason": "replace"
+             }
+        }
+        res = self.connector.patchData(self.endpoint + path, data=data)
+        return res
+
+    
     def uploadSmallFile(self,batchId:str=None,datasetId:str=None,filePath:str=None,data:Union[list,dict]=None,verbose:bool=False)->dict:
         """
         Upload a small file (<256 MB) to the filePath location in the dataset.

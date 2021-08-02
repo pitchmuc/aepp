@@ -15,21 +15,31 @@ class AdobeRequest:
     """
     Handle request to Audience Manager and taking care that the request have a valid token set each time.
     """
+    loggingEnabled = False
 
-    def __init__(self, config_object: dict = config.config_object, header: dict = config.header, verbose: bool = False, retry: int = 0,**kwargs)->None:
+    def __init__(self, config_object: dict = config.config_object, 
+                header: dict = config.header, 
+                verbose: bool = False, 
+                loggingEnabled:bool=False,
+                logger:object=None,
+                retry: int = 0,**kwargs)->None:
         """
         Set the connector to be used for handling request to AAM
         Arguments:
             config_object : OPTIONAL : Require the importConfig file to have been used.
             header : OPTIONAL : Header that you are already using.
             verbose : OPTIONAL : display comment while running
-            retry : OPTIONAL : When GET request fails, if set to an int, it will retry this number of time 
+            loggingEnabled : OPTIONAL : if the logging is enable for that instance.
+            logger : OPTIONAL : instance of the logger created 
+            retry : OPTIONAL : When GET request fails, if set to an int, it will retry this number of time
         """
         if config_object['org_id'] == "":
             raise Exception(
                 'You have to upload the configuration file with importConfigFile or configure method.')
         self.config = deepcopy(config_object)
         self.header = deepcopy(header)
+        self.loggingEnabled = loggingEnabled
+        self.logger = logger
         self.retry = retry
         if self.config['token'] == "" or time.time() > self.config['date_limit']:
             if 'aepScope' in kwargs.keys() and "privacyScope" in kwargs.keys():
@@ -128,9 +138,13 @@ class AdobeRequest:
         """
         now = time.time()
         if now > self.config['date_limit']:
+            if self.loggingEnabled:
+                self.logger.warning("token expired. Trying to retrieve a new token")
             token_with_expiry = self.get_token_and_expiry_for_config(config=self.config)
             self.token = token_with_expiry['token']
             self.config['token'] = self.token
+            if self.loggingEnabled:
+                self.logger.info("new token retrieved : {self.token}")
             self.header.update({'Authorization': f'Bearer {self.token}'})
             self.config['date_limit'] = time.time() + token_with_expiry['expiry'] / 1000 - 500
     
@@ -152,18 +166,29 @@ class AdobeRequest:
         self._checkingDate()
         if headers is None:
             headers = self.header
-        if params == None and data == None:
+        if self.loggingEnabled:
+                self.logger.debug(f"Start GET request to {endpoint} with header: {json.dumps(headers)}")
+        if params is None and data is None:
             res = requests.get(
                 endpoint, headers=headers)
-        elif params != None and data == None:
+        elif params is not None and data is None:
+            if self.loggingEnabled:
+                self.logger.debug(f"params: {json.dumps(params)}")
             res = requests.get(
                 endpoint, headers=headers, params=params)
-        elif params == None and data != None:
+        elif params is None and data is not None:
+            if self.loggingEnabled:
+                self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.get(
                 endpoint, headers=headers, data=data)
-        elif params != None and data != None:
+        elif params is not None and data is not None:
+            if self.loggingEnabled:
+                self.logger.debug(f"params: {json.dumps(params)}")
+                self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.get(endpoint, headers=headers,
                                             params=params, data=data)
+        if self.loggingEnabled:
+                self.logger.debug(f"endpoint used: {res.requests.url}")
         try:
             if kwargs.get("format",'json') == "json":
                 res_json = res.json()
@@ -176,8 +201,12 @@ class AdobeRequest:
         except:
             if kwargs.get('verbose',False):
                 print(res.text)
+            if self.loggingEnabled:
+                self.logger.warning(f"error: {res.text}")
             res_json = {'error': 'Request Error'}
             if self.retry > 0:
+                if self.loggingEnabled:
+                    self.logger.info(f"starting retry: {self.retry} to do")
                 for each in range(self.retry):
                     if 'error' in res_json.keys():
                         time.sleep(5)
@@ -185,6 +214,8 @@ class AdobeRequest:
         try: ## sometimes list is being returned
             if type(res_json) == dict:
                 if 'errorMessage' in res_json.keys():
+                    if self.loggingEnabled:
+                        self.logger.error(f"GET method failed: {res.status_code}, {res.errorMessage}")
                     print(f"status code : {res.status_code}")
                     print(f"error message : {res.errorMessage}")
         except:
@@ -198,6 +229,8 @@ class AdobeRequest:
         self._checkingDate()
         if headers is None:
             headers = self.header
+        if self.loggingEnabled:
+                self.logger.debug(f"Start GET request to {endpoint} with header: {json.dumps(headers)}")
         if params is None:
             res = requests.head(endpoint, headers=headers)
         if params is not None:
@@ -223,19 +256,30 @@ class AdobeRequest:
         self._checkingDate()
         if headers is None:
             headers = self.header
-        if params == None and data == None:
+        if self.loggingEnabled:
+            self.logger.debug(f"Start POST request to {endpoint} with header: {json.dumps(headers)}")
+        if params is None and data is None:
             res = requests.post(
                 endpoint, headers=headers)
-        elif params != None and data == None:
+        elif params is not None and data is None:
+            if self.loggingEnabled:
+                self.logger.debug(f"params: {json.dumps(params)}")
             res = requests.post(
                 endpoint, headers=headers, params=params)
-        elif params == None and data != None:
+        elif params is None and data is not None:
+            if self.loggingEnabled:
+                self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.post(endpoint, headers=headers,
                                              data=json.dumps(data))
-        elif params != None and data != None:
+        elif params is not None and data is not None:
+            if self.loggingEnabled:
+                self.logger.debug(f"params: {json.dumps(params)}")
+                self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.post(endpoint, headers=headers,
                                              params=params, data=json.dumps(data))
-        elif bytesData != None :
+        elif bytesData is not None :
+            if self.loggingEnabled:
+                self.logger.debug(f"bytes data used")
             res = requests.post(endpoint, headers=headers,
                                              params=params, data=bytesData)
         try:
@@ -263,13 +307,22 @@ class AdobeRequest:
         self._checkingDate()
         if headers is None:
             headers = self.header
-        if params != None and data == None:
+        if self.loggingEnabled:
+            self.logger.debug(f"Start PATCH request to {endpoint} with header: {json.dumps(headers)}")
+        if params is not None and data is None:
+            if self.loggingEnabled:
+                self.logger.debug(f"params: {json.dumps(params)}")
             res = requests.patch(
                 endpoint, headers=headers, params=params)
-        elif params == None and data != None:
+        elif params is None and data is not None:
+            if self.loggingEnabled:
+                self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.patch(endpoint, headers=headers,
                                               data=json.dumps(data))
-        elif params != None and data != None:
+        elif params is not None and data is not None:
+            if self.loggingEnabled:
+                self.logger.debug(f"params: {json.dumps(params)}")
+                self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.patch(endpoint, headers=headers,
                                               params=params, data=json.dumps(data))
         try:
@@ -279,8 +332,10 @@ class AdobeRequest:
                 print('error generating the JSON response')
                 print(f'status: {res.status_code}')
                 print(res.text)
+            if self.loggingEnabled:
+                self.logger.error(f"error with the response {res.status_code}: {res.text}")
             if res.status_code != 200:
-                res_json = {'error': 'Request Error'}
+                res_json = {'error': res.text}
             else:
                 res_json = {}
         return res_json
@@ -292,15 +347,24 @@ class AdobeRequest:
         self._checkingDate()
         if headers is None:
             headers = self.header
-        if params != None and data == None:
+        if self.loggingEnabled:
+            self.logger.debug(f"Start PUT request to {endpoint} with header: {json.dumps(headers)}")
+        if params is not None and data is None:
+            if self.loggingEnabled:
+                self.logger.debug(f"params: {json.dumps(params)}")
             res = requests.put(
                 endpoint, headers=headers, params=params)
-        elif params == None and data != None:
+        elif params is None and data is not None:
+            if self.loggingEnabled:
+                self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.put(endpoint, headers=headers,
                                             data=json.dumps(data))
-        elif params != None and data != None:
+        elif params is not None and data is not None:
+            if self.loggingEnabled:
+                self.logger.debug(f"params: {json.dumps(params)}")
+                self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.put(endpoint, headers=headers,
-                                            params=params, data=json.dumps(data))
+                                params=params, data=json.dumps(data))
         try:
             res_json = res.json()
         except:
@@ -308,8 +372,10 @@ class AdobeRequest:
                 print('error generating the JSON response')
                 print(f'status: {res.status_code}')
                 print(res.text)
+            if self.loggingEnabled:
+                self.logger.error(f"error with the response {res.status_code}: {res.text}")
             if res.status_code != 200:
-                res_json = {'error': 'Request Error'}
+                res_json = {'error': res.text}
             else:
                 res_json = {}
         return res_json
@@ -321,18 +387,22 @@ class AdobeRequest:
         self._checkingDate()
         if headers is None:
             headers = self.header
-        if params == None:
+        if self.loggingEnabled:
+            self.logger.debug(f"Start PUT request to {endpoint} with header: {json.dumps(headers)}")
+        if params is None:
             res = requests.delete(
                 endpoint, headers=headers)
-        elif params != None:
+        elif params is not None:
             res = requests.delete(
                 endpoint, headers=headers, params=params)
         try:
             status_code = res.status_code
             if status_code >= 400:
+                if self.loggingEnabled:
+                    self.logger.error(f"error with the response {res.status_code}: {res.text}")
                 return res.json()
         except:
             if kwargs.get('verbose',False):
                 print(res.text)
-            status_code = "unknown"
+            status_code = res.status_code
         return status_code

@@ -7,6 +7,7 @@ from typing import Union
 import time
 import codecs
 import json
+import logging
 
 @dataclass
 class _Data:
@@ -23,14 +24,34 @@ class Catalog:
     More details here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#
     It possess a data attribute that is containing information about your datasets. 
     Arguments:
-        config : OPTIONAL : config object in the config module. 
-        header : OPTIONAL : header object  in the config module.
+        config : OPTIONAL : config object in the config module (DO NOT MODIFY)
+        header : OPTIONAL : header object  in the config module (DO NOT MODIFY)
+        loggingObject : OPTIONAL : If you want to set logging capability for your actions.
     kwargs:
         kwargs value will update the header
     """
+    loggingEnabled = False
+    logger = None
 
-    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
-        self.connector = connector.AdobeRequest(config_object=config, header=header)
+    def __init__(self,
+                config:dict=aepp.config.config_object,
+                header=aepp.config.header,
+                loggingObject:dict=None,
+                **kwargs):
+        if loggingObject is not None and sorted(["level","stream","format","filename","file"]) == sorted(list(loggingObject.keys())):
+            self.loggingEnabled = True
+            self.logger = logging.getLogger(f"{__name__}")
+            self.logger.setLevel(loggingObject["level"])
+            formatter = logging.Formatter(loggingObject["format"])
+            if loggingObject["file"]:
+                fileHandler = logging.FileHandler(loggingObject["filename"])
+                fileHandler.setFormatter(formatter)
+                self.logger.addHandler(fileHandler)
+            if loggingObject["stream"]:
+                streamHandler = logging.StreamHandler()
+                streamHandler.setFormatter(formatter)
+                self.logger.addHandler(streamHandler)
+        self.connector = connector.AdobeRequest(config_object=config, header=header,loggingEnabled=self.loggingEnabled,logger=self.logger)
         self.header = self.connector.header
         self.header.update(**kwargs)
         self.sandbox = self.connector.config['sandbox']
@@ -50,6 +71,8 @@ class Catalog:
         """
         if endpoint is None:
             raise ValueError("Require an endpoint")
+        if self.loggingEnabled:
+            self.logger.debug(f"Using getResource with following format ({format}) to the following endpoint: {endpoint}")
         res = self.connector.getData(endpoint,params=params,format=format)
         if save:
             if format == 'json':
@@ -69,6 +92,8 @@ class Catalog:
         
         return None when issue is raised
         """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting decodeStreamBatch")
         try: 
             decodeMessage = codecs.escape_decode(message)[0].decode().replace('"body":"{','"body":{').replace('}","header":"{','},"header":{').replace('}","_errors":"{','},"_errors":{').replace('}"','}')
             return decodeMessage
@@ -78,13 +103,15 @@ class Catalog:
 
     def jsonStreamMessages(self,message:str,verbose:bool = False)->list:
         """
-        Try to create a list of dictionary messages from the decoded stream batch from decodeStreamBatch method.
+        Try to create a list of dictionary messages from the decoded stream batch extracted from the decodeStreamBatch method.
         Arguments:
             message : REQUIRED : a decoded text file, usually returned from the decodeStreamBatch method
             verbose : OPTIONAL : print errors and information on the decoding.
         
         return None when issue is raised
         """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting jsonStreamMessages")
         try:
             myList = []
             myYield:iter = (line for line in message.split("\n"))
@@ -102,7 +129,9 @@ class Catalog:
                 print(f"error rate is {(countErrors/countLine)*100:.2f}%")
             return myList
         except:
-            print("Issue decoding the message.")
+            print("Issue creating a stream of messages.")
+            if self.loggingEnabled:
+                self.logger.info(f"Issue creating a stream of messages")
             return None
 
     def getBatches(self,limit:int=10, n_results:int=None,output:str='raw',**kwargs)->Union[pd.DataFrame,dict]:
@@ -134,6 +163,8 @@ class Catalog:
         path = "/batches"
         limit = min([limit,100])
         params = {'limit':limit,**kwargs}
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getBatches with output format {output}")
         ## looping to retrieve pagination
         if n_results is not None:
             list_return = {}
@@ -164,6 +195,8 @@ class Catalog:
             n_results : OPTIONAL :  number of result you want to get in total. (will loop)
         """
         res = self.getBatches(status="failed",orderBy="desc:created",limit=limit,n_results=n_results)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getFailedBatchesDF")
         dict_failed = {}
         for batch in res:
             if res[batch]['relatedObjects'][0]['type'] == "dataSet":
@@ -194,6 +227,8 @@ class Catalog:
         """
         if batch_id is None:
             raise Exception("batch_id parameter is required.")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getBatch for the following batch : {batch_id}")
         path = f"/batches/{batch_id}"
         res = self.connector.getData(self.endpoint+path,
                             headers=self.header)
@@ -208,22 +243,11 @@ class Catalog:
         """
         if object is None:
             raise Exception('expecting a definition of the data to be uploaded.')
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createBatch")
         path = "/batches"
         res = self.connector.postData(self.endpoint+path,data=object,
                             headers=self.header)
-        return res
-
-    def deleteBatch(self, batchId:str=None)->str:
-        """
-        DEPRECATED
-        Delete a batch based on its id.
-        Argument:
-            batchId : REQUIRED : Batch ID to delete
-        """
-        if batchId is None:
-            raise ValueError("Require a batch ID")
-        path = f"/batches/{batchId}"
-        res = self.connector.deleteData(self.endpoint+path)
         return res
 
     def getResources(self, **kwargs)->list:
@@ -238,6 +262,8 @@ class Catalog:
         """
         path = "/"
         params = {**kwargs}
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getResources")
         res = self.connector.getData(self.endpoint+path,
                             headers=self.header, params=params)
         return res
@@ -262,6 +288,8 @@ class Catalog:
         """
         path = "/dataSets"
         params = {"limit":limit,**kwargs}
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getDataSets")
         res = self.connector.getData(self.endpoint+path, params=params)
         data = deepcopy(res)
         ## prepare pagination if needed
@@ -272,6 +300,8 @@ class Catalog:
             res = self.connector.getData(self.endpoint+path, params=params)
             data.update(res)
         try:
+            if self.loggingEnabled:
+                self.logger.debug(f"Starting caching results")
             self.data.table_names = {
                 data[key]['name']: data[key]['tags']['adobe/pqs/table'] for key in data}
             self.data.schema_ref = {
@@ -282,6 +312,8 @@ class Catalog:
                 data[key]['name']: key for key in data
             }
         except Exception as e:
+            if self.loggingEnabled:
+                self.logger.warning(f"Error caching results : {e}")
             print(e)
             print("Couldn't populate the data object from the instance.")
         if output == "df":
@@ -302,6 +334,8 @@ class Catalog:
         """
         path = "/dataSets"
         params = {"requestDataSource": kwargs.get("requestDataSource", False)}
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createDataSets")
         if data is not None or isinstance(data, dict) == True:
             res = self.connector.postData(self.endpoint+path, params=params,
                              data=data)
@@ -330,6 +364,8 @@ class Catalog:
         """
         if datasetId is None:
             raise Exception("Expected a datasetId argument")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getDataset for : {datasetId}")
         path = f"/dataSets/{datasetId}"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
@@ -342,6 +378,8 @@ class Catalog:
         """
         if datasetId is None:
             raise Exception("Expected a datasetId argument")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteDataset for : {datasetId}")
         path = f"/dataSets/{datasetId}"
         res = self.connector.deleteData(self.endpoint+path, headers=self.header)
         return res
@@ -374,6 +412,8 @@ class Catalog:
         """
         if datasetId is None or viewId is None:
             raise Exception("Expected a datasetId and an viewId argument")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getDataSetView for datasetId: {datasetId} & viewId: {viewId}")
         path = f"/dataSets/{datasetId}/views/{viewId}"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
@@ -387,6 +427,8 @@ class Catalog:
         """
         if datasetId is None or viewId is None:
             raise Exception("Expected a datasetId and an viewId argument")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getDataSetViewFiles for datasetId: {datasetId} & viewId: {viewId}")
         path = f"/dataSets/{datasetId}/views/{viewId}/files"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
