@@ -1,50 +1,78 @@
 import aepp
 from aepp import connector
 from copy import deepcopy
+import logging
+
 
 class DataSets:
     """
-    module that help for managing labels of the datasets.
+    Class that provides methods to manage labels of datasets.
+    A complete documentation ca be found here:
+    https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/dataset-service.yaml
     """
+
+    ## logging capability
+    loggingEnabled = False
+    logger = None
+
     REFERENCE_LABELS_CREATION = {
-        "labels": [
-            [
-            "C1",
-            "C2"
-            ]
-        ],
+        "labels": [["C1", "C2"]],
         "optionalLabels": [
             {
-            "option": {
-                "id": "https://ns.adobe.com/{TENANT_ID}/schemas/{SCHEMA_ID}",
-                "contentType": "application/vnd.adobe.xed-full+json;version=1",
-                "schemaPath": "/properties/repositoryCreatedBy"
-            },
-            "labels": [
-                [
-                "S1",
-                "S2"
-                ]
-            ]
+                "option": {
+                    "id": "https://ns.adobe.com/{TENANT_ID}/schemas/{SCHEMA_ID}",
+                    "contentType": "application/vnd.adobe.xed-full+json;version=1",
+                    "schemaPath": "/properties/repositoryCreatedBy",
+                },
+                "labels": [["S1", "S2"]],
             }
-        ]
+        ],
     }
 
-    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+    def __init__(
+        self,
+        config: dict = aepp.config.config_object,
+        header=aepp.config.header,
+        loggingObject: dict = None,
+        **kwargs,
+    ):
         """
         Instantiate the DataSet class.
         Arguments:
-            config : OPTIONAL : config object in the config module. 
-            header : OPTIONAL : header object  in the config module.
+            config : OPTIONAL : config object in the config module. (DO NOT MODIFY)
+            header : OPTIONAL : header object  in the config module. (DO NOT MODIFY)
+            loggingObject : OPTIONAL : logging object to log messages.
         Additional kwargs will update the header.
         """
-        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        if loggingObject is not None and sorted(
+            ["level", "stream", "format", "filename", "file"]
+        ) == sorted(list(loggingObject.keys())):
+            self.loggingEnabled = True
+            self.logger = logging.getLogger(f"{__name__}")
+            self.logger.setLevel(loggingObject["level"])
+            formatter = logging.Formatter(loggingObject["format"])
+            if loggingObject["file"]:
+                fileHandler = logging.FileHandler(loggingObject["filename"])
+                fileHandler.setFormatter(formatter)
+                self.logger.addHandler(fileHandler)
+            if loggingObject["stream"]:
+                streamHandler = logging.StreamHandler()
+                streamHandler.setFormatter(formatter)
+                self.logger.addHandler(streamHandler)
+        self.connector = connector.AdobeRequest(
+            config_object=config,
+            header=header,
+            loggingEnabled=self.loggingEnabled,
+            logger=self.logger,
+        )
         self.header = self.connector.header
         self.header.update(**kwargs)
-        self.sandbox = self.connector.config['sandbox']
-        self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["dataset"]
-    
-    def getLabels(self,dataSetId:str=None)->dict:
+        self.sandbox = self.connector.config["sandbox"]
+        self.endpoint = (
+            aepp.config.endpoints["global"] + aepp.config.endpoints["dataset"]
+        )
+
+    def getLabels(self, dataSetId: str = None) -> dict:
         """
         Return the labels assigned to a dataSet
         Argument:
@@ -52,11 +80,13 @@ class DataSets:
         """
         if dataSetId is None:
             raise ValueError("Require a dataSet ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getLabels")
         path = f"/datasets/{dataSetId}/labels"
-        res = self.connector.getData(self.endpoint+path)
+        res = self.connector.getData(self.endpoint + path)
         return res
-    
-    def headLabels(self,dataSetId:str=None)->dict:
+
+    def headLabels(self, dataSetId: str = None) -> dict:
         """
         Return the head assigned to a dataSet
         Argument:
@@ -64,11 +94,13 @@ class DataSets:
         """
         if dataSetId is None:
             raise ValueError("Require a dataSet ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting headLabels")
         path = f"/datasets/{dataSetId}/labels"
-        res = self.connector.headData(self.endpoint+path)
+        res = self.connector.headData(self.endpoint + path)
         return res
 
-    def deleteLabels(self,dataSetId:str=None,ifMatch:str=None)->dict:
+    def deleteLabels(self, dataSetId: str = None, ifMatch: str = None) -> dict:
         """
         Delete the labels of a dataset.
         Arguments:
@@ -79,13 +111,15 @@ class DataSets:
             raise ValueError("Require a dataSet ID")
         if ifMatch is None:
             raise ValueError("Require the ifMatch parameter")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteLabels")
         path = f"/datasets/{dataSetId}/labels"
         privateHeader = deepcopy(self.header)
         privateHeader["If-Match"] = ifMatch
-        res = self.connector.deleteData(self.endpoint + path,headers=privateHeader)
+        res = self.connector.deleteData(self.endpoint + path, headers=privateHeader)
         return res
-    
-    def createLabels(self,dataSetId:str=None,data:dict=None)->dict:
+
+    def createLabels(self, dataSetId: str = None, data: dict = None) -> dict:
         """
         Assign labels to a dataset.
         Arguments:
@@ -95,13 +129,17 @@ class DataSets:
         """
         if dataSetId is None:
             raise ValueError("Require a dataSet ID")
-        if data is None or type(data)!= dict:
+        if data is None or type(data) != dict:
             raise ValueError("Require a dictionary to pass labels")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createLabels")
         path = f"/datasets/{dataSetId}/labels"
-        res = self.connector.postData(self.endpoint+path,data=data)
+        res = self.connector.postData(self.endpoint + path, data=data)
         return res
 
-    def updateLabels(self,dataSetId:str=None,data:dict=None,ifMatch:str=None)->dict:
+    def updateLabels(
+        self, dataSetId: str = None, data: dict = None, ifMatch: str = None
+    ) -> dict:
         """
         Update the labels (PUT method)
             dataSetId : REQUIRED : The dataset ID to delete the labels for.
@@ -111,12 +149,16 @@ class DataSets:
         """
         if dataSetId is None:
             raise ValueError("Require a dataSet ID")
-        if data is None or type(data)!= dict:
+        if data is None or type(data) != dict:
             raise ValueError("Require a dictionary to pass labels")
         if ifMatch is None:
             raise ValueError("Require the ifMatch parameter")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting updateLabels")
         path = f"/datasets/{dataSetId}/labels"
         privateHeader = deepcopy(self.header)
         privateHeader["If-Match"] = ifMatch
-        res = self.connector.putData(self.endpoint+path,data=data,headers=privateHeader)
+        res = self.connector.putData(
+            self.endpoint + path, data=data, headers=privateHeader
+        )
         return res

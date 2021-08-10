@@ -2,6 +2,8 @@ import aepp
 from aepp import connector
 from copy import deepcopy
 import time
+import logging
+
 
 class FlowService:
     """
@@ -9,33 +11,70 @@ class FlowService:
     For more information, relate to the API Documentation, you can directly refer to the official documentation:
         https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/flow-service.yaml
         https://experienceleague.adobe.com/docs/experience-platform/sources/home.html
-        https://experienceleague.adobe.com/docs/experience-platform/destinations/home.html 
+        https://experienceleague.adobe.com/docs/experience-platform/destinations/home.html
     """
 
     PATCH_REFERENCE = [
-            {
-                "op": "Add",
-                "path": "/auth/params",
-                "value": {
+        {
+            "op": "Add",
+            "path": "/auth/params",
+            "value": {
                 "description": "A new description to provide further context on a specified connection or flow."
-                }
-            }
-        ]
+            },
+        }
+    ]
 
-    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+    ## logging capability
+    loggingEnabled = False
+    logger = None
+
+    def __init__(
+        self,
+        config: dict = aepp.config.config_object,
+        header=aepp.config.header,
+        loggingObject: dict = None,
+        **kwargs,
+    ):
         """
         initialize the Flow Service instance.
         Arguments:
-            config : OPTIONAL : config object in the config module. 
+            config : OPTIONAL : config object in the config module.
             header : OPTIONAL : header object  in the config module.
         """
-        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        if loggingObject is not None and sorted(
+            ["level", "stream", "format", "filename", "file"]
+        ) == sorted(list(loggingObject.keys())):
+            self.loggingEnabled = True
+            self.logger = logging.getLogger(f"{__name__}")
+            self.logger.setLevel(loggingObject["level"])
+            formatter = logging.Formatter(loggingObject["format"])
+            if loggingObject["file"]:
+                fileHandler = logging.FileHandler(loggingObject["filename"])
+                fileHandler.setFormatter(formatter)
+                self.logger.addHandler(fileHandler)
+            if loggingObject["stream"]:
+                streamHandler = logging.StreamHandler()
+                streamHandler.setFormatter(formatter)
+                self.logger.addHandler(streamHandler)
+        self.connector = connector.AdobeRequest(
+            config_object=config,
+            header=header,
+            loggingEnabled=self.loggingEnabled,
+            logger=self.logger,
+        )
         self.header = self.connector.header
         self.header.update(**kwargs)
-        self.sandbox = self.connector.config['sandbox']
+        self.sandbox = self.connector.config["sandbox"]
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["flow"]
-    
-    def getResource(self,endpoint:str=None,params:dict=None,format:str='json',save:bool=False,**kwargs)->dict:
+
+    def getResource(
+        self,
+        endpoint: str = None,
+        params: dict = None,
+        format: str = "json",
+        save: bool = False,
+        **kwargs,
+    ) -> dict:
         """
         Template for requesting data with a GET method.
         Arguments:
@@ -48,50 +87,80 @@ class FlowService:
         """
         if endpoint is None:
             raise ValueError("Require an endpoint")
-        res = self.connector.getData(endpoint,params=params,format=format)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getResource")
+        res = self.connector.getData(endpoint, params=params, format=format)
         if save:
-            if format == 'json':
-                aepp.saveFile(module="catalog",file=res,filename=f"resource_{int(time.time())}",type_file="json",encoding=kwargs.get("encoding",'utf-8'))
-            elif format == 'txt':
-                aepp.saveFile(module="catalog",file=res,filename=f"resource_{int(time.time())}",type_file="txt",encoding=kwargs.get("encoding",'utf-8'))
+            if format == "json":
+                aepp.saveFile(
+                    module="catalog",
+                    file=res,
+                    filename=f"resource_{int(time.time())}",
+                    type_file="json",
+                    encoding=kwargs.get("encoding", "utf-8"),
+                )
+            elif format == "txt":
+                aepp.saveFile(
+                    module="catalog",
+                    file=res,
+                    filename=f"resource_{int(time.time())}",
+                    type_file="txt",
+                    encoding=kwargs.get("encoding", "utf-8"),
+                )
             else:
-                print("element is an object. Output is unclear. No save made.\nPlease save this element manually")
+                print(
+                    "element is an object. Output is unclear. No save made.\nPlease save this element manually"
+                )
         return res
-    
 
-    def getConnections(self,limit:int=20,n_results:int=100,count:bool=False,**kwargs) -> list:
+    def getConnections(
+        self, limit: int = 20, n_results: int = 100, count: bool = False, **kwargs
+    ) -> list:
         """
         Returns the list of connections available.
         Arguments:
             limit : OPTIONAL : number of result returned per request (default 20)
             n_results : OPTIONAL : number of total result returned (default 100, set to "inf" for retrieving everything)
             count : OPTIONAL : if set to True, just returns the number of connections
-        kwargs will be added as query parameters 
+        kwargs will be added as query parameters
         """
-        params = {"limit":limit}
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getConnections")
+        params = {"limit": limit}
         if count:
-            params['count'] = count
+            params["count"] = count
         for kwarg in kwargs:
             params[kwarg] = kwargs[kwarg]
         path = "/connections"
         res = self.connector.getData(self.endpoint + path, params=params)
         try:
-            data = res['items']
-            continuationToken = res.get('_links',{}).get('next',{}).get('href','')
-            while continuationToken != '' and len(data)<float(n_results):
-                res = self.connector.getData(self.endpoint + continuationToken, params=params)
-                data += res['items']
-                continuationToken = res.get('_links',{}).get('next',{}).get('href','')
+            data = res["items"]
+            continuationToken = res.get("_links", {}).get("next", {}).get("href", "")
+            while continuationToken != "" and len(data) < float(n_results):
+                res = self.connector.getData(
+                    self.endpoint + continuationToken, params=params
+                )
+                data += res["items"]
+                continuationToken = (
+                    res.get("_links", {}).get("next", {}).get("href", "")
+                )
             return data
         except:
             return res
-    
-    def createConnection(self, data: dict = None, name: str = None, auth: dict = None, connectionSpec: dict = None, **kwargs) -> dict:
+
+    def createConnection(
+        self,
+        data: dict = None,
+        name: str = None,
+        auth: dict = None,
+        connectionSpec: dict = None,
+        **kwargs,
+    ) -> dict:
         """
         Create a connection based on either the data being passed or the information passed.
         Arguments:
             data : REQUIRED : dictionary containing the different elements required for the creation of the connection.
-            
+
             In case you didn't pass a data parameter, you can pass different information.
             name : REQUIRED : name of the connection.
             auth : REQUIRED : dictionary that contains "specName" and "params"
@@ -101,30 +170,45 @@ class FlowService:
                 id : The specific connection specification ID associated with source
                 version : Specifies the version of the connection specification ID. Omitting this value will default to the most recent version
         """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createConnection")
         path = "/connections"
         if data is not None:
-            if 'name' not in data.keys() or "auth" not in data.keys() or "connectionSpec" not in data.keys():
-                raise Exception("Require some keys to be present : name, auth, connectionSpec")
+            if (
+                "name" not in data.keys()
+                or "auth" not in data.keys()
+                or "connectionSpec" not in data.keys()
+            ):
+                raise Exception(
+                    "Require some keys to be present : name, auth, connectionSpec"
+                )
             obj = data
             res = self.connector.postData(self.endpoint + path, data=obj)
             return res
         elif data is None:
             if "specName" not in auth.keys() or "params" not in auth.keys():
-                raise Exception("Require some keys to be present in auth dict : specName, params")
+                raise Exception(
+                    "Require some keys to be present in auth dict : specName, params"
+                )
             if "id" not in connectionSpec.keys():
-                raise Exception("Require some keys to be present in connectionSpec dict : id")
+                raise Exception(
+                    "Require some keys to be present in connectionSpec dict : id"
+                )
             if name is None:
                 raise Exception("Require a name to be present")
-            obj = {
-                "name": name,
-                "auth": auth,
-                "connectionSpec" : connectionSpec
-
-            }
+            obj = {"name": name, "auth": auth, "connectionSpec": connectionSpec}
             res = self.connector.postData(self.endpoint + path, data=obj)
             return res
-    
-    def createStreamingConnection(self,name:str=None,sourceId:str=None,dataType:str="xdm",paramName:str=None,description:str="",**kwargs)->dict:
+
+    def createStreamingConnection(
+        self,
+        name: str = None,
+        sourceId: str = None,
+        dataType: str = "xdm",
+        paramName: str = None,
+        description: str = "",
+        **kwargs,
+    ) -> dict:
         """
         Create a Streaming connection
         Arguments:
@@ -144,27 +228,28 @@ class FlowService:
             raise Exception("Require a dataType specified")
         if paramName is None:
             raise ValueError("Require a name for the Streaming Connection")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createStreamingConnection")
         obj = {
             "name": name,
             "providerId": "521eee4d-8cbe-4906-bb48-fb6bd4450033",
             "description": description,
             "connectionSpec": {
                 "id": "bc7b00d6-623a-4dfc-9fdb-f1240aeadaeb",
-                "version": "1.0"
+                "version": "1.0",
             },
             "auth": {
-                "specName": kwargs.get("specName","Streaming Connection"),
+                "specName": kwargs.get("specName", "Streaming Connection"),
                 "params": {
                     "sourceId": sourceId,
                     "dataType": dataType,
-                    "name": paramName
-                }
-            }
+                    "name": paramName,
+                },
+            },
         }
         res = self.createConnection(data=obj)
         return res
 
-    
     def getConnection(self, connectionId: str = None) -> dict:
         """
         Returns a specific connection object.
@@ -173,10 +258,12 @@ class FlowService:
         """
         if connectionId is None:
             raise Exception("Require a connectionId to be present")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getConnection")
         path = f"/connections/{connectionId}"
         res = self.connector.getData(self.endpoint + path)
         return res
-    
+
     def connectionTest(self, connectionId: str = None) -> dict:
         """
         Test a specific connection ID.
@@ -185,8 +272,10 @@ class FlowService:
         """
         if connectionId is None:
             raise Exception("Require a connectionId to be present")
-        path:str = f"/connections/{connectionId}/test"
-        res:dict = self.connector.getData(self.endpoint + path)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting connectionTest")
+        path: str = f"/connections/{connectionId}/test"
+        res: dict = self.connector.getData(self.endpoint + path)
         return res
 
     def deleteConnection(self, connectionId: str = None) -> dict:
@@ -197,24 +286,28 @@ class FlowService:
         """
         if connectionId is None:
             raise Exception("Require a connectionId to be present")
-        path:str = f"/connections/{connectionId}"
-        res:dict = self.connector.deleteData(self.endpoint + path)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteConnection")
+        path: str = f"/connections/{connectionId}"
+        res: dict = self.connector.deleteData(self.endpoint + path)
         return res
-    
-    def getConnectionSpecs(self)->list:
+
+    def getConnectionSpecs(self) -> list:
         """
         Returns the list of connectionSpecs in that instance.
         If that doesn't work, return the response.
         """
-        path:str = "/connectionSpecs"
-        res:dict = self.connector.getData(self.endpoint + path)
+        path: str = "/connectionSpecs"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getConnectionSpecs")
+        res: dict = self.connector.getData(self.endpoint + path)
         try:
-            data:list = res['items']
+            data: list = res["items"]
             return data
         except:
             return res
 
-    def getConnectionSpec(self,specId:str=None)->dict:
+    def getConnectionSpec(self, specId: str = None) -> dict:
         """
         Returns the detail for a specific connection.
         Arguments:
@@ -222,64 +315,77 @@ class FlowService:
         """
         if specId is None:
             raise Exception("Require a specId to be present")
-        path:str = f"/connectionSpecs/{specId}"
-        res:dict = self.connector.getData(self.endpoint + path)
-        return res 
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getConnectionSpec")
+        path: str = f"/connectionSpecs/{specId}"
+        res: dict = self.connector.getData(self.endpoint + path)
+        return res
 
-    def getFlows(self,limit:int=10,n_results:int=100,prop:str=None,filterMappingSetIds:list=None,filterSourceIds:list=None,filterTargetIds:list=None,**kwargs)->list:
+    def getFlows(
+        self,
+        limit: int = 10,
+        n_results: int = 100,
+        prop: str = None,
+        filterMappingSetIds: list = None,
+        filterSourceIds: list = None,
+        filterTargetIds: list = None,
+        **kwargs,
+    ) -> list:
         """
         Returns the flows set between Source and Target connection.
         Arguments:
             limit : OPTIONAL : number of results returned
             n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
-            prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response. 
-                Used to cut down the amount of data returned in the response body. 
+            prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response.
+                Used to cut down the amount of data returned in the response body.
                 For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
             filterMappingSetId : OPTIONAL : returns only the flow that possess the mappingSetId passed in a list.
             filterSourceIds : OPTIONAL : returns only the flow that possess the sourceConnectionIds passed in a list.
             filterTargetIds : OPTIONAL : returns only the flow that possess the targetConnectionIds passed in a list.
         """
-        params:dict = {"limit":limit,"count":kwargs.get("count",False)}
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getFlows")
+        params: dict = {"limit": limit, "count": kwargs.get("count", False)}
         if property is not None:
-            params['property'] = prop
-        if kwargs.get("continuationToken",False) != False:
-            params['continuationToken'] = kwargs.get("continuationToken")
-        path:str = "/flows"
-        res:dict = self.connector.getData(self.endpoint + path,params=params)
-        token:str = res.get('_links',{}).get("next",{}).get("href","")
-        items = res['items']
-        while token != "" and len(items)<float(n_results):
+            params["property"] = prop
+        if kwargs.get("continuationToken", False) != False:
+            params["continuationToken"] = kwargs.get("continuationToken")
+        path: str = "/flows"
+        res: dict = self.connector.getData(self.endpoint + path, params=params)
+        token: str = res.get("_links", {}).get("next", {}).get("href", "")
+        items = res["items"]
+        while token != "" and len(items) < float(n_results):
             continuationToken = token.split("=")[1]
             params["continuationToken"] = continuationToken
-            res = self.connector.getData(self.endpoint + path,params=params)
-            token = res['_links'].get("next",{}).get("href","")
-            items += res['items']
+            res = self.connector.getData(self.endpoint + path, params=params)
+            token = res["_links"].get("next", {}).get("href", "")
+            items += res["items"]
         if filterMappingSetIds is not None:
             filteredItems = []
             for mappingsetId in filterMappingSetIds:
                 for item in items:
-                    if 'transformations' in item.keys():
-                        for element in item['transformations']:
-                            if element['params'].get('mappingId','') == mappingsetId:
+                    if "transformations" in item.keys():
+                        for element in item["transformations"]:
+                            if element["params"].get("mappingId", "") == mappingsetId:
                                 filteredItems.append(item)
             items = filteredItems
         if filterSourceIds is not None:
             filteredItems = []
             for sourceId in filterSourceIds:
                 for item in items:
-                    if sourceId in item['sourceConnectionIds']:
+                    if sourceId in item["sourceConnectionIds"]:
                         filteredItems.append(item)
             items = filteredItems
         if filterTargetIds is not None:
             filteredItems = []
             for targetId in filterTargetIds:
                 for item in items:
-                    if targetId in item['targetConnectionIds']:
+                    if targetId in item["targetConnectionIds"]:
                         filteredItems.append(item)
             items = filteredItems
         return items
-    
-    def getFlow(self,flowId:str=None)->dict:
+
+    def getFlow(self, flowId: str = None) -> dict:
         """
         Returns the details of a specific flow.
         Arguments:
@@ -287,11 +393,13 @@ class FlowService:
         """
         if flowId is None:
             raise Exception("Require a flowId to be present")
-        path:str = f"/flows/{flowId}"
-        res:dict = self.connector.getData(self.endpoint+path)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getFlow")
+        path: str = f"/flows/{flowId}"
+        res: dict = self.connector.getData(self.endpoint + path)
         return res
 
-    def deleteFlow(self,flowId:str=None)->dict:
+    def deleteFlow(self, flowId: str = None) -> dict:
         """
         Delete a specific flow by its ID.
         Arguments:
@@ -299,17 +407,19 @@ class FlowService:
         """
         if flowId is None:
             raise Exception("Require a flowId to be present")
-        path:str = f"/flows/{flowId}"
-        res:dict = self.connector.deleteData(self.endpoint+path)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteFlow")
+        path: str = f"/flows/{flowId}"
+        res: dict = self.connector.deleteData(self.endpoint + path)
         return res
-    
-    def createFlow(self,obj:dict=None)->dict:
+
+    def createFlow(self, obj: dict = None) -> dict:
         """
         Create a flow with the API.
         Arguments:
             obj : REQUIRED : body to create the flow service.
-                Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Flows/postFlow 
-                requires following keys : name, flowSpec, sourceConnectionIds, targetConnectionIds, transformations, scheduleParams. 
+                Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Flows/postFlow
+                requires following keys : name, flowSpec, sourceConnectionIds, targetConnectionIds, transformations, scheduleParams.
         """
         if obj is None:
             raise Exception("Require a dictionary to create the flow")
@@ -321,11 +431,15 @@ class FlowService:
             raise KeyError("missing 'sourceConnectionIds' parameter in the dictionary")
         if "targetConnectionIds" not in obj.keys():
             raise KeyError("missing 'targetConnectionIds' parameter in the dictionary")
-        path:str = "/flows"
-        res:dict = self.connector.postData(self.endpoint + path, data=obj)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createFlow")
+        path: str = "/flows"
+        res: dict = self.connector.postData(self.endpoint + path, data=obj)
         return res
-    
-    def updateFlow(self,flowId:str=None,etag:str=None,updateObj:list=None)->dict:
+
+    def updateFlow(
+        self, flowId: str = None, etag: str = None, updateObj: list = None
+    ) -> dict:
         """
         update the flow based on the operation provided.
         Arguments:
@@ -350,29 +464,35 @@ class FlowService:
             raise Exception("Require etag to be present")
         if updateObj is None:
             raise Exception("Require a list with data to be present")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting updateFlow")
         privateHeader = deepcopy(self.header)
-        privateHeader['if-match'] = etag
-        path:str = f"/flows/{flowId}"
-        res:dict = self.connector.patchData(self.endpoint + path, headers=privateHeader, data=updateObj)
+        privateHeader["if-match"] = etag
+        path: str = f"/flows/{flowId}"
+        res: dict = self.connector.patchData(
+            self.endpoint + path, headers=privateHeader, data=updateObj
+        )
         return res
-    
-    def getFlowSpecs(self, prop:str=None)->list:
+
+    def getFlowSpecs(self, prop: str = None) -> list:
         """
         Returns the flow specifications.
         Arguments:
-            prop : OPTIONAL : A comma separated list of top-level object properties to be returned in the response. 
-                Used to cut down the amount of data returned in the response body. 
+            prop : OPTIONAL : A comma separated list of top-level object properties to be returned in the response.
+                Used to cut down the amount of data returned in the response body.
                 For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
         """
-        path:str = "/flowSpecs"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getFlowSpecs")
+        path: str = "/flowSpecs"
         params = {}
         if prop is not None:
-            params['property'] = prop
-        res:dict = self.connector.getData(self.endpoint + path,params=params)
-        items:list = res['items']
+            params["property"] = prop
+        res: dict = self.connector.getData(self.endpoint + path, params=params)
+        items: list = res["items"]
         return items
-    
-    def getFlowSpec(self,flowSpecId)-> dict:
+
+    def getFlowSpec(self, flowSpecId) -> dict:
         """
         Return the detail of a specific flow ID Spec
         Arguments:
@@ -380,36 +500,44 @@ class FlowService:
         """
         if flowSpecId is None:
             raise Exception("Require a flowSpecId to be present")
-        path:str = f"/flowSpecs/{flowSpecId}"
-        res:dict = self.connector.getData(self.endpoint + path)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getFlowSpec")
+        path: str = f"/flowSpecs/{flowSpecId}"
+        res: dict = self.connector.getData(self.endpoint + path)
         return res
 
-    def getRuns(self,limit:int = 10,n_results:int = 100,prop:str=None, **kwargs)->list:
+    def getRuns(
+        self, limit: int = 10, n_results: int = 100, prop: str = None, **kwargs
+    ) -> list:
         """
         Returns the list of runs. Runs are instances of a flow execution.
         Arguments:
             limit : OPTIONAL : number of results returned per request
             n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
-            prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response. 
-                Used to cut down the amount of data returned in the response body. 
+            prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response.
+                Used to cut down the amount of data returned in the response body.
                 For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
         """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getRuns")
         path = "/runs"
-        params = {"limit":limit,"count":kwargs.get("count",False)}
+        params = {"limit": limit, "count": kwargs.get("count", False)}
         if prop is not None:
-            params['property'] = prop
-        if kwargs.get("continuationToken",False):
-            params['continuationToken'] = kwargs.get("continuationToken")
-        res:dict = self.connector.getData(self.endpoint + path, params=params)
-        items:list = res['items']
-        if res['_links'].get("next",{}).get("href","") != "" and len(items) < float(n_results): 
-            token:str = res['_links']["next"].get("href","")
-            continuationToken:str = token.split("=")[1]
+            params["property"] = prop
+        if kwargs.get("continuationToken", False):
+            params["continuationToken"] = kwargs.get("continuationToken")
+        res: dict = self.connector.getData(self.endpoint + path, params=params)
+        items: list = res["items"]
+        if res["_links"].get("next", {}).get("href", "") != "" and len(items) < float(
+            n_results
+        ):
+            token: str = res["_links"]["next"].get("href", "")
+            continuationToken: str = token.split("=")[1]
             params["continuationToken"] = continuationToken
-            items += self.connector.getData(self.endpoint + path,params=params)
+            items += self.connector.getData(self.endpoint + path, params=params)
         return items
-    
-    def createRun(self,flowId:str=None,status:str="active")->dict:
+
+    def createRun(self, flowId: str = None, status: str = "active") -> dict:
         """
         Generate a run based on the flowId.
         Arguments:
@@ -419,11 +547,13 @@ class FlowService:
         path = "/runs"
         if flowId is None:
             raise Exception("Require a flowId to be present")
-        obj = {"flowId":flowId,"status":status}
-        res:dict = self.connector.postData(self.endpoint + path, data=obj)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createRun")
+        obj = {"flowId": flowId, "status": status}
+        res: dict = self.connector.postData(self.endpoint + path, data=obj)
         return res
-    
-    def getRun(self,runId:str=None)->dict:
+
+    def getRun(self, runId: str = None) -> dict:
         """
         Return a specific runId.
         Arguments:
@@ -431,31 +561,35 @@ class FlowService:
         """
         if runId is None:
             raise Exception("Require a runId to be present")
-        path:str = f"/runs/{runId}"
-        res:dict = self.connector.getData(self.endpoint + path)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getRun")
+        path: str = f"/runs/{runId}"
+        res: dict = self.connector.getData(self.endpoint + path)
         return res
-    
-    def getSourceConnections(self,n_results:int=100,**kwargs)->list:
+
+    def getSourceConnections(self, n_results: int = 100, **kwargs) -> list:
         """
         Return the list of source connections
         Arguments:
             n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
         kwargs will be added as query parameterss
         """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getSourceConnections")
         params = {**kwargs}
-        path:str = f"/sourceConnections"
-        res:dict = self.connector.getData(self.endpoint + path,params=params)
-        data:list = res["items"]
-        nextPage = res["_links"].get("next",{}).get("href",'')
-        while nextPage != "" and len(data)<float(n_results):
+        path: str = f"/sourceConnections"
+        res: dict = self.connector.getData(self.endpoint + path, params=params)
+        data: list = res["items"]
+        nextPage = res["_links"].get("next", {}).get("href", "")
+        while nextPage != "" and len(data) < float(n_results):
             continuationToken = nextPage.split("=")[1]
             params["continuationToken"] = continuationToken
-            res:dict = self.connector.getData(self.endpoint + path,params=params)
+            res: dict = self.connector.getData(self.endpoint + path, params=params)
             data += res["items"]
-            nextPage = res["_links"].get("next",{}).get("href",'')
+            nextPage = res["_links"].get("next", {}).get("href", "")
         return data
 
-    def getSourceConnection(self,sourceConnectionId:str=None)->dict:
+    def getSourceConnection(self, sourceConnectionId: str = None) -> dict:
         """
         Return detail of the sourceConnection ID
         Arguments:
@@ -463,11 +597,13 @@ class FlowService:
         """
         if sourceConnectionId is None:
             raise Exception("Require a sourceConnectionId to be present")
-        path:str = f"/sourceConnections/{sourceConnectionId}"
-        res:dict = self.connector.getData(self.endpoint + path)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getSourceConnection")
+        path: str = f"/sourceConnections/{sourceConnectionId}"
+        res: dict = self.connector.getData(self.endpoint + path)
         return res
-    
-    def deleteSourceConnection(self,sourceConnectionId:str=None)->dict:
+
+    def deleteSourceConnection(self, sourceConnectionId: str = None) -> dict:
         """
         Delete a sourceConnection ID
         Arguments:
@@ -475,17 +611,19 @@ class FlowService:
         """
         if sourceConnectionId is None:
             raise Exception("Require a sourceConnectionId to be present")
-        path:str = f"/sourceConnections/{sourceConnectionId}"
-        res:dict = self.connector.deleteData(self.endpoint + path)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteSourceConnection")
+        path: str = f"/sourceConnections/{sourceConnectionId}"
+        res: dict = self.connector.deleteData(self.endpoint + path)
         return res
 
-    def createSourceConnection(self,data:dict=None)->dict:
+    def createSourceConnection(self, data: dict = None) -> dict:
         """
         Create a sourceConnection based on the dictionary passed.
         Arguments:
             obj : REQUIRED : the data to be passed for creation of the Source Connection.
-                Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Source_connections/postSourceConnection 
-                requires following keys : name, baseConnectionId, data, params, connectionSpec. 
+                Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Source_connections/postSourceConnection
+                requires following keys : name, baseConnectionId, data, params, connectionSpec.
         """
         if data is None:
             raise Exception("Require a dictionary with data to be present")
@@ -493,11 +631,19 @@ class FlowService:
             raise KeyError("Require a 'name' key in the dictionary passed")
         if "connectionSpec" not in data.keys():
             raise KeyError("Require a 'connectionSpec' key in the dictionary passed")
-        path:str = f"/sourceConnections"
-        res:dict = self.connector.postData(self.endpoint + path, data=data)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createSourceConnection")
+        path: str = f"/sourceConnections"
+        res: dict = self.connector.postData(self.endpoint + path, data=data)
         return res
 
-    def createSourceConnectionStreaming(self,connectionId:str=None,name:str=None,format:str="delimited",description:str="")->dict:
+    def createSourceConnectionStreaming(
+        self,
+        connectionId: str = None,
+        name: str = None,
+        format: str = "delimited",
+        description: str = "",
+    ) -> dict:
         """
         Create a source connection based on streaming connection created.
         Arguments:
@@ -506,6 +652,8 @@ class FlowService:
             format : REQUIRED : format of the data sent (default : delimited)
             description : OPTIONAL : Description of of the Connection Source.
         """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createSourceConnectionStreaming")
         obj = {
             "name": name,
             "providerId": "521eee4d-8cbe-4906-bb48-fb6bd4450033",
@@ -513,17 +661,16 @@ class FlowService:
             "baseConnectionId": connectionId,
             "connectionSpec": {
                 "id": "bc7b00d6-623a-4dfc-9fdb-f1240aeadaeb",
-                "version": "1.0"
+                "version": "1.0",
             },
-            "data": {
-                "format": "delimited"
-            }
+            "data": {"format": format},
         }
         res = self.createSourceConnection(data=obj)
         return res
 
-
-    def updateSourceConnection(self,sourceConnectionId:str=None,etag:str=None,updateObj:list=None)->dict:
+    def updateSourceConnection(
+        self, sourceConnectionId: str = None, etag: str = None, updateObj: list = None
+    ) -> dict:
         """
         Update a source connection based on the ID provided with the object provided.
         Arguments:
@@ -537,14 +684,17 @@ class FlowService:
             raise Exception("Require etag to be present")
         if updateObj is None:
             raise Exception("Require a list with data to be present")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting updateSourceConnection")
         privateHeader = deepcopy(self.header)
-        privateHeader['if-match'] = etag
-        path:str = f"/sourceConnections/{sourceConnectionId}"
-        res:dict = self.connector.patchData(self.endpoint + path, headers=privateHeader, data=updateObj)
+        privateHeader["if-match"] = etag
+        path: str = f"/sourceConnections/{sourceConnectionId}"
+        res: dict = self.connector.patchData(
+            self.endpoint + path, headers=privateHeader, data=updateObj
+        )
         return res
 
-
-    def getTargetConnections(self,n_results:int=100,**kwargs)->dict:
+    def getTargetConnections(self, n_results: int = 100, **kwargs) -> dict:
         """
         Return the target connections
         Arguments:
@@ -552,20 +702,19 @@ class FlowService:
         kwargs will be added as query parameterss
         """
         params = {**kwargs}
-        path:str = f"/targetConnections"
-        res:dict = self.connector.getData(self.endpoint + path,params=params)
-        data:list = res["items"]
-        nextPage = res["_links"].get("next",{}).get("href",'')
-        while nextPage != "" and len(data)<float(n_results):
+        path: str = f"/targetConnections"
+        res: dict = self.connector.getData(self.endpoint + path, params=params)
+        data: list = res["items"]
+        nextPage = res["_links"].get("next", {}).get("href", "")
+        while nextPage != "" and len(data) < float(n_results):
             continuationToken = nextPage.split("=")[1]
             params["continuationToken"] = continuationToken
-            res:dict = self.connector.getData(self.endpoint + path,params=params)
+            res: dict = self.connector.getData(self.endpoint + path, params=params)
             data += res["items"]
-            nextPage = res["_links"].get("next",{}).get("href",'')
+            nextPage = res["_links"].get("next", {}).get("href", "")
         return data
 
-
-    def getTargetConnection(self,targetConnectionId:str=None)->dict:
+    def getTargetConnection(self, targetConnectionId: str = None) -> dict:
         """
         Retrieve a specific Target connection detail.
         Arguments:
@@ -573,11 +722,13 @@ class FlowService:
         """
         if targetConnectionId is None:
             raise Exception("Require a target connection ID to be present")
-        path:str = f"/targetConnections/{targetConnectionId}"
-        res:dict = self.connector.getData(self.endpoint+path)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getTargetConnection")
+        path: str = f"/targetConnections/{targetConnectionId}"
+        res: dict = self.connector.getData(self.endpoint + path)
         return res
 
-    def deleteTargetConnection(self,targetConnectionId:str=None)->dict:
+    def deleteTargetConnection(self, targetConnectionId: str = None) -> dict:
         """
         Delete a specific Target connection detail
         Arguments:
@@ -585,11 +736,22 @@ class FlowService:
         """
         if targetConnectionId is None:
             raise Exception("Require a target connection ID to be present")
-        path:str = f"/targetConnections/{targetConnectionId}"
-        res:dict = self.connector.deleteData(self.endpoint+path)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteTargetConnection")
+        path: str = f"/targetConnections/{targetConnectionId}"
+        res: dict = self.connector.deleteData(self.endpoint + path)
         return res
 
-    def createTargetConnection(self, name:str=None, connectionSpecId:str=None,datasetId:str=None,format:str="parquet_xdm",version:str="1.0",description:str="",data:dict = None)->dict:
+    def createTargetConnection(
+        self,
+        name: str = None,
+        connectionSpecId: str = None,
+        datasetId: str = None,
+        format: str = "parquet_xdm",
+        version: str = "1.0",
+        description: str = "",
+        data: dict = None,
+    ) -> dict:
         """
         Create a new target connection
         Arguments:
@@ -599,14 +761,16 @@ class FlowService:
                 version : REQUIRED : version to be used (1.0 by default)
                 format : REQUIRED : Data format to be used (parquet_xdm by default)
                 description : OPTIONAL : description of your target connection
-                data : OPTIONAL : If you pass the complete dictionary for creation 
-        Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Target_connections/postTargetConnection 
-        requires following keys : name, data, params, connectionSpec. 
+                data : OPTIONAL : If you pass the complete dictionary for creation
+        Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Target_connections/postTargetConnection
+        requires following keys : name, data, params, connectionSpec.
         """
-        path:str = f"/targetConnections"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createTargetConnection")
+        path: str = f"/targetConnections"
         if data is not None and type(data) == dict:
             obj = data
-            res:dict = self.connector.postData(self.endpoint + path, data=obj)
+            res: dict = self.connector.postData(self.endpoint + path, data=obj)
         else:
             if name is None:
                 raise ValueError("Require a name to be passed")
@@ -617,21 +781,22 @@ class FlowService:
             obj = {
                 "name": name,
                 "description": description,
-                "connectionSpec": {
-                    "id": connectionSpecId,
-                    "version": version
-                },
-                "data": {
-                    "format": format
-                },
-                "params": {
-                "dataSetId": datasetId
-                }
+                "connectionSpec": {"id": connectionSpecId, "version": version},
+                "data": {"format": format},
+                "params": {"dataSetId": datasetId},
             }
-            res:dict = self.connector.postData(self.endpoint + path, data=obj)        
+            res: dict = self.connector.postData(self.endpoint + path, data=obj)
         return res
-    
-    def createTargetConnectionDataLake(self,name:str=None,datasetId:str=None,schemaId:str=None,format:str='delimited',version:str="1.0",description:str="")->dict:
+
+    def createTargetConnectionDataLake(
+        self,
+        name: str = None,
+        datasetId: str = None,
+        schemaId: str = None,
+        format: str = "delimited",
+        version: str = "1.0",
+        description: str = "",
+    ) -> dict:
         """
         Create a target connection to the AEP Data Lake.
         Arguments:
@@ -648,22 +813,24 @@ class FlowService:
             "data": {
                 "format": format,
                 "schema": {
-                "id": schemaId,
-                "version": "application/vnd.adobe.xed-full+json;version=1.0"
-                }
+                    "id": schemaId,
+                    "version": "application/vnd.adobe.xed-full+json;version=1.0",
+                },
             },
-            "params": {
-                "dataSetId": datasetId
-            },
+            "params": {"dataSetId": datasetId},
             "connectionSpec": {
                 "id": "c604ff05-7f1a-43c0-8e18-33bf874cb11c",
-                "version": version
-            }
+                "version": version,
+            },
         }
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createTargetConnectionDataLake")
         res = self.createTargetConnection(data=targetObj)
         return res
 
-    def updateTargetConnection(self,targetConnectionId:str=None,etag:str=None,updateObj:list=None)->dict:
+    def updateTargetConnection(
+        self, targetConnectionId: str = None, etag: str = None, updateObj: list = None
+    ) -> dict:
         """
         Update a target connection based on the ID provided with the object provided.
         Arguments:
@@ -677,8 +844,12 @@ class FlowService:
             raise Exception("Require etag to be present")
         if updateObj is None:
             raise Exception("Require a dictionary with data to be present")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting updateTargetConnection")
         privateHeader = deepcopy(self.header)
-        privateHeader['if-match'] = etag
-        path:str = f"/targetConnections/{targetConnectionId}"
-        res:dict = self.connector.patchData(self.endpoint + path, headers=privateHeader, data=updateObj)
+        privateHeader["if-match"] = etag
+        path: str = f"/targetConnections/{targetConnectionId}"
+        res: dict = self.connector.patchData(
+            self.endpoint + path, headers=privateHeader, data=updateObj
+        )
         return res
