@@ -1,23 +1,65 @@
 import aepp
 from aepp import connector
+import logging
+import time
+
 
 class DataAccess:
+    """
+    A class providing methods based on the Data Access API
+    https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/data-access-api.yaml
+    """
 
-    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+    ## logging capability
+    loggingEnabled = False
+    logger = None
+
+    def __init__(
+        self,
+        config: dict = aepp.config.config_object,
+        header=aepp.config.header,
+        loggingObject: dict = None,
+        **kwargs,
+    ):
         """
         Instantiate the DataAccess class.
         Arguments:
-            config : OPTIONAL : config object in the config module. 
-            header : OPTIONAL : header object  in the config module.
+            config : OPTIONAL : config object in the config module. (DO NOT MODIFY)
+            header : OPTIONAL : header object  in the config module. (DO NOT MODIFY)
+            loggingObject : OPTIONAL : logging object to log messages.
         Additional kwargs will update the header.
         """
-        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        if loggingObject is not None and sorted(
+            ["level", "stream", "format", "filename", "file"]
+        ) == sorted(list(loggingObject.keys())):
+            self.loggingEnabled = True
+            self.logger = logging.getLogger(f"{__name__}")
+            self.logger.setLevel(loggingObject["level"])
+            formatter = logging.Formatter(loggingObject["format"])
+            if loggingObject["file"]:
+                fileHandler = logging.FileHandler(loggingObject["filename"])
+                fileHandler.setFormatter(formatter)
+                self.logger.addHandler(fileHandler)
+            if loggingObject["stream"]:
+                streamHandler = logging.StreamHandler()
+                streamHandler.setFormatter(formatter)
+                self.logger.addHandler(streamHandler)
+        self.connector = connector.AdobeRequest(
+            config_object=config,
+            header=header,
+            loggingEnabled=self.loggingEnabled,
+            loggingObject=self.logger,
+        )
         self.header = self.connector.header
         self.header.update(**kwargs)
-        self.sandbox = self.connector.config['sandbox']
-        self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["dataaccess"]
+        self.sandbox = self.connector.config["sandbox"]
+        self.endpoint = (
+            aepp.config.endpoints["global"] + aepp.config.endpoints["dataaccess"]
+        )
 
-    def getBatchFiles(self,batchId:str=None,verbose:bool=False,**kwargs)->list:
+    def getBatchFiles(
+        self, batchId: str = None, verbose: bool = False, **kwargs
+    ) -> list:
         """
         List all dataset files under a batch.
         Arguments:
@@ -28,24 +70,30 @@ class DataAccess:
         """
         if batchId is None:
             raise ValueError("Require a batchId to be specified.")
-        params={}
-        if kwargs.get('limit',None) is not None:
-            params['limit'] = str(kwargs.get('limit'))
-        if kwargs.get('start',None) is not None:
-            params['start'] = str(kwargs.get('start'))
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getBatchFiles")
+        params = {}
+        if kwargs.get("limit", None) is not None:
+            params["limit"] = str(kwargs.get("limit"))
+        if kwargs.get("start", None) is not None:
+            params["start"] = str(kwargs.get("start"))
         path = f"/batches/{batchId}/files"
-        res = self.connector.getData(self.endpoint+path,params=params,verbose=verbose)
-        try: 
-            return res['data']
+        res = self.connector.getData(
+            self.endpoint + path, params=params, verbose=verbose
+        )
+        try:
+            return res["data"]
         except:
-            return res 
-    
-    def getBatchFailed(self,batchId:str=None,path:str=None,verbose:bool=False,**kwargs)->list:
+            return res
+
+    def getBatchFailed(
+        self, batchId: str = None, path: str = None, verbose: bool = False, **kwargs
+    ) -> list:
         """
         Lists all the dataset files under a failed batch.
-        Arguments:  
+        Arguments:
             batchId : REQUIRED : The batch ID to look for.
-            path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided. 
+            path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided.
                 For example: path=profiles.csv
         Possible kwargs:
             limit : A paging parameter to specify number of results per page.
@@ -53,29 +101,33 @@ class DataAccess:
         """
         if batchId is None:
             raise ValueError("Require a batchId to be specified.")
-        params={}
-        if kwargs.get('limit',None) is not None:
-            params['limit'] = str(kwargs.get('limit'))
-        if kwargs.get('start',None) is not None:
-            params['start'] = str(kwargs.get('start'))
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getBatchFailed")
+        params = {}
+        if kwargs.get("limit", None) is not None:
+            params["limit"] = str(kwargs.get("limit"))
+        if kwargs.get("start", None) is not None:
+            params["start"] = str(kwargs.get("start"))
         if path is not None:
-            params['path'] = path
+            params["path"] = path
         pathEndpoint = f"/batches/{batchId}/failed"
-        res = self.connector.getData(self.endpoint+pathEndpoint,params=params,verbose=verbose)
-        try: 
-            return res['data']
+        res = self.connector.getData(
+            self.endpoint + pathEndpoint, params=params, verbose=verbose
+        )
+        try:
+            return res["data"]
         except:
-            return res 
-    
-    def getBatchMeta(self,batchId:str=None,path:str=None,**kwargs)->dict:
+            return res
+
+    def getBatchMeta(self, batchId: str = None, path: str = None, **kwargs) -> dict:
         """
         Lists files under a batch’s meta directory or download a specific file under it. The files under a batch’s meta directory may include the following:
             row_errors: A directory containing 0 or more files with parsing, conversion, and/or validation errors found at the row level.
             input_files: A directory containing metadata for 1 or more input files submitted with the batch.
             row_errors_sample.json: A root level file containing the sampled set of row errors for the UX.
-        Arguments:  
+        Arguments:
             batchId : REQUIRED : The batch ID to look for.
-            path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided. 
+            path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided.
                 Possible values for this query include the following:
                     row_errors
                     input_files
@@ -86,39 +138,59 @@ class DataAccess:
         """
         if batchId is None:
             raise ValueError("Require a batchId to be specified.")
-        params={}
-        if kwargs.get('limit',None) is not None:
-            params['limit'] = str(kwargs.get('limit'))
-        if kwargs.get('start',None) is not None:
-            params['start'] = str(kwargs.get('start'))
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getBatchMeta")
+        params = {}
+        if kwargs.get("limit", None) is not None:
+            params["limit"] = str(kwargs.get("limit"))
+        if kwargs.get("start", None) is not None:
+            params["start"] = str(kwargs.get("start"))
         if path is not None:
-            params['path'] = path
+            params["path"] = path
         pathEndpoint = f"/batches/{batchId}/meta"
-        res = self.connector.getData(self.endpoint+pathEndpoint, headers=self.header,params=params)
+        res = self.connector.getData(
+            self.endpoint + pathEndpoint, headers=self.header, params=params
+        )
         return res
-    
-    def getHeadFile(self,dataSetFileId:str=None,path:str=None,verbose:bool=False,)->dict:
+
+    def getHeadFile(
+        self,
+        dataSetFileId: str = None,
+        path: str = None,
+        verbose: bool = False,
+    ) -> dict:
         """
         Get headers regarding a file.
         Arguments:
             dataSetFileId : REQURED : The ID of the dataset file you are retrieving.
-            path : REQUIRED : The full name of the file identified. 
+            path : REQUIRED : The full name of the file identified.
                 For example: path=profiles.csv
         """
         if dataSetFileId is None or path is None:
             raise ValueError("Require a dataSetFileId and a path for that method")
-        params = {"path" : path}
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getHeadFile")
+        params = {"path": path}
         pathEndpoint = f"/files/{dataSetFileId}"
-        res = self.connector.headData(self.endpoint+pathEndpoint,params=params,verbose=verbose)
+        res = self.connector.headData(
+            self.endpoint + pathEndpoint, params=params, verbose=verbose
+        )
         return res
 
-    def getFiles(self,dataSetFileId:str=None,path:str=None,range:str=None,start:str=None,limit:int=None)->dict:
+    def getFiles(
+        self,
+        dataSetFileId: str = None,
+        path: str = None,
+        range: str = None,
+        start: str = None,
+        limit: int = None,
+    ) -> dict:
         """
         Returns either a complete file or a directory of chunked data that makes up the file.
         The response contains a data array that may contain a single entry or a list of files belonging to that directory.
         Arguments:
             dataSetFileId : REQUIRED : The ID of the dataset file you are retrieving.
-            path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided. 
+            path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided.
                 For example: path=profiles.csv
             range : OPTIONAL : The range of bytes requested. For example: Range: bytes=0-100000
             start : OPTIONAL : A paging parameter to specify start of new page. For example: start=fileName.csv
@@ -126,6 +198,8 @@ class DataAccess:
         """
         if dataSetFileId is None:
             raise ValueError("Require a dataSetFileId")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getFiles")
         params = {}
         if path is not None:
             params["path"] = path
@@ -136,30 +210,72 @@ class DataAccess:
         if limit is not None:
             params["limit"] = limit
         pathEndpoint = f"/files/{dataSetFileId}"
-        res:dict = self.connector.getData(self.endpoint+pathEndpoint, headers=self.header,params=params)
+        res: dict = self.connector.getData(
+            self.endpoint + pathEndpoint, headers=self.header, params=params
+        )
         return res
-    
-    def getPreview(self,datasetId:str=None)->list:
+
+    def getPreview(self, datasetId: str = None) -> list:
         """
         Give a preview of a specific dataset
         Arguments:
             datasetId : REQUIRED : the dataset ID to preview
         """
+        if datasetId is None:
+            raise ValueError("Require a datasetId")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getPreview")
         path = f"/datasets/{datasetId}/preview"
-        res:dict = self.connector.getData(self.endpoint+path, headers=self.header)
-        try: 
-            return res['data']
+        res: dict = self.connector.getData(self.endpoint + path, headers=self.header)
+        try:
+            return res["data"]
         except:
-            return res 
-    
-    def getResource(self,url:str=None)->object:
-        """
-        Returns a request response object based on the URL passed
-        Argument:
-            url : REQUIRED : Request URL to use
-        """
-        res = self.connector.getResource(url)
-        return res
+            return res
 
-    
-     
+    def getResource(
+        self,
+        endpoint: str = None,
+        params: dict = None,
+        format: str = "json",
+        save: bool = False,
+        **kwargs,
+    ) -> dict:
+        """
+        Template for requesting data with a GET method.
+        Arguments:
+            endpoint : REQUIRED : The URL to GET
+            params: OPTIONAL : dictionary of the params to fetch
+            format : OPTIONAL : Type of response returned. Possible values:
+                json : default
+                txt : text file
+                raw : a response object from the requests module
+        """
+        if endpoint is None:
+            raise ValueError("Require an endpoint")
+        if self.loggingEnabled:
+            self.logger.debug(
+                f"Using getResource with following format ({format}) to the following endpoint: {endpoint}"
+            )
+        res = self.connector.getData(endpoint, params=params, format=format)
+        if save:
+            if format == "json":
+                aepp.saveFile(
+                    module="catalog",
+                    file=res,
+                    filename=f"resource_{int(time.time())}",
+                    type_file="json",
+                    encoding=kwargs.get("encoding", "utf-8"),
+                )
+            elif format == "txt":
+                aepp.saveFile(
+                    module="catalog",
+                    file=res,
+                    filename=f"resource_{int(time.time())}",
+                    type_file="txt",
+                    encoding=kwargs.get("encoding", "utf-8"),
+                )
+            else:
+                print(
+                    "element is an object. Output is unclear. No save made.\nPlease save this element manually"
+                )
+        return res

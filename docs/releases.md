@@ -9,7 +9,7 @@ This page list all of the changes that came during the different release of the 
 * adding `property` parameter on `getQueries` method
 * modifying `deleteBatch` method location. Now part of the `ingestion` module.
 * adding `replayBatch` method to ingestion module.
-* adding logging capability (see [documentation]())
+* adding logging capability (see [documentation](./logging.md))
 
 ## version 0.1.3
 

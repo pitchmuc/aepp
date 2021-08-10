@@ -1,32 +1,86 @@
 import aepp
 from aepp import connector
+import logging
+
 
 class Sandboxes:
+    """
+    A collection of methods to realize actions on the sandboxes.
+    It comes from the sandbox API:
+    https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/sandbox-api.yaml
+    """
 
-    def __init__(self,config:dict=aepp.config.config_object,header=aepp.config.header, **kwargs):
+    ## logging capability
+    loggingEnabled = False
+    logger = None
+
+    def __init__(
+        self,
+        config: dict = aepp.config.config_object,
+        header=aepp.config.header,
+        loggingObject: dict = None,
+        **kwargs,
+    ):
         """
         Instantiate the sandbox class.
         Arguments:
-            config : OPTIONAL : config object in the config module. 
-            header : OPTIONAL : header object  in the config module.
+            config : OPTIONAL : config object in the config module. (DO NOT MODIFY)
+            header : OPTIONAL : header object  in the config module. (DO NOT MODIFY)
+            loggingObject : OPTIONAL : logging object to log messages.
         Additional kwargs will update the header.
         """
-        self.connector = connector.AdobeRequest(config_object=config, header=header)
+        if loggingObject is not None and sorted(
+            ["level", "stream", "format", "filename", "file"]
+        ) == sorted(list(loggingObject.keys())):
+            self.loggingEnabled = True
+            self.logger = logging.getLogger(f"{__name__}")
+            self.logger.setLevel(loggingObject["level"])
+            formatter = logging.Formatter(loggingObject["format"])
+            if loggingObject["file"]:
+                fileHandler = logging.FileHandler(loggingObject["filename"])
+                fileHandler.setFormatter(formatter)
+                self.logger.addHandler(fileHandler)
+            if loggingObject["stream"]:
+                streamHandler = logging.StreamHandler()
+                streamHandler.setFormatter(formatter)
+                self.logger.addHandler(streamHandler)
+        self.connector = connector.AdobeRequest(
+            config_object=config,
+            header=header,
+            loggingEnabled=self.loggingEnabled,
+            loggingObject=self.logger,
+        )
         self.header = self.connector.header
         self.header.update(**kwargs)
-        self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["sandboxes"]
+        self.endpoint = (
+            aepp.config.endpoints["global"] + aepp.config.endpoints["sandboxes"]
+        )
 
-    def getSandboxes(self)->list:
+    def getSandboxes(self) -> list:
         """
         Return the list of all the sandboxes
         """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getSandboxes")
         path = self.endpoint + "/sandboxes"
         res = self.connector.getData(path)
-        data = res['sandboxes']
+        data = res["sandboxes"]
         return data
 
+    def getSandboxTypes(self) -> list:
+        """
+        Return the list of all the sandboxes types.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getSandboxTyoes")
+        path = self.endpoint + "/sandboxTypes"
+        res = self.connector.getData(path)
+        data = res["sandboxTypes"]
+        return data
 
-    def createSandbox(self,name: str = None, title: str = None, type_sandbox: str = "development")->dict:
+    def createSandbox(
+        self, name: str = None, title: str = None, type_sandbox: str = "development"
+    ) -> dict:
         """
         Create a new sandbox in your AEP instance.
         Arguments:
@@ -35,51 +89,69 @@ class Sandboxes:
             type_sandbox : OPTIONAL : type of your sandbox. default : development.
         """
         if name is None or title is None:
-            raise Exception('name and title cannot be empty')
+            raise Exception("name and title cannot be empty")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createSandbox")
         path = self.endpoint + "/sandboxes"
-        data = {
-            "name": name,
-            "title": title,
-            "type": type_sandbox
-        }
+        data = {"name": name, "title": title, "type": type_sandbox}
         res = self.connector.postData(path, data=data)
         return res
 
-
-    def getSandbox(self,name: str)->dict:
+    def getSandbox(self, name: str) -> dict:
         """
         retrieve a Sandbox information by name
         Argument:
             name : REQUIRED : name of Sandbox
         """
         if name is None:
-            raise Exception('Expected a name as parameter')
+            raise Exception("Expected a name as parameter")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getSandbox")
         path = self.endpoint + f"/sandboxes/{name}"
         res = self.connector.getData(path)
         return res
 
-
-    def deleteSandbox(self,name: str)->dict:
+    def deleteSandbox(self, name: str) -> dict:
         """
         Delete a sandbox by its name.
-        Arguments: 
+        Arguments:
             name : REQUIRED : sandbox to be deleted.
         """
         if name is None:
-            raise Exception('Expected a name as parameter')
+            raise Exception("Expected a name as parameter")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteSandbox")
         path = self.endpoint + f"/sandboxes/{name}"
         res = self.connector.deleteData(path)
         return res
 
-
-    def resetSandbox(self,name: str)->dict:
+    def resetSandbox(self, name: str) -> dict:
         """
         Reset a sandbox by its name. Sandbox will be empty.
-        Arguments: 
-            name : REQUIRED : sandbox to be deleted.
+        Arguments:
+            name : REQUIRED : sandbox name to be deleted.
         """
         if name is None:
-            raise Exception('Expected a name as parameter')
+            raise Exception("Expected a sandbox name as parameter")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting resetSandbox")
         path = self.endpoint + f"/sandboxes/{name}"
         res = self.connector.putData(path)
+        return res
+
+    def updateSandbox(self, name: str, action: dict = None) -> dict:
+        """
+        Update the Sandbox with the action provided.
+        Arguments:
+            name : REQUIRED : sandbox name to be updated.
+            action : REQUIRED : dictionary defining the action to realize on that sandbox.
+        """
+        if name is None:
+            raise Exception("Expected a sandbox name as parameter")
+        if action is None or type(action) != dict:
+            raise Exception("Expected a dictionary to pass the action")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting updateSandboxes")
+        path = self.endpoint + f"/sandboxes/{name}"
+        res = self.connector.patchData(path, data=action)
         return res
