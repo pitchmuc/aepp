@@ -27,9 +27,9 @@ class Segmentation:
         """
         Instanciate the segmentation API methods class-
         Arguments:
+            loggingObject : OPTIONAL : logging object to log messages.
             config : OPTIONAL : config object in the config module. (DO NOT MODIFY)
             header : OPTIONAL : header object  in the config module. (DO NOT MODIFY)
-            loggingObject : OPTIONAL : logging object to log messages.
         """
         if loggingObject is not None and sorted(
             ["level", "stream", "format", "filename", "file"]
