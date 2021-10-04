@@ -448,3 +448,111 @@ class DataPrep:
         path = f"/mappingSets/{mappingSetId}/mappings/{mappingId}"
         res = self.connector.putData(self.endpoint + path, data=mapping)
         return res
+
+    def previewDataOutput(self, data: dict = None, mappingSet: dict = None) -> dict:
+        """
+        The data you want to run through as a preview, which will be transformed by the mapping sets within the body.
+        Arguments:
+            data : REQUIRED : A dictionary containing the data to test.
+            mappingSet : REQUIRED : The mappingSet to test.
+
+        Example:
+        {
+            "data": {
+                "id": 1234,
+                "firstName": "Jim",
+                "lastName": "Seltzer"
+            },
+            "mappingSet": {
+                "outputSchema": {
+                "schemaRef": {
+                    "id": "https://ns.adobe.com/stardust/schemas/89abc189258b1cb1a816d8f2b2341a6d98000ed8f4008305",
+                    "contentType": "application/vnd.adobe.xed-full+json;version=1"
+                }
+                },
+                "mappings": [
+                {
+                    "sourceType": "ATTRIBUTE",
+                    "source": "id",
+                    "destination": "_id",
+                    "name": "id",
+                    "description": "Identifier field"
+                },
+                {
+                    "sourceType": "ATTRIBUTE",
+                    "source": "firstName",
+                    "destination": "person.name.firstName"
+                },
+                {
+                    "sourceType": "ATTRIBUTE",
+                    "source": "lastName",
+                    "destination": "person.name.lastName"
+                }
+                ]
+            }
+        }
+        """
+        if data is None:
+            raise ValueError("Require a dictionary that contains the data to be tested")
+        if mappingSet is None:
+            raise ValueError("Require a dictionary that contains the mapping set")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting previewDataOutput")
+        path = "/mappingSets/preview"
+        dataObject = {"data": data, "mappingSet": mappingSet}
+        res = self.connector.postData(self.endpoint + path, data=dataObject)
+        return res
+
+    def getMappingSetFunctions(
+        self,
+    ) -> list:
+        """
+        Return list of mapping functions.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getMappingSetFunctions")
+        path = "/languages/el/functions"
+        res = self.connector.getData(self.endpoint + path)
+        return res
+
+    def getMappingSetOperators(
+        self,
+    ) -> list:
+        """
+        Return list of mapping operators.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getMappingSetOperators")
+        path = "/languages/el/operators"
+        res = self.connector.getData(self.endpoint + path)
+        return res
+
+    def validateExpression(
+        self,
+        expression: str = None,
+        mappingSetId: str = None,
+        sampleData: str = None,
+        sampleDataType: str = None,
+    ) -> dict:
+        """
+        Check if the expression that you have passed is valid.
+        Arguments:
+            expression : REQUIRED : the expression you are trying to validate.
+            mappingSetId : OPTIONAL : MappingSetId to integrate this expression.
+            sampleData : OPTIONAL : Sample Date to validate
+            sampleDataType : OPTIONAL : Data Type of your Sample data.
+        """
+        if expression is None:
+            raise ValueError("Require an expression")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting validateExpression")
+        path = "/languages/el/validate"
+        data = {"expression": expression}
+        if mappingSetId is not None:
+            data["mappingSetId"] = mappingSetId
+        if sampleData is not None:
+            data["sampleData"] = sampleData
+        if sampleDataType is not None:
+            data["sampleDataType"] = sampleDataType
+        res = self.connector.postData(self.endpoint + path, data=data)
+        return res

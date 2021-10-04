@@ -368,32 +368,56 @@ class Segmentation:
         )
         return res
 
-    def getSchedule(self, schedule_id: str = None) -> dict:
+    def getSchedule(self, scheduleId: str = None) -> dict:
         """
         Get a specific schedule definition.
         Argument:
-            schedule_id : REQUIRED : Segment ID to be retrieved.
+            scheduleId : REQUIRED : Segment ID to be retrieved.
         """
-        if schedule_id is None:
+        if scheduleId is None:
             raise Exception("Expected a schedule_id")
         if self.loggingEnabled:
             self.logger.debug(f"Starting getSchedule")
-        path = f"/config/schedules/{schedule_id}"
+        path = f"/config/schedules/{scheduleId}"
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         return res
 
-    def deleteSchedule(self, schedule_id: str = None) -> dict:
+    def deleteSchedule(self, scheduleId: str = None) -> dict:
         """
         Delete a specific schedule definition.
         Argument:
-            schedule_id : REQUIRED : Segment ID to be deleted.
+            scheduleId : REQUIRED : Segment ID to be deleted.
         """
-        if schedule_id is None:
+        if scheduleId is None:
             raise Exception("Expected a schedule_id")
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteSchedule")
-        path = f"/config/schedules/{schedule_id}"
+        path = f"/config/schedules/{scheduleId}"
         res = self.connector.deleteData(self.endpoint + path, headers=self.header)
+        return res
+
+    def updateSchedule(self, scheduleId: str = None, operations: list = None) -> dict:
+        """
+        Update a schedule with the operation provided.
+        Arguments:
+            scheduleId : REQUIRED : the schedule ID to update
+            operations : REQUIRED : List of operations to realize
+                [
+                    {
+                    "op": "add",
+                    "path": "/state",
+                    "value": "active"
+                    }
+                ]
+        """
+        if scheduleId is None:
+            raise ValueError("Require a schedule ID")
+        if operations is None or type(operations) != list:
+            raise ValueError("Require a list of operation to run")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting updateSchedule")
+        path = f"/config/schedules/{scheduleId}"
+        res = self.connector.patchData(self.endpoint + path, data=operations)
         return res
 
     def getJobs(

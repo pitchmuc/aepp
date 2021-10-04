@@ -225,7 +225,9 @@ class AdobeRequest:
                 self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.get(endpoint, headers=headers, params=params, data=data)
         if self.loggingEnabled:
-            self.logger.debug(f"endpoint used: {res.requests.url}")
+            self.logger.debug(f"endpoint used: {res.request.url}")
+            self.logger.debug(f"endpoint used: {res.request.url}")
+            self.logger.debug(f"params used: {params}")
         try:
             if kwargs.get("format", "json") == "json":
                 res_json = res.json()
@@ -255,10 +257,10 @@ class AdobeRequest:
                 if "errorMessage" in res_json.keys():
                     if self.loggingEnabled:
                         self.logger.error(
-                            f"GET method failed: {res.status_code}, {res.errorMessage}"
+                            f"GET method failed: {res.status_code}, {res['errorMessage']}"
                         )
                     print(f"status code : {res.status_code}")
-                    print(f"error message : {res.errorMessage}")
+                    print(f"error message : {res['errorMessage']}")
         except:
             pass
         return res_json
