@@ -54,6 +54,8 @@ At the moment the current wrapper is containing the following sub modules:
 * sensei
 * [privacyservice](./docs/privacyservice.md) (see 2nd note below)
 
+Last but not least, the core methods are described here: [main](./docs/main.md)
+
 ## queryservice module
 
 The queryservice Module contains 2 classes:
