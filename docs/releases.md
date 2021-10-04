@@ -11,7 +11,9 @@ This page list all of the changes that came during the different release of the 
 * adding `replayBatch` method to ingestion module.
 * adding FieldGroup compatibility.
 * adding logging capability (see [documentation](./logging.md))
+
 Patch:
+
 * fix an issue on logging data when using `GET` method.
 * adding more endpoints in the `dataprep` module
 * adding the `updateSchedule` on the `segmentation` module
@@ -21,7 +23,9 @@ Patch:
 * adding manifest file to include pickle files
 * changing setup file to include pickle files
 * adding overlap report endpoint in `customerprofile`
+
 Patch:
+
 * Fix `getRuns` and `getRun` in `flowService` module
 * adding *n_results* parameter in most of global calls
 * fix `streamMessage` and `streamMessages` methods wrong capitalization
@@ -36,7 +40,9 @@ Patch:
 * adding `decodeStreamBatch` to the catalog module to decode the message returned by failed batch.
 * adding `jsonStreamMessages` to the catalog module to transform the output `decodeStreamBatch` into list of dictionary.
 * adding `getFailedBatchesDF` method to catalog module
+
 Patch :
+
 * fix `getFailedBatchesDF` when no Flow or no Tag is used
 * adding deprecated `deleteBatch` method.
 
@@ -49,7 +55,9 @@ Patch :
 * rename `mapping` to `dataprep`
 * fix sandbox switch on `importConfigFile`
 * change `Sandbox` class to `Sandboxes` for consistency.
+
 PATCH
+
 * fixing *`limit`* parameter for `queryIdentity` method
 * fixing verbose f string method.
 
