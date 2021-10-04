@@ -11,6 +11,10 @@ This page list all of the changes that came during the different release of the 
 * adding `replayBatch` method to ingestion module.
 * adding FieldGroup compatibility.
 * adding logging capability (see [documentation](./logging.md))
+Patch:
+* fix an issue on logging data when using `GET` method.
+* adding more endpoints in the `dataprep` module
+* adding the `updateSchedule` on the `segmentation` module
 
 ## version 0.1.3
 
