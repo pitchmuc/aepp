@@ -79,5 +79,4 @@ Be careful that your JWT connection has the correct setup to access this API end
 
 ## Releases
 
-Release note will be added once the version 0.1.0. has been reached.
-Release notes will be accessible [here](./docs/releases.md).
+Release notes are accessible [here](./docs/releases.md).
