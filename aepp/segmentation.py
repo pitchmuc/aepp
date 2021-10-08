@@ -192,7 +192,7 @@ class Segmentation:
         )
         return update
 
-    def getExportJobs(self, limit: int = 1000, status: str = None) -> dict:
+    def getExportJobs(self, limit: int = 1000, status: str = None) -> list:
         """
         Retrieve a list of all export jobs.
         Arguments:
@@ -212,7 +212,7 @@ class Segmentation:
                 self.endpoint + path, params=params, headers=self.header
             )
             data += res["records"]
-            nextPage = res.get("link", "")
+            nextPage = res.get("link", {}).get("next", "")
             if nextPage == "":
                 lastPage = True
             else:
@@ -343,15 +343,32 @@ class Segmentation:
         del self.header["x-ups-search-version"]
         return data
 
-    def getSchedules(self) -> dict:
+    def getSchedules(
+        self, limit: int = 100, n_results: Union[int, str] = "inf"
+    ) -> list:
         """
         Return the list of scheduled segments.
+        Arguments:
+            limit : OPTIONAL : number of result per request (100 max)
+            n_results : OPTIONAL : Total of number of result to retrieve.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getSchedules")
         path = "/config/schedules"
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
-        return res
+        params = {"start": 0}
+        lastPage = False
+        data = []
+        while lastPage != True:
+            res = self.connector.getData(
+                self.endpoint + path, params=params, headers=self.header
+            )
+            data += res.get("children", [])
+            nextPage = res.get("_links", {}).get("href", "")
+            if nextPage == "" or len(data) > float(n_results):
+                lastPage = True
+            else:
+                params["start"] += 1
+        return data
 
     def createSchedule(self, schedule_data: dict = None) -> dict:
         """
@@ -436,16 +453,16 @@ class Segmentation:
         name: str = None,
         status: str = None,
         limit: int = 100,
-        n_result: Union[str, int] = "inf",
+        n_results: Union[str, int] = "inf",
         **kwargs,
-    ) -> dict:
+    ) -> list:
         """
         Returns the list of segment jobs.
         Arguments:
             name : OPTIONAL : Name of the snapshot
             status : OPTIONAL : Status of the job (PROCESSING,SUCCEEDED)
             limit : OPTIONAL : Amount of jobs to be retrieved per request (100 max)
-            n_result : OPTIONAL : How many total jobs do you want to retrieve.
+            n_results : OPTIONAL : How many total jobs do you want to retrieve.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getJobs")
@@ -459,7 +476,7 @@ class Segmentation:
             )
             data += res.get("children", [])
             nextPage = res.get("_links", {}).get("href", "")
-            if nextPage == "":
+            if nextPage == "" or len(data) > float(n_results):
                 lastPage = True
             else:
                 params["start"] += 1
