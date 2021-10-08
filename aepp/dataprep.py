@@ -260,11 +260,16 @@ class DataPrep:
         res = self.connector.getData(self.endpoint + path, params=params)
         return res
 
-    def getMappingSet(self, mappingSetId: str = None) -> dict:
+    def getMappingSet(
+        self, mappingSetId: str = None, save: bool = False, **kwargs
+    ) -> dict:
         """
         Get a specific mappingSet by its ID.
         Argument:
             mappingSetId : REQUIRED : mappingSet ID to be retrieved.
+            save : OPTIONAL : save your mapping set to a JSON file.
+        optional kwargs:
+            encoding : possible to set encoding for the file.
         """
         if mappingSetId is None:
             raise ValueError("Require a mapping ID")
@@ -272,6 +277,14 @@ class DataPrep:
             self.logger.debug(f"Starting getMappingSet")
         path = f"/mappingSets/{mappingSetId}"
         res = self.connector.getData(self.endpoint + path)
+        if save:
+            aepp.saveFile(
+                module="dataPrep",
+                file=res,
+                filename=f"mapping_{res['id']}",
+                type_file="json",
+                encoding=kwargs.get("encoding", "utf-8"),
+            )
         return res
 
     def deleteMappingSet(self, mappingSetId: str = None) -> dict:

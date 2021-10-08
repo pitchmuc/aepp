@@ -4,6 +4,7 @@ from aepp import connector
 import time
 from concurrent import futures
 import logging
+from typing import Union
 
 
 class Segmentation:
@@ -88,11 +89,11 @@ class Segmentation:
         total_pages = res["page"]["totalPages"]
         if total_pages > 1:
             nb_request = total_pages
-            max_workers = min((len(total_pages), 5))
+            max_workers = min((total_pages, 5))
             list_parameters = [
-                {"page": str(x), **params} for x in range(2, total_pages + 1)
+                {"page": str(x), **params} for x in range(1, total_pages + 1)
             ]
-            urls = [self.endpoint + path for x in range(2, total_pages + 1)]
+            urls = [self.endpoint + path for x in range(1, total_pages + 1)]
             with futures.ThreadPoolExecutor(max_workers) as executor:
                 res = executor.map(
                     lambda x, y: self.connector.getData(x, params=y),
@@ -101,7 +102,7 @@ class Segmentation:
                 )
             res = list(res)
             append_data = [
-                val for sublist in [data["data"] for data in res] for val in sublist
+                val for sublist in [data["segments"] for data in res] for val in sublist
             ]  # flatten list of list
             data = data + append_data
         return data
@@ -191,7 +192,7 @@ class Segmentation:
         )
         return update
 
-    def getExportJobs(self, limit: int = 100, status: str = None) -> dict:
+    def getExportJobs(self, limit: int = 1000, status: str = None) -> dict:
         """
         Retrieve a list of all export jobs.
         Arguments:
@@ -204,10 +205,20 @@ class Segmentation:
         params = {"limit": limit}
         if status is not None and status in ["NEW", "SUCEEDED", "FAILED"]:
             params["status"] = status
-        res = self.connector.getData(
-            self.endpoint + path, params=params, headers=self.header
-        )
-        return res
+        lastPage = False
+        data = []
+        while lastPage != True:
+            res = self.connector.getData(
+                self.endpoint + path, params=params, headers=self.header
+            )
+            data += res["records"]
+            nextPage = res.get("link", "")
+            if nextPage == "":
+                lastPage = True
+            else:
+                offset = nextPage.split("offset=")[1].split("&")[0]
+                params["offset"] = offset
+        return data
 
     def createExport(self, export_request: dict = None) -> dict:
         """
@@ -421,23 +432,38 @@ class Segmentation:
         return res
 
     def getJobs(
-        self, name: str = None, status: str = None, limit: int = 100, **kwargs
+        self,
+        name: str = None,
+        status: str = None,
+        limit: int = 100,
+        n_result: Union[str, int] = "inf",
+        **kwargs,
     ) -> dict:
         """
         Returns the list of segment jobs.
         Arguments:
             name : OPTIONAL : Name of the snapshot
-            status : OPTIONAL : Status of the job (PROCESSING,)
-            limit : OPTIONAL : Amount of jobs to be retrieved
+            status : OPTIONAL : Status of the job (PROCESSING,SUCCEEDED)
+            limit : OPTIONAL : Amount of jobs to be retrieved per request (100 max)
+            n_result : OPTIONAL : How many total jobs do you want to retrieve.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getJobs")
         path = "/segment/jobs"
-        params = {"snapshot.name": name, "status": status, "limit": limit}
-        res = self.connector.getData(
-            self.endpoint + path, params=params, headers=self.header
-        )
-        return res
+        params = {"snapshot.name": name, "status": status, "limit": limit, "start": 0}
+        lastPage = False
+        data = []
+        while lastPage != True:
+            res = self.connector.getData(
+                self.endpoint + path, params=params, headers=self.header
+            )
+            data += res.get("children", [])
+            nextPage = res.get("_links", {}).get("href", "")
+            if nextPage == "":
+                lastPage = True
+            else:
+                params["start"] += 1
+        return data
 
     def createJob(self, segmentIds: list = None) -> dict:
         """

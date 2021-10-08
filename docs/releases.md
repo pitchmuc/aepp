@@ -2,6 +2,10 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.1.5
+
+* improve `segmentation` methods
+
 ## version 0.1.4
 
 * adding queryTemplate endpoint (GET and DELETE)
@@ -12,7 +16,7 @@ This page list all of the changes that came during the different release of the 
 * adding FieldGroup compatibility.
 * adding logging capability (see [documentation](./logging.md))
 
-Patch:
+Patches:
 
 * fix an issue on logging data when using `GET` method.
 * adding more endpoints in the `dataprep` module
