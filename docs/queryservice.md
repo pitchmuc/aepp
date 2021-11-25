@@ -174,6 +174,9 @@ This will result in: `_tenantId.visitor_id`
 
 ## InteractiveQuery
 
+**NOTE** : The `InteractiveQuery` can be used if you have postegreSQL server install on your machine.
+In order to install postGreSQL server, please follow the instruction here: https://www.postgresql.org/download/
+
 The InteractiveQuery class is a way to directly request Query Service from your local environment.\
 You can generate the instance of this class by passing the `connection()` result.
 

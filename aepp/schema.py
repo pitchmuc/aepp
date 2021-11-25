@@ -38,6 +38,8 @@ class Schema:
     This class is a wrapper around the schema registry API for Adobe Experience Platform.
     More documentation on these endpoints can be found here :
     https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/schema-registry.yaml
+
+    When Patching a schema, you can use the PATCH_OBJ reference to help you.
     """
 
     schemas = {}  # caching
@@ -55,7 +57,7 @@ class Schema:
     def __init__(
         self,
         containerId: str = "tenant",
-        config: dict = aepp.config.config_object,
+        config_object: dict = aepp.config.config_object,
         header=aepp.config.header,
         loggingObject: dict = None,
         **kwargs,
@@ -65,7 +67,7 @@ class Schema:
         Arguments:
             containerId : OPTIONAL : "tenant"(default) or "global"
             loggingObject : OPTIONAL : logging object to log messages.
-            config : OPTIONAL : config object in the config module.
+            config_object : OPTIONAL : config object in the config module.
             header : OPTIONAL : header object  in the config module.
         possible kwargs:
             x-sandbox-name : name of the sandbox you want to use (default : "prod").
@@ -86,7 +88,7 @@ class Schema:
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
         self.connector = connector.AdobeRequest(
-            config_object=config,
+            config_object=config_object,
             header=header,
             loggingEnabled=self.loggingEnabled,
             logger=self.logger,
@@ -178,6 +180,27 @@ class Schema:
         res = self.getStats()
         tenant = res["tenantId"]
         return tenant
+
+    def getBehaviors(self)->list:
+        """
+        Return a list of behaviors.
+        """
+        path = "/global/behaviors"
+        res = self.connector.getData(self.endpoint + path)
+        data = res.get("results",[])
+        return data
+
+    def getBehavior(self,behaviorId:str=None)->dict:
+        """
+        Retrieve a specific behavior for class creation.
+        Arguments:
+            behaviorId : REQUIRED : the behavior ID to be retrieved.
+        """
+        if behaviorId is None:
+            raise Exception("Require a behavior ID")
+        path = f"/global/behaviors/{behaviorId}"
+        res = self.connector.getData(self.endpoint + path)
+        return res
 
     def getSchemas(
         self, classFilter: str = None, excludeAdhoc: bool = False, **kwargs
@@ -1440,4 +1463,34 @@ class Schema:
             self.logger.debug(f"Starting createDescriptor")
         path: str = f"/rpc/auditlog/{resourceId}"
         res: list = self.connector.getData(self.endpoint + path, headers=self.header)
+        return res
+    
+    def exportResource(self,resourceId:str = None,version:int=1)->dict:
+        """
+        Export the resource to be used in an importResource method.
+        Arguments:
+            resourceId : REQUIRED : The "$id" or "meta:altId" of the resource.
+            version : OPTIONAL : The version of the resource you wish to retrieve
+        """
+        if resourceId is None:
+            raise ValueError("resourceId should be included as a parameter")
+        if resourceId.startswith("https://"):
+            from urllib import parse
+            resourceId = parse.quote_plus(resourceId)
+        privateHeader = deepcopy(self.header)
+        privateHeader["Accept"] = f"application/vnd.adobe.xed-full+json; version={version}"
+        path: str = f"/rpc/export/{resourceId}"
+        res: list = self.connector.getData(self.endpoint + path, headers=privateHeader)
+        return res
+
+    def importResource(self,dataResource:dict = None)->dict:
+        """
+        Import a resource based on the export method.
+        Arguments:
+            dataResource : REQUIRED : dictionary of the resource retrieved.
+        """
+        if dataResource is None:
+            raise ValueError("a dictionary presenting the resource to be imported should be included as a parameter")
+        path: str = f"/rpc/export/"
+        res: list = self.connector.postData(self.endpoint + path, data=dataResource)
         return res

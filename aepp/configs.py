@@ -160,11 +160,15 @@ def get_private_key_from_config(config: dict) -> str:
     return private_key
 
 
-def generateLoggingObject() -> dict:
+def generateLoggingObject(level:str="WARNING",filename:str="aepp.log") -> dict:
     """
     Generates a dictionary for the logging object with basic configuration.
     You can find the information for the different possible values on the logging documentation.
         https://docs.python.org/3/library/logging.html
+    Arguments:
+        level : OPTIONAL : Level of the logger to display information (NOTSET, DEBUG,INFO,WARNING,EROR,CRITICAL)
+            default WARNING
+        filename : OPTIONAL : name of the file for debugging. default aepp.log
     Output:
         level : Level of the logger to display information (NOTSET, DEBUG,INFO,WARNING,EROR,CRITICAL)
         stream : If the logger should display print statements
@@ -173,10 +177,10 @@ def generateLoggingObject() -> dict:
         format : format of the logs
     """
     myObject = {
-        "level": "WARNING",
+        "level": level,
         "stream": True,
         "file": False,
         "format": "%(asctime)s::%(name)s::%(funcName)s::%(levelname)s::%(message)s::%(lineno)d",
-        "filename": "aepp.log",
+        "filename": filename,
     }
     return myObject

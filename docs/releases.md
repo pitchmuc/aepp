@@ -2,6 +2,14 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.1.6
+
+* update `queryservice` module to avoid PostgreSQL server installation when not using `InteractiveQuery`
+* update query service module documentation
+* adding `export` and `import` method to the schema module.
+* adding behavior methods to schema module.
+* parametarize the `generateLoggingObject` method.
+
 ## version 0.1.5
 
 * improve `segmentation` methods

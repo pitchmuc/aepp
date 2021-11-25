@@ -2,13 +2,11 @@
 from aepp import config
 from aepp import connector
 import pandas as pd
-from pg import DB
 from typing import Union
 import re
 import aepp
 import time
 import logging
-
 
 class QueryService:
     """
@@ -662,13 +660,14 @@ class InteractiveQuery:
     The object returned by the connection method should be used when creating this object.
 
     """
-
+    
     config_object = {}
     ## logging capability
     loggingEnabled = False
     logger = None
 
     def __init__(self, conn_object: dict = None, loggingObject: dict = None):
+        from pg import DB
         if conn_object is None:
             raise AttributeError(
                 "You are missing the conn_object. Use the QueryService to retrieve the object."
