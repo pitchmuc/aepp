@@ -651,6 +651,23 @@ class QueryService:
             self.endpoint + path, headers=self.header, data=queryData
         )
         return res
+    
+    def getDatasetStatistics(self,datasetId:str=None,statisticType:str="table HTTP/1.1")->dict:
+        """
+        Returns statistics on the dataset size.
+        Arguments:
+            datasetId : REQUIRED : The dataset ID to look for.
+            statisticType : OPTIONAL : The type of statistic to retrieve.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getDatasetStatistics")
+        if datasetId is None:
+            raise Exception("A datasetId is required")
+        path = "/statistics"
+        params = {"dataSet":datasetId,"statisticType":statisticType}
+        res = self.connector.getData(self.endpoint + path,params=params)
+        return res
+
 
 
 class InteractiveQuery:
