@@ -5,7 +5,7 @@ This page list all of the changes that came during the different release of the 
 ## version 0.1.7
 
 * adding statistics endpoint to retrieve dataset size in the `QueryService` class in the `queryservice` module. Method: `getDatasetStatistics`.
-* adding the destination SDK capability in the `destination` module. Documentation on [Destination Authoring](https://developer.adobe.com/experience-platform-apis/references/destination-authoring/)
+* adding the destination SDK capability in the `destination` module. Documentation on [Destination Authoring](https://developer.adobe.com/experience-platform-apis/references/destination-authoring/) or [internal documentation](https://github.com/pitchmuc/aepp/blob/master/docs/destination.md)
 * adding the capability to enable a dataset for profile directly from API: `catalog` module and method `enableDatasetProfile`
 * Improving the `createClass` method with simpler parameters.
 * Updating links to Adobe documentation
