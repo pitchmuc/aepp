@@ -82,13 +82,12 @@ class Identity:
         if namespace is not None:
             params["namespace"] = namespace
         path = "/identity/identity"
-        self.header["Accept"] = "application/vnd.adobe.identity+json;version=1.2"
-        self.header["x-uis-cst-ctx"] = "stub"
+        privateHeader = deepcopy(self.header)
+        privateHeader["Accept"] = "application/json"
+        privateHeader["x-uis-cst-ctx"] = "stub"
         res = self.connector.getData(
-            self.endpoint + path, headers=self.header, params=params
+            self.endpoint + path, headers=privateHeader, params=params
         )
-        del self.header["x-uis-cst-ctx"]
-        self.header["Accept"] = "application/json"
         return res
 
     def getIdentities(self, only_custom: bool = False, save: bool = False) -> list:
@@ -266,7 +265,7 @@ class Identity:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getClustersMembers")
         temp_header = deepcopy(self.header)
-        temp_header["Accept"] = "application/vnd.adobe.identity+json;version=1.2"
+        temp_header["Accept"] = "application/json"
         temp_header["x-uis-cst-ctx"] = "stub"
         path = "/identity/cluster/members"
         params = {}
