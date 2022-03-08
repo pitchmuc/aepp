@@ -2,7 +2,7 @@
 
 This documentation will provide you some explanation on how to use the catalog module and the different methods supported by this module.\
 It will include some examples but be aware that not all methods will be documented here.\
-To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/catalog.yaml).\
+To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/catalog/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
 ## What is the catalog capability in AEP ?
@@ -62,6 +62,8 @@ myCat = catalog.Catalog()
 
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
+* loggingObject : OPTIONAL : logging object to provide log of the application.
+
 
 ## Catalog use-cases
 

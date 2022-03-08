@@ -3,7 +3,7 @@
 This documentation will provide you some explanation on how to use the Customer Profile module and different methods supported by this module.\
 *Note*: The real name within AEP is Real Time Customer Profile.\
 It will include some examples but be aware that not all methods will be documented here.\
-To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/real-time-customer-profile.yaml).\
+To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/profile/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
 ## Importing the module

@@ -2,7 +2,7 @@
 
 This documentation will provide you some explanation on how to use the Data Access module and different methods supported by this module.\
 It will include some examples but be aware that not all methods will be documented here.\
-To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/data-access-api.yaml).\
+To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/data-access/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
 ## Importing the module
@@ -18,13 +18,13 @@ aepp.importConfigFile('myConfig_file.json')
 from aepp import dataaccess
 ```
 
-The catalog module provides a class that you can use for generating and retrieving the different catalog objects.\
+The dataaccess module provides a class that you can use for generating and retrieving the different catalog objects.\
 
 The following documentation will provide you with more information on its capabilities.
 
 ## The DataAccess class
 
-The Catalog class is the default API connector that you would encounter for any other submodules on this python module.\
+The Data Access class is the default API connector that you would encounter for any other submodules on this python module.\
 This class can be instanciated by calling the `DataAcess()` from the `dataaccess` module.
 
 Following the previous method described above, you can realize this:

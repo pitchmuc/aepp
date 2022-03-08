@@ -2,10 +2,19 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.1.7
+
+* adding statistics endpoint to retrieve dataset size in the `QueryService` class in the `queryservice` module. Method: `getDatasetStatistics`.
+* adding the destination SDK capability in the `destination` module. Documentation on [Destination Authoring](https://developer.adobe.com/experience-platform-apis/references/destination-authoring/)
+* adding the capability to enable a dataset for profile directly from API: `catalog` module and method `enableDatasetProfile`
+* Improving the `createClass` method with simpler parameters.
+* Updating links to Adobe documentation
+* Change `Accept` parameter for `application/json` in `identity` submodule for certain methods.
+
 ## version 0.1.6
 
-* update `queryservice` module to avoid PostgreSQL server installation when not using `InteractiveQuery`
-* update query service module documentation
+* update `queryservice` module to avoid PostgreSQL server installation when not using `InteractiveQuery`.
+* update query service module documentation.
 * adding `export` and `import` method to the schema module.
 * adding behavior methods to schema module.
 * parametarize the `generateLoggingObject` method.

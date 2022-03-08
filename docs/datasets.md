@@ -2,7 +2,7 @@
 
 This documentation will provide you some explanation on how to use the Datasets module and different methods supported by this module.\
 Contrary to the other documentation, due to the limited methods available, all methods will be documented here.\
-To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://www.adobe.io/apis/experienceplatform/home/api-reference.html#!acpdr/swagger-specs/dataset-service.yaml).\
+To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/dataset-service/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
 ## What is the Datasets in AEP ?
