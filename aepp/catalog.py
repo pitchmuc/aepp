@@ -432,3 +432,35 @@ class Catalog:
         path = f"/dataSets/{datasetId}/views/{viewId}/files"
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
+    
+    def disableDatasetProfile(self,datasetId:str=None)->dict:
+        """
+        Disable a dataset for profile.
+        Arguments:
+            datasetId : REQUIRED : Dataset ID to be disabled for profile
+        """
+        path = f"/dataSets/{datasetId}"
+        data = [
+            { 
+                "op": "replace", 
+                "path": "/tags/unifiedProfile",
+                "value": ["enabled:false"] }
+            ]
+        res = self.connector.patchData(self.endpoint+path, data=data)
+        return res
+
+    def enableDatasetProfile(self,datasetId:str=None)->dict:
+        """
+        Enable a dataset for profile.
+        Arguments:
+            datasetId : REQUIRED : Dataset ID to be enabled for profile
+        """
+        path = f"/dataSets/{datasetId}"
+        data = [
+            { 
+                "op": "add", 
+                "path": "/tags/unifiedProfile",
+                "value": ["enabled:true","isUpsert:true"] }
+            ]
+        res = self.connector.patchData(self.endpoint+path, data=data)
+        return res

@@ -49,6 +49,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [policy](./docs/policy.md)
 * [datasets](./docs/datasets.md)
 * [ingestion](./docs/ingestion.md)
+* [destination Authoring](./docs/destination.md)
 * observability
 * accesscontrol
 * sensei
