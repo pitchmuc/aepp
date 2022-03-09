@@ -72,13 +72,15 @@ class Identity:
             nsid : REQUIRED : namespace id. (e.g. 411)
             namespace : OPTIONAL : namespace code (e.g. adcloud)
         """
-        if id_str is None or nsid is None:
+        if id_str is None and namespace is None:
             raise Exception(
                 "Expecting that id_str and namespace arguments to be filled."
             )
         if self.loggingEnabled:
             self.logger.debug(f"Starting getIdentity")
-        params = {"id": id_str, "nsid": nsid}
+        params = {"id": id_str}
+        if nsid is not None:
+            params["nsid"] = nsid
         if namespace is not None:
             params["namespace"] = namespace
         path = "/identity/identity"

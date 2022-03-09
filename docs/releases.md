@@ -9,7 +9,9 @@ This page list all of the changes that came during the different release of the 
 * adding the capability to enable a dataset for profile directly from API: `catalog` module and method `enableDatasetProfile`
 * Improving the `createClass` method with simpler parameters.
 * Updating links to Adobe documentation
-* Change `Accept` parameter for `application/json` in `identity` submodule for certain methods.
+* Change `Accept` parameter for `application/json` in `identity` submodule for certain methods.\
+Patch:
+* typo on the `getIdentity` parameter check conditions.
 
 ## version 0.1.6
 
