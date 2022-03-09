@@ -72,9 +72,9 @@ class Identity:
             nsid : REQUIRED : namespace id. (e.g. 411)
             namespace : OPTIONAL : namespace code (e.g. adcloud)
         """
-        if id_str is None and namespace is None:
+        if id_str is None or (namespace is None and nsid is None):
             raise Exception(
-                "Expecting that id_str and namespace arguments to be filled."
+                "Expecting that id_str and (namespace or nsid) arguments to be filled."
             )
         if self.loggingEnabled:
             self.logger.debug(f"Starting getIdentity")
