@@ -27,6 +27,11 @@ aepp.__version__
 pip install aepp --upgrade
 ```
 
+**NOTE TO PYTHON 3.10.X**
+
+At the moment, not all packages are supported on python 3.10.X, therefore, please use this module with a python 3.9.X version.\
+You can use pyenv to generate a local environment if required.
+
 ## Getting Started
 
 In order to get started, I have compile a guide to help you initialize this module and what is required.
