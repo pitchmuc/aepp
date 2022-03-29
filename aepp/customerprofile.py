@@ -133,9 +133,15 @@ class Profile:
                     "entityId": "69935279872410346619186588147492736556",
                     "entityIdNS": {
                         "code": "CRMID"
-                    }
-                    }
-                ],
+                        }
+                    },
+                    ,
+                {
+                    "entityId":"89149270342662559642753730269986316900",
+                    "entityIdNS":{
+                        "code":"ECID"
+                        }
+                    ],
                 "timeFilter": {
                     "startTime": 1539838505,
                     "endTime": 1539838510
@@ -180,8 +186,100 @@ class Profile:
         res = self.connector.deleteData(
             self.endpoint + path, params=params, headers=self.header
         )
-
         return res
+    
+    def createExportJob(self,
+            exportDefinition:dict=None,
+            fields:list=None,
+            mergePolicyId:str=None,
+            additionalFields:dict=None,
+            datasetId:str=None,
+            schemaName:str="_xdm.context.profile",
+            segmentPerBatch:bool=False,
+            )->dict:
+        """
+        Create an export of the profile information of the user.
+        You can pass directly the payload or you can pass different arguments to create that export job.
+        Documentation: https://experienceleague.adobe.com/docs/experience-platform/profile/api/export-jobs.html?lang=en
+        Arguments: 
+            exportDefinition : OPTIONAL : The complete definition of the export
+        If not provided, use the following parameters:
+            fields : OPTIONAL : Limits the data fields to be included in the export to only those provided in this parameter. 
+                    Omitting this value will result in all fields being included in the exported data.
+            mergePolicyId : OPTIONAL : MergePolicyId to use for data combination.
+            additionalFields : OPTIONAL : Controls the time-series event fields exported for child or associated objects by providing one or more of the following settings:
+            datasetId : OPTIONAL : the datasetId to be used for the export.
+            schemaName : OPTIONAL : Schema associated with the dataset.
+            segmentPerBatch : OPTIONAL : A Boolean value that, if not provided, defaults to false. A value of false exports all segment IDs into a single batch ID. A value of true exports one segment ID into one batch ID.
+        """
+        if exportDefinition is not None and type(exportDefinition) == dict:
+            data = exportDefinition
+        elif fields is not None and mergePolicyId is not None and datasetId is not None and schemaName is not None:
+            data = {}
+            data['fields'] = ','.join(fields)
+            data['mergePolicy'] = {
+                "id": mergePolicyId,
+                "version": 1
+            }
+            data['destination'] = {
+                "datasetId": datasetId,
+                "segmentPerBatch": segmentPerBatch
+            }
+            data['schema'] = {
+                "name": schemaName,
+            }
+            if additionalFields is not None:
+                data['additionalFields'] = additionalFields
+        else:
+            raise ValueError("Require the definition or arguments to be used")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createExportJob")
+        path = f"/export/jobs"
+        res = self.connector.postData(self.endpoint + path, data=data)
+        return res
+
+    def getExportJobs(self,limit:int=100)->dict:
+        """
+        Returns all export jobs
+        Arguments:
+            limit : OPTIONAL : Number of jobs to return
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getExportJobs")
+        path = "/export/jobs/"
+        params = {"limit":limit}
+        res = self.connector.getData(self.endpoint+path,params=params)
+        return res
+    
+    def getExportJob(self, exportId:str=None)->dict:
+        """
+        Returns an export job status
+        Arguments:
+            exportId : OPTIONAL : The id of the export job you want to access.
+        """
+        if exportId is None:
+            raise ValueError("Require an export ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getExportJob with ID: {exportId}")
+        path = f"/export/jobs/{exportId}"
+        res = self.connector.getData(self.endpoint+path)
+        return res
+
+    def deleteExportJob(self, exportId:str=None)->dict:
+        """
+        Delete an export job
+        Arguments:
+            exportId : OPTIONAL : The id of the export job you want to delete.
+        """
+        if exportId is None:
+            raise ValueError("Require an export ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteExportJob with ID: {exportId}")
+        path = f"/export/jobs/{exportId}"
+        res = self.connector.deleteData(self.endpoint+path)
+        return res
+
+
 
     def getMergePolicies(self, limit: int = 100) -> dict:
         """

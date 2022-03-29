@@ -2,6 +2,25 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.1.8
+
+* improve `getClasses` in the schema module.
+* Adding some classes methods:
+  * putClass
+  * patchClass
+  * deleteClass
+* adding shortcuts for
+  * enabling a schema for union profile : `enableSchemaForRealTime`
+  * extend a FieldGroup / Mixin to multiple class support (ExperienceEvent/Record/Profile) : `extendFieldGroup`
+* adding several methods for profile and identity enablement of datasets:
+  * `enableDatasetProfile`
+  * `enableDatasetIdentity`
+  * `disableDatasetProfile`
+  * `disableDatasetIdentity`
+  * `createUnionProfileDataset`
+* adding `createExportJob` fin the `customerprofile` module
+* adding `getExportJobs`,`getExportJob` and `deleteExportJob`
+
 ## version 0.1.7
 
 * adding statistics endpoint to retrieve dataset size in the `QueryService` class in the `queryservice` module. Method: `getDatasetStatistics`.

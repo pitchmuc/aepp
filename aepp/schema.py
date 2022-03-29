@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Union
 import time
 import logging
+import pandas as pd
 
 json_extend = [
     {
@@ -203,7 +204,7 @@ class Schema:
         return res
 
     def getSchemas(
-        self, classFilter: str = None, excludeAdhoc: bool = False, **kwargs
+        self, classFilter: str = None, excludeAdhoc: bool = False,**kwargs
     ) -> list:
         """
         Returns the list of schemas retrieved for that instances in a "results" list.
@@ -598,9 +599,15 @@ class Schema:
         res = self.createSchema(obj)
         return res
 
-    def getClasses(self, **kwargs):
+    def getClasses(self, prop:str=None,orderBy:str=None,limit:int=300, output:str='raw',**kwargs):
         """
-        return the classes of the AEP Instances.
+        Return the classes of the AEP Instances.
+        Arguments:
+            prop : OPTIONAL : A comma-separated list of top-level object properties to be returned in the response. 
+                            For example, property=meta:intendedToExtend==https://ns.adobe.com/xdm/context/profile
+            oderBy : OPTIONAL : Sort the listed resources by specified fields. For example orderby=title
+            limit : OPTIONAL : Number of resources to return per request, default 300 - the max.
+            output : OPTIONAL : type of output, default "raw", can be "df" for dataframe.
         kwargs:
             debug : if set to True, will print result for errors
         """
@@ -608,8 +615,11 @@ class Schema:
             self.logger.debug(f"Starting getClasses")
         privateHeader = deepcopy(self.header)
         privateHeader.update({"Accept": "application/vnd.adobe.xdm-id+json"})
-        start = kwargs.get("start", 0)
-        params = {"start": start}
+        params = {"limit":limit}
+        if prop is not None:
+            params["property"] = prop
+        if orderBy is not None:
+            params['orderby'] = orderBy
         path = f"/{self.container}/classes/"
         verbose = kwargs.get("verbose", False)
         res = self.connector.getData(
@@ -621,13 +631,22 @@ class Schema:
         data = res["results"]
         page = res["_page"]
         while page["next"] is not None:
-            data += self.getClasses(start=page["next"])
+            params["start"]= page["next"]
+            res = self.connector.getData(
+                self.endpoint + path, headers=privateHeader, params=params, verbose=verbose
+            )
+            data += res["results"]
+            page = res["_page"]
+        if output=="df":
+            df = pd.DataFrame(data)
+            return df
         return data
 
     def getClass(
         self,
         classId: str = None,
         full: bool = True,
+        xtype : str = "xdm",
         version: int = 1,
         save: bool = False,
     ):
@@ -636,7 +655,9 @@ class Schema:
         Arguments:
             classId : REQUIRED : the meta:altId or $id from the class
             full : OPTIONAL : True (default) will return the full schema.False just the relationships.
+            xtype : OPTIONAL : either "xdm" (default) or "xed". 
             version : OPTIONAL : the version of the class to retrieve.
+            save : OPTIONAL : To save the result of the request in a JSON file.
         """
         if classId is None:
             raise Exception("Require a class_id")
@@ -648,9 +669,14 @@ class Schema:
             self.logger.debug(f"Starting getClass")
         self.header["Accept-Encoding"] = "identity"
         privateHeader = deepcopy(self.header)
-        privateHeader.update(
-            {"Accept": "application/vnd.adobe.xdm-full+json; version=" + str(version)}
-        )
+        if full:
+            privateHeader.update(
+                {"Accept": f"application/vnd.adobe.{xtype}-full+json; version=" + str(version)}
+            )
+        else:
+            privateHeader.update(
+                {"Accept": f"application/vnd.adobe.{xtype}+json; version=" + str(version)}
+            )
         path = f"/{self.container}/classes/{classId}"
         res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         if save:
@@ -696,6 +722,69 @@ class Schema:
         res = self.connector.postData(
             self.endpoint + path, headers=self.header, data=class_obj
         )
+        return res
+    
+    def putClass(self,classId:str=None,class_obj:dict=None)->dict:
+        """
+        Replace the current definition with the new definition.
+        Arguments:
+            classId : REQUIRED : The class to be updated ($id or meta:altId)
+            class_obj : REQUIRED : The dictionary defining the new class definition
+        """
+        if classId is None:
+            raise Exception("Require a classId")
+        if classId.startswith("https://"):
+            from urllib import parse
+            classId = parse.quote_plus(classId)
+        if class_obj is None:
+            raise Exception("Require a new definition for the class")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting putClass")
+        path = f"/{self.container}/classes/{classId}"
+        res = self.connector.putData(self.endpoint + path,data=class_obj)
+        return res
+
+    def patchClass(self,classId:str=None,operation:list=None)->dict:
+        """
+        Patch a class with the operation specified such as:
+        update = [{
+            "op": "replace",
+            "path": "title",
+            "value": "newTitle"
+        }]
+        Possible operation value : "replace", "remove", "add"
+        Arguments:
+            classId : REQUIRED : The class to be updated  ($id or meta:altId)
+            operation : REQUIRED : List of operation to realize on the class
+        """
+        if classId is None:
+            raise Exception("Require a classId")
+        if classId.startswith("https://"):
+            from urllib import parse
+            classId = parse.quote_plus(classId)
+        if operation is None or type(operation) != list:
+            raise Exception("Require a list of operation for the class")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting patchClass")
+        path = f"/{self.container}/classes/{classId}"
+        res = self.connector.patchData(self.endpoint + path,data=operation)
+        return res
+
+    def deleteClass(self,classId: str = None)->str:
+        """
+        Delete a class based on the its ID.
+        Arguments:
+            classId : REQUIRED : The class to be deleted  ($id or meta:altId)
+        """
+        if classId is None:
+            raise Exception("Require a classId")
+        if classId.startswith("https://"):
+            from urllib import parse
+            classId = parse.quote_plus(classId)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting patchClass")
+        path = f"/{self.container}/classes/{classId}"
+        res = self.connector.deleteData(self.endpoint + path)
         return res
 
     def getMixins(self, format: str = "xdm", **kwargs):
@@ -1513,3 +1602,45 @@ class Schema:
         path: str = f"/rpc/export/"
         res: list = self.connector.postData(self.endpoint + path, data=dataResource)
         return res
+
+    def extendFieldGroup(self,fieldGroupId:str=None)->dict:
+        """
+        Patch a Field Group to extend its compatibility with ExperienceEvents, IndividualProfile and Record.
+        Arguments:
+            fieldGroupId : REQUIRED : meta:altId or $id of the field group.
+        """
+        if fieldGroupId is None:
+            raise Exception("Require a field Group ID")
+        path = f"/{self.container}/fieldgroups/{fieldGroupId}"
+        operation = [
+           { 
+            "op": "replace",
+            "path": "/meta:extends",
+            "value": ["https://ns.adobe.com/xdm/context/profile",
+                      "https://ns.adobe.com/xdm/data/record",
+                      "https://ns.adobe.com/xdm/context/experienceevent",
+                    ]
+            }
+        ]
+        res = self.connector.patchData(self.endpoint + path,data=operation)
+        return res
+    
+    def enableSchemaForRealTime(self,schemaId:str=None)->dict:
+        """
+        Enable a schema for real time based on its ID.
+        Arguments:
+            schemaId : REQUIRED : The schema ID required to be updated
+        """
+        if schemaId is None:
+            raise Exception("Require a schema ID")
+        path = f"/{self.container}/schemas/{schemaId}/"
+        operation = [
+           { 
+            "op": "add",
+            "path": "/meta:immutableTags",
+            "value": ["union"]
+            }
+        ]
+        res = self.connector.patchData(self.endpoint + path,data=operation)
+        return res
+

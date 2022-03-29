@@ -433,28 +433,16 @@ class Catalog:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
     
-    def disableDatasetProfile(self,datasetId:str=None)->dict:
-        """
-        Disable a dataset for profile.
-        Arguments:
-            datasetId : REQUIRED : Dataset ID to be disabled for profile
-        """
-        path = f"/dataSets/{datasetId}"
-        data = [
-            { 
-                "op": "replace", 
-                "path": "/tags/unifiedProfile",
-                "value": ["enabled:false"] }
-            ]
-        res = self.connector.patchData(self.endpoint+path, data=data)
-        return res
-
     def enableDatasetProfile(self,datasetId:str=None)->dict:
         """
-        Enable a dataset for profile.
+        Enable a dataset for profile with upsert.
         Arguments:
             datasetId : REQUIRED : Dataset ID to be enabled for profile
         """
+        if datasetId is None:
+            raise ValueError("Require a datasetId")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting enableDatasetProfile for datasetId: {datasetId}")
         path = f"/dataSets/{datasetId}"
         data = [
             { 
@@ -463,4 +451,79 @@ class Catalog:
                 "value": ["enabled:true","isUpsert:true"] }
             ]
         res = self.connector.patchData(self.endpoint+path, data=data)
+        return res
+    
+    def enableDatasetIdentity(self,datasetId:str=None)->dict:
+        """
+        Enable a dataset for profile with upsert.
+        Arguments:
+            datasetId : REQUIRED : Dataset ID to be enabled for Identity
+        """
+        if datasetId is None:
+            raise ValueError("Require a datasetId")
+        path = f"/dataSets/{datasetId}"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting enableDatasetIdentity for datasetId: {datasetId}")
+        data = [
+            { 
+                "op": "add", 
+                "path": "/tags/unifiedIdentity",
+                "value": ["enabled:true"] }
+            ]
+        res = self.connector.patchData(self.endpoint+path, data=data)
+        return res
+    
+    def disableDatasetProfile(self,datasetId: str = None)->dict:
+        """
+        Disable the dataset for Profile ingestion.
+        Arguments:
+            datasetId : REQUIRED : Dataset ID to be disabled for profile
+        """
+        path = f"/dataSets/{datasetId}"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting disableDatasetProfile for datasetId: {datasetId}")
+        data = [
+            { 
+                "op": "replace", 
+                "path": "/tags/unifiedProfile",
+                "value": ["enabled:false"] }
+            ]
+        res = self.connector.patchData(self.endpoint+path, data=data)
+        return res
+    
+    def disableDatasetIdentity(self,datasetId:str=None)->dict:
+        """
+        Enable a dataset for profile with upsert.
+        Arguments:
+            datasetId : REQUIRED : Dataset ID to be disabled for Identity
+        """
+        if datasetId is None:
+            raise ValueError("Require a datasetId")
+        path = f"/dataSets/{datasetId}"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting disableDatasetIdentity for datasetId: {datasetId}")
+        data = [
+            { 
+                "op": "add", 
+                "path": "/tags/unifiedIdentity",
+                "value": ["enabled:false"] }
+            ]
+        res = self.connector.patchData(self.endpoint+path, data=data)
+        return res
+    
+    def createUnionProfileDataset(self)->dict:
+        """
+        Create a dataset with an union Profile schema.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createUnionProfileDataset")
+        path = "/dataSets/"
+        data = {
+        "name": "Profile Data Export",
+        "schemaRef": {
+          "id": "https://ns.adobe.com/xdm/context/profile__union",
+          "contentType": "application/vnd.adobe.xed+json;version=1"
+            }
+        }
+        res = self.connector.postData(self.endpoint+path, data=data)
         return res
