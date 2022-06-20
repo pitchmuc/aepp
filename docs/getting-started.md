@@ -6,7 +6,7 @@ You would need to install the module in your environment.\
 You can use the pip command to do so.
 
 ```shell
-pip install aepp --ugrade
+pip install aepp --upgrade
 ```
 
 You can use the upgrade argument when a release has been made.
