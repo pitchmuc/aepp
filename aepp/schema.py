@@ -7,6 +7,7 @@ from typing import Union
 import time
 import logging
 import pandas as pd
+import json
 
 json_extend = [
     {
@@ -95,7 +96,7 @@ class Schema:
             logger=self.logger,
         )
         self.header = self.connector.header
-        self.header["Accept"] = "application/vnd.adobe.xdm+json"
+        self.header["Accept"] = "application/vnd.adobe.xed+json"
         self.header.update(**kwargs)
         self.sandbox = self.connector.config["sandbox"]
         self.endpoint = (
@@ -233,7 +234,7 @@ class Schema:
         format = kwargs.get("format", "xed-id")
         privateHeader["Accept"] = f"application/vnd.adobe.{format}+json"
         res = self.connector.getData(
-            self.endpoint + path, params=params, headers=self.header, verbose=verbose
+            self.endpoint + path, params=params, headers=privateHeader, verbose=verbose
         )
         if kwargs.get("debug", False):
             if "results" not in res.keys():
@@ -275,6 +276,9 @@ class Schema:
             # /Schemas/lookup_schema
             more details held here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getSchema")
+        privateHeader = deepcopy(self.header)
         if schemaId is None:
             raise Exception("Require a schemaId as a parameter")
         if full:
@@ -293,22 +297,18 @@ class Schema:
             raise ValueError("schema_type parameter can only be xdm or xed")
         if self.loggingEnabled:
             self.logger.debug(f"Starting getSchema")
-        accept_update = f"application/vnd.adobe.{schema_type}{update_full}{update_desc}{update_flat}+json; version={version}"
-        self.header["Accept"] = accept_update
+        privateHeader['Accept'] = f"application/vnd.adobe.{schema_type}{update_full}{update_desc}{update_flat}+json; version={version}"
         if kwargs.get("Accept", None) is not None:
-            self.header["Accept"] = kwargs.get("Accept", self.header["Accept"])
-        self.header["Accept-Encoding"] = "identity"
+            privateHeader["Accept"] = kwargs.get("Accept", self.header["Accept"])
+        privateHeader["Accept-Encoding"] = "identity"
         if schemaId.startswith("https://"):
             from urllib import parse
-
             schemaId = parse.quote_plus(schemaId)
         path = f"/{self.container}/schemas/{schemaId}"
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
-        del self.header["Accept-Encoding"]
-        if "title" not in res.keys() and "notext" not in self.header["Accept"]:
+        res = self.connector.getData(self.endpoint + path, headers=privateHeader)
+        if "title" not in res.keys() and "notext" not in privateHeader["Accept"]:
             print("Issue with the request. See response.")
             return res
-        self.header["Accept"] = "application/json"
         if save:
             aepp.saveFile(
                 module="schema", file=res, filename=res["title"], type_file="json"
@@ -359,6 +359,7 @@ class Schema:
             save : OPTIONAL : save the result in json file (default False)
             version : OPTIONAL : version of the schema to request
         """
+        privateHeader = deepcopy(self.header)
         import random
 
         if self.loggingEnabled:
@@ -372,8 +373,8 @@ class Schema:
             schemaId = parse.quote_plus(schemaId)
         path = f"/rpc/sampledata/{schemaId}"
         accept_update = f"application/vnd.adobe.xed+json; version={version}"
-        self.header["Accept"] = accept_update
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
+        privateHeader["Accept"] = accept_update
+        res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         if save:
             schema = self.getSchema(schemaId=schemaId, full=False)
             aepp.saveFile(
@@ -382,7 +383,6 @@ class Schema:
                 filename=f"{schema['title']}_{rand_number}",
                 type_file="json",
             )
-        self.header["Accept"] = "application/json"
         return res
 
     def patchSchema(self, schemaId: str = None, changes: list = None, **kwargs) -> dict:
@@ -415,8 +415,7 @@ class Schema:
             self.logger.debug(f"Starting patchSchema")
         path = f"/{self.container}/schemas/{schemaId}"
         res = self.connector.patchData(
-            self.endpoint + path, data=changes, headers=self.header
-        )
+            self.endpoint + path, data=changes)
         return res
 
     def putSchema(self, schemaId: str = None, changes: dict = None, **kwargs) -> dict:
@@ -457,12 +456,11 @@ class Schema:
             raise Exception("Require an ID for the schema")
         if schemaId.startswith("https://"):
             from urllib import parse
-
             schemaId = parse.quote_plus(schemaId)
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteSchema")
         path = f"/{self.container}/schemas/{schemaId}"
-        res = self.connector.deleteData(self.endpoint + path, headers=self.header)
+        res = self.connector.deleteData(self.endpoint + path)
         return res
 
     def createSchema(self, schema: dict = None) -> dict:
@@ -481,7 +479,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting createSchema")
         res = self.connector.postData(
-            self.endpoint + path, headers=self.header, data=schema
+            self.endpoint + path, data=schema
         )
         return res
 
@@ -659,6 +657,7 @@ class Schema:
             version : OPTIONAL : the version of the class to retrieve.
             save : OPTIONAL : To save the result of the request in a JSON file.
         """
+        privateHeader = deepcopy(self.header)
         if classId is None:
             raise Exception("Require a class_id")
         if classId.startswith("https://"):
@@ -667,8 +666,7 @@ class Schema:
             classId = parse.quote_plus(classId)
         if self.loggingEnabled:
             self.logger.debug(f"Starting getClass")
-        self.header["Accept-Encoding"] = "identity"
-        privateHeader = deepcopy(self.header)
+        privateHeader["Accept-Encoding"] = "identity"
         if full:
             privateHeader.update(
                 {"Accept": f"application/vnd.adobe.{xtype}-full+json; version=" + str(version)}
@@ -720,7 +718,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting createClass")
         res = self.connector.postData(
-            self.endpoint + path, headers=self.header, data=class_obj
+            self.endpoint + path, data=class_obj
         )
         return res
     
@@ -1082,8 +1080,7 @@ class Schema:
             self.logger.debug(f"Starting createMixin")
         path = f"/{self.container}/mixins/"
         res = self.connector.postData(
-            self.endpoint + path, data=mixin_obj, headers=self.header
-        )
+            self.endpoint + path, data=mixin_obj)
         return res
 
     def createFieldGroup(self, fieldGroup_obj: dict = None) -> dict:
@@ -1107,8 +1104,7 @@ class Schema:
             self.logger.debug(f"Starting createFieldGroup")
         path = f"/{self.container}/fieldgroups/"
         res = self.connector.postData(
-            self.endpoint + path, data=fieldGroup_obj, headers=self.header
-        )
+            self.endpoint + path, data=fieldGroup_obj)
         return res
 
     def deleteMixin(self, mixinId: str = None):
@@ -1125,7 +1121,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteMixin")
         path = f"/{self.container}/mixins/{mixinId}"
-        res = self.connector.deleteData(self.endpoint + path, headers=self.header)
+        res = self.connector.deleteData(self.endpoint + path)
         return res
 
     def deleteFieldGroup(self, fieldGroupId: str = None):
@@ -1142,7 +1138,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteFieldGroup")
         path = f"/{self.container}/fieldgroups/{fieldGroupId}"
-        res = self.connector.deleteData(self.endpoint + path, headers=self.header)
+        res = self.connector.deleteData(self.endpoint + path)
         return res
 
     def patchMixin(self, mixinId: str = None, changes: list = None):
@@ -1175,8 +1171,7 @@ class Schema:
         if type(changes) == dict:
             changes = list(changes)
         res = self.connector.patchData(
-            self.endpoint + path, data=changes, headers=self.header
-        )
+            self.endpoint + path, data=changes)
         return res
 
     def patchFieldGroup(self, fieldGroupId: str = None, changes: list = None):
@@ -1209,8 +1204,7 @@ class Schema:
         if type(changes) == dict:
             changes = list(changes)
         res = self.connector.patchData(
-            self.endpoint + path, data=changes, headers=self.header
-        )
+            self.endpoint + path, data=changes)
         return res
 
     def putMixin(self, mixinId: str = None, mixinObj: dict = None, **kwargs) -> dict:
@@ -1234,8 +1228,7 @@ class Schema:
             self.logger.debug(f"Starting putMixin")
         path = f"/{self.container}/mixins/{mixinId}"
         res = self.connector.putData(
-            self.endpoint + path, data=mixinObj, headers=self.header
-        )
+            self.endpoint + path, data=mixinObj)
         return res
 
     def putFieldGroup(
@@ -1261,8 +1254,7 @@ class Schema:
             self.logger.debug(f"Starting putMixin")
         path = f"/{self.container}/fieldgroups/{fieldGroupId}"
         res = self.connector.putData(
-            self.endpoint + path, data=fieldGroupObj, headers=self.header
-        )
+            self.endpoint + path, data=fieldGroupObj)
         return res
 
     def getUnions(self, **kwargs):
@@ -1283,8 +1275,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getUnions")
         res = self.connector.getData(
-            self.endpoint + path, params=params, headers=self.header
-        )
+            self.endpoint + path, params=params)
         data = res["results"]  # issue when requesting directly results.
         return data
 
@@ -1318,7 +1309,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getXDMprofileSchema")
         path = "/tenant/schemas?property=meta:immutableTags==union&property=meta:class==https://ns.adobe.com/xdm/context/profile"
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path)
         return res
 
     def getDataTypes(self, **kwargs):
@@ -1381,8 +1372,7 @@ class Schema:
             self.logger.debug(f"Starting createDataTypes")
         path = f"/{self.container}/datatypes/"
         res = self.connector.postData(
-            self.endpoint + path, data=dataType_obj, headers=self.header
-        )
+            self.endpoint + path, data=dataType_obj)
         return res
 
     def getDescriptors(
@@ -1494,8 +1484,7 @@ class Schema:
             "xdm:isPrimary": primary,
         }
         res = self.connector.postData(
-            self.endpoint + path, data=obj, headers=self.header
-        )
+            self.endpoint + path, data=obj)
         return res
 
     def deleteDescriptor(self, descriptor_id: str = None) -> str:
@@ -1552,8 +1541,7 @@ class Schema:
             "xdm:isPrimary": primary,
         }
         res = self.connector.putData(
-            self.endpoint + path, data=obj, headers=self.header
-        )
+            self.endpoint + path, data=obj)
         return res
 
     def getAuditLogs(self, resourceId: str = None) -> list:
@@ -1570,7 +1558,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting createDescriptor")
         path: str = f"/rpc/auditlog/{resourceId}"
-        res: list = self.connector.getData(self.endpoint + path, headers=self.header)
+        res: list = self.connector.getData(self.endpoint + path)
         return res
     
     def exportResource(self,resourceId:str = None,version:int=1)->dict:

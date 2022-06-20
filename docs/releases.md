@@ -19,7 +19,9 @@ This page list all of the changes that came during the different release of the 
   * `disableDatasetIdentity`
   * `createUnionProfileDataset`
 * adding `createExportJob` fin the `customerprofile` module
-* adding `getExportJobs`,`getExportJob` and `deleteExportJob`
+* adding `getExportJobs`,`getExportJob` and `deleteExportJob`\
+Patch:
+* improving `schema` internal module work 
 
 ## version 0.1.7
 
