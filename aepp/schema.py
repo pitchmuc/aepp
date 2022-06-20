@@ -7,7 +7,7 @@ from typing import Union
 import time
 import logging
 import pandas as pd
-import json
+import re
 
 json_extend = [
     {
@@ -890,6 +890,9 @@ class Schema:
         fieldGroupId: str = None,
         version: int = 1,
         full: bool = True,
+        desc: bool = False,
+        type: str = 'xed',
+        flat: bool = False,
         save: bool = False,
     ):
         """
@@ -897,22 +900,28 @@ class Schema:
         Arguments:
             fieldGroupId : REQUIRED : meta:altId or $id
             version : OPTIONAL : version of the mixin
-            full : OPTIONAL : True (default) will return the full schema.False just the relationships.
+            full : OPTIONAL : True (default) will return the full schema.False just the relationships
+            desc : OPTIONAL : Add descriptor of the field group
+            type : OPTIONAL : Either "xed" (default) or "xdm"
+            flat : OPTIONAL : if the fieldGroup is flat (false by default) 
+            save : Save the fieldGroup to a JSON file
         """
         if fieldGroupId.startswith("https://"):
             from urllib import parse
-
             fieldGroupId = parse.quote_plus(fieldGroupId)
         if self.loggingEnabled:
             self.logger.debug(f"Starting getFieldGroup")
         privateHeader = deepcopy(self.header)
         privateHeader["Accept-Encoding"] = "identity"
+        accept_full, accept_desc,accept_flat= "","",""
         if full:
             accept_full = "-full"
-        else:
-            accept_full = ""
+        if desc:
+            accept_desc = "-desc"
+        if flat:
+            accept_flat = "-flat"
         update_accept = (
-            f"application/vnd.adobe.xed{accept_full}+json; version={version}"
+            f"application/vnd.adobe.{type}{accept_full}{accept_desc}{accept_flat}+json; version={version}"
         )
         privateHeader.update({"Accept": update_accept})
         path = f"/{self.container}/fieldgroups/{fieldGroupId}"
@@ -1633,3 +1642,4 @@ class Schema:
         res = self.connector.patchData(self.endpoint + path,data=operation)
         return res
 
+ 

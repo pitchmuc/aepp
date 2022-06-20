@@ -21,7 +21,10 @@ This page list all of the changes that came during the different release of the 
 * adding `createExportJob` fin the `customerprofile` module
 * adding `getExportJobs`,`getExportJob` and `deleteExportJob`\
 Patch:
-* improving `schema` internal module work 
+* improving `schema` internal module work
+* adding new option for `getFieldGroup` method 
+* fix issue with `getDataType` method
+* fixing typo in documentation
 
 ## version 0.1.7
 
