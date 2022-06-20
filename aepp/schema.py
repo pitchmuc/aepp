@@ -1330,6 +1330,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getDataTypes")
         path = f"/{self.container}/datatypes/"
+        params = {}
         if kwargs.get("properties", None) is not None:
             params = {"properties": kwargs.get("properties", "title,$id")}
         privateHeader = deepcopy(self.header)
