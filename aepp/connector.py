@@ -339,7 +339,17 @@ class AdobeRequest:
                 endpoint, headers=headers, params=params, data=bytesData
             )
         try:
-            res_json = res.json()
+            formatUse = kwargs.get("format", "json")
+            if self.loggingEnabled:
+                self.logger.debug(f"format used: {formatUse}")
+            if formatUse == "json":
+                res_json = res.json()
+            elif formatUse == "txt":
+                res_json = res.text
+            elif formatUse == "raw":
+                res_json = res
+            else:
+                res_json = res.json()
         except:
             if kwargs.get("verbose", False):
                 print("error generating the JSON response")

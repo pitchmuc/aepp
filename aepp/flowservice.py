@@ -169,6 +169,8 @@ class FlowService:
             connectionSpec : REQUIRED : dictionary containing the "id" and "verison" key.
                 id : The specific connection specification ID associated with source
                 version : Specifies the version of the connection specification ID. Omitting this value will default to the most recent version
+        Possible kwargs:
+            responseType : by default json, but you can request 'raw' that return the requests response object.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createConnection")
@@ -183,7 +185,7 @@ class FlowService:
                     "Require some keys to be present : name, auth, connectionSpec"
                 )
             obj = data
-            res = self.connector.postData(self.endpoint + path, data=obj)
+            res = self.connector.postData(self.endpoint + path, data=obj,format=kwargs.get('responseType','json'))
             return res
         elif data is None:
             if "specName" not in auth.keys() or "params" not in auth.keys():
@@ -197,7 +199,7 @@ class FlowService:
             if name is None:
                 raise Exception("Require a name to be present")
             obj = {"name": name, "auth": auth, "connectionSpec": connectionSpec}
-            res = self.connector.postData(self.endpoint + path, data=obj)
+            res = self.connector.postData(self.endpoint + path, data=obj,format=kwargs.get('responseType','json'))
             return res
 
     def createStreamingConnection(
@@ -206,19 +208,25 @@ class FlowService:
         sourceId: str = None,
         dataType: str = "xdm",
         paramName: str = None,
-        description: str = "",
+        description: str = "provided by aepp",
         **kwargs,
     ) -> dict:
         """
-        Create a Streaming connection
+        Create a Streaming connection based on the following connectionSpec :
+        "connectionSpec": {
+                "id": "bc7b00d6-623a-4dfc-9fdb-f1240aeadaeb",
+                "version": "1.0",
+            },
+            with provider ID : 521eee4d-8cbe-4906-bb48-fb6bd4450033
         Arguments:
             name : REQUIRED : Name of the Connection.
-            sourceId : REQUIRED : The ID of the streaming connection you want to create.
+            sourceId : REQUIRED : The ID of the streaming connection you want to create (random string possible).
             dataType : REQUIRED : The type of data to ingest (default xdm)
             paramName : REQUIRED : The name of the streaming connection you want to create.
             description : OPTIONAL : if you want to add a description
         kwargs possibility:
             specName : if you want to modify the specification Name.(Default : "Streaming Connection")
+            responseType : by default json, but you can request 'raw' that return the requests response object.
         """
         if name is None:
             raise ValueError("Require a name for the connection")
@@ -247,7 +255,7 @@ class FlowService:
                 },
             },
         }
-        res = self.createConnection(data=obj)
+        res = self.createConnection(data=obj,responseType=kwargs.get('responseType','json'))
         return res
 
     def getConnection(self, connectionId: str = None) -> dict:
@@ -650,7 +658,7 @@ class FlowService:
             connectionId : REQUIRED : The Streaming connection ID.
             name : REQUIRED : Name of the Connection.
             format : REQUIRED : format of the data sent (default : delimited)
-            description : OPTIONAL : Description of of the Connection Source.
+            description : REQUIRED : Description of of the Connection Source.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createSourceConnectionStreaming")

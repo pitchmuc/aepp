@@ -364,26 +364,31 @@ class DataIngestion:
         self,
         inletId: str = None,
         data: dict = None,
-        synchronousValidation: bool = False,
+        flowId: str = None,
+        syncValidation: bool = False,
     ) -> dict:
         """
         Send a dictionary to the connection for streaming ingestion.
         Arguments:
             inletId : REQUIRED : the connection ID to be used for ingestion
             data : REQUIRED : The data that you want to ingest to Platform.
-            synchronousValidation : OPTIONAL : An optional query parameter, intended for development purposes.
+            flowId : OPTIONAL : The flow ID for the stream inlet.
+            syncValidation : OPTIONAL : An optional query parameter, intended for development purposes.
                 If set to true, it can be used for immediate feedback to determine if the request was successfully sent.
         """
+        privateHeader = deepcopy(self.header)
         if inletId is None:
             raise Exception("Require a connectionId to be present")
         if data is None and type(data) != dict:
             raise Exception("Require a dictionary to be send for ingestion")
+        if flowId is not None:
+            privateHeader['x-adobe-flow-id'] = flowId
         if self.loggingEnabled:
             self.logger.debug(f"Starting Streaming single message")
-        params = {"synchronousValidation": synchronousValidation}
+        params = {"syncValidation": syncValidation}
         path = f"/collection/{inletId}"
         res = self.connector.postData(
-            self.endpoint_streaming + path, data=data, params=params
+            self.endpoint_streaming + path, data=data, params=params, headers=privateHeader
         )
         return res
 
@@ -391,26 +396,31 @@ class DataIngestion:
         self,
         inletId: str = None,
         data: list = None,
-        synchronousValidation: bool = False,
+        flowId: str = None,
+        syncValidation: bool = False,
     ) -> dict:
         """
         Send a dictionary to the connection for streaming ingestion.
         Arguments:
             inletId : REQUIRED : the connection ID to be used for ingestion
             data : REQUIRED : The list of data that you want to ingest to Platform.
-            synchronousValidation : OPTIONAL : An optional query parameter, intended for development purposes.
+            flowId : OPTIONAL : The flow ID for the stream inlet.
+            syncValidation : OPTIONAL : An optional query parameter, intended for development purposes.
                 If set to true, it can be used for immediate feedback to determine if the request was successfully sent.
         """
+        privateHeader = deepcopy(self.header)
         if inletId is None:
             raise Exception("Require a connectionId to be present")
         if data is None and type(data) != list:
             raise Exception("Require a list of dictionary to be send for ingestion")
+        if flowId is not None:
+            privateHeader['x-adobe-flow-id'] = flowId
         if self.loggingEnabled:
             self.logger.debug(f"Starting Streaming multiple messages")
-        params = {"synchronousValidation": synchronousValidation}
+        params = {"syncValidation": syncValidation}
         data = {"messages": data}
         path = f"/collection/batch/{inletId}"
         res = self.connector.postData(
-            self.endpoint_streaming + path, data=data, params=params
+            self.endpoint_streaming + path, data=data, params=params, headers=privateHeader
         )
         return res

@@ -58,8 +58,8 @@ def getPlatformEvents(
     data = list()
     while lastPage != True:
         res = connection.getData(endpoint, params=params)
-        data += res.get("_embedded", {}).get("customerAuditLogList", [])
-        nextPage = res.get("_links", {}).get("next", "")
+        data += res.get("_embedded", {}).get("events", [])
+        nextPage = res.get("_links", {}).get("next", {}).get('href','')
         if float(len(data)) >= float(n_results):
             lastPage = True
         if nextPage == "" and lastPage != True:

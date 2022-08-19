@@ -162,6 +162,7 @@ class Schema:
         if not sandbox:
             raise ValueError("`sandbox` must be specified in the arguments.")
         self.header["x-sandbox-name"] = sandbox
+        self.sandbox = sandbox
 
     def getStats(self) -> list:
         """
@@ -255,6 +256,7 @@ class Schema:
         version: int = 1,
         full: bool = True,
         desc: bool = False,
+        deprecated:bool=False,
         schema_type: str = "xdm",
         flat: bool = False,
         save: bool = False,
@@ -268,6 +270,7 @@ class Schema:
             version : OPTIONAL : Version of the Schema asked (default 1)
             full : OPTIONAL : True (default) will return the full schema.False just the relationships.
             desc : OPTIONAL : If set to True, return the identity used as the descriptor.
+            deprecated : OPTIONAL : Display the deprecated field from that schema
             flat : OPTIONAL : If set to True, return a flat schema for pathing.
             schema_type : OPTIONAL : set the type of output you want (xdm or xed) Default : xdm.
             save : OPTIONAL : save the result in json file (default False)
@@ -281,23 +284,20 @@ class Schema:
         privateHeader = deepcopy(self.header)
         if schemaId is None:
             raise Exception("Require a schemaId as a parameter")
+        update_full,update_desc,update_flat,update_deprecated="","","",""
         if full:
             update_full = "-full"
-        else:
-            update_full = ""
         if desc:
             update_desc = "-desc"
-        else:
-            update_desc = ""
         if flat:
             update_flat = "-flat"
-        else:
-            update_flat = ""
+        if deprecated:
+            update_deprecated = "-deprecated"
         if schema_type != "xdm" and schema_type != "xed":
             raise ValueError("schema_type parameter can only be xdm or xed")
         if self.loggingEnabled:
             self.logger.debug(f"Starting getSchema")
-        privateHeader['Accept'] = f"application/vnd.adobe.{schema_type}{update_full}{update_desc}{update_flat}+json; version={version}"
+        privateHeader['Accept'] = f"application/vnd.adobe.{schema_type}{update_full}{update_desc}{update_flat}{update_deprecated}+json; version={version}"
         if kwargs.get("Accept", None) is not None:
             privateHeader["Accept"] = kwargs.get("Accept", self.header["Accept"])
         privateHeader["Accept-Encoding"] = "identity"
@@ -644,6 +644,8 @@ class Schema:
         self,
         classId: str = None,
         full: bool = True,
+        desc: bool = False,
+        deprecated: bool = False,
         xtype : str = "xdm",
         version: int = 1,
         save: bool = False,
@@ -653,6 +655,8 @@ class Schema:
         Arguments:
             classId : REQUIRED : the meta:altId or $id from the class
             full : OPTIONAL : True (default) will return the full schema.False just the relationships.
+            desc : OPTIONAL : If set to True, return the descriptors.
+            deprecated : OPTIONAL : Display the deprecated field from that schema (False by default)
             xtype : OPTIONAL : either "xdm" (default) or "xed". 
             version : OPTIONAL : the version of the class to retrieve.
             save : OPTIONAL : To save the result of the request in a JSON file.
@@ -662,18 +666,19 @@ class Schema:
             raise Exception("Require a class_id")
         if classId.startswith("https://"):
             from urllib import parse
-
             classId = parse.quote_plus(classId)
         if self.loggingEnabled:
             self.logger.debug(f"Starting getClass")
         privateHeader["Accept-Encoding"] = "identity"
+        updateFull,updateDesc, updateDeprecated = "","",""
         if full:
-            privateHeader.update(
-                {"Accept": f"application/vnd.adobe.{xtype}-full+json; version=" + str(version)}
-            )
-        else:
-            privateHeader.update(
-                {"Accept": f"application/vnd.adobe.{xtype}+json; version=" + str(version)}
+            updateFull = "-full"
+        if desc:
+            updateDesc = "-desc"
+        if deprecated:
+            updateDeprecated = "-deprecated"
+        privateHeader.update(
+                {"Accept": f"application/vnd.adobe.{xtype}{updateFull}{updateDesc}{updateDeprecated}+json; version=" + str(version)}
             )
         path = f"/{self.container}/classes/{classId}"
         res = self.connector.getData(self.endpoint + path, headers=privateHeader)
@@ -893,6 +898,7 @@ class Schema:
         desc: bool = False,
         type: str = 'xed',
         flat: bool = False,
+        deprecated: bool = False,
         save: bool = False,
     ):
         """
@@ -903,7 +909,8 @@ class Schema:
             full : OPTIONAL : True (default) will return the full schema.False just the relationships
             desc : OPTIONAL : Add descriptor of the field group
             type : OPTIONAL : Either "xed" (default) or "xdm"
-            flat : OPTIONAL : if the fieldGroup is flat (false by default) 
+            flat : OPTIONAL : if the fieldGroup is flat (false by default)
+            deprecated : OPTIONAL : Display the deprecated fields from that schema
             save : Save the fieldGroup to a JSON file
         """
         if fieldGroupId.startswith("https://"):
@@ -913,15 +920,17 @@ class Schema:
             self.logger.debug(f"Starting getFieldGroup")
         privateHeader = deepcopy(self.header)
         privateHeader["Accept-Encoding"] = "identity"
-        accept_full, accept_desc,accept_flat= "","",""
+        accept_full, accept_desc,accept_flat,accept_deprec= "","","",""
         if full:
             accept_full = "-full"
         if desc:
             accept_desc = "-desc"
         if flat:
             accept_flat = "-flat"
+        if deprecated:
+            accept_deprec = "-deprecated"
         update_accept = (
-            f"application/vnd.adobe.{type}{accept_full}{accept_desc}{accept_flat}+json; version={version}"
+            f"application/vnd.adobe.{type}{accept_full}{accept_desc}{accept_flat}{accept_deprec}+json; version={version}"
         )
         privateHeader.update({"Accept": update_accept})
         path = f"/{self.container}/fieldgroups/{fieldGroupId}"
@@ -1062,10 +1071,12 @@ class Schema:
         if tenantId is not None:
             if tenantId.startswith("_") == False:
                 tenantId = f"_{tenantId}"
-            obj["definitions"]["property"]["properties"][tenantId] = obj["definitions"][
-                "property"
-            ]["properties"][oldTenant]
-            del obj["definitions"]["property"]["properties"][oldTenant]
+            if 'property' in obj["definitions"].keys():
+                obj["definitions"]["property"]["properties"][tenantId] = obj["definitions"]["property"]["properties"][oldTenant]
+                del obj["definitions"]["property"]["properties"][oldTenant]
+            elif 'customFields' in obj["definitions"].keys():
+                obj["definitions"]["customFields"]["properties"][tenantId] = obj["definitions"]["customFields"]["properties"][oldTenant]
+                del obj["definitions"]["customFields"]["properties"][oldTenant]
         return obj
 
     def createMixin(self, mixin_obj: dict = None) -> dict:
@@ -1387,7 +1398,7 @@ class Schema:
 
     def getDescriptors(
         self,
-        type_desc: str = "xdm:descriptorIdentity",
+        type_desc: str = None,
         id_desc: bool = False,
         link_desc: bool = False,
         save: bool = False,
@@ -1397,7 +1408,8 @@ class Schema:
         Return a list of all descriptors contains in that tenant id.
         By default return a v2 for pagination.
         Arguments:
-            type_desc : OPTIONAL : if you want to filter for a specific type of descriptor. (default : "xdm:descriptorIdentity")
+            type_desc : OPTIONAL : if you want to filter for a specific type of descriptor. None default.
+                (possible value : "xdm:descriptorIdentity")
             id_desc : OPTIONAL : if you want to return only the id.
             link_desc : OPTIONAL : if you want to return only the paths.
             save : OPTIONAL : Boolean that would save your descriptors in the schema folder. (default False)
@@ -1426,7 +1438,7 @@ class Schema:
         data = res["results"]
         page = res["_page"]
         while page["next"] is not None:
-            data += self.getSchemas(start=page["next"])
+            data += self.getDescriptors(start=page["next"])
         if save:
             aepp.saveFile(
                 module="schema", file=data, filename="descriptors", type_file="json"
@@ -1463,8 +1475,7 @@ class Schema:
         sourceSchema: str = None,
         sourceProperty: str = None,
         namespace: str = None,
-        xdmProperty: str = "xdm:code",
-        primary: bool = False,
+        primary: bool = None,
         **kwargs,
     ) -> dict:
         """
@@ -1474,25 +1485,25 @@ class Schema:
             sourceSchema : REQUIRED : the schema attached to your identity ()
             sourceProperty : REQUIRED : the path to the field
             namespace : REQUIRED : the namespace used for the identity
-            xdmProperty : OPTIONAL : xdm code for the descriptor (default : xdm:code)
-            primary : OPTIONAL : Boolean to define if it is a primary identity or not (default False).
+            primary : OPTIONAL : Boolean (True or False) to define if it is a primary identity or not (default None).
         possible kwargs:
             version : version of the creation (default 1)
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createDescriptor")
         path = f"/{self.container}/descriptors"
-        if sourceSchema is None or sourceProperty is None or namespace is None:
+        if sourceSchema is None or sourceProperty is None:
             raise Exception("Missing required arguments.")
         obj = {
             "@type": desc_type,
             "xdm:sourceSchema": sourceSchema,
             "xdm:sourceVersion": kwargs.get("version", 1),
             "xdm:sourceProperty": sourceProperty,
-            "xdm:namespace": namespace,
-            "xdm:property": xdmProperty,
-            "xdm:isPrimary": primary,
         }
+        if namespace is not None:
+            obj["xdm:namespace"] = namespace
+        if primary is not None:
+            obj["xdm:isPrimary"] = primary
         res = self.connector.postData(
             self.endpoint + path, data=obj)
         return res

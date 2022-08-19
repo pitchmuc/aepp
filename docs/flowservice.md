@@ -105,6 +105,16 @@ newConnection = {
         }
 ```
 
+You will then need to create a connection for your application.\
+You will need to use the `createConnection` with the object created before.
+
+Example:
+```python
+flw.createConnection(newConnection)
+
+```
+
+
 ### Connect to your Source connection
 
 Once that you have created your global connection, you will receive an ID in return that you can use to connect new source (and target) connection.\

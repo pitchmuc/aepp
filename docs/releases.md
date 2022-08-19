@@ -25,6 +25,14 @@ Patch:
 * adding new option for `getFieldGroup` method 
 * fix issue with `getDataType` method
 * fixing typo in documentation
+* Improving descriptor methods with primary support
+* fixing getDescriptors loop
+* adding deprecated option for schema, fieldGroup and class
+* fixing `SyncValidation` parameter in data ingestion.
+* adding option to get raw request response object
+* Fixing sandbox attribute update when using `updateSandbox` method
+* Fix `getAuditEvent` pagination
+* Improving `copyFieldGroup` method
 
 ## version 0.1.7
 
