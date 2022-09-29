@@ -1612,11 +1612,16 @@ class Schema:
         res: list = self.connector.postData(self.endpoint + path, data=dataResource)
         return res
 
-    def extendFieldGroup(self,fieldGroupId:str=None)->dict:
+    def extendFieldGroup(self,fieldGroupId:str=None,values:list=None)->dict:
         """
         Patch a Field Group to extend its compatibility with ExperienceEvents, IndividualProfile and Record.
         Arguments:
             fieldGroupId : REQUIRED : meta:altId or $id of the field group.
+            values : OPTIONAL : If you want to pass the behavior you want to extend the field group to.
+                Examples: ["https://ns.adobe.com/xdm/context/profile",
+                      "https://ns.adobe.com/xdm/context/experienceevent",
+                    ]
+                by default profile and experienceEvent will be added to the FieldGroup.
         """
         if fieldGroupId is None:
             raise Exception("Require a field Group ID")
@@ -1624,9 +1629,8 @@ class Schema:
         operation = [
            { 
             "op": "replace",
-            "path": "/meta:extends",
+            "path": "/meta:intendedToExtend",
             "value": ["https://ns.adobe.com/xdm/context/profile",
-                      "https://ns.adobe.com/xdm/data/record",
                       "https://ns.adobe.com/xdm/context/experienceevent",
                     ]
             }

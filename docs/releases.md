@@ -33,6 +33,9 @@ Patch:
 * Fixing sandbox attribute update when using `updateSandbox` method
 * Fix `getAuditEvent` pagination
 * Improving `copyFieldGroup` method
+* Fixing `extendFieldGroup`
+* supporting parquet file download from data access API
+* supporting replace operation when creating batch.
 
 ## version 0.1.7
 

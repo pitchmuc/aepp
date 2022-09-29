@@ -2,7 +2,8 @@ import aepp
 from aepp import connector
 import logging
 import time
-
+import io
+from typing import Union
 
 class DataAccess:
     """
@@ -184,7 +185,7 @@ class DataAccess:
         range: str = None,
         start: str = None,
         limit: int = None,
-    ) -> dict:
+    ) -> Union[dict,bytes]:
         """
         Returns either a complete file or a directory of chunked data that makes up the file.
         The response contains a data array that may contain a single entry or a list of files belonging to that directory.
@@ -192,6 +193,7 @@ class DataAccess:
             dataSetFileId : REQUIRED : The ID of the dataset file you are retrieving.
             path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided.
                 For example: path=profiles.csv
+                if the extension is .parquet, it will try to return the parquet data decoded (io.BytesIO). 
             range : OPTIONAL : The range of bytes requested. For example: Range: bytes=0-100000
             start : OPTIONAL : A paging parameter to specify start of new page. For example: start=fileName.csv
             limit : OPTIONAL : A paging parameter to specify number of results per page. For example: limit=10
@@ -210,9 +212,17 @@ class DataAccess:
         if limit is not None:
             params["limit"] = limit
         pathEndpoint = f"/files/{dataSetFileId}"
-        res: dict = self.connector.getData(
-            self.endpoint + pathEndpoint, headers=self.header, params=params
-        )
+        if path is None:
+            res: dict = self.connector.getData(
+                self.endpoint + pathEndpoint, headers=self.header, params=params
+            )
+        else:
+            if path.endswith('.parquet'):
+                data = self.getResource(self.endpoint + pathEndpoint,params={"path":path},format='raw')
+                res = io.BytesIO(data.content)
+            else:
+                data = self.getResource(self.endpoint + pathEndpoint,params={"path":path},format='raw')
+                res = data.content
         return res
 
     def getPreview(self, datasetId: str = None) -> list:

@@ -97,6 +97,7 @@ class DataIngestion:
         multiline: bool = False,
         enableDiagnostic: bool = False,
         partialIngestionPercentage: int = 0,
+        **kwargs
     ) -> dict:
         """
         Create a new batch in Catalog Service.
@@ -104,6 +105,9 @@ class DataIngestion:
             datasetId : REQUIRED : The Dataset ID for the batch to upload data to.
             format : REQUIRED : the format of the data send.(default json)
             multiline : OPTIONAL : If you wish to upload multi-line JSON.
+        Possible kwargs:
+            replay : the replay object to replay a batch.
+            https://experienceleague.adobe.com/docs/experience-platform/ingestion/batch/api-overview.html?lang=en#replay-a-batch
         """
         if datasetId is None:
             raise ValueError("Require a dataSetId")
@@ -113,6 +117,8 @@ class DataIngestion:
             "datasetId": datasetId,
             "inputFormat": {"format": format, "isMultiLineJson": False},
         }
+        if len(kwargs.get('replay',{}))>0:
+            obj['replay'] = kwargs.get('replay')
         if multiline is True:
             obj["inputFormat"]["isMultiLineJson"] = True
         if enableDiagnostic != False:
