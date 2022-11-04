@@ -44,5 +44,6 @@ endpoints = {
     "streaming": {
         "inlet": "https://platform.adobe.io/data/core/edge",
         "collection" : "https://dcs.adobedc.net"
-    }
+    },
+    "audit":"/data/foundation"
 }

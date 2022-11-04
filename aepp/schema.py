@@ -1582,22 +1582,24 @@ class Schema:
         res: list = self.connector.getData(self.endpoint + path)
         return res
     
-    def exportResource(self,resourceId:str = None,version:int=1)->dict:
+    def exportResource(self,resourceId:str=None,Accept:str="application/vnd.adobe.xed+json; version=1")->dict:
         """
-        Export the resource to be used in an importResource method.
-        Arguments:
-            resourceId : REQUIRED : The "$id" or "meta:altId" of the resource.
-            version : OPTIONAL : The version of the resource you wish to retrieve
+        Return all the associated references required for importing the resource in a new sandbox or a new Org.
+        Argument:
+            resourceId : REQUIRED : The $id or meta:altId of the resource to export.
+            Accept : OPTIONAL : If you want to change the Accept header of the request.
         """
         if resourceId is None:
-            raise ValueError("resourceId should be included as a parameter")
+            raise ValueError("Require a resource ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting exportResource for resourceId : {resourceId}")
         if resourceId.startswith("https://"):
             from urllib import parse
             resourceId = parse.quote_plus(resourceId)
         privateHeader = deepcopy(self.header)
-        privateHeader["Accept"] = f"application/vnd.adobe.xed-full+json; version={version}"
-        path: str = f"/rpc/export/{resourceId}"
-        res: list = self.connector.getData(self.endpoint + path, headers=privateHeader)
+        privateHeader['Accept'] = Accept
+        path = f"/rpc/export/{resourceId}"
+        res = self.connector.getData(self.endpoint +path,headers=privateHeader)
         return res
 
     def importResource(self,dataResource:dict = None)->dict:
@@ -1608,6 +1610,8 @@ class Schema:
         """
         if dataResource is None:
             raise ValueError("a dictionary presenting the resource to be imported should be included as a parameter")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting importResource")
         path: str = f"/rpc/export/"
         res: list = self.connector.postData(self.endpoint + path, data=dataResource)
         return res
@@ -1625,6 +1629,8 @@ class Schema:
         """
         if fieldGroupId is None:
             raise Exception("Require a field Group ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting extendFieldGroup")
         path = f"/{self.container}/fieldgroups/{fieldGroupId}"
         operation = [
            { 
@@ -1646,6 +1652,8 @@ class Schema:
         """
         if schemaId is None:
             raise Exception("Require a schema ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting enableSchemaForRealTime")
         path = f"/{self.container}/schemas/{schemaId}/"
         operation = [
            { 
@@ -1656,5 +1664,3 @@ class Schema:
         ]
         res = self.connector.patchData(self.endpoint + path,data=operation)
         return res
-
- 

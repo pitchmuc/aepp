@@ -5,6 +5,7 @@ import time
 from concurrent import futures
 import logging
 from typing import Union
+from copy import deepcopy
 
 
 class Segmentation:
@@ -17,6 +18,43 @@ class Segmentation:
     ## logging capability
     loggingEnabled = False
     logger = None
+    PLATFORM_AUDIENCE_DICT = {
+                    "name": "People who ordered in the last 30 days",
+                    "profileInstanceId": "ups",
+                    "description": "This audience is generated to see people who ordered in the last 30 days.",
+                    "type": "SegmentDefinition",
+                    "expression": {
+                        "type": "PQL",
+                        "format": "pql/text",
+                        "value": "workAddress.country = \"US\""
+                    },
+                    "schema": {
+                        "name": "_xdm.context.profile"
+                    },
+                    "labels": [
+                        "core/C1"
+                    ],
+                    "ttlInDays": 60
+                }
+    EXTERNAL_AUDIENCE_DICT = {
+                    "audienceId": "test-external-audience-id",
+                    "name": "externalSegment1",
+                    "namespace": "aam",
+                    "description": "This audience is generated to see people who ordered in the last 30 days.",
+                    "type": "ExternalSegment",
+                    "lifecycle": "published",
+                    "datasetId": "6254cf3c97f8e31b639fb14d",
+                    "labels": [
+                        "core/C1"
+                    ],
+                    "audienceMeta": {
+                        "segmentStatus": "ACTIVE",
+                        "AAMFolderId": "325813-testnew"
+                    },
+                    "linkedAudienceRef": {
+                        "flowId": "4685ea90-d2b6-11ec-9d64-0242ac120002"
+                    }
+                }  
 
     def __init__(
         self,
@@ -66,6 +104,28 @@ class Segmentation:
             "schedule": "0 0 1 * * ?",
             "state": "inactive",
         }
+
+    def getResource(self,endpoint:str=None, params:dict=None, **kwargs)->dict:
+        """
+        Abstract GET requests with header from the the connection.
+        Arguments:
+            endpoint : REQUIRED : the endpoint to use
+            params : OPTIONAL : the parameters to use in the GET requests
+        possible kwargs:
+            all kwargs are passed to the header
+        """
+        if endpoint is None:
+            raise ValueError("Endpoint is required")
+        if type(params) != dict:
+            raise TypeError("params should be a dictionary")
+        parameters = {**params}
+        myPrivateHeader = deepcopy(self.header)
+        if kwargs is None:
+            for key in kwargs:
+                myPrivateHeader[key] = kwargs[key]
+        res = self.connector.getData(endpoint, headers=myPrivateHeader,params=parameters)
+        return res
+
 
     def getSegments(self, onlyRealTime: bool = False, **kwargs) -> list:
         """
@@ -191,6 +251,58 @@ class Segmentation:
             self.endpoint + path, headers=self.header, data=segment_data
         )
         return update
+    
+    def getMultipleSegments(self,segmentIds:list=None)->dict:
+        """
+        Retrieve multiple segments from a list of segment IDs.
+        Arguments:
+            segmentIds: REQUIRED : list of segment IDs
+        """
+        if segmentIds is None:
+            raise Exception("Require a list of segment Ids")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getMultipleSegments with this list: {segmentIds}")
+        path = "/segment/definitions/bulk-get"
+        res = self.connector.postData(self.endpoint + path,data=segmentIds)
+        results = res.get('results')
+        return results
+
+    def convertSegmentDef(self,name:str=None,expression:dict=None,description:str=None,schemaClass:str="_xdm.context.profile",ttl:int=30,**kwargs)->dict:
+        """
+        This endpoint converts a segment definition from pql/text to pql/json or from pql/json to pql/text.
+        Arguments:
+            name : REQUIRED : The name of the segment. It should be unique.
+            expression : REQUIRED : the expriession regarding the transformation.
+                A dictionary such as
+                {
+                    "type" : "PQL" (or "ARL"),
+                    "format" : "pql/text" (or "pql/json")
+                    "value" : "your PQL expression"
+                }
+            description : OPTIONAL : the description to be used
+            schemaClass : OPTIONAL :  the class ID to be used. (ex: default : "_xdm.context.profile")
+            ttl : OPTIONAL : Time to live per day (default 30)
+        possible kwargs:
+            additional kwargs will be used as parameter of the body
+        """
+        if name is None:
+            raise Exception("Require a name")
+        if expression is None and type(expression)!=dict:
+            raise Exception("Require a dictionary as expression")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting convertSegmentDef")
+        path = "/segment/conversion"
+        data = {**kwargs}
+        data['name'] = name
+        data['imsOrgId'] = self.connector.config['org_id']
+        data['description'] = description
+        data['expression'] = expression
+        data['schema'] = {
+            "name" : schemaClass
+        }
+        data['ttlInDays'] = ttl
+        res = self.connector.postData(self.endpoint + path,data=data)
+        return res
 
     def getExportJobs(self, limit: int = 1000, status: str = None) -> list:
         """
@@ -290,7 +402,7 @@ class Segmentation:
         del self.header["x-ups-search-version"]
         return res
 
-    def searchEntity(
+    def searchEntities(
         self,
         query: str = None,
         namespace: str = "ECID",
@@ -301,7 +413,7 @@ class Segmentation:
         """
         Return the list of objects that are contained  within a namespace.
         Arguments:
-            query : REQUIRED : the search query.
+            query : REQUIRED : the search query based on Lucene query syntax (ex: name:test) (https://learn.microsoft.com/en-us/azure/search/query-lucene-syntax)
             schema : OPTIONAL : The schema class value associated with the search objects.(defaul _xdm.context.segmentdefinition)
             namespace : OPTIONAL : The namespace you want to search within (default ECID)
             entityId : OPTIONAL : The ID of the folder you want to search for external segments in
@@ -618,3 +730,140 @@ class Segmentation:
             time.sleep(60)
             estimate = self.getEstimate(previewId)
         return estimate
+    
+
+    def getAudiences(self,
+        limit:int=100,
+        metrics:bool=True,
+        name:str=None,
+        sort:str=None,
+        prop:str=None,
+        description:str=None,
+        **kwargs)->list:
+        """
+        Get the audiences list.
+        Arguments:
+            name : OPTIONAL : Filter audiences that contains that string in the name, case unsensitive.
+            limit : OPTIONAL : The number of audiences to be returned by pages (default: 100)
+            sort : OPTIONAL : If you want to sort by a specific attribute (ex: "updateTime:desc")
+            prop : If you want to test a specific property of the result to filter the data.
+                    Ex: "audienceId==mytestAudienceId"
+            description : OPTIONAL : Filter audiences that contains that string in the description, case unsensitive.
+            with metrics : OPTIONAL : If metrics should be returned as well. Default true.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getAudiences")
+        params = {"limit":limit,"withMetrics":metrics}
+        path = "/audiences"
+        if name is not None:
+            params['name'] = name
+        if sort is not None:
+            params['sort'] = sort
+        if prop is not None:
+            params['property'] = prop
+        if description is not None:
+            params['description'] = description
+        if kwargs.get('start',0) is not None:
+            params['start'] = kwargs.get('start')
+        res = self.connector.getData(self.endpoint+path, params=params)
+        data = res.get('children',[])
+        nextStart = res.get('_pages',{}).get('next',0)
+        while nextStart != 0:
+            params['start'] = nextStart
+            res = self.connector.getData(self.endpoint+path, params=params)
+            data += res.get('children',[])
+            nextStart = res.get('_pages',{}).get('next',0)
+        return data
+    
+    def getAudience(self,audienceId:str=None)->dict:
+        """
+        Retrieve a specific audience id.
+        Arguments:
+            audienceId : REQUIRED : The audience ID to retrieve.
+        """
+        if audienceId is None:
+            raise ValueError("Require an audience ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getAudience for audienceId: {audienceId}")
+        path = f"/audiences/{audienceId}"
+        res = self.connector.getData(self.endpoint + path)
+        return res
+
+    def deleteAudience(self,audienceId:str=None)->str:
+        """
+        Delete an audience based on its ID.
+        Argument:
+            audienceId : REQUIRED : The audience ID to delete
+        """
+        if audienceId is None:
+            raise ValueError("Require an audience ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteAudience for audienceId: {audienceId}")
+        path = f"/audiences/{audienceId}"
+        res = self.connector.deleteData(self.endpoint + path)
+        return res
+    
+    def createAudience(self,audienceObj:dict=None)->dict:
+        """
+        Create an audience basde on the dictionary passed as argument.
+        Argument:
+            audienceObj : REQUIRED : Can be either one of the Platform Audience or External Audience
+                See constants EXTERNAL_AUDIENCE_DICT & PLATFORM_AUDIENCE_DICT  
+        """
+        if audienceObj is None or type(audienceObj) != dict:
+            raise ValueError("Require an audience Object as dictionary")
+        path = "/audiences"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createAudience")
+        res = self.connector.postData(self.endpoint + path, data=audienceObj)
+        return res
+
+    def patchAudience(self,audienceId:str=None,operations:list=None)->dict:
+        """
+        PATCH an existing audience with some operation described in parameter.
+        Arguments:
+            audienceId : REQUIRED : The audience ID to patch
+            operations : REQUIRED : A list of operation to apply.
+                            Example: 
+                            [
+                                {
+                                    "op": "add",
+                                    "path": "/expression",
+                                    "value": {
+                                    "type": "PQL",
+                                    "format": "pql/text",
+                                    "value": "workAddress.country= \"US\""
+                                    }
+                                }
+                            ]
+        """
+        if audienceId is None:
+            raise ValueError("Require an audience ID")
+        if operations is None or type(operations) != list:
+            raise ValueError("Require a list of operations")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting patchAudience for audienceId: {audienceId}")
+        path = f"/audiences/{audienceId}"
+        res = self.connector.patchData(self.endpoint + path,data=operations)
+        return res
+    
+    def putAudience(self,audienceId:str=None,audienceObj: dict = None)-> dict:
+        """
+        Replace an existing definition with a new one, with the PUT method.
+        Arguments:
+            audienceId : REQUIRED : the audience ID to replace
+            audienceObj : REQUIRED : the new definition to use
+                see EXTERNAL_AUDIENCE_DICT & PLATFORM_AUDIENCE_DICT  
+        """
+        if audienceId is None:
+            raise ValueError("Require an audience ID")
+        if audienceObj is None or type(audienceObj) != dict:
+            raise ValueError("Require a new definition")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting putAudience for audienceId: {audienceId}")
+        path = f"/audiences/{audienceId}"
+        res = self.connector.putData(self.endpoint + path,data=audienceObj)
+        return res
+    
+
+

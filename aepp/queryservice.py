@@ -667,6 +667,177 @@ class QueryService:
         params = {"dataSet":datasetId,"statisticType":statisticType}
         res = self.connector.getData(self.endpoint + path,params=params)
         return res
+    
+    def getAlertSubscriptions(self,n_results: int = 1000, **kwargs)->list:
+        """
+        Get the list of alerts subscriptions.
+        Arguments:
+            n_results : OPTIONAL : The total number of result you want.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getAlertSubscriptions")
+        params = {"page":kwargs.get("page",0)}
+        path = f"/alert-subscriptions"
+        res = self.connector.getData(self.endpoint + path,params=params)
+        data = res.get("alerts")
+        count = res.get("_page",{}).get('count',0)
+        nextpage = res.get('_links',{}).get('next',{}).get('href','')
+        while nextpage != "" and count <n_results:
+            params["page"] += 1
+            res = self.connector.getData(self.endpoint + path,params=params)
+            data += res.get("alerts")
+            count += res.get("_page",{}).get('count',0)
+            nextpage = res.get('_links',{}).get('next',{}).get('href','')
+        return data
+    
+    def createAlertSubscription(self,assetId:str=None,alertType:str=None,emails:list=None,inAEP:bool=True,inEmail:bool=True)->dict:
+        """
+        Create a subscription to an asset (queryID or scheduleID) for a list of predefined users.
+        Arguments:
+            assetId : REQUIRED : The schedule ID or query ID.
+            alertType : REQUIRED : The type of alert to listen to. (start, success, failure)
+            emails : REQUIRED : A list of email addresses that subscribes to that alert.
+            inAEP : OPTIONAL : If the Alert should show up in AEP UI. (default True)
+            inEmail : OPTIONAL : If the Alert should be sent via email. (default True)
+                NOTE: Consider setting your email address for notification via this tutorial:
+                https://experienceleague.adobe.com/docs/experience-platform/observability/alerts/ui.html?lang=en#enable-email-alerts
+        """
+        if assetId is None:
+            raise ValueError("Require an asset ID")
+        if alertType is None:
+            raise ValueError("Require an alert type")
+        if emails is None or type(emails) != list:
+            raise ValueError("Require a list of email addresses")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createAlertSubscription for asset: {assetId}")
+        path = f"/alert-subscriptions"
+        data = {
+            "assetId": assetId,
+            "alertType": alertType,
+            "subscriptions":{
+                "emailIds" : emails,
+                "inContextNotifications" : inAEP,
+                "emailNotifications":inEmail
+            }  
+        }
+        res = self.connector.postData(self.endpoint+path, data=data)
+        return res
+    
+    def deleteAlertSubscription(self,assetId:str=None, alertType:str=None)->dict:
+        """
+        Delete a subscription for a specific alert on a specifc assetId.
+        Arguments
+            assetId : REQUIRED : A query ID or a schedule ID that you want to delete the alert for.
+            alertType : REQUIRED : The state of query execution that triggers the alert to be deleted. (start, success, failure).
+        """
+        if assetId is None:
+            raise ValueError("Require an asset ID")
+        if alertType is None:
+            raise ValueError("Require an alert type")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteAlertSubscription for asset: {assetId}")
+        path = f"/alert-subscriptions/{assetId}/{alertType}"
+        res = self.connector.deleteData(self.endpoint + path)
+        return res
+    
+    def getAlertSubscriptionsTypeId(self,assetId:str=None, alertType:str=None)->dict:
+        """
+        Retrieve the subscriptions made about a specific asset ID and with or without alertType specification
+        Arguments:
+            assetId : REQUIRED : A query or schedule ID that you want the subscription information for.
+            alertType : OPTIONAL : This property describes the state of query execution that triggers an alert.
+                        (start, success, failure).
+        """
+        if assetId is None:
+            raise ValueError("Require an asset ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getAlertSubscriptionsTypeId for asset: {assetId}")
+        if alertType is None:
+            path = f"/alert-subscriptions/{assetId}"
+        elif alertType is not None and type(alertType) == str:
+            path = f"/alert-subscriptions/{assetId}/{alertType}"
+        res = self.connector.getData(self.endpoint + path)
+        return res.get('alerts')
+    
+    def patchAlert(self,assetId:str=None, alertType:str=None,action:str="disable")->dict:
+        """
+        Disable or Enable an alert by providing the assetId and the alertType.
+        Arguments:
+            assetId : REQUIRED : A query or schedule ID that you want the subscription information for.
+            alertType : REQUIRED : This property describes the state of query execution that triggers an alert.
+                        (start, success, failure)
+            action : OPTIONAL : the action to take on that Alert. "disable" (default) or "enable"
+        """
+        if assetId is None:
+            raise ValueError("Require an asset ID")
+        if alertType is None:
+            raise ValueError("Require an alert Type")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting patchAlert for asset: {assetId}, action : {action}")
+        path = f"/alert-subscriptions/{assetId}/{alertType}"
+        data = {
+            "op":"replace",
+            "path":"/status",
+            "value":action
+        }
+        res = self.connector.patchData(self.endpoint + path,data=data)
+        return res
+    
+    def getUserAlerts(self,email:str=None)->list:
+        """
+        Get the alert that a specific user is subscribed to.
+        Argument:
+            email : REQUIRED : the email address of the user
+        """
+        if email is None:
+            raise ValueError("Require a valid email address")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getUserAlerts for user: {email}")
+        params = {'page':0}
+        path = f"/alert-subscriptions/user-subscriptions/{email}"
+        res = self.connector.getData(self.endpoint + path)
+        data = res.get('items')
+        nextPage = res.get('_links',{}).get('next',{}).get('href','')
+        while nextPage != "":
+            params['page'] +=1
+            res = self.connector.getData(self.endpoint + path,params=params)
+            data += res.get('items')
+            nextPage = res.get('_links',{}).get('next',{}).get('href','')
+        return data
+    
+    def createAcceleratedQuery(self,name:str=None,dbName:str=None,sql:str=None,templateId:str=None,description:str="power by aepp")->dict:
+        """
+        Create an accelerated query statement based on either an SQL statement or a template ID.
+        Arguments:
+            name : REQUIRED : Name of your query
+            dbName : REQUIRED : The name of the database you are making an accelerated query to. 
+                        The value for dbName should take the format of {SANDBOX_NAME}:{ACCELERATED_STORE_DATABASE}:{ACCELERATED_STORE_SCHEMA}
+            sql : REQUIRED : Either this parameter with a SQL statement or a templateId in the "templateId" parameter.
+            templateId : REQUIRED : Either this parameter with a template ID or a SQL statement in the "sql" parameter.
+            description : OPTIONAL : An optional comment on the intent of the query to help other users understand its purpose. Max 1000 bytes.
+        """
+        if name is None:
+            raise ValueError("Require a name")
+        if dbName is None or len(dbName.split(":")) != 3:
+            raise ValueError("Require a dbName such as : {SANDBOX_NAME}:{ACCELERATED_STORE_DATABASE}:{ACCELERATED_STORE_SCHEMA}")
+        if templateId is None and sql is None:
+            raise SyntaxError("Require either an sql or a templateId parameter")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createAcceleratedQuery with name: {name}")
+        path = f"/accelerated-queries"
+        data = {
+            "name" : name,
+            "dbName":dbName,
+            "description":description,    
+        }
+        if sql is not None:
+            data['sql'] = sql
+        elif templateId is not None:
+            data['templateId'] = templateId
+        res = self.connector.postData(self.endpoint+path, data=data)
+        return res
+
+
 
 
 
@@ -675,6 +846,7 @@ class InteractiveQuery:
     Provide the instance connected to PostgreSQL database and you can return the result directly in your notebook.
     This class requires that you have used connection method in the QueryService.
     The object returned by the connection method should be used when creating this object.
+    USING PyGreSQL
 
     """
     
@@ -684,6 +856,11 @@ class InteractiveQuery:
     logger = None
 
     def __init__(self, conn_object: dict = None, loggingObject: dict = None):
+        """
+        Importing the pg (PyGreSQL) library and instantiating the connection via the conn_object pass over the instantiation method.
+        Arguments:
+            conn_object : REQUIRED : The dictionary returned via the queryservice api "connection"
+        """
         from pg import DB
         if conn_object is None:
             raise AttributeError(
@@ -816,5 +993,152 @@ class InteractiveQuery:
                 data = res.getresult()
                 columns = res.listfields()
                 df = pd.DataFrame(data, columns=columns)
+                df.to_csv(f"{identityId}.csv", index=False)
+        return res
+
+class InteractiveQuery2:
+    """
+    Provide the instance connected to PostgreSQL database and you can return the result directly in your notebook.
+    This class requires that you have used connection method in the QueryService.
+    The object returned by the connection method should be used when creating this object.
+    USING psycopg2
+    """
+    
+    config_object = {}
+    ## logging capability
+    loggingEnabled = False
+    logger = None
+
+    def __init__(self, conn_object: dict = None, loggingObject: dict = None):
+        """
+        Importing the psycopg2 library and instantiating the connection via the conn_object pass over the instantiation method.
+        Arguments:
+            conn_object : REQUIRED : The dictionary returned via the queryservice api "connection"
+        """
+        import psycopg2
+        if conn_object is None:
+            raise AttributeError(
+                "You are missing the conn_object. Use the QueryService to retrieve the object."
+            )
+        self.dbname = conn_object["dbName"]
+        self.host = conn_object["host"]
+        self.port = conn_object["port"]
+        self.user = conn_object["username"]
+        self.passwd = conn_object["token"]
+        self.config_object = {
+            "dbname": self.dbname,
+            "host": self.host,
+            "user": self.user,
+            "password": self.passwd,
+            "port": self.port,
+        }
+        self.connect = psycopg2.connect(**self.config_object)
+        if loggingObject is not None and sorted(
+            ["level", "stream", "format", "filename", "file"]
+        ) == sorted(list(loggingObject.keys())):
+            self.loggingEnabled = True
+            self.logger = logging.getLogger(f"{__name__}")
+            self.logger.setLevel(loggingObject["level"])
+            formatter = logging.Formatter(loggingObject["format"])
+            if loggingObject["file"]:
+                fileHandler = logging.FileHandler(loggingObject["filename"])
+                fileHandler.setFormatter(formatter)
+                self.logger.addHandler(fileHandler)
+            if loggingObject["stream"]:
+                streamHandler = logging.StreamHandler()
+                streamHandler.setFormatter(formatter)
+                self.logger.addHandler(streamHandler)
+
+    def query(
+        self, sql: str = None, output: str = "dataframe"
+    ) -> Union[pd.DataFrame, object]:
+        """
+        Query the database and return different type of data, depending the format parameters.
+        Requests are limited to return 50 K rows
+        Arguments:
+            sql : REQUIRED : the SQL request you want to realize.
+            output : OPTIONAL : the format you would like to be returned.
+            Possible format:
+                "raw" : return the instance of the query object.
+                "dataframe" : return a dataframe with the data. (default)
+        """
+        if sql is None:
+            raise Exception("Required a SQL query")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting query:\n {sql}")
+        cursor = self.connect.cursor()
+        cursor.execute(sql)
+        if output == "raw":
+            return cursor
+        elif output == "dataframe":
+            df = pd.DataFrame(cursor.fetchall())
+            df.columns = [col[0] for col in cursor.description]
+            return df
+        else:
+            raise KeyError("You didn't specify a correct value.")
+
+    def transformToDataFrame(self, query: object = None) -> pd.DataFrame:
+        """
+        Taking the raw output of the query method use with raw and returning a DataFrame
+        Arguments:
+            cursor : REQUIRED : The cursor that has been returned 
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting transformToDataFrame")
+        df = pd.DataFrame(query.fetchall())
+        df.columns = [col[0] for col in query.description]
+        return df
+
+    def queryIdentity(
+        self,
+        identityId: str = None,
+        fields: list = None,
+        tableName: str = None,
+        output: str = "dataframe",
+        fieldId: str = "ECID",
+        limit: str = None,
+        save: bool = False,
+    ) -> Union[pd.DataFrame, object]:
+        """
+        Return the elements that you have passed in field list and return the output selected.
+        Arguments:
+            identityId : REQUIRED : The ID you want to retrieve
+            fields : REQUIRED : a list of fields you want to return for that ID in your table.
+                example : ['person.name']
+            tableName : REQUIRED : The dataset table name to use
+            output : OPTIONAL : the format you would like to be returned.
+            Possible format:
+                "raw" : return the instance of the query object.
+                "dataframe" : return a dataframe with the data. (default)
+            fieldId : OPTIONAL : If you want your selection to be based on another field than ECID in IdentityMap.
+            limit : OPTIONAL : If you wish to set a LIMIT on number of row returned.
+            save : OPTIONAL : will save a csv file
+        """
+        if identityId is None:
+            raise ValueError("Require an identity value")
+        if type(fields) != list:
+            raise ValueError("Require a list of fields to be returned")
+        if tableName is None:
+            raise ValueError("Require a dataset table name")
+        if fieldId == "ECID":
+            condition = f"WHERE identityMap['ECID'][0].id = '{identityId}'"
+        elif fieldId != "ECID" and fieldId is not None:
+            condition = f"WHERE {fieldId} = '{identityId}'"
+        else:
+            condition = ""
+        if limit is None:
+            limit = ""
+        else:
+            limit = f"LIMIT {limit}"
+        sql = f"SELECT {','.join(fields)} FROM {tableName} {condition} {limit}"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting queryIdentity:\n {sql}")
+        res = self.query(sql)
+        if save:
+            if isinstance(res, pd.DataFrame):
+                res.to_csv(f"{identityId}.csv", index=False)
+            else:
+                df = pd.DataFrame(res.fetchall())
+                df.columns = [col[0] for col in res.description]
                 df.to_csv(f"{identityId}.csv", index=False)
         return res

@@ -2,6 +2,19 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.2.0
+
+* create a new interactive query class `InteractiveQuery2` that uses `psycopg2` as module.
+  * supports all methods used by the `InteractiveQuery` class
+* adding `getAlertSubscriptions`, `createAlertSubscription` and all methods related to alerts in `queryservice` module
+* adding the `createAcceleratedQuery` method in the `queryservice` module
+* adding new methods for `segmentation` module
+  * all audiences methods (GET, POST, PUT, DELETE)
+  * Bulk Definition
+  * Convert segment definition
+  * rename `searchEntity` to `searchEntities`
+* adding more logger log in schema
+
 ## version 0.1.8
 
 * improve `getClasses` in the schema module.
