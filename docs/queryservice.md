@@ -172,9 +172,9 @@ This will result in: `_tenantId.visitor_id`
   Arguments:
   * scheduleId : REQUIRED : id of the schedule.
 
-## InteractiveQuery
+## InteractiveQuery and InteractiveQuery2
 
-**NOTE** : The `InteractiveQuery` can be used if you have postegreSQL server install on your machine.
+**NOTE** : The `InteractiveQuery` and `InteractiveQuery2` class can be used if you have postegreSQL server install on your machine.
 In order to install postGreSQL server, please follow the instruction here: https://www.postgresql.org/download/
 
 The InteractiveQuery class is a way to directly request Query Service from your local environment.\
@@ -189,7 +189,21 @@ qs = queryservice.QueryService()
 conn = qs.connection()
 
 intQuery = queryservice.InteractiveQuery(conn)
+
+#or
+
+intQuery2 = queryservice.InteractiveQuery2(conn)
 ```
+
+### Difference between InteractiveQuery and InteractiveQuery2
+
+The `InteractiveQuery` class is using the `PyGreSQL` python module in the background.\
+The `InteractiveQuery2` class is using the `psycopg2` python module in the background.
+
+Except for that change in the engine used in the background, all of the methods described below can be applied to either `InteractiveQuery` or `InteractiveQuery2` instances.
+
+### usage of Interactive Query
+
 
 From the Interactive Query instance you can directly pass SQL query and receive either:
 
