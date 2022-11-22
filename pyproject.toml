@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "aepp"
+version = "0.2.1"
+description = "A library that provide easy methods to access the Adobe AEP APIs. Wrapping all endpoints and taking care of token generation for you."
+authors = ["Julien Piccini <piccini.julien@gmail.com>"]
+license = "Apache License, Version 2.0"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.28.1"
+pandas = "^1.0.1"
+pathlib = "^1.0.1"
+PyJWT = "^2.3.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
