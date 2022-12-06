@@ -6,7 +6,7 @@ This page list all of the changes that came during the different release of the 
 
 * remove requirement for `PyGreSQL` and `psycopg2`\
 Patch
-* Fixing looping for Schemas
+* Fixing looping for Schemas / Field Groups and Data Type
 
 ## version 0.2.0
 

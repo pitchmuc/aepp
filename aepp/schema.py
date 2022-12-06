@@ -27,9 +27,9 @@ class _Data:
         self.schemas = {}
         self.schemas_id = {}
         self.schemas_altId = {}
-        self.mixins_id = {}
+        #self.mixins_id = {}
         self.mixins_altId = {}
-        self.mixins = {}
+        #self.mixins = {}
         self.fieldGroups_id = {}
         self.fieldGroups_altId = {}
         self.fieldGroups = {}
@@ -241,10 +241,16 @@ class Schema:
             if "results" not in res.keys():
                 print(res)
         data = res["results"]
-        page = res["_page"]
-        while page.get("next",None) is not None:
-            data += self.getSchemas(start=page["next"])
+        page = res.get("_page",{})
+        nextPage = page.get('next',None)
+        while nextPage is not None:
+            params['start'] = nextPage
+            res = self.connector.getData(
+            self.endpoint + path, params=params, headers=privateHeader, verbose=verbose
+            )
+            data += res.get('results',[])
             page = res.get("_page",{'next':None})
+            nextPage = page.get('next',None)
         self.data.schemas_id = {schem["title"]: schem["$id"] for schem in data}
         self.data.schemas_altId = {
             schem["title"]: schem["meta:altId"] for schem in data
@@ -791,35 +797,35 @@ class Schema:
         res = self.connector.deleteData(self.endpoint + path)
         return res
 
-    def getMixins(self, format: str = "xdm", **kwargs):
-        """
-        returns the mixins / fieldGroups of the account.
-        Arguments:
-            format : OPTIONAL : either "xdm" or "xed" format
-        kwargs:
-            debug : if set to True, will print result for errors
-        """
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting getMixins")
-        path = f"/{self.container}/mixins/"
-        start = kwargs.get("start", 0)
-        params = {"start": start}
-        verbose = kwargs.get("debug", False)
-        privateHeader = deepcopy(self.header)
-        privateHeader["Accept"] = f"application/vnd.adobe.{format}+json"
-        res = self.connector.getData(
-            self.endpoint + path, headers=privateHeader, params=params, verbose=verbose
-        )
-        if kwargs.get("verbose", False):
-            if "results" not in res.keys():
-                print(res)
-        data = res["results"]
-        page = res["_page"]
-        while page["next"] is not None:
-            data += self.getMixins(start=page["next"])
-        self.data.mixins_id = {mix["title"]: mix["$id"] for mix in data}
-        self.data.mixins_altId = {mix["title"]: mix["meta:altId"] for mix in data}
-        return data
+    # def getMixins(self, format: str = "xdm", **kwargs):
+    #     """
+    #     returns the mixins / fieldGroups of the account.
+    #     Arguments:
+    #         format : OPTIONAL : either "xdm" or "xed" format
+    #     kwargs:
+    #         debug : if set to True, will print result for errors
+    #     """
+    #     if self.loggingEnabled:
+    #         self.logger.debug(f"Starting getMixins")
+    #     path = f"/{self.container}/mixins/"
+    #     start = kwargs.get("start", 0)
+    #     params = {"start": start}
+    #     verbose = kwargs.get("debug", False)
+    #     privateHeader = deepcopy(self.header)
+    #     privateHeader["Accept"] = f"application/vnd.adobe.{format}+json"
+    #     res = self.connector.getData(
+    #         self.endpoint + path, headers=privateHeader, params=params, verbose=verbose
+    #     )
+    #     if kwargs.get("verbose", False):
+    #         if "results" not in res.keys():
+    #             print(res)
+    #     data = res["results"]
+    #     page = res["_page"]
+    #     while page["next"] is not None:
+    #         data += self.getMixins(start=page["next"])
+    #     self.data.mixins_id = {mix["title"]: mix["$id"] for mix in data}
+    #     self.data.mixins_altId = {mix["title"]: mix["meta:altId"] for mix in data}
+    #     return data
 
     def getFieldGroups(self, format: str = "xdm", **kwargs):
         """
@@ -844,52 +850,59 @@ class Schema:
             if "results" not in res.keys():
                 print(res)
         data = res["results"]
-        page = res["_page"]
-        while page["next"] is not None:
-            data += self.getMixins(start=page["next"])
+        page = res.get("_page",{})
+        nextPage = page.get('next',None)
+        while nextPage is not None:
+            params['start'] = nextPage
+            res = self.connector.getData(
+            self.endpoint + path, headers=privateHeader, params=params, verbose=verbose
+            )
+            data += res.get("results")
+            page = res.get("_page",{})
+            nextPage = page.get('next',None)
         self.data.fieldGroups_id = {mix["title"]: mix["$id"] for mix in data}
         self.data.fieldGroups_altId = {mix["title"]: mix["meta:altId"] for mix in data}
         return data
 
-    def getMixin(
-        self,
-        mixinId: str = None,
-        version: int = 1,
-        full: bool = True,
-        save: bool = False,
-    ):
-        """
-        Returns a specific mixin / field group.
-        Arguments:
-            mixinId : REQUIRED : meta:altId or $id
-            version : OPTIONAL : version of the mixin
-            full : OPTIONAL : True (default) will return the full schema.False just the relationships.
-        """
-        if mixinId.startswith("https://"):
-            from urllib import parse
+    # def getMixin(
+    #     self,
+    #     mixinId: str = None,
+    #     version: int = 1,
+    #     full: bool = True,
+    #     save: bool = False,
+    # ):
+    #     """
+    #     Returns a specific mixin / field group.
+    #     Arguments:
+    #         mixinId : REQUIRED : meta:altId or $id
+    #         version : OPTIONAL : version of the mixin
+    #         full : OPTIONAL : True (default) will return the full schema.False just the relationships.
+    #     """
+    #     if mixinId.startswith("https://"):
+    #         from urllib import parse
 
-            mixinId = parse.quote_plus(mixinId)
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting getMixin")
-        privateHeader = deepcopy(self.header)
-        privateHeader["Accept-Encoding"] = "identity"
-        if full:
-            accept_full = "-full"
-        else:
-            accept_full = ""
-        update_accept = (
-            f"application/vnd.adobe.xed{accept_full}+json; version={version}"
-        )
-        privateHeader.update({"Accept": update_accept})
-        path = f"/{self.container}/mixins/{mixinId}"
-        res = self.connector.getData(self.endpoint + path, headers=privateHeader)
-        if save:
-            aepp.saveFile(
-                module="schema", file=res, filename=res["title"], type_file="json"
-            )
-        if "title" in res.keys():
-            self.data.mixins[res["title"]] = res
-        return res
+    #         mixinId = parse.quote_plus(mixinId)
+    #     if self.loggingEnabled:
+    #         self.logger.debug(f"Starting getMixin")
+    #     privateHeader = deepcopy(self.header)
+    #     privateHeader["Accept-Encoding"] = "identity"
+    #     if full:
+    #         accept_full = "-full"
+    #     else:
+    #         accept_full = ""
+    #     update_accept = (
+    #         f"application/vnd.adobe.xed{accept_full}+json; version={version}"
+    #     )
+    #     privateHeader.update({"Accept": update_accept})
+    #     path = f"/{self.container}/mixins/{mixinId}"
+    #     res = self.connector.getData(self.endpoint + path, headers=privateHeader)
+    #     if save:
+    #         aepp.saveFile(
+    #             module="schema", file=res, filename=res["title"], type_file="json"
+    #         )
+    #     if "title" in res.keys():
+    #         self.data.mixins[res["title"]] = res
+    #     return res
 
     def getFieldGroup(
         self,
@@ -1351,9 +1364,15 @@ class Schema:
             self.endpoint + path, headers=privateHeader, params=params
         )
         data = res["results"]
-        page = res["_page"]
-        while page["next"] is not None:
-            data += self.getDataTypes(start=page["next"])
+        page = res.get("_page",{})
+        nextPage = page.get('next',None)
+        while nextPage is not None:
+            res = self.connector.getData(
+            self.endpoint + path, headers=privateHeader, params=params
+            )
+            data += res.get("results",[])
+            page = res.get("_page",{})
+            nextPage = page.get('next',None)
         return data
 
     def getDataType(
