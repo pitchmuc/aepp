@@ -242,8 +242,9 @@ class Schema:
                 print(res)
         data = res["results"]
         page = res["_page"]
-        while page["next"] is not None:
+        while page.get("next",None) is not None:
             data += self.getSchemas(start=page["next"])
+            page = res.get("_page",{'next':None})
         self.data.schemas_id = {schem["title"]: schem["$id"] for schem in data}
         self.data.schemas_altId = {
             schem["title"]: schem["meta:altId"] for schem in data

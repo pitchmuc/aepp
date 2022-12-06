@@ -42,5 +42,5 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=['pandas', "requests",
-                      "PyJWT", "pathlib2", "pathlib", "PyJWT[crypto]", "PyGreSQL","psycopg2"],
+                      "PyJWT", "pathlib2", "pathlib", "PyJWT[crypto]"],
 )
