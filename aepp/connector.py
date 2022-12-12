@@ -226,7 +226,6 @@ class AdobeRequest:
             res = requests.get(endpoint, headers=headers, params=params, data=data)
         if self.loggingEnabled:
             self.logger.debug(f"endpoint used: {res.request.url}")
-            self.logger.debug(f"endpoint used: {res.request.url}")
             self.logger.debug(f"params used: {params}")
         try:
             if kwargs.get("format", "json") == "json":

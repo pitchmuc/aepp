@@ -7,7 +7,7 @@ from typing import Union
 import time
 import logging
 import pandas as pd
-import re
+import json
 
 json_extend = [
     {
@@ -494,6 +494,7 @@ class Schema:
         self,
         name: str = None,
         mixinIds: Union[list, dict] = None,
+        fieldGroupIds : Union[list, dict] = None,
         description: str = "",
     ) -> dict:
         """
@@ -503,12 +504,17 @@ class Schema:
             mixinIds : REQUIRED : dict of mixins $id and their type ["object" or "array"] to create the ExperienceEvent schema
                 Example {'mixinId1':'object','mixinId2':'array'}
                 if just a list is passed, it infers a 'object type'
+            fieldGroupIds : REQUIRED : List of fieldGroup $id to create the Indiviudal Profile schema
+                Example {'fgId1':'object','fgId2':'array'}
+                if just a list is passed, it infers a 'object type'
             description : OPTIONAL : Schema description
         """
         if name is None:
             raise ValueError("Require a name")
-        if mixinIds is None:
-            raise ValueError("Require a mixin ids")
+        if mixinIds is None and fieldGroupIds is None:
+            raise ValueError("Require a mixin ids or a field group id")
+        if mixinIds is None and fieldGroupIds is not None:
+            mixinIds = fieldGroupIds
         obj = {
             "title": name,
             "description": description,
@@ -551,7 +557,9 @@ class Schema:
         self,
         name: str = None,
         mixinIds: Union[list, dict] = None,
+        fieldGroupIds : Union[list, dict] = None,
         description: str = "",
+        **kwargs
     ) -> dict:
         """
         Create an IndividualProfile schema based on the list mixin ID provided.
@@ -560,12 +568,17 @@ class Schema:
             mixinIds : REQUIRED : List of mixins $id to create the Indiviudal Profile schema
                 Example {'mixinId1':'object','mixinId2':'array'}
                 if just a list is passed, it infers a 'object type'
+            fieldGroupIds : REQUIRED : List of fieldGroup $id to create the Indiviudal Profile schema
+                Example {'fgId1':'object','fgId2':'array'}
+                if just a list is passed, it infers a 'object type'
             description : OPTIONAL : Schema description
         """
         if name is None:
             raise ValueError("Require a name")
-        if mixinIds is None:
-            raise ValueError("Require mixin ids")
+        if mixinIds is None and fieldGroupIds is None:
+            raise ValueError("Require a mixin ids or a field group id")
+        if mixinIds is None and fieldGroupIds is not None:
+            mixinIds = fieldGroupIds
         obj = {
             "title": name,
             "description": description,
@@ -603,6 +616,52 @@ class Schema:
             self.logger.debug(f"Starting createProfileSchema")
         res = self.createSchema(obj)
         return res
+    
+    def addFieldGroupToSchema(self,schemaId:str=None,fieldGroupIds:Union[list,dict]=None)->dict:
+        """
+        Take the list of field group ID to extend the schema.
+        Return the definition of the new schema with added field groups.
+        Arguments
+            schemaId : REQUIRED : The ID of the schema (alt:metaId or $id)
+            fieldGroupIds : REQUIRED : The IDs of the fields group to add. It can be a list or dictionary.
+                Example {'fgId1':'object','fgId2':'array'}
+                if just a list is passed, it infers a 'object type'
+        """
+        if schemaId is None:
+            raise ValueError("Require a schema ID")
+        if fieldGroupIds is None:
+            raise ValueError("Require a list of field group to add")
+        schemaDef = self.getSchema(schemaId,full=False)
+        allOf = schemaDef.get('allOf',[])
+        if type(allOf) != list:
+            raise TypeError("Expecting a list for 'allOf' key")
+        if type(fieldGroupIds) == list:
+            for mixin in fieldGroupIds:
+                allOf.append(
+                    {"$ref": mixin, "type": "object", "meta:xdmType": "object"}
+                )
+        if type(fieldGroupIds) == dict:
+            for mixin in fieldGroupIds:
+                if fieldGroupIds[mixin] == "array":
+                    subObj = {
+                        "$ref": mixin,
+                        "type": fieldGroupIds[mixin],
+                        "meta:xdmType": fieldGroupIds[mixin],
+                        "items": {"$ref": mixin},
+                    }
+                    allOf.append(subObj)
+                else:
+                    subObj = {
+                        "$ref": mixin,
+                        "type": fieldGroupIds[mixin],
+                        "meta:xdmType": fieldGroupIds[mixin],
+                    }
+                    allOf.append(subObj)
+        res = self.putSchema(schemaDef)
+        return res
+
+
+        
 
     def getClasses(self, prop:str=None,orderBy:str=None,limit:int=300, output:str='raw',**kwargs):
         """
@@ -1684,3 +1743,511 @@ class Schema:
         ]
         res = self.connector.patchData(self.endpoint + path,data=operation)
         return res
+    
+    def FieldGroupManager(self,fieldGroup:Union[dict,str],title:str=None,fg_class:list=["experienceevent","profile"]) -> 'FieldGroupManager':
+         """
+         Generate a field group creator instance using the information provided by the schema instance.
+         Arguments:
+             fieldGroup : OPTIONAL : the field group definition as dictionary OR the endpoint to access it. 
+             title : OPTIONAL : If you wish to change the tile of the field group.
+
+         """
+         tenantId = self.getTenantId()
+         return FieldGroupManager(tenantId=tenantId,fieldGroup=fieldGroup,title=title,fg_class=fg_class,schemaAPI=self)
+
+
+
+class FieldGroupManager:
+    """
+    Class that reads and generate custom field groups
+    """
+
+    def __init__(self,tenantId:str=None,
+                fieldGroup:Union[dict,str]=None,
+                title:str=None,
+                fg_class:list=["experienceevent","profile"],
+                schemaAPI:'Schema'=None
+                )->None:
+        """
+        Instantiator for field group creation.
+        Arguments:
+            tenantId : REQUIRED : The tenant ID of the company 
+            fieldGroup : OPTIONAL : the field group definition as dictionary OR the endpoint to access it.
+            title : OPTIONAL : If you want to name the field group.
+            fg_class : OPTIONAL : the class that will support this field group.
+                by default events and profile, possible value : "record"
+        """
+        if tenantId.startswith('_') == False:
+            tenantId = f"_{tenantId}"
+        self.tenantId = tenantId
+        self.fieldGroup = {}
+        self.schemaAPI = schemaAPI
+        self.fieldGroupDict = {}
+        if fieldGroup is not None:
+            if type(fieldGroup) == dict:
+                if fieldGroup.get("meta:resourceType",None) == "mixins":
+                    self.fieldGroup = fieldGroup
+            elif type(fieldGroup) == str and (fieldGroup.startswith('https:') or fieldGroup.startswith(f'{tenantId}.')):
+                self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
+            else:
+                raise ValueError("the element pass is not a field group definition")
+        else:
+            self.fieldGroup = {
+                "title" : "",
+                "meta:resourceType":"mixins",
+                "description" : "",
+                "type": "object",
+                "definitions":{
+                    "customFields":{
+                        "type" : "object",
+                        "properties":{
+                            tenantId:{
+                                "properties":{},
+                                "type" : "object"
+                            },
+                        }
+                    },
+                },
+                'allOf':[{
+                    "$ref": "#/definitions/customFields",
+                    "type": "object"
+                }],
+                "meta:intendedToExtend":[],
+                "meta:containerId": "tenant",
+                "meta:tenantNamespace": tenantId,
+            }
+            if self.fieldGroup.get("meta:intendedToExtend") == []:
+                for cls in fg_class:
+                    if 'experienceevent' in cls or "https://ns.adobe.com/xdm/context/experienceevent" ==cls:
+                        self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/experienceevent")
+                    elif "profile" in cls or "https://ns.adobe.com/xdm/context/profile" == cls:
+                        self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/profile")
+                    elif "record" in cls or "https://ns.adobe.com/xdm/data/record" == cls:
+                        self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/profile")
+        if title is not None:
+            self.fieldGroup['title'] = title
+        if self.fieldGroup.get('$id',False):
+            self.id = self.fieldGroup.get('$id')
+        if self.fieldGroup.get('meta:altId',False):
+            self.altId = self.fieldGroup.get('meta:altId')
+    
+    def __str__(self)->str:
+        return json.dumps(self.fieldGroup,indent=2)
+    
+    def __repr__(self)->dict:
+        return json.dumps(self.fieldGroup,indent=2)
+    
+    def __accessorAlgo__(self,mydict:dict,path:list=None)->dict:
+        """
+        recursive method to retrieve all the elements.
+        Arguments:
+            mydict : REQUIRED : The dictionary containing the elements to fetch (in "properties" key)
+            path : the path with dot notation.
+        """
+        path = self.__cleanPath__(path)
+        pathSplit = path.split('.')
+        key = pathSplit[0]
+        level = mydict.get(key,None)
+        if level is not None:
+            if level["type"] == "object":
+                levelProperties = mydict[key]['properties']
+                level = self.__accessorAlgo__(levelProperties,'.'.join(pathSplit[1:]))
+                return level
+            elif level["type"] == "array":
+                levelProperties = mydict[key]['items'].get('properties',None)
+                if levelProperties is not None:
+                    level = self.__accessorAlgo__(levelProperties,'.'.join(pathSplit[1:]))
+                return level
+            else:
+                if len(pathSplit) > 1: 
+                    return {'error':f'cannot find the key "{pathSplit[1]}"'}
+                return level
+        else:
+            if key == "":
+                return mydict
+            return {'error':f'cannot find the key "{key}"'}
+
+    def __searchAlgo__(self,mydict:dict,string:str=None,partialMatch:bool=False,caseSensitive:bool=True,results:list=None,path:str=None)->list:
+        """
+        recursive method to retrieve all the elements.
+        Arguments:
+            mydict : REQUIRED : The dictionary containing the elements to fetch (in "properties" key)
+            string : the string to look for with dot notation.
+            partialMatch : if you want to use partial match
+            caseSensitive : to see if we should lower case everything
+        """
+        finalPath = None
+        if results is None:
+            results=[]
+        for key in mydict:
+            print(key)
+            if caseSensitive == False:
+                keyComp = key.lower()
+                string = string.lower()
+            else:
+                keyComp = key
+                string = string
+            if partialMatch:
+                if string in keyComp:
+                    ### checking if element is an array without deeper object level
+                    if mydict[key].get('type') == 'array' and mydict[key]['items'].get('properties',None) is None:
+                        finalPath = path + f".[{key}]"
+                    else:
+                        finalPath = path + f".{key}"
+                    value = deepcopy(mydict[key])
+                    value['path'] = finalPath
+                    results.append({key:value})
+            else:
+                if caseSensitive == False:
+                    if key == keyComp:
+                        finalPath = path + f".{key}"
+                        value = deepcopy(mydict[key])
+                        value['path'] = finalPath
+                        results.append({key:value})
+                else:
+                    if key == string:
+                        finalPath = path + f".{key}"
+                        value = deepcopy(mydict[key])
+                        value['path'] = finalPath
+                        results.append({key:value})
+            ## loop through keys
+            if mydict[key].get("type") == "object":
+                levelProperties = mydict[key]['properties']
+                if path is None:
+                    tmp_path = key
+                else:
+                    tmp_path = f"{path}.{key}"
+                results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path)
+            elif mydict[key].get("type") == "array":
+                levelProperties = mydict[key]['items'].get('properties',None)
+                if levelProperties is not None:
+                    if path is None:
+                        tmp_path = key
+                    else:
+                        tmp_path = f"{path}.{key}[]{{}}"
+                    results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path)
+        return results
+    
+    def __transformationDict__(self,mydict:dict=None,typed:bool=False,dictionary:dict=None)->dict:
+        """
+        Transform the current XDM schema to a dictionary.
+        """
+        if dictionary is None:
+            dictionary = {}
+        else:
+            dictionary = dictionary
+        for key in mydict:
+            if type(mydict[key]) == dict:
+                if mydict[key].get('type') == 'object':
+                    dictionary[key] = {}
+                    self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary[key])
+                elif mydict[key].get('type') == 'array':
+                    levelProperties = mydict[key]['items'].get('properties',None)
+                    if levelProperties is not None:
+                        dictionary[key] = [{}]
+                        self.__transformationDict__(levelProperties,typed,dictionary[key][0])
+                    else:
+                        if typed:
+                            dictionary[key] = [mydict[key]['items'].get('type','object')]
+                        else:
+                            dictionary[key] = []
+                else:
+                    if typed:
+                        dictionary[key] = mydict[key].get('type','object')
+                    else:
+                        dictionary[key] = ""
+        return dictionary 
+
+    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None)->dict:
+        """
+        Transform the current XDM schema to a dictionary.
+        Arguments:
+            mydict : the fieldgroup
+            dictionary : the dictionary that gather the paths
+        """
+        if dictionary is None:
+            dictionary = {'path':[],'type':[]}
+        else:
+            dictionary = dictionary
+        for key in mydict:
+            if type(mydict[key]) == dict:
+                if mydict[key].get('type') == 'object':
+                    if path is None:
+                        tmp_path = key
+                    else :
+                        tmp_path = f"{path}.{key}"
+                    self.__transformationDF__(mydict[key]['properties'],dictionary,tmp_path)
+                elif mydict[key].get('type') == 'array':
+                    levelProperties = mydict[key]['items'].get('properties',None)
+                    if levelProperties is not None:
+                        if path is None:
+                            tmp_path = key
+                        else :
+                            tmp_path = f"{path}.{key}[]{{}}"
+                        self.__transformationDF__(levelProperties,dictionary,tmp_path)
+                    else:
+                        finalpath = f"{path}.{key}"
+                        dictionary["path"].append(finalpath)
+                        dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
+                else:
+                    if path is not None:
+                        finalpath = f"{path}.{key}"
+                    else:
+                        finalpath = f"{key}"
+                    dictionary["path"].append(finalpath)
+                    dictionary["type"].append(mydict[key].get('type','object'))
+        return dictionary
+    
+    def __getProperties__(self,fieldGroup:dict=None)->dict:
+        """
+        Extract definition and properties.
+        Argument:
+            fieldGroup : REQUIRED : the field Group definition 
+        """
+        definitions = fieldGroup.get('definitions',None)
+        properties = fieldGroup.get('properties',None)
+        if properties is None:
+            properties = definitions.get('property',{}).get('properties',None)
+        if properties is None:
+            properties = definitions.get('customFields',{}).get('properties',None)
+        if properties is None:
+            raise AttributeError("Looking for properties of definition or of schema but could not find one")
+        return properties
+    
+    def __setField__(self,completePathList:list=None,fieldGroup:dict=None,newField:str=None,obj:dict=None)->dict:
+        """
+        Create a field with the attribute provided
+        Arguments:
+            completePathList : list of path to use for creation of the field.
+            fieldGroup : the self.fieldgroup attribute
+            newField : name of the new field to create
+            obj : the object associated with the new field
+        """
+        lastField = completePathList[-1]
+        fieldGroup = deepcopy(fieldGroup)
+        for key in fieldGroup:
+            level = fieldGroup.get(key,None)
+            if type(level) == dict and key in completePathList:
+                if 'properties' in level.keys():
+                    if key != lastField:
+                        res = self.__setField__(completePathList,fieldGroup[key]['properties'],newField,obj)
+                        fieldGroup[key]['properties'] = res
+                    else:
+                        fieldGroup[key]['properties'][newField] = obj
+                        return fieldGroup
+                elif 'items' in level.keys():
+                    if 'properties' in  fieldGroup[key].get('items',{}).keys():
+                        if key != lastField:
+                            res = self.__setField__(completePathList,fieldGroup[key]['items']['properties'],newField,obj)
+                            fieldGroup[key]['items']['properties'] = res
+                        else:
+                            fieldGroup[key]['items']['properties'][newField] = obj
+                            return fieldGroup
+        return fieldGroup
+
+    def __transformFieldType__(self,dataType:str=None)->dict:
+        """
+        return the object with the type and possible meta attribute.
+        """
+        obj = {}
+        if dataType == 'double':
+            obj['type'] = "number"
+        elif dataType == 'long':
+            obj['type'] = "integer"
+            obj['maximum'] = 9007199254740991
+            obj['minimum'] = -9007199254740991
+        elif dataType == "short":
+            obj['type'] = "integer"
+            obj['maximum'] = 32768
+            obj['minimum'] = -32768
+        elif dataType == "date":
+            obj['type'] = "string"
+            obj['format'] = "date"
+        elif dataType == "DateTime":
+            obj['type'] = "string"
+            obj['format'] = "date-time"
+        elif dataType == "byte":
+            obj['type'] = "integer"
+            obj['maximum'] = 128
+            obj['minimum'] = -128
+        else:
+            obj['type'] = dataType
+        return obj
+
+    def __cleanPath__(self,string:str=None)->str:
+        """
+        An abstraction to clean the path string and remove the following characters : [,],{,}
+        Arguments:
+            string : REQUIRED : a string 
+        """
+        return string.replace('[','').replace(']','').replace("{",'').replace('}','')
+    
+    def setTitle(self,title:str=None)->None:
+        """
+        Set a title for the schema.
+        Arguments:
+            title : REQUIRED : a string to be used for the title of the FieldGroup
+        """
+        self.fieldGroup['title'] = title
+        return None
+
+    def getField(self,path:str)->dict:
+        """
+        Returns the field definition you want want to obtain.
+        Arguments:
+            path : REQUIRED : path with dot notation to which field you want to access
+        """
+        properties = self.__getProperties__(self.fieldGroup)
+        data = self.__accessorAlgo__(properties,path)
+        return data
+
+    def searchField(self,string:str,partialMatch:bool=True,caseSensitive:bool=True)->list:
+        """
+        Search for a field name after the string passed.
+        By default, partial match is enabled and allow 
+        Arguments:
+            string : REQUIRED : the string to look for
+            partialMatch : OPTIONAL : if you want to look for complete string or not.
+            caseSensitive : OPTIONAL : if you want to compare with case sensitivity or not.
+        """
+        properties = self.__getProperties__(self.fieldGroup)
+        data = self.__searchAlgo__(properties,string,partialMatch,caseSensitive)
+        return data
+
+        
+    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False)->None:
+        """
+        Return the operation to be used on the field group with the Patch method (patchFieldGroup), based on the element passed in argument.
+        Arguments:
+            path : REQUIRED : path with dot notation where you want to create that new field.
+                In case of array of objects, use the "[*]" notation
+            dataType : REQUIRED : the field type you want to create
+                A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
+                NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
+            title : OPTIONAL : if you want to have a custom title.
+            objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
+                Example : {'field1:'string','field2':'double'}
+            array : OPTIONAL : Boolean. If the element to create is an array. False by default.
+        """
+        typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
+        if dataType not in typeTyped:
+            raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object"')
+        if dataType == 'object' and objectComponents is None:
+            raise AttributeError('Require a dictionary providing the object component')
+        
+        if title is None:
+            title = path.split('.').pop()
+        if title == 'items' or title == 'properties':
+            raise Exception('"item" and "properties" are 2 reserved keywords')
+        pathSplit = self.__cleanPath__(path).split('.')
+        if pathSplit[0] == '':
+            del pathSplit[0]
+        completePath = ['definitions','customFields']
+        for p in pathSplit:
+            if '[]{}' in p:
+                completePath.append('items')
+                completePath.append('properties')
+                completePath.append(self.__cleanPath__(p))
+            else:
+                completePath.append('properties')
+                completePath.append(self.__cleanPath__(p))
+        finalPath = '/' + '/'.join(completePath)
+        operation = [{
+            "op" : "add",
+            "path" : finalPath,
+            "value": {}
+        }]
+        if dataType != 'object' and dataType != "array":
+            if array: # array argument set to true
+                operation[0]['value']['type'] = 'array'
+                operation[0]['value']['items'] = self.__transformFieldType__(dataType)
+            else:
+                operation[0]['value'] = self.__transformFieldType__(dataType)
+        else: 
+            if dataType == "object":
+                operation[0]['value']['type'] = self.__transformFieldType__(dataType)
+                operation[0]['value']['properties'] = {key:{'type':value} for key, value in zip(objectComponents.keys(),objectComponents.values())}
+        operation[0]['value']['title'] = title
+        return operation        
+
+    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False)->dict:
+        """
+        Add the field to the existing fieldgroup definition
+        Arguments:
+            path : REQUIRED : path with dot notation where you want to create that new field. New field 
+                In case of array of objects, use the "[*]" notation
+            dataType : REQUIRED : the field type you want to create
+                A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
+                NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
+            title : OPTIONAL : if you want to have a custom title.
+            objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
+                Example : {'field1:'string','field2':'double'}
+            array : OPTIONAL : Boolean. If the element to create is an array. False by default.
+        """
+        typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
+        if dataType not in typeTyped:
+            raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","bytes"')
+        if dataType == 'object' and objectComponents is None:
+            raise AttributeError('Require a dictionary providing the object component')
+        if title is None:
+            title = path.split('.').pop()
+        if title == 'items' or title == 'properties':
+            raise Exception('"item" and "properties" are 2 reserved keywords')
+        pathSplit = self.__cleanPath__(path).split('.')
+        if pathSplit[0] == '':
+            del pathSplit[0]
+        newField = pathSplit.pop()
+        obj = {}
+        if dataType == 'object':
+            obj = { 'type':'object', 'title':title,
+                'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
+            }
+        elif dataType == 'array':
+            obj = { 'type':'array', 'title':title,
+                "items":{
+                    'type':'object',
+                    'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
+                }
+            }
+        else:
+            obj = self.__transformFieldType__(dataType)
+            obj['title']= title
+            if array:
+                obj['type'] = "array"
+                obj['items'] = self.__transformFieldType__(dataType)
+        completePath:list[str] = ['customFields'] + pathSplit
+        customFields = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
+        self.fieldGroup['definitions'] = customFields
+        return self.fieldGroup
+        
+
+    def to_dict(self,typed:bool=True)->dict:
+        """
+        Generate a dictionary representing the field group constitution
+        Arguments:
+            typed : OPTIONAL : If you want the type associated with the field group to be given. 
+        """
+        properties = self.__getProperties__(self.fieldGroup)
+        data = self.__transformationDict__(properties,typed)
+        return data
+
+    def to_dataframe(self,save:bool=False)->pd.DataFrame:
+        """
+        Generate a dataframe with the row representing each possible path.
+        Arguments:
+            save : OPTIONAL : If you wish to save it with the title used by the field group.
+                save as csv
+        """
+        properties = self.__getProperties__(self.fieldGroup)
+        data = self.__transformationDF__(properties)
+        df = pd.DataFrame(data)
+        if save:
+            title = self.fieldGroup.get('title',f'unknown_schema_{str(int(time.time()))}.csv')
+            df.to_csv(title,index=False)
+        return df
+    
+    def to_xdm(self)->dict:
+        """
+        Return the fieldgroup definition as XDM
+        """
+        return self.fieldGroup
