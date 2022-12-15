@@ -1744,16 +1744,25 @@ class Schema:
         res = self.connector.patchData(self.endpoint + path,data=operation)
         return res
     
-    def FieldGroupManager(self,fieldGroup:Union[dict,str],title:str=None,fg_class:list=["experienceevent","profile"]) -> 'FieldGroupManager':
+    def FieldGroupManager(self,fieldGroup:Union[dict,str,None],title:str=None,fg_class:list=["experienceevent","profile"]) -> 'FieldGroupManager':
          """
-         Generate a field group creator instance using the information provided by the schema instance.
+         Generate a field group Manager instance using the information provided by the schema instance.
          Arguments:
-             fieldGroup : OPTIONAL : the field group definition as dictionary OR the endpoint to access it. 
+             fieldGroup : OPTIONAL : the field group definition as dictionary OR the ID to access it OR nothing if you want to start from scratch
              title : OPTIONAL : If you wish to change the tile of the field group.
-
          """
          tenantId = self.getTenantId()
          return FieldGroupManager(tenantId=tenantId,fieldGroup=fieldGroup,title=title,fg_class=fg_class,schemaAPI=self)
+    
+    def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None,fgManager:bool=False) -> 'FieldGroupManager':
+         """
+         Generate a Schema Manager instance using the information provided by the schema instance.
+         Arguments:
+            schema : OPTIONAL : the schema definition as dictionary OR the ID to access it OR Nothing if you want to start from scratch
+            fieldGroups : OPTIONAL : If you wish to add a list of fieldgroups.
+            fgManager : OPTIONAL : If you wish to handle the different field group passed into a Field Group Manager instance and have additional methods available.
+         """
+         return SchemaManager(schema=schema,fieldGroups=fieldGroups,schemaAPI=self,fgManager=fgManager)
 
 
 
@@ -1773,21 +1782,25 @@ class FieldGroupManager:
         Arguments:
             tenantId : REQUIRED : The tenant ID of the company 
             fieldGroup : OPTIONAL : the field group definition as dictionary OR the endpoint to access it.
+                If you pass the $id or altId, you should pass the schemaAPI instance. 
             title : OPTIONAL : If you want to name the field group.
             fg_class : OPTIONAL : the class that will support this field group.
                 by default events and profile, possible value : "record"
+            schemaAPI : OPTIONAL : The instance of the Schema class. Provide a way to connect to the API.
         """
         if tenantId.startswith('_') == False:
             tenantId = f"_{tenantId}"
         self.tenantId = tenantId
         self.fieldGroup = {}
         self.schemaAPI = schemaAPI
-        self.fieldGroupDict = {}
+        self.fieldGroupDict = lambda self : self.to_dict()
         if fieldGroup is not None:
             if type(fieldGroup) == dict:
                 if fieldGroup.get("meta:resourceType",None) == "mixins":
                     self.fieldGroup = fieldGroup
             elif type(fieldGroup) == str and (fieldGroup.startswith('https:') or fieldGroup.startswith(f'{tenantId}.')):
+                if self.schemaAPI is None:
+                    raise Exception("You try to retrieve the fieldGroup definition from the id, but no API has been passed in the schemaAPI parameter.")
                 self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
             else:
                 raise ValueError("the element pass is not a field group definition")
@@ -1826,6 +1839,7 @@ class FieldGroupManager:
                         self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/profile")
         if title is not None:
             self.fieldGroup['title'] = title
+        self.title = self.fieldGroup['title']
         if self.fieldGroup.get('$id',False):
             self.id = self.fieldGroup.get('$id')
         if self.fieldGroup.get('meta:altId',False):
@@ -1880,7 +1894,6 @@ class FieldGroupManager:
         if results is None:
             results=[]
         for key in mydict:
-            print(key)
             if caseSensitive == False:
                 keyComp = key.lower()
                 string = string.lower()
@@ -1896,6 +1909,7 @@ class FieldGroupManager:
                         finalPath = path + f".{key}"
                     value = deepcopy(mydict[key])
                     value['path'] = finalPath
+                    value['queryPath'] = self.__cleanPath__(finalPath)
                     results.append({key:value})
             else:
                 if caseSensitive == False:
@@ -1903,12 +1917,14 @@ class FieldGroupManager:
                         finalPath = path + f".{key}"
                         value = deepcopy(mydict[key])
                         value['path'] = finalPath
+                        value['queryPath'] = self.__cleanPath__(finalPath)
                         results.append({key:value})
                 else:
                     if key == string:
                         finalPath = path + f".{key}"
                         value = deepcopy(mydict[key])
                         value['path'] = finalPath
+                        value['queryPath'] = self.__cleanPath__(finalPath)
                         results.append({key:value})
             ## loop through keys
             if mydict[key].get("type") == "object":
@@ -1958,15 +1974,19 @@ class FieldGroupManager:
                         dictionary[key] = ""
         return dictionary 
 
-    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None)->dict:
+    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,queryPath:bool=False)->dict:
         """
         Transform the current XDM schema to a dictionary.
         Arguments:
             mydict : the fieldgroup
             dictionary : the dictionary that gather the paths
+            path : path that is currently being developed
+            queryPath: boolean to tell if we want to add the query path
         """
         if dictionary is None:
             dictionary = {'path':[],'type':[]}
+            if queryPath:
+                 dictionary['querypath'] = []
         else:
             dictionary = dictionary
         for key in mydict:
@@ -1976,7 +1996,11 @@ class FieldGroupManager:
                         tmp_path = key
                     else :
                         tmp_path = f"{path}.{key}"
-                    self.__transformationDF__(mydict[key]['properties'],dictionary,tmp_path)
+                    dictionary["path"].append(tmp_path)
+                    dictionary["type"].append(f"{mydict[key].get('type')}")
+                    if queryPath:
+                        dictionary["querypath"].append(self.__cleanPath__(tmp_path))
+                    self.__transformationDF__(mydict[key]['properties'],dictionary,tmp_path,queryPath)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
@@ -1984,11 +2008,17 @@ class FieldGroupManager:
                             tmp_path = key
                         else :
                             tmp_path = f"{path}.{key}[]{{}}"
-                        self.__transformationDF__(levelProperties,dictionary,tmp_path)
+                        dictionary["path"].append(tmp_path)
+                        dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
+                        if queryPath:
+                            dictionary["querypath"].append(self.__cleanPath__(tmp_path))
+                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath)
                     else:
                         finalpath = f"{path}.{key}"
                         dictionary["path"].append(finalpath)
                         dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
+                        if queryPath:
+                            dictionary["querypath"].append(self.__cleanPath__(finalpath))
                 else:
                     if path is not None:
                         finalpath = f"{path}.{key}"
@@ -1996,6 +2026,8 @@ class FieldGroupManager:
                         finalpath = f"{key}"
                     dictionary["path"].append(finalpath)
                     dictionary["type"].append(mydict[key].get('type','object'))
+                    if queryPath:
+                        dictionary["querypath"].append(self.__cleanPath__(finalpath))
         return dictionary
     
     def __getProperties__(self,fieldGroup:dict=None)->dict:
@@ -2082,13 +2114,13 @@ class FieldGroupManager:
         """
         return string.replace('[','').replace(']','').replace("{",'').replace('}','')
     
-    def setTitle(self,title:str=None)->None:
+    def setTitle(self,name:str=None)->None:
         """
-        Set a title for the schema.
+        Set a name for the schema.
         Arguments:
-            title : REQUIRED : a string to be used for the title of the FieldGroup
+            name : REQUIRED : a string to be used for the title of the FieldGroup
         """
-        self.fieldGroup['title'] = title
+        self.fieldGroup['title'] = name
         return None
 
     def getField(self,path:str)->dict:
@@ -2166,7 +2198,7 @@ class FieldGroupManager:
         else: 
             if dataType == "object":
                 operation[0]['value']['type'] = self.__transformFieldType__(dataType)
-                operation[0]['value']['properties'] = {key:{'type':value} for key, value in zip(objectComponents.keys(),objectComponents.values())}
+                operation[0]['value']['properties'] = {key:self.__transformFieldType__(value) for key, value in zip(objectComponents.keys(),objectComponents.values())}
         operation[0]['value']['title'] = title
         return operation        
 
@@ -2231,19 +2263,20 @@ class FieldGroupManager:
         data = self.__transformationDict__(properties,typed)
         return data
 
-    def to_dataframe(self,save:bool=False)->pd.DataFrame:
+    def to_dataframe(self,save:bool=False,queryPath:bool=False)->pd.DataFrame:
         """
         Generate a dataframe with the row representing each possible path.
         Arguments:
             save : OPTIONAL : If you wish to save it with the title used by the field group.
-                save as csv
+                save as csv with the title used. Not title, used "unknown_fieldGroup_" + timestamp.
+            queryPath : OPTIONAL : If you want to have the query path to be used.
         """
         properties = self.__getProperties__(self.fieldGroup)
-        data = self.__transformationDF__(properties)
+        data = self.__transformationDF__(properties,queryPath=queryPath)
         df = pd.DataFrame(data)
         if save:
-            title = self.fieldGroup.get('title',f'unknown_schema_{str(int(time.time()))}.csv')
-            df.to_csv(title,index=False)
+            title = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}.csv')
+            df.to_csv(f"{title}.csv",index=False)
         return df
     
     def to_xdm(self)->dict:
@@ -2251,3 +2284,211 @@ class FieldGroupManager:
         Return the fieldgroup definition as XDM
         """
         return self.fieldGroup
+
+class SchemaManager:
+    """
+    A class to handle the schema management.
+    """
+    def __init__(self,schema:Union[str,dict],fieldGroupIds:list=None,schemaAPI:'Schema'=None,fgManager:bool=False,schemaClass:str=None)->None:
+        """
+        Instantiate the Schema Manager instance.
+        Arguments:
+            schemaId : OPTIONAL : Either a schemaId ($id or altId) or the schema dictionary itself.
+                If schemaId is passed, you need to provide the schemaAPI connection as well.
+            fieldGroupIds : OPTIONAL : Possible to specify a list of fieldGroup. 
+                Either a list of fieldGroupIds (schemaAPI should be provided as well) or list of dictionary definition 
+            schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
+            fgManager : OPTIONAL : If you want the SchemaManager class to use the FieldGroup Manager class. Requires the Schema API
+            schemaClass : OPTIONAL : If you want to set the class to be a specific class.
+                Default value is profile: "https://ns.adobe.com/xdm/context/profile", can be replaced with any class definition.
+                Possible default value: "https://ns.adobe.com/xdm/context/experienceevent", "https://ns.adobe.com/xdm/context/segmentdefinition"
+        """
+        self.fieldGroupIds=[]
+        self.fieldGroupsManagers = []
+        self.schemaAPI = None
+        self.title = None
+        if schemaAPI is not None:
+            self.schemaAPI = schemaAPI
+        if type(schema) == dict:
+            self.schema = schema
+            allOf = self.schema.get("allOf",[])
+            if len(allOf) == 0:
+                Warning("You have passed a schema with -full attribute, you should pass one referencing the fieldGroups.\n Using the meta:extends reference if possible")
+                self.fieldGroupIds = [ref for ref in self.schema['meta:extends'] if '/mixins/' in ref]
+                self.schema['allOf'] = [{"$ref":ref} for ref in self.schema['meta:extends'] if '/mixins/' in ref or 'xdm/class' in ref or 'xdm/context/' in ref]
+            else:
+                self.fieldGroupIds = [obj['$ref'] for obj in allOf if '/mixins/' in obj['$ref']]
+            if fgManager:
+                if schemaAPI is None:
+                    Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
+                else:
+                    for ref in self.fieldGroupIds:
+                        definition = schemaAPI.getFieldGroup(ref)
+                        self.fieldGroupsManagers.append(FieldGroupManager(tenantId=self.schema['meta:tenantNamespace'],fieldGroup=definition))
+        elif type(schema) == str:
+            if schemaAPI is None:
+                Warning("A Schema Id has been passed but no schema instance has been passed.\n Aborting the retrieveal of the Schema Definition")
+            else:
+                definition = schemaAPI.getSchema(schema,full=False)
+                self.schema = definition
+                allOf = self.schema.get("allOf",[])
+                self.fieldGroupIds = [obj['$ref'] for obj in allOf if '/mixins/' in obj['$ref']]
+                if fgManager:
+                    if schemaAPI is None:
+                        Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
+                    else:
+                        for ref in self.fieldGroupIds:
+                            definition = self.schemaAPI.getFieldGroup(ref)
+                            self.fieldGroupsManagers.append(FieldGroupManager(tenantId=definition['meta:tenantNamespace'],fieldGroup=definition))
+        elif schema is None:
+            self.schema = {
+                    "type": "object",
+                    "title": None,
+                    "description": "power by aepp",
+                    "allOf": [
+                            {
+                            "$ref": "https://ns.adobe.com/xdm/context/profile"
+                            }
+                        ]
+                    }
+        if schemaClass is not None:
+            self.schema['allOf'][0]['$ref'] = schemaClass
+        if fieldGroupIds is not None and type(fieldGroupIds) == list:
+            if fieldGroupIds[0] == str:
+                for fgId in fieldGroupIds:
+                    self.fieldGroupIds.append(fgId)
+                    if fgManager:
+                        if schemaAPI is None:
+                            Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
+                        else:
+                            definition = schemaAPI.getFieldGroup(ref)
+                            self.fieldGroupsManagers.append(FieldGroupManager(definition))
+            elif fieldGroupIds[0] == dict:
+                for fg in fieldGroupIds:
+                    self.fieldGroupIds.append(fg.get('$id'))
+                    if fgManager:
+                        self.fieldGroupsManagers.append(FieldGroupManager(fg))
+        if self.schema.get('title'):
+            self.title = self.schema.get('title')
+        
+    def __str__(self)->str:
+        return json.dumps(self.schema,indent=2)
+    
+    def __repr__(self)->str:
+        return json.dumps(self.schema,indent=2)
+
+    def __simpleDeepMerge__(self,base:dict,append:dict)->dict:
+        """
+        Loop through the keys of 2 dictionary and append the new found key of append to the base.
+        Arguments:
+            base : The base you want to extend
+            append : the new dictionary to append
+        """
+        if type(append) == list:
+            append = append[0]
+        for key in append:
+            if type(base)==dict:
+                if key in base.keys():
+                    self.__simpleDeepMerge__(base[key],append[key])
+                else:
+                    base[key] = append[key]
+            elif type(base)==list:
+                base = base[0]
+                if key in base.keys():
+                    self.__simpleDeepMerge__(base[key],append[key])
+                else:
+                    base[key] = append[key]
+        return base
+
+    def searchField(self,string:str=None,partialMatch:bool=True,caseSensitive:bool=True)->list:
+        """
+        Search for a field in the different field group.
+        You would need to have set fgManager attribute during instantiation or use the convertFieldGroups
+        Arguments:
+            string : REQUIRED : The string you are looking for
+            partialMatch : OPTIONAL : If you want to use partial match (default True)
+            caseSensitive : OPTIONAL : If you want to remove the case sensitivity.
+        """
+        myResults = []
+        for fgmanager in self.fieldGroupsManagers:
+            res = fgmanager.searchField(string,partialMatch,caseSensitive)
+            for r in res:
+                r['fieldGroup'] = fgmanager.title
+            myResults += res
+        return myResults
+    
+    def addSchemaAPI(self,schemaAPI:'Schema'=None)->None:
+        """
+        Add a schema instance to the Schema Manager instance.
+        Arguments:
+            schemaAPI : REQUIRED : The instance of the schema class.
+        """
+        if schemaAPI is None:
+            raise ValueError("Require a schema API")
+        self.schemaAPI = schemaAPI
+    
+    def addFieldGroups(self,fieldGroup:Union[str,dict]=None,fgManager:bool=False)->Union[None,'FieldGroupManager']:
+        """
+        Add a field groups to field Group object and the schema. 
+        Possible to add it to fieldGroupsManagers attribute.
+        return the specific FieldGroup Magaer
+        Arguments:
+            fieldGroup : REQUIRED : The fieldGroup ID or the dictionary definition connecting to the API.
+                if a fieldGroup ID is provided, you should have added a schemaAPI previously.
+            fgManager : OPTIONAL : if you want 
+        """
+        if type(fieldGroup) == dict:
+            if fieldGroup.get('$id') not in [fg for fg in self.fieldGroupIds]:
+                self.fieldGroupIds.append(fieldGroup['$id'])
+            if fgManager:
+                if fieldGroup.get('$id') not in [fg.id for fg in self.fieldGroupsManagers]:
+                    fbManager = FieldGroupManager(tenantId=self.schema.get('meta:tenantNamespace','unknown'),fieldGroup=fieldGroup)
+                    self.fieldGroupsManagers.append(fbManager)
+                    return fbManager
+        elif type(fieldGroup) == str:
+            if fieldGroup not in [fg for fg in self.fieldGroupIds]:
+                self.fieldGroupIds.append(fieldGroup)
+            if fgManager:
+                if self.schemaAPI is None:
+                    raise AttributeError('Missing the schema API attribute. Please use the addSchemaAPI method to add it.')
+                else:
+                    definition = self.schemaAPI.getFieldGroup(fieldGroup)
+                    fbManager = FieldGroupManager(tenantId=definition.get('meta:tenantNamespace','unknown'),fieldGroup=definition)
+                    self.fieldGroupsManagers.append(fbManager)
+                    return fbManager
+
+    def setTitle(self,name:str=None)->None:
+        """
+        Set a name for the schema.
+        Arguments:
+            name : REQUIRED : a string to be used for the title of the FieldGroup
+        """
+        self.schema['title'] = name
+        return None
+
+    def to_dataframe(self,save:bool=False,queryPath: bool = False)->pd.DataFrame:
+        """
+        Extract the information from the Field Group to DataFrame. You need to have instanciated the Field Group manager.
+        Arguments:
+            save : OPTIONAL : If you wish to save it with the title used by the field group.
+                save as csv with the title used. Not title, used "unknown_schema_" + timestamp.
+            queryPath : OPTIONAL : If you want to have the query path to be used.
+        """
+        df = pd.DataFrame({'path':[],'type':[]})
+        for fgmanager in self.fieldGroupsManagers:
+            tmp_df = fgmanager.to_dataframe(queryPath=queryPath)
+            df = df.append(tmp_df,ignore_index=True)
+        if save:
+            title = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}.csv')
+            df.to_csv(f"{title}.csv",index=False)
+        return df
+    
+    def to_dict(self)->dict:
+        """
+        Return a dictionary of the whole schema. You need to have instanciated the Field Group Manager
+        """
+        list_dict = [fbm.to_dict() for fbm in self.fieldGroupsManagers]
+        result = {}
+        for mydict in list_dict:
+            result = self.__simpleDeepMerge__(result,mydict)
+        return result

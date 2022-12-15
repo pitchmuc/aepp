@@ -186,15 +186,16 @@ class Catalog:
             return pd.DataFrame(res).T
         return res
 
-    def getFailedBatchesDF(self,limit:int=10,n_results: str=None)->pd.DataFrame:
+    def getFailedBatchesDF(self,limit:int=10,n_results: str=None,**kwargs)->pd.DataFrame:
         """
         Abstraction of getBatches method that focus on failed batches and return a dataframe with the batchId and errors.
         Also adding some meta data information from the batch information provided.
         Arguments:
             limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
             n_results : OPTIONAL :  number of result you want to get in total. (will loop)
+        Possible kwargs: Any additional parameter for filtering the requests
         """
-        res = self.getBatches(status="failed",orderBy="desc:created",limit=limit,n_results=n_results)
+        res = self.getBatches(status="failed",orderBy="desc:created",limit=limit,n_results=n_results,**kwargs)
         if self.loggingEnabled:
             self.logger.debug(f"Starting getFailedBatchesDF")
         dict_failed = {}

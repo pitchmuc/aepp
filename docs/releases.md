@@ -2,6 +2,12 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.2.2
+
+* adding `FieldGroupManager` and `SchemaManager` class in the `schema` submodule
+* adding support for more parameter on `getFailedBatches` in `catalog` submodule
+* 
+
 ## version 0.2.1
 
 * remove requirement for `PyGreSQL` and `psycopg2`\
