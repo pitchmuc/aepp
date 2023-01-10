@@ -8,6 +8,8 @@ import time
 import codecs
 import json
 import logging
+from itertools import zip_longest
+import re
 
 @dataclass
 class _Data:
@@ -154,7 +156,7 @@ class Catalog:
             status : Filter by the current (mutable) status of the batch.
             orderBy : Sort parameter and direction for sorting the response. 
                 Ex. orderBy=asc:created,updated. This was previously called sort.
-            property : A comma separated whitelist of top-level object properties to be returned in the response. 
+            properties : A comma separated whitelist of top-level object properties to be returned in the response. 
                 Used to cut down the number of properties and amount of data returned in the response bodies.
             size : The number of bytes processed in the batch.
         # /Batches/get_batch
@@ -186,16 +188,17 @@ class Catalog:
             return pd.DataFrame(res).T
         return res
 
-    def getFailedBatchesDF(self,limit:int=10,n_results: str=None,**kwargs)->pd.DataFrame:
+    def getFailedBatchesDF(self,limit:int=10,n_results: str=None,orderBy:str="desc:created",**kwargs)->pd.DataFrame:
         """
         Abstraction of getBatches method that focus on failed batches and return a dataframe with the batchId and errors.
         Also adding some meta data information from the batch information provided.
         Arguments:
             limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
             n_results : OPTIONAL :  number of result you want to get in total. (will loop)
+            orderBy : OPTIONAL : The order of the batch. Default "desc:created"
         Possible kwargs: Any additional parameter for filtering the requests
         """
-        res = self.getBatches(status="failed",orderBy="desc:created",limit=limit,n_results=n_results,**kwargs)
+        res = self.getBatches(status="failed",orderBy=orderBy,limit=limit,n_results=n_results,**kwargs)
         if self.loggingEnabled:
             self.logger.debug(f"Starting getFailedBatchesDF")
         dict_failed = {}
@@ -211,9 +214,9 @@ class Catalog:
                 "invalidRecordsStreamingValidation" : res[batch].get('metrics',{}).get('invalidRecordsStreamingValidation',0),
                 "invalidRecordsMapper" : res[batch].get('metrics',{}).get('invalidRecordsMapper',0),
                 "invalidRecordsUnknown" : res[batch].get('metrics',{}).get('invalidRecordsUnknown',0),
-                "errorCode" : res[batch]['errors'][0]['code'],
-                "errorMessage" : res[batch]['errors'][0]['description'] ,
-                "flowId" : res[batch].get('tags',{}).get('flowId',''),
+                "errorCode" : [er['code'] for er in res[batch]['errors']],
+                "errorMessage" : [er['description'] for er in res[batch]['errors']],
+                "flowId" : res[batch].get('tags',{}).get('flowId',[None])[0],
                 "dataSetId" : datasetId,
                 "sandbox" : res[batch]['sandboxId'],
             }
@@ -528,3 +531,78 @@ class Catalog:
         }
         res = self.connector.postData(self.endpoint+path, data=data)
         return res
+    
+    def getMapperErrors(self,limit:int=100,n_results:str=None,**kwargs)->pd.DataFrame:
+        """
+        Get failed batches for Mapper errors, based on error code containing "MAPPER".
+        Arguments:
+            limit : OPTIONAL : Number of results per requests
+            n_results : OPTIONAL : Total number of results wanted.
+        Possible kwargs:
+            created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
+            createdAfter : Exclusively filter records created after this timestamp. 
+            createdBefore : Exclusively filter records created before this timestamp.
+            start : Returns results from a specific offset of objects. This was previously called offset. (see next line)
+                offset : Will offset to the next limit (sort of pagination)        
+            updated : Filter by the Unix timestamp (in milliseconds) for the time of last modification.
+            createdUser : Filter by the ID of the user who created this object.
+            dataSet : Used to filter on the related object: &dataSet=dataSetId.
+            version : Filter by Semantic version of the account. Updated when the object is modified.
+            status : Filter by the current (mutable) status of the batch.
+            orderBy : Sort parameter and direction for sorting the response. 
+                Ex. orderBy=asc:created,updated. This was previously called sort.
+            properties : A comma separated whitelist of top-level object properties to be returned in the response. 
+                Used to cut down the number of properties and amount of data returned in the response bodies.
+            size : The number of bytes processed in the batch.
+        """
+        df = self.getFailedBatchesDF(limit=limit,n_results=n_results,**kwargs)
+        df['errorCodeStr'] = df['errorCode'].astype(str)
+        df_mapper = df[df['errorCodeStr'].str.contains('DPMAP')]
+        del df_mapper["errorCodeStr"]
+        datasetIds = list(df_mapper['dataSetId'].unique())
+        dict_result = {}
+        for index,row in df_mapper.iterrows():
+            errorCodes = []
+            errorMessages = []
+            destinationPaths = []
+            expectedTypes = []
+            actualTypes = []
+            sourceFields = []
+            destinationFields = []
+            for code,message in zip_longest(row['errorCode'],row['errorMessage']):
+                if 'MAPPER' in code:
+                    errorMessages.append(message)
+                    errorCodes.append(code)
+                    matchDestPath = re.search('destination path (.+?)\. ',message)
+                    if matchDestPath:
+                        destinationPaths.append(matchDestPath.group(1))
+                    matchExpectedTypes = re.search('expected data type was: ([A-Z]+?), ',message)
+                    if matchExpectedTypes:
+                        expectedTypes.append(matchExpectedTypes.group(1))
+                    matchActualTypes = re.search('actual data type was: ([A-Z]+?)\. ',message)
+                    if matchActualTypes:
+                        actualTypes.append(matchActualTypes.group(1))
+                    matchSourceField = re.search('sourceField: (.+?) destinationField',message)
+                    if matchSourceField:
+                        sourceFields.append(matchSourceField.group(1))
+                    matchDestinationField = re.search('destinationField: (.+?)$',message)
+                    if matchDestinationField:
+                        destinationFields.append(matchDestinationField.group(1))
+            for message,code,destPath,expType,actType,source,dest in zip_longest(errorMessages,errorCodes,destinationPaths,expectedTypes,actualTypes,sourceFields,destinationFields):
+                dict_result[f"{row.name}-{code}"] = {
+                    "timestamp" : row['timestamp'],
+                    "batchId" : row.name,
+                    "datasetId": row['dataSetId'],
+                    "flowId":row["flowId"],
+                    "invalidRecordCount" : row["invalidRecordCount"],
+                    "invalidRecordsMapper": row["invalidRecordsMapper"],
+                    "errorCode" : code,
+                    "errorMessage":message,
+                    "destinationPath" : destPath,
+                    "expectedType":expType,
+                    "actualType":actType,
+                    "sourceField":source,
+                    "destinationField":dest
+                }
+        df_final = pd.DataFrame(dict_result).T
+        return df_final

@@ -27,9 +27,6 @@ class _Data:
         self.schemas = {}
         self.schemas_id = {}
         self.schemas_altId = {}
-        #self.mixins_id = {}
-        self.mixins_altId = {}
-        #self.mixins = {}
         self.fieldGroups_id = {}
         self.fieldGroups_altId = {}
         self.fieldGroups = {}

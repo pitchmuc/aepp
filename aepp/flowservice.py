@@ -1,8 +1,15 @@
 import aepp
 from aepp import connector
 from copy import deepcopy
-import time
+import time,json
 import logging
+from dataclasses import dataclass
+
+@dataclass
+class _Data:
+    def __init__(self):
+        self.flowId = {}
+        self.flowSpecId = {}
 
 
 class FlowService:
@@ -40,6 +47,7 @@ class FlowService:
         Arguments:
             config : OPTIONAL : config object in the config module.
             header : OPTIONAL : header object  in the config module.
+            loggingObject : OPTIONAL : A dictionary presenting the configuration of the logging service.
         """
         if loggingObject is not None and sorted(
             ["level", "stream", "format", "filename", "file"]
@@ -66,6 +74,7 @@ class FlowService:
         self.header.update(**kwargs)
         self.sandbox = self.connector.config["sandbox"]
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["flow"]
+        self.data = _Data()
 
     def getResource(
         self,
@@ -327,7 +336,7 @@ class FlowService:
             self.logger.debug(f"Starting getConnectionSpec")
         path: str = f"/connectionSpecs/{specId}"
         res: dict = self.connector.getData(self.endpoint + path)
-        return res
+        return res.get('items',[{}])[0]
 
     def getFlows(
         self,
@@ -368,6 +377,8 @@ class FlowService:
             res = self.connector.getData(self.endpoint + path, params=params)
             token = res["_links"].get("next", {}).get("href", "")
             items += res["items"]
+        self.data.flowId = {item["name"]: item["id"] for item in items}
+        self.data.flowSpecId = {item["name"]: item.get("flowSpec",{}).get('id') for item in items}
         if filterMappingSetIds is not None:
             filteredItems = []
             for mappingsetId in filterMappingSetIds:
@@ -405,7 +416,7 @@ class FlowService:
             self.logger.debug(f"Starting getFlow")
         path: str = f"/flows/{flowId}"
         res: dict = self.connector.getData(self.endpoint + path)
-        return res
+        return res.get('items',[{}])[0]
 
     def deleteFlow(self, flowId: str = None) -> dict:
         """
@@ -512,7 +523,7 @@ class FlowService:
             self.logger.debug(f"Starting getFlowSpec")
         path: str = f"/flowSpecs/{flowSpecId}"
         res: dict = self.connector.getData(self.endpoint + path)
-        return res
+        return res.get('items',[{}])[0]
 
     def getRuns(
         self, limit: int = 10, n_results: int = 100, prop: str = None, **kwargs
@@ -536,13 +547,14 @@ class FlowService:
             params["continuationToken"] = kwargs.get("continuationToken")
         res: dict = self.connector.getData(self.endpoint + path, params=params)
         items: list = res["items"]
-        if res["_links"].get("next", {}).get("href", "") != "" and len(items) < float(
-            n_results
-        ):
+        nextPage = res["_links"].get("next", {}).get("href", "")
+        while nextPage != "" and len(items) < float(n_results):
             token: str = res["_links"]["next"].get("href", "")
             continuationToken: str = token.split("=")[1]
             params["continuationToken"] = continuationToken
-            items += self.connector.getData(self.endpoint + path, params=params)
+            res = self.connector.getData(self.endpoint + path, params=params)
+            items += res.get('items')
+            nextPage = res["_links"].get("next", {}).get("href", "")
         return items
 
     def createRun(self, flowId: str = None, status: str = "active") -> dict:
@@ -609,7 +621,7 @@ class FlowService:
             self.logger.debug(f"Starting getSourceConnection")
         path: str = f"/sourceConnections/{sourceConnectionId}"
         res: dict = self.connector.getData(self.endpoint + path)
-        return res
+        return res.get('items',[{}])[0]
 
     def deleteSourceConnection(self, sourceConnectionId: str = None) -> dict:
         """
@@ -734,7 +746,7 @@ class FlowService:
             self.logger.debug(f"Starting getTargetConnection")
         path: str = f"/targetConnections/{targetConnectionId}"
         res: dict = self.connector.getData(self.endpoint + path)
-        return res
+        return res.get('items',[None])[0]
 
     def deleteTargetConnection(self, targetConnectionId: str = None) -> dict:
         """
@@ -861,3 +873,149 @@ class FlowService:
             self.endpoint + path, headers=privateHeader, data=updateObj
         )
         return res
+
+
+class FlowManager:
+    """
+    A class that abstract the different information retrieved by the Flow ID in order to provide all relationships inside that Flow.
+    It takes a flow id and dig to all relationship inside that flow.
+    """
+
+    def __init__(self,
+                flowId:str=None,
+                config: dict = aepp.config.config_object,
+                header=aepp.config.header)->None:
+        """
+        Instantiate a Flow Manager Instance based on the flow ID.
+        Arguments:
+            flowId : REQUIRED : A flow ID
+        """
+        from aepp import schema, catalog,dataprep,flowservice
+        self.schemaAPI = schema.Schema()
+        self.catalogAPI = catalog.Catalog()
+        self.mapperAPI = dataprep.DataPrep()
+        self.flowAPI = flowservice.FlowService()
+        self.flowData = self.flowAPI.getFlow(flowId)
+        self.id = flowId
+        self.flowMapping = None
+        self.sandbox = self.flowData.get('sandboxName')
+        self.name = self.flowData.get('name')
+        self.version = self.flowData.get('version')
+        self.flowSpec = {'id' : self.flowData.get('flowSpec',{}).get('id')}
+        self.flowSourceConnection = {'id' : self.flowData.get('sourceConnectionIds',[None])[0]}
+        self.flowTargetConnection = {'id' : self.flowData.get('targetConnectionIds',[None])[0]}
+        for trans in self.flowData.get('transformations',[{}]):
+            if trans.get('name') == 'Mapping':
+                self.flowMapping = {'id':trans.get('params',{}).get('mappingId')}
+        ## Flow Spec part
+        if self.flowSpec['id'] is not None:
+            flowSpecData = self.flowAPI.getFlowSpec(self.flowSpec['id'])
+            self.flowSpec['name'] = flowSpecData['name']
+            self.flowSpec['frequency'] = flowSpecData.get('attributes',{}).get('frequency')
+        ## Source Connection part
+        if self.flowSourceConnection['id'] is not None:
+            sourceConnData = self.flowAPI.getSourceConnection(self.flowSourceConnection['id'])
+            self.flowSourceConnection['data'] = sourceConnData.get('data')
+            self.flowSourceConnection['params'] = sourceConnData.get('params')
+            self.flowSourceConnection['connectionSpec'] = sourceConnData.get('connectionSpec')
+            if self.flowSourceConnection['connectionSpec'].get('id') is not None:
+                connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
+                self.flowSourceConnection['connectionSpec']['name'] = connSpec.get('name')
+        ## Target Connection part
+        if self.flowTargetConnection['id'] is not None:
+            targetConnData = self.flowAPI.getTargetConnection(self.flowTargetConnection['id'])
+            self.flowTargetConnection['name'] = targetConnData.get('name')
+            self.flowTargetConnection['data'] = targetConnData.get('data')
+            self.flowTargetConnection['params'] = targetConnData.get('params')
+            self.flowTargetConnection['connectionSpec'] = targetConnData.get('connectionSpec')
+            if self.flowTargetConnection['connectionSpec'].get('id') is not None:
+                connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
+                self.flowTargetConnection['connectionSpec']['name'] = connSpec.get('name')
+        ## Catalog part
+        if 'dataSetId' in self.flowTargetConnection['params'].keys():
+            datasetInfo = self.catalogAPI.getDataSet(self.flowTargetConnection['params']['dataSetId'])
+            self.flowTargetConnection['params']['datasetName'] = datasetInfo[list(datasetInfo.keys())[0]].get('name')
+        ## Schema part
+        if 'schema' in self.flowTargetConnection['data'].keys():
+            schemaInfo = self.schemaAPI.getSchema(self.flowTargetConnection['data']['schema']['id'],full=False)
+            self.flowTargetConnection['data']['schema']['name'] = schemaInfo.get('title')
+        ## Mapping
+        if self.flowMapping is not None:
+            mappingInfo = self.mapperAPI.getMappingSet(self.flowMapping['id'])
+            self.flowMapping['createdDate'] = time.ctime(mappingInfo.get('createdDate')/1000)
+
+    def __repr__(self)->str:
+        data = {
+                "id" : self.id,
+                "name": self.name,
+                "version":self.version,
+                "flowSpecs": self.flowSpec,
+                "sourceConnection": self.flowSourceConnection,
+                "targetConnection": self.flowTargetConnection,
+            }
+        if self.flowMapping is not None:
+            data['mapping'] = self.flowMapping
+        return json.dumps(data,indent=2)
+    
+    def __str__(self)->str:
+        data = {
+                "id" : self.id,
+                "name": self.name,
+                "version":self.version,
+                "flowSpecs": self.flowSpec,
+                "sourceConnection": self.flowSourceConnection,
+                "targetConnection": self.flowTargetConnection,
+            }
+        if self.flowMapping is not None:
+            data['mapping'] = self.flowMapping
+        return json.dumps(data,indent=2)
+
+    def getFlowSpec(self)->dict:
+        """
+        Return a dictionary of the flow Spec.
+        """
+        if self.flowSpec['id'] is not None:
+            flowSpecData = self.flowAPI.getFlowSpec(self.flowSpec['id'])
+            return flowSpecData
+
+    def getSourceConnection(self)->dict:
+        """
+        Return a dictionary of the connection information
+        """
+        if self.flowSourceConnection['id'] is not None:
+            sourceConnData = self.flowAPI.getSourceConnection(self.flowSourceConnection['id'])
+            return sourceConnData
+    
+    def getConnectionSpec(self)->dict:
+        """
+        return a dictionary of the source connection spec information
+        """
+        if self.flowSourceConnection['connectionSpec'].get('id') is not None:
+            connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
+            return connSpec
+    
+    def getTargetConnection(self)->dict:
+        """
+        return a dictionary of the target connection
+        """
+        if self.flowTargetConnection['id'] is not None:
+            targetConnData = self.flowAPI.getTargetConnection(self.flowTargetConnection['id'])
+            return targetConnData
+    
+    def getTargetConnectionSpec(self)->dict:
+        """
+        return a dictionary of the target connection spec
+        """
+        if self.flowTargetConnection['connectionSpec'].get('id') is not None:
+            connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
+            return connSpec
+    
+    def getRuns(self,limit:int=10,n_results=100)->list:
+        """
+        Returns the last run of the flow.
+        Arguments:
+            limit : OPTIONAL : Amount of item per requests
+            n_results : OPTIONAL : Total amount of item to return
+        """
+        runs = self.flowAPI.getRuns(limit,n_results,prop=f"flowId=={self.id}")
+        return runs
