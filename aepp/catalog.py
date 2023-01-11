@@ -559,7 +559,6 @@ class Catalog:
         df['errorCodeStr'] = df['errorCode'].astype(str)
         df_mapper = df[df['errorCodeStr'].str.contains('DPMAP')]
         del df_mapper["errorCodeStr"]
-        datasetIds = list(df_mapper['dataSetId'].unique())
         dict_result = {}
         for index,row in df_mapper.iterrows():
             errorCodes = []

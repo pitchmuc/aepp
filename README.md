@@ -75,10 +75,12 @@ Use-Case example : At the moment the capability to scheduled query is only acces
 
 [Detail documentation](./docs/queryservice.md)
 
-#### InteractiveQuery class
+#### InteractiveQuery  and InteractiveQuery2 classes
 
-This class is based on the pyGreSQL module for python.\
+These classes are based on the pyGreSQL and psycopg2 module for python.\
 It provides you the capability to realize query directly from your local Jupyter notebook and returns a dataframe.
+In order to use these classes, you would need to install these module and a PSQL server.
+On top of that, you would need to the psql server accessible in the environment path.
 
 ## PrivacyService module
 

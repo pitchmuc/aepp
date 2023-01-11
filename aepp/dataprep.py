@@ -349,22 +349,30 @@ class DataPrep:
         return res
 
     def updateMappingSet(
-        self, mappingSetId: str = None, mappingSet: dict = None
+        self, mappingSetId: str = None, mapping: list = None
     ) -> dict:
         """
         Update a specific Mapping set based on its Id.
         Arguments:
             mappingSetId : REQUIRED : mapping Id to be updated
-            mappingSet : REQUIRED : the dictionary to update the mappingSet
+            mapping : REQUIRED : the list of different rule to map
         """
         if mappingSetId is None:
             raise ValueError("Require a mappingSet ID")
-        if mappingSet is None:
-            raise ValueError("Require a dictionary as mappingSet")
+        if mapping is None:
+            raise ValueError("Require a list of mappings ")
         if self.loggingEnabled:
             self.logger.debug(f"Starting updateMappingSet")
         path = f"/mappingSets/{mappingSetId}"
-        res = self.connector.putData(self.endpoint + path, data=mappingSet)
+        currMapping = self.getMappingSet(mappingSetId)
+        outputSchema = {
+            "schemaRef" : currMapping.get('outputSchema',{}).get('schemaRef')
+        }
+        data = {
+            "outputSchema":outputSchema,
+            "mappings":mapping
+        }
+        res = self.connector.putData(self.endpoint + path, data=data)
         return res
 
     def getMappingSetMappings(self, mappingSetId: str = None) -> dict:
