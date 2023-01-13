@@ -216,6 +216,43 @@ class DataPrep:
                 print("Couldn't find a mapping information to copy")
                 return None
 
+    def cleanMapping(self, mapping: Union[dict, list] = None
+    ) -> list:
+        """
+        create a clean copy of the mapping based on the mapping list information passed.
+        Argument:
+            mapping : REQUIRED : either the list of mapping or the dictionary returned from the getMappingSetMapping
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting copyMapping")
+        if mapping is None:
+            raise ValueError("Require a mapping object")
+        if type(mapping) == list:
+            new_list = [
+                {
+                    "sourceType": map["sourceType"],
+                    "source": map["source"],
+                    "destination":  map["destination"]
+                }
+                for map in mapping
+            ]
+            return new_list
+        if type(mapping) == dict:
+            if "mappings" in mapping.keys():
+                mappings = mapping["mappings"]
+                new_list = [
+                    {
+                        "sourceType": map["sourceType"],
+                        "source": map["source"],
+                        "destination": map["destination"]
+                    }
+                    for map in mappings
+                ]
+                return new_list
+            else:
+                print("Couldn't find a mapping information to clean")
+                return None
+
     def getMappingSets(
         self, name: str = None, prop: str = None, limit: int = 100
     ) -> list:
@@ -261,13 +298,14 @@ class DataPrep:
         return res
 
     def getMappingSet(
-        self, mappingSetId: str = None, save: bool = False, **kwargs
+        self, mappingSetId: str = None, save: bool = False,saveMappingRules: bool = False, **kwargs
     ) -> dict:
         """
         Get a specific mappingSet by its ID.
         Argument:
             mappingSetId : REQUIRED : mappingSet ID to be retrieved.
             save : OPTIONAL : save your mapping set to a JSON file.
+            saveMappingRules : OPTIONAL : save your mapping rules.
         optional kwargs:
             encoding : possible to set encoding for the file.
         """
@@ -281,6 +319,14 @@ class DataPrep:
             aepp.saveFile(
                 module="dataPrep",
                 file=res,
+                filename=f"mapping_{res['id']}",
+                type_file="json",
+                encoding=kwargs.get("encoding", "utf-8"),
+            )
+        if saveMappingRules:
+            aepp.saveFile(
+                module="dataPrep",
+                file=self.cleanMapping(res),
                 filename=f"mapping_{res['id']}",
                 type_file="json",
                 encoding=kwargs.get("encoding", "utf-8"),
@@ -349,13 +395,14 @@ class DataPrep:
         return res
 
     def updateMappingSet(
-        self, mappingSetId: str = None, mapping: list = None
+        self, mappingSetId: str = None, mapping: list = None,outputSchema:dict=None,
     ) -> dict:
         """
         Update a specific Mapping set based on its Id.
         Arguments:
             mappingSetId : REQUIRED : mapping Id to be updated
             mapping : REQUIRED : the list of different rule to map
+            outputSchema : OPTIONAL : If you wish to change the destination output schema. By default taking the same one.
         """
         if mappingSetId is None:
             raise ValueError("Require a mappingSet ID")
@@ -364,10 +411,11 @@ class DataPrep:
         if self.loggingEnabled:
             self.logger.debug(f"Starting updateMappingSet")
         path = f"/mappingSets/{mappingSetId}"
-        currMapping = self.getMappingSet(mappingSetId)
-        outputSchema = {
-            "schemaRef" : currMapping.get('outputSchema',{}).get('schemaRef')
-        }
+        if outputSchema is None:
+            currMapping = self.getMappingSet(mappingSetId)
+            outputSchema = {
+                "schemaRef" : currMapping.get('outputSchema',{}).get('schemaRef')
+            }
         data = {
             "outputSchema":outputSchema,
             "mappings":mapping

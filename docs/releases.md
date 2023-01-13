@@ -8,9 +8,13 @@ This page list all of the changes that came during the different release of the 
 * adding support for more parameter on `getFailedBatches` in `catalog` submodule
 * adding the new method `getMapperErrors` to access mapper errors and provide cleanse data to analyze.
 * adding the `FlowManager` class to gather all information from one flow Id.
-* Improving the method to fetch unique component of the Flow. Avoiding additional clean up to end result.
-* import `updateMappingSet` method so only the mapping list is required to be provided.
-
+* improving the method to fetch unique component of the Flow. Avoiding additional clean up to end result.
+* import `updateMappingSet` method so only the mapping list is required to be provided.\
+Patch:
+* fix searchField, getField by accessing `properties` and `customField` attributes.
+* adding possibility to modify schema output when updating mapping.
+* adding timestamp information and updating date for mapping in Flow service.
+* deduplicating path for SchemaManager dataframe output
 
 ## version 0.2.1
 

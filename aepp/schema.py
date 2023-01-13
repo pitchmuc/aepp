@@ -1848,6 +1848,29 @@ class FieldGroupManager:
     def __repr__(self)->dict:
         return json.dumps(self.fieldGroup,indent=2)
     
+    def __simpleDeepMerge__(self,base:dict,append:dict)->dict:
+        """
+        Loop through the keys of 2 dictionary and append the new found key of append to the base.
+        Arguments:
+            base : The base you want to extend
+            append : the new dictionary to append
+        """
+        if type(append) == list:
+            append = append[0]
+        for key in append:
+            if type(base)==dict:
+                if key in base.keys():
+                    self.__simpleDeepMerge__(base[key],append[key])
+                else:
+                    base[key] = append[key]
+            elif type(base)==list:
+                base = base[0]
+                if key in base.keys():
+                    self.__simpleDeepMerge__(base[key],append[key])
+                else:
+                    base[key] = append[key]
+        return base
+    
     def __accessorAlgo__(self,mydict:dict,path:list=None)->dict:
         """
         recursive method to retrieve all the elements.
@@ -1901,7 +1924,7 @@ class FieldGroupManager:
                 if string in keyComp:
                     ### checking if element is an array without deeper object level
                     if mydict[key].get('type') == 'array' and mydict[key]['items'].get('properties',None) is None:
-                        finalPath = path + f".[{key}]"
+                        finalPath = path + f".{key}[]"
                     else:
                         finalPath = path + f".{key}"
                     value = deepcopy(mydict[key])
@@ -2006,14 +2029,14 @@ class FieldGroupManager:
                         else :
                             tmp_path = f"{path}.{key}[]{{}}"
                         dictionary["path"].append(tmp_path)
-                        dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
+                        dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         if queryPath:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath)
                     else:
                         finalpath = f"{path}.{key}"
                         dictionary["path"].append(finalpath)
-                        dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
+                        dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         if queryPath:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
                 else:
@@ -2033,13 +2056,14 @@ class FieldGroupManager:
         Argument:
             fieldGroup : REQUIRED : the field Group definition 
         """
-        definitions = fieldGroup.get('definitions',None)
-        properties = fieldGroup.get('properties',None)
+        fgroup = deepcopy(fieldGroup)
+        definitions = fgroup.get('definitions',None)
+        properties = fgroup.get('properties',None)
         if properties is None:
-            properties = definitions.get('property',{}).get('properties',None)
-        if properties is None:
-            properties = definitions.get('customFields',{}).get('properties',None)
-        if properties is None:
+            cust_properties = definitions.get('customFields',{}).get('properties',{})
+            prop_properties = definitions.get('property',{}).get('properties',{})
+            properties = self.__simpleDeepMerge__(cust_properties,prop_properties)
+        if properties is None or properties == {}:
             raise AttributeError("Looking for properties of definition or of schema but could not find one")
         return properties
     
@@ -2071,6 +2095,35 @@ class FieldGroupManager:
                             fieldGroup[key]['items']['properties'] = res
                         else:
                             fieldGroup[key]['items']['properties'][newField] = obj
+                            return fieldGroup
+        return fieldGroup
+    
+    def __removeKey__(self,completePathList:list=None,fieldGroup:dict=None)->dict:
+        """
+        Remove the key and all element based on the path provided.
+        Arugments:
+            completePathList : list of path to use for identifying the key to remove
+            fieldGroup : the self.fieldgroup attribute
+        """
+        lastField = completePathList[-1]
+        fieldGroup = deepcopy(fieldGroup)
+        for key in fieldGroup:
+            level = fieldGroup.get(key,None)
+            if type(level) == dict and key in completePathList:
+                if 'properties' in level.keys():
+                    if key != lastField:
+                        res = self.__removeKey__(completePathList,fieldGroup[key]['properties'])
+                        fieldGroup[key]['properties'] = res
+                    else:
+                        del fieldGroup[key]
+                        return fieldGroup
+                elif 'items' in level.keys():
+                    if 'properties' in  fieldGroup[key].get('items',{}).keys():
+                        if key != lastField:
+                            res = self.__setField__(completePathList,fieldGroup[key]['items']['properties'])
+                            fieldGroup[key]['items']['properties'] = res
+                        else:
+                            del fieldGroup[key]
                             return fieldGroup
         return fieldGroup
 
@@ -2203,7 +2256,7 @@ class FieldGroupManager:
         """
         Add the field to the existing fieldgroup definition
         Arguments:
-            path : REQUIRED : path with dot notation where you want to create that new field. New field 
+            path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
                 In case of array of objects, use the "[*]" notation
             dataType : REQUIRED : the field type you want to create
                 A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
@@ -2213,6 +2266,8 @@ class FieldGroupManager:
                 Example : {'field1:'string','field2':'double'}
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
         """
+        if path is None:
+            raise ValueError("path must provided")
         typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
         if dataType not in typeTyped:
             raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","bytes"')
@@ -2249,6 +2304,22 @@ class FieldGroupManager:
         self.fieldGroup['definitions'] = customFields
         return self.fieldGroup
         
+    def removeField(self,path:str)->dict:
+        """
+        Remove a field from the definition based on the path provided.
+        NOTE: A path that is used cannot be removed from a schema or field group.
+        Argument:
+            path : REQUIRED : The path to be removed from the definition.
+        """
+        if path is None:
+            raise ValueError('Require a path to remove it')
+        pathSplit = self.__cleanPath__(path).split('.')
+        if pathSplit[0] == '':
+            del pathSplit[0]
+        completePath:list[str] = ['customFields'] + pathSplit
+        customFields = self.__removeKey__(completePath,self.fieldGroup['definitions'])
+        self.fieldGroup['definitions'] = customFields
+        return self.fieldGroup
 
     def to_dict(self,typed:bool=True)->dict:
         """
@@ -2320,7 +2391,7 @@ class SchemaManager:
                     Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                 else:
                     for ref in self.fieldGroupIds:
-                        definition = schemaAPI.getFieldGroup(ref)
+                        definition = schemaAPI.getFieldGroup(ref,full=False)
                         self.fieldGroupsManagers.append(FieldGroupManager(tenantId=self.schema['meta:tenantNamespace'],fieldGroup=definition))
         elif type(schema) == str:
             if schemaAPI is None:
@@ -2335,7 +2406,7 @@ class SchemaManager:
                         Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                     else:
                         for ref in self.fieldGroupIds:
-                            definition = self.schemaAPI.getFieldGroup(ref)
+                            definition = self.schemaAPI.getFieldGroup(ref,full=False)
                             self.fieldGroupsManagers.append(FieldGroupManager(tenantId=definition['meta:tenantNamespace'],fieldGroup=definition))
         elif schema is None:
             self.schema = {
@@ -2367,6 +2438,8 @@ class SchemaManager:
                         self.fieldGroupsManagers.append(FieldGroupManager(fg))
         if self.schema.get('title'):
             self.title = self.schema.get('title')
+        if fgManager is True:
+            self.fieldGroupTitles= [fg.title for fg in self.fieldGroupsManagers]
         
     def __str__(self)->str:
         return json.dumps(self.schema,indent=2)
@@ -2453,6 +2526,18 @@ class SchemaManager:
                     fbManager = FieldGroupManager(tenantId=definition.get('meta:tenantNamespace','unknown'),fieldGroup=definition)
                     self.fieldGroupsManagers.append(fbManager)
                     return fbManager
+    
+    def getFieldGroupManager(self,title:str=None)->'FieldGroupManager':
+        """
+        Return a field group Manager of a specific name.
+        Only possible if fgManager was set to True during instanciation.
+        Argument:
+            title : REQUIRED : The title of the field group to retrieve.
+        """
+        if self.getFieldGroupManager is not None:
+            return [fg for fg in self.fieldGroupsManagers if fg.title == title][0]
+        else:
+            raise Exception("The field group manager was not set to True during instanciation. No Field Group Manager to return")
 
     def setTitle(self,name:str=None)->None:
         """
@@ -2478,6 +2563,7 @@ class SchemaManager:
         if save:
             title = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}.csv')
             df.to_csv(f"{title}.csv",index=False)
+        df = df[~df.duplicated('path')].reset_index(drop=True)
         return df
     
     def to_dict(self)->dict:
