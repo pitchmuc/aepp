@@ -15,6 +15,11 @@ Patch:
 * adding possibility to modify schema output when updating mapping.
 * adding timestamp information and updating date for mapping in Flow service.
 * deduplicating path for SchemaManager dataframe output
+* improve when path used for title on FieldGroup manager `addField` operation is not cleaned.
+* adding Enum support for `addField` operations
+* adding `createFieldGroup` method on `FieldGroupManager`
+* changing the requirement to instantiate `FieldGroupManager` and `SchemaManager`. No requirement to pass the Schema instance if a config file has been provided.
+* supporting operation on out-of-the-box fieldgroups
 
 ## version 0.2.1
 

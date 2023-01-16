@@ -1768,34 +1768,37 @@ class FieldGroupManager:
     Class that reads and generate custom field groups
     """
 
-    def __init__(self,tenantId:str=None,
+    def __init__(self,
                 fieldGroup:Union[dict,str]=None,
                 title:str=None,
                 fg_class:list=["experienceevent","profile"],
-                schemaAPI:'Schema'=None
+                schemaAPI:'Schema'=None,
+                config_object: dict = aepp.config.config_object,
                 )->None:
         """
         Instantiator for field group creation.
         Arguments:
-            tenantId : REQUIRED : The tenant ID of the company 
             fieldGroup : OPTIONAL : the field group definition as dictionary OR the endpoint to access it.
                 If you pass the $id or altId, you should pass the schemaAPI instance. 
             title : OPTIONAL : If you want to name the field group.
             fg_class : OPTIONAL : the class that will support this field group.
                 by default events and profile, possible value : "record"
             schemaAPI : OPTIONAL : The instance of the Schema class. Provide a way to connect to the API.
+            config_object : OPTIONAL : The config object in case you want to override the configuration.
         """
-        if tenantId.startswith('_') == False:
-            tenantId = f"_{tenantId}"
-        self.tenantId = tenantId
+        
         self.fieldGroup = {}
-        self.schemaAPI = schemaAPI
+        if schemaAPI is not None:
+            self.schemaAPI = schemaAPI
+        else:
+            self.schemaAPI = Schema(config_object=config_object)
+        self.tenantId = f"_{self.schemaAPI.getTenantId()}"
         self.fieldGroupDict = lambda self : self.to_dict()
         if fieldGroup is not None:
             if type(fieldGroup) == dict:
                 if fieldGroup.get("meta:resourceType",None) == "mixins":
                     self.fieldGroup = fieldGroup
-            elif type(fieldGroup) == str and (fieldGroup.startswith('https:') or fieldGroup.startswith(f'{tenantId}.')):
+            elif type(fieldGroup) == str and (fieldGroup.startswith('https:') or fieldGroup.startswith(f'{self.tenantId}.')):
                 if self.schemaAPI is None:
                     raise Exception("You try to retrieve the fieldGroup definition from the id, but no API has been passed in the schemaAPI parameter.")
                 self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
@@ -1811,7 +1814,7 @@ class FieldGroupManager:
                     "customFields":{
                         "type" : "object",
                         "properties":{
-                            tenantId:{
+                            self.tenantId:{
                                 "properties":{},
                                 "type" : "object"
                             },
@@ -1824,7 +1827,7 @@ class FieldGroupManager:
                 }],
                 "meta:intendedToExtend":[],
                 "meta:containerId": "tenant",
-                "meta:tenantNamespace": tenantId,
+                "meta:tenantNamespace": self.tenantId,
             }
             if self.fieldGroup.get("meta:intendedToExtend") == []:
                 for cls in fg_class:
@@ -1836,7 +1839,7 @@ class FieldGroupManager:
                         self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/profile")
         if title is not None:
             self.fieldGroup['title'] = title
-        self.title = self.fieldGroup['title']
+        self.title = self.fieldGroup.get('title',f'unknown:{fieldGroup}')
         if self.fieldGroup.get('$id',False):
             self.id = self.fieldGroup.get('$id')
         if self.fieldGroup.get('meta:altId',False):
@@ -1865,10 +1868,11 @@ class FieldGroupManager:
                     base[key] = append[key]
             elif type(base)==list:
                 base = base[0]
-                if key in base.keys():
-                    self.__simpleDeepMerge__(base[key],append[key])
-                else:
-                    base[key] = append[key]
+                if type(base) == dict:
+                    if key in base.keys():
+                        self.__simpleDeepMerge__(base[key],append[key])
+                    else:
+                        base[key] = append[key]
         return base
     
     def __accessorAlgo__(self,mydict:dict,path:list=None)->dict:
@@ -1884,8 +1888,9 @@ class FieldGroupManager:
         level = mydict.get(key,None)
         if level is not None:
             if level["type"] == "object":
-                levelProperties = mydict[key]['properties']
-                level = self.__accessorAlgo__(levelProperties,'.'.join(pathSplit[1:]))
+                levelProperties = mydict[key].get('properties',None)
+                if levelProperties is not None:
+                    level = self.__accessorAlgo__(levelProperties,'.'.join(pathSplit[1:]))
                 return level
             elif level["type"] == "array":
                 levelProperties = mydict[key]['items'].get('properties',None)
@@ -1948,20 +1953,22 @@ class FieldGroupManager:
                         results.append({key:value})
             ## loop through keys
             if mydict[key].get("type") == "object":
-                levelProperties = mydict[key]['properties']
-                if path is None:
-                    tmp_path = key
-                else:
-                    tmp_path = f"{path}.{key}"
-                results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path)
-            elif mydict[key].get("type") == "array":
-                levelProperties = mydict[key]['items'].get('properties',None)
-                if levelProperties is not None:
+                levelProperties = mydict[key].get('properties',{})
+                if levelProperties != dict():
                     if path is None:
                         tmp_path = key
                     else:
-                        tmp_path = f"{path}.{key}[]{{}}"
+                        tmp_path = f"{path}.{key}"
                     results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path)
+            elif mydict[key].get("type") == "array":
+                levelProperties = mydict[key]['items'].get('properties',{})
+                if levelProperties != dict():
+                    if levelProperties is not None:
+                        if path is None:
+                            tmp_path = key
+                        else:
+                            tmp_path = f"{path}.{key}[]{{}}"
+                        results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path)
         return results
     
     def __transformationDict__(self,mydict:dict=None,typed:bool=False,dictionary:dict=None)->dict:
@@ -1975,8 +1982,10 @@ class FieldGroupManager:
         for key in mydict:
             if type(mydict[key]) == dict:
                 if mydict[key].get('type') == 'object':
-                    dictionary[key] = {}
-                    self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary[key])
+                    properties = mydict[key].get('properties',None)
+                    if properties is not None:
+                        dictionary[key] = {}
+                        self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary[key])
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
@@ -2020,7 +2029,9 @@ class FieldGroupManager:
                     dictionary["type"].append(f"{mydict[key].get('type')}")
                     if queryPath:
                         dictionary["querypath"].append(self.__cleanPath__(tmp_path))
-                    self.__transformationDF__(mydict[key]['properties'],dictionary,tmp_path,queryPath)
+                    properties = mydict[key].get('properties',None)
+                    if properties is not None:
+                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
@@ -2029,14 +2040,14 @@ class FieldGroupManager:
                         else :
                             tmp_path = f"{path}.{key}[]{{}}"
                         dictionary["path"].append(tmp_path)
-                        dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
+                        dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
                         if queryPath:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath)
                     else:
                         finalpath = f"{path}.{key}"
                         dictionary["path"].append(finalpath)
-                        dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
+                        dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
                         if queryPath:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
                 else:
@@ -2105,27 +2116,29 @@ class FieldGroupManager:
             completePathList : list of path to use for identifying the key to remove
             fieldGroup : the self.fieldgroup attribute
         """
-        lastField = completePathList[-1]
-        fieldGroup = deepcopy(fieldGroup)
+        lastField = deepcopy(completePathList).pop()
+        success = False
         for key in fieldGroup:
             level = fieldGroup.get(key,None)
             if type(level) == dict and key in completePathList:
                 if 'properties' in level.keys():
-                    if key != lastField:
-                        res = self.__removeKey__(completePathList,fieldGroup[key]['properties'])
-                        fieldGroup[key]['properties'] = res
+                    if lastField in level['properties'].keys():
+                        level['properties'].pop(lastField)
+                        success = True
+                        return success
                     else:
-                        del fieldGroup[key]
-                        return fieldGroup
+                        sucess = self.__removeKey__(completePathList,fieldGroup[key]['properties'])
+                        return sucess
                 elif 'items' in level.keys():
-                    if 'properties' in  fieldGroup[key].get('items',{}).keys():
-                        if key != lastField:
-                            res = self.__setField__(completePathList,fieldGroup[key]['items']['properties'])
-                            fieldGroup[key]['items']['properties'] = res
+                    if 'properties' in level.get('items',{}).keys():
+                        if lastField in level.get('items',{}).get('properties'):
+                            level['items']['properties'].pop(lastField)
+                            success = True
+                            return success
                         else:
-                            del fieldGroup[key]
-                            return fieldGroup
-        return fieldGroup
+                            success = self.__removeKey__(completePathList,fieldGroup[key]['items']['properties'])
+                            return success
+        return success 
 
     def __transformFieldType__(self,dataType:str=None)->dict:
         """
@@ -2179,8 +2192,8 @@ class FieldGroupManager:
         Arguments:
             path : REQUIRED : path with dot notation to which field you want to access
         """
-        properties = self.__getProperties__(self.fieldGroup)
-        data = self.__accessorAlgo__(properties,path)
+        definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
+        data = self.__accessorAlgo__(definition,path)
         return data
 
     def searchField(self,string:str,partialMatch:bool=True,caseSensitive:bool=True)->list:
@@ -2192,12 +2205,12 @@ class FieldGroupManager:
             partialMatch : OPTIONAL : if you want to look for complete string or not.
             caseSensitive : OPTIONAL : if you want to compare with case sensitivity or not.
         """
-        properties = self.__getProperties__(self.fieldGroup)
-        data = self.__searchAlgo__(properties,string,partialMatch,caseSensitive)
+        definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
+        data = self.__searchAlgo__(definition,string,partialMatch,caseSensitive)
         return data
 
         
-    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False)->None:
+    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None)->None:
         """
         Return the operation to be used on the field group with the Patch method (patchFieldGroup), based on the element passed in argument.
         Arguments:
@@ -2210,6 +2223,7 @@ class FieldGroupManager:
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
                 Example : {'field1:'string','field2':'double'}
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
+            enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
         """
         typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
         if dataType not in typeTyped:
@@ -2218,7 +2232,7 @@ class FieldGroupManager:
             raise AttributeError('Require a dictionary providing the object component')
         
         if title is None:
-            title = path.split('.').pop()
+            title = self.__cleanPath__(path.split('.').pop())
         if title == 'items' or title == 'properties':
             raise Exception('"item" and "properties" are 2 reserved keywords')
         pathSplit = self.__cleanPath__(path).split('.')
@@ -2250,9 +2264,16 @@ class FieldGroupManager:
                 operation[0]['value']['type'] = self.__transformFieldType__(dataType)
                 operation[0]['value']['properties'] = {key:self.__transformFieldType__(value) for key, value in zip(objectComponents.keys(),objectComponents.values())}
         operation[0]['value']['title'] = title
-        return operation        
+        if enumValues is not None and type(enumValues) == dict:
+            if array == False:
+                operation[0]['value']['enum'] = [enumValues.keys()]
+                operation[0]['value']['meta:enum'] = enumValues
+            else:
+                operation[0]['value']['items']['enum'] = [enumValues.keys()]
+                operation[0]['value']['items']['meta:enum'] = enumValues
+        return operation
 
-    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False)->dict:
+    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None)->dict:
         """
         Add the field to the existing fieldgroup definition
         Arguments:
@@ -2265,6 +2286,7 @@ class FieldGroupManager:
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
                 Example : {'field1:'string','field2':'double'}
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
+            enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
         """
         if path is None:
             raise ValueError("path must provided")
@@ -2274,7 +2296,7 @@ class FieldGroupManager:
         if dataType == 'object' and objectComponents is None:
             raise AttributeError('Require a dictionary providing the object component')
         if title is None:
-            title = path.split('.').pop()
+            title = self.__cleanPath__(path.split('.').pop())
         if title == 'items' or title == 'properties':
             raise Exception('"item" and "properties" are 2 reserved keywords')
         pathSplit = self.__cleanPath__(path).split('.')
@@ -2299,6 +2321,13 @@ class FieldGroupManager:
             if array:
                 obj['type'] = "array"
                 obj['items'] = self.__transformFieldType__(dataType)
+        if enumValues is not None and type(enumValues) == dict:
+            if array == False:
+                obj['enum'] = [enumValues.keys()]
+                obj['meta:enum'] = enumValues
+            else:
+                obj['items']['enum'] = [enumValues.keys()]
+                obj['items']['meta:enum'] = enumValues
         completePath:list[str] = ['customFields'] + pathSplit
         customFields = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
         self.fieldGroup['definitions'] = customFields
@@ -2316,10 +2345,15 @@ class FieldGroupManager:
         pathSplit = self.__cleanPath__(path).split('.')
         if pathSplit[0] == '':
             del pathSplit[0]
+        success = False
+        ## Try customFields
         completePath:list[str] = ['customFields'] + pathSplit
-        customFields = self.__removeKey__(completePath,self.fieldGroup['definitions'])
-        self.fieldGroup['definitions'] = customFields
-        return self.fieldGroup
+        success = self.__removeKey__(completePath,self.fieldGroup['definitions'])
+        ## Try property
+        if success == False:
+            completePath:list[str] = ['property'] + pathSplit
+            success = self.__removeKey__(completePath,self.fieldGroup['definitions'])
+        return success
 
     def to_dict(self,typed:bool=True)->dict:
         """
@@ -2353,11 +2387,48 @@ class FieldGroupManager:
         """
         return self.fieldGroup
 
+    def patchFieldGroup(self,operations:list=None)->dict:
+        """
+        Patch the field group with the given operation.
+        Arguments:
+            operation : REQUIRED : The list of operation to realise
+        """
+        if operations is None or operations != list():
+            raise ValueError('Require a list of operations')
+        if self.schemaAPI is None:
+            Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
+        res = self.schemaAPI.patchFieldGroup(self.id,operations)
+        return res
+    
+    def updateFieldGroup(self)->dict:
+        """
+        Use the PUT method to push the current field group representation to AEP via API request.
+        """
+        if self.schemaAPI is None:
+            Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
+        res = self.schemaAPI.putFieldGroup(self.id,self.to_xdm())
+        return res
+    
+    def createFieldGroup(self)->dict:
+        """
+        Use the POST method to create the field group in the organization.
+        """
+        if self.schemaAPI is None:
+            Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
+        res = self.schemaAPI.createFieldGroup(self.to_xdm())
+        return res
+
+
 class SchemaManager:
     """
     A class to handle the schema management.
     """
-    def __init__(self,schema:Union[str,dict],fieldGroupIds:list=None,schemaAPI:'Schema'=None,fgManager:bool=False,schemaClass:str=None)->None:
+    def __init__(self,schema:Union[str,dict],
+                fieldGroupIds:list=None,
+                schemaAPI:'Schema'=None,
+                schemaClass:str=None,
+                config_object: dict = aepp.config.config_object,
+                )->None:
         """
         Instantiate the Schema Manager instance.
         Arguments:
@@ -2366,48 +2437,53 @@ class SchemaManager:
             fieldGroupIds : OPTIONAL : Possible to specify a list of fieldGroup. 
                 Either a list of fieldGroupIds (schemaAPI should be provided as well) or list of dictionary definition 
             schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
-            fgManager : OPTIONAL : If you want the SchemaManager class to use the FieldGroup Manager class. Requires the Schema API
             schemaClass : OPTIONAL : If you want to set the class to be a specific class.
                 Default value is profile: "https://ns.adobe.com/xdm/context/profile", can be replaced with any class definition.
                 Possible default value: "https://ns.adobe.com/xdm/context/experienceevent", "https://ns.adobe.com/xdm/context/segmentdefinition"
+            config_object : OPTIONAL : The config object in case you want to override the configuration.
         """
         self.fieldGroupIds=[]
         self.fieldGroupsManagers = []
-        self.schemaAPI = None
         self.title = None
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
+        else:
+            self.schemaAPI = Schema(config_object=config_object)
         if type(schema) == dict:
             self.schema = schema
             allOf = self.schema.get("allOf",[])
             if len(allOf) == 0:
                 Warning("You have passed a schema with -full attribute, you should pass one referencing the fieldGroups.\n Using the meta:extends reference if possible")
-                self.fieldGroupIds = [ref for ref in self.schema['meta:extends'] if '/mixins/' in ref]
-                self.schema['allOf'] = [{"$ref":ref} for ref in self.schema['meta:extends'] if '/mixins/' in ref or 'xdm/class' in ref or 'xdm/context/' in ref]
+                self.fieldGroupIds = [ref for ref in self.schema['meta:extends'] if ('/mixins/' in ref or '/experience/' in ref or '/context/' in ref) and (ref != "https://ns.adobe.com/xdm/context/experienceevent" and ref != "https://ns.adobe.com/xdm/context/profile")]
+                self.schema['allOf'] = [{"$ref":ref} for ref in self.schema['meta:extends'] if ('/mixins/' in ref or 'xdm/class' in ref or 'xdm/context/' in ref) and (ref != "https://ns.adobe.com/xdm/context/experienceevent" and ref != "https://ns.adobe.com/xdm/context/profile")]
             else:
-                self.fieldGroupIds = [obj['$ref'] for obj in allOf if '/mixins/' in obj['$ref']]
-            if fgManager:
-                if schemaAPI is None:
+                self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and (obj['$ref'] != "https://ns.adobe.com/xdm/context/experienceevent" and obj['$ref'] != "https://ns.adobe.com/xdm/context/profile")]
+            if self.schemaAPI is None:
+                Warning("No schema instance has been passed or config file imported.\n Aborting the creation of field Group Manager")
+            else:
+                for ref in self.fieldGroupIds:
+                    if '/mixins/' in ref:
+                        definition = self.schemaAPI.getFieldGroup(ref,full=False)
+                    else:
+                        definition = self.schemaAPI.getFieldGroup(ref,full=True)
+                    self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition))
+        elif type(schema) == str:
+            if self.schemaAPI is None:
+                Warning("No schema instance has been passed or config file imported.\n Aborting the retrieveal of the Schema Definition")
+            else:
+                definition = self.schemaAPI.getSchema(schema,full=False)
+                self.schema = definition
+                allOf = self.schema.get("allOf",[])
+                self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and (obj['$ref'] != "https://ns.adobe.com/xdm/context/experienceevent" and obj['$ref'] != "https://ns.adobe.com/xdm/context/profile")]
+                if self.schemaAPI is None:
                     Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                 else:
                     for ref in self.fieldGroupIds:
-                        definition = schemaAPI.getFieldGroup(ref,full=False)
-                        self.fieldGroupsManagers.append(FieldGroupManager(tenantId=self.schema['meta:tenantNamespace'],fieldGroup=definition))
-        elif type(schema) == str:
-            if schemaAPI is None:
-                Warning("A Schema Id has been passed but no schema instance has been passed.\n Aborting the retrieveal of the Schema Definition")
-            else:
-                definition = schemaAPI.getSchema(schema,full=False)
-                self.schema = definition
-                allOf = self.schema.get("allOf",[])
-                self.fieldGroupIds = [obj['$ref'] for obj in allOf if '/mixins/' in obj['$ref']]
-                if fgManager:
-                    if schemaAPI is None:
-                        Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
-                    else:
-                        for ref in self.fieldGroupIds:
+                        if '/mixins/' in ref:
                             definition = self.schemaAPI.getFieldGroup(ref,full=False)
-                            self.fieldGroupsManagers.append(FieldGroupManager(tenantId=definition['meta:tenantNamespace'],fieldGroup=definition))
+                        else:
+                            definition = self.schemaAPI.getFieldGroup(ref,full=True)
+                        self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition))
         elif schema is None:
             self.schema = {
                     "type": "object",
@@ -2425,21 +2501,18 @@ class SchemaManager:
             if fieldGroupIds[0] == str:
                 for fgId in fieldGroupIds:
                     self.fieldGroupIds.append(fgId)
-                    if fgManager:
-                        if schemaAPI is None:
-                            Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
-                        else:
-                            definition = schemaAPI.getFieldGroup(ref)
-                            self.fieldGroupsManagers.append(FieldGroupManager(definition))
+                    if self.schemaAPI is None:
+                        Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
+                    else:
+                        definition = self.schemaAPI.getFieldGroup(ref)
+                        self.fieldGroupsManagers.append(FieldGroupManager(definition))
             elif fieldGroupIds[0] == dict:
                 for fg in fieldGroupIds:
                     self.fieldGroupIds.append(fg.get('$id'))
-                    if fgManager:
-                        self.fieldGroupsManagers.append(FieldGroupManager(fg))
+                    self.fieldGroupsManagers.append(FieldGroupManager(fg))
         if self.schema.get('title'):
             self.title = self.schema.get('title')
-        if fgManager is True:
-            self.fieldGroupTitles= [fg.title for fg in self.fieldGroupsManagers]
+        self.fieldGroupTitles= [fg.title for fg in self.fieldGroupsManagers]
         
     def __str__(self)->str:
         return json.dumps(self.schema,indent=2)
@@ -2464,10 +2537,11 @@ class SchemaManager:
                     base[key] = append[key]
             elif type(base)==list:
                 base = base[0]
-                if key in base.keys():
-                    self.__simpleDeepMerge__(base[key],append[key])
-                else:
-                    base[key] = append[key]
+                if type(base) == dict:
+                    if key in base.keys():
+                        self.__simpleDeepMerge__(base[key],append[key])
+                    else:
+                        base[key] = append[key]
         return base
 
     def searchField(self,string:str=None,partialMatch:bool=True,caseSensitive:bool=True)->list:
@@ -2487,25 +2561,15 @@ class SchemaManager:
             myResults += res
         return myResults
     
-    def addSchemaAPI(self,schemaAPI:'Schema'=None)->None:
-        """
-        Add a schema instance to the Schema Manager instance.
-        Arguments:
-            schemaAPI : REQUIRED : The instance of the schema class.
-        """
-        if schemaAPI is None:
-            raise ValueError("Require a schema API")
-        self.schemaAPI = schemaAPI
-    
     def addFieldGroups(self,fieldGroup:Union[str,dict]=None,fgManager:bool=False)->Union[None,'FieldGroupManager']:
         """
         Add a field groups to field Group object and the schema. 
         Possible to add it to fieldGroupsManagers attribute.
-        return the specific FieldGroup Magaer
+        return the specific FieldGroup Managerr
         Arguments:
             fieldGroup : REQUIRED : The fieldGroup ID or the dictionary definition connecting to the API.
                 if a fieldGroup ID is provided, you should have added a schemaAPI previously.
-            fgManager : OPTIONAL : if you want 
+            fgManager : OPTIONAL : if you want to have a field group management instance.
         """
         if type(fieldGroup) == dict:
             if fieldGroup.get('$id') not in [fg for fg in self.fieldGroupIds]:

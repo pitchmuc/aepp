@@ -241,7 +241,7 @@ class AdobeRequest:
                 print(res.text)
             if self.loggingEnabled:
                 self.logger.warning(f"error: {res.text}")
-            res_json = {"error": "Request Error"}
+            res_json = {"error": "Request Error - could not generate json"}
             if self.retry > 0:
                 if self.loggingEnabled:
                     self.logger.info(f"starting retry: {self.retry} to do")
@@ -355,7 +355,10 @@ class AdobeRequest:
                 print(f"status: {res.status_code}")
                 print(res.text)
             if res.status_code != 200:
-                res_json = {"error": "Request Error"}
+                try:
+                    res_json = res.json()
+                except:
+                    res_json = {"error": "Request Error - could not generate JSON"}
             else:
                 res_json = {}
         try:  ## sometimes list is being returned
@@ -411,7 +414,10 @@ class AdobeRequest:
                     f"error with the response {res.status_code}: {res.text}"
                 )
             if res.status_code != 200:
-                res_json = {"error": res.text}
+                try:
+                    res_json = res.json()
+                except:
+                    res_json = {"error": "Request Error - could not generate JSON"}
             else:
                 res_json = {}
         return res_json
