@@ -2,6 +2,11 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.2.3
+* Supporting out of the box schema and field groups for `SchemaManager` & `FieldGroupManager`
+* fix `FlowManager` instanciation when no update available for a mapping.
+* adding a parameter (`mappingRulesOnly`) to extract only the rule out of a mappingSet.
+
 ## version 0.2.2
 
 * adding `FieldGroupManager` and `SchemaManager` class in the `schema` submodule

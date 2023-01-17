@@ -1956,7 +1956,10 @@ class FieldGroupManager:
                 levelProperties = mydict[key].get('properties',{})
                 if levelProperties != dict():
                     if path is None:
-                        tmp_path = key
+                        if key != "property" and key != "customFields" :
+                            tmp_path = key
+                        else:
+                            tmp_path = None
                     else:
                         tmp_path = f"{path}.{key}"
                     results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path)
@@ -1964,8 +1967,11 @@ class FieldGroupManager:
                 levelProperties = mydict[key]['items'].get('properties',{})
                 if levelProperties != dict():
                     if levelProperties is not None:
-                        if path is None:
-                            tmp_path = key
+                        if path is None: 
+                            if key != "property" and key != "customFields":
+                                tmp_path = key
+                            else:
+                                tmp_path = None
                         else:
                             tmp_path = f"{path}.{key}[]{{}}"
                         results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path)
@@ -1981,11 +1987,14 @@ class FieldGroupManager:
             dictionary = dictionary
         for key in mydict:
             if type(mydict[key]) == dict:
-                if mydict[key].get('type') == 'object':
+                if mydict[key].get('type') == 'object' and 'properties' in mydict[key].keys():
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
-                        dictionary[key] = {}
-                        self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary[key])
+                        if key != "property" and key != "customFields":
+                            dictionary[key] = {}
+                            self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary[key])
+                        else:
+                            self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
@@ -2022,11 +2031,15 @@ class FieldGroupManager:
             if type(mydict[key]) == dict:
                 if mydict[key].get('type') == 'object':
                     if path is None:
-                        tmp_path = key
-                    else :
+                        if key != "property" and key != "customFields":
+                            tmp_path = key
+                        else:
+                            tmp_path = None
+                    else:
                         tmp_path = f"{path}.{key}"
-                    dictionary["path"].append(tmp_path)
-                    dictionary["type"].append(f"{mydict[key].get('type')}")
+                    if tmp_path is not None:
+                        dictionary["path"].append(tmp_path)
+                        dictionary["type"].append(f"{mydict[key].get('type')}")
                     if queryPath:
                         dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                     properties = mydict[key].get('properties',None)
@@ -2060,23 +2073,6 @@ class FieldGroupManager:
                     if queryPath:
                         dictionary["querypath"].append(self.__cleanPath__(finalpath))
         return dictionary
-    
-    def __getProperties__(self,fieldGroup:dict=None)->dict:
-        """
-        Extract definition and properties.
-        Argument:
-            fieldGroup : REQUIRED : the field Group definition 
-        """
-        fgroup = deepcopy(fieldGroup)
-        definitions = fgroup.get('definitions',None)
-        properties = fgroup.get('properties',None)
-        if properties is None:
-            cust_properties = definitions.get('customFields',{}).get('properties',{})
-            prop_properties = definitions.get('property',{}).get('properties',{})
-            properties = self.__simpleDeepMerge__(cust_properties,prop_properties)
-        if properties is None or properties == {}:
-            raise AttributeError("Looking for properties of definition or of schema but could not find one")
-        return properties
     
     def __setField__(self,completePathList:list=None,fieldGroup:dict=None,newField:str=None,obj:dict=None)->dict:
         """
@@ -2336,7 +2332,7 @@ class FieldGroupManager:
     def removeField(self,path:str)->dict:
         """
         Remove a field from the definition based on the path provided.
-        NOTE: A path that is used cannot be removed from a schema or field group.
+        NOTE: A path that has received data cannot be removed from a schema or field group.
         Argument:
             path : REQUIRED : The path to be removed from the definition.
         """
@@ -2361,8 +2357,8 @@ class FieldGroupManager:
         Arguments:
             typed : OPTIONAL : If you want the type associated with the field group to be given. 
         """
-        properties = self.__getProperties__(self.fieldGroup)
-        data = self.__transformationDict__(properties,typed)
+        definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
+        data = self.__transformationDict__(definition,typed)
         return data
 
     def to_dataframe(self,save:bool=False,queryPath:bool=False)->pd.DataFrame:
@@ -2373,8 +2369,8 @@ class FieldGroupManager:
                 save as csv with the title used. Not title, used "unknown_fieldGroup_" + timestamp.
             queryPath : OPTIONAL : If you want to have the query path to be used.
         """
-        properties = self.__getProperties__(self.fieldGroup)
-        data = self.__transformationDF__(properties,queryPath=queryPath)
+        definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
+        data = self.__transformationDF__(definition,queryPath=queryPath)
         df = pd.DataFrame(data)
         if save:
             title = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}.csv')
@@ -2565,7 +2561,7 @@ class SchemaManager:
         """
         Add a field groups to field Group object and the schema. 
         Possible to add it to fieldGroupsManagers attribute.
-        return the specific FieldGroup Managerr
+        return the specific FieldGroup Manager
         Arguments:
             fieldGroup : REQUIRED : The fieldGroup ID or the dictionary definition connecting to the API.
                 if a fieldGroup ID is provided, you should have added a schemaAPI previously.

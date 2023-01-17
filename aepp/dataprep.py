@@ -298,14 +298,20 @@ class DataPrep:
         return res
 
     def getMappingSet(
-        self, mappingSetId: str = None, save: bool = False,saveMappingRules: bool = False, **kwargs
+            self, 
+            mappingSetId: str = None,
+            save: bool = False,
+            saveMappingRules: bool = False, 
+            mappingRulesOnly: bool = False,
+            **kwargs
     ) -> dict:
         """
         Get a specific mappingSet by its ID.
         Argument:
             mappingSetId : REQUIRED : mappingSet ID to be retrieved.
-            save : OPTIONAL : save your mapping set to a JSON file.
-            saveMappingRules : OPTIONAL : save your mapping rules.
+            save : OPTIONAL : save your mapping set defintion in a JSON file.
+            saveMappingRules : OPTIONAL : save your mapping rules only in a JSON file
+            mappingRulesOnly : OPTIONAL : If set to True, return only the mapping rules.
         optional kwargs:
             encoding : possible to set encoding for the file.
         """
@@ -331,6 +337,9 @@ class DataPrep:
                 type_file="json",
                 encoding=kwargs.get("encoding", "utf-8"),
             )
+        if mappingRulesOnly:
+            mappingRules = self.cleanMappingRules(res)
+            return mappingRules
         return res
 
     def deleteMappingSet(self, mappingSetId: str = None) -> dict:
@@ -349,21 +358,22 @@ class DataPrep:
 
     def createMappingSet(
         self,
-        mappingSet: dict = None,
         schemaId: str = None,
         mappingList: list = None,
         validate: bool = False,
         verbose: bool = False,
+        mappingSet: dict = None,
     ) -> dict:
         """
         Create a mapping set.
         Arguments:
-            mappingSet : REQUIRED : A dictionary that creates the mapping info.
-                see info on https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Mappings/createMappingSetUsingPOST
-            if you do not provide a dictionary for mapping set creation, you can pass the following params:
             schemaId : OPTIONAL : schemaId to map to.
             mappingList: OPTIONAL : List of mapping to set.
             validate : OPTIONAL : Validate the mapping.
+        if you want to provide a dictionary for mapping set creation, you can pass the following params:
+            mappingSet : REQUIRED : A dictionary that creates the mapping info.
+                see info on https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Mappings/createMappingSetUsingPOST
+            
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createMappingSet")
