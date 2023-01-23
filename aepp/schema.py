@@ -1988,7 +1988,6 @@ class FieldGroupManager:
         for key in mydict:
             if type(mydict[key]) == dict:
                 if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys():
-                    print(key)
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
                         if key != "property" and key != "customFields":
@@ -1998,7 +1997,6 @@ class FieldGroupManager:
                         else:
                             self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary)
                 elif mydict[key].get('type') == 'array':
-                    print(key)
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
                         dictionary[key] = [{}]

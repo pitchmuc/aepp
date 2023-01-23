@@ -2,14 +2,12 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
-## version 0.2.3
+## version 0.2.4
 * Supporting out of the box schema and field groups for `SchemaManager` & `FieldGroupManager`
 * fix `FlowManager` instanciation when no update available for a mapping.
 * adding a parameter (`mappingRulesOnly`) to extract only the rule out of a mappingSet.\
-Patch:
 * adding querypath output for dataframe in `FieldGroupManager`
 * support `property` and `customFields` having the same object construction
-* Fix shipping issue on first patch that duplicated the number of file in the library.
 
 ## version 0.2.2
 
