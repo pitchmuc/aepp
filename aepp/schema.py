@@ -1987,15 +1987,18 @@ class FieldGroupManager:
             dictionary = dictionary
         for key in mydict:
             if type(mydict[key]) == dict:
-                if mydict[key].get('type') == 'object' and 'properties' in mydict[key].keys():
+                if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys():
+                    print(key)
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
                         if key != "property" and key != "customFields":
-                            dictionary[key] = {}
+                            if key not in dictionary.keys():
+                                dictionary[key] = {}
                             self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary[key])
                         else:
                             self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary)
                 elif mydict[key].get('type') == 'array':
+                    print(key)
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
                         dictionary[key] = [{}]
@@ -2040,8 +2043,8 @@ class FieldGroupManager:
                     if tmp_path is not None:
                         dictionary["path"].append(tmp_path)
                         dictionary["type"].append(f"{mydict[key].get('type')}")
-                    if queryPath:
-                        dictionary["querypath"].append(self.__cleanPath__(tmp_path))
+                        if queryPath:
+                            dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
                         self.__transformationDF__(properties,dictionary,tmp_path,queryPath)
@@ -2054,14 +2057,14 @@ class FieldGroupManager:
                             tmp_path = f"{path}.{key}[]{{}}"
                         dictionary["path"].append(tmp_path)
                         dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
-                        if queryPath:
+                        if queryPath and tmp_path is not None:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath)
                     else:
                         finalpath = f"{path}.{key}"
                         dictionary["path"].append(finalpath)
                         dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
-                        if queryPath:
+                        if queryPath and finalpath is not None:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
                 else:
                     if path is not None:
@@ -2070,7 +2073,7 @@ class FieldGroupManager:
                         finalpath = f"{key}"
                     dictionary["path"].append(finalpath)
                     dictionary["type"].append(mydict[key].get('type','object'))
-                    if queryPath:
+                    if queryPath and finalpath is not None:
                         dictionary["querypath"].append(self.__cleanPath__(finalpath))
         return dictionary
     
