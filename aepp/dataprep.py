@@ -171,7 +171,7 @@ class DataPrep:
         res = self.connector.getData(self.endpoint + path, params=params)
         return res
 
-    def copyMapping(
+    def copyMappingRules(
         self, mapping: Union[dict, list] = None, tenantId: str = None
     ) -> list:
         """
@@ -216,7 +216,7 @@ class DataPrep:
                 print("Couldn't find a mapping information to copy")
                 return None
 
-    def cleanMapping(self, mapping: Union[dict, list] = None
+    def cleanMappingRules(self, mapping: Union[dict, list] = None
     ) -> list:
         """
         create a clean copy of the mapping based on the mapping list information passed.
@@ -332,8 +332,8 @@ class DataPrep:
         if saveMappingRules:
             aepp.saveFile(
                 module="dataPrep",
-                file=self.cleanMapping(res),
-                filename=f"mapping_{res['id']}",
+                file=self.cleanMappingRules(res),
+                filename=f"mapping_rules_{res['id']}",
                 type_file="json",
                 encoding=kwargs.get("encoding", "utf-8"),
             )
@@ -405,18 +405,18 @@ class DataPrep:
         return res
 
     def updateMappingSet(
-        self, mappingSetId: str = None, mapping: list = None,outputSchema:dict=None,
+        self, mappingSetId: str = None, mappingRules: list = None,outputSchema:dict=None,
     ) -> dict:
         """
         Update a specific Mapping set based on its Id.
         Arguments:
             mappingSetId : REQUIRED : mapping Id to be updated
-            mapping : REQUIRED : the list of different rule to map
+            mappingRules : REQUIRED : the list of different rule to map
             outputSchema : OPTIONAL : If you wish to change the destination output schema. By default taking the same one.
         """
         if mappingSetId is None:
             raise ValueError("Require a mappingSet ID")
-        if mapping is None:
+        if mappingRules is None:
             raise ValueError("Require a list of mappings ")
         if self.loggingEnabled:
             self.logger.debug(f"Starting updateMappingSet")
@@ -428,7 +428,7 @@ class DataPrep:
             }
         data = {
             "outputSchema":outputSchema,
-            "mappings":mapping
+            "mappings":mappingRules
         }
         res = self.connector.putData(self.endpoint + path, data=data)
         return res

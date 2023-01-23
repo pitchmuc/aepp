@@ -949,6 +949,7 @@ class FlowManager:
                 self.flowMapping['updatedAt'] = None
             else:
                 self.flowMapping['updatedAt'] = time.ctime(mappingInfo.get('updatedAt',0)/1000)
+            self.getMapping = lambda : self.mapperAPI.getMappingSet(self.flowMapping['id'])
 
     def __repr__(self)->str:
         data = {

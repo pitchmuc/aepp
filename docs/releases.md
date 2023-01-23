@@ -10,6 +10,8 @@ This page list all of the changes that came during the different release of the 
 * support `property` and `customFields` having the same object construction\
 PATCH : 
 * moving from `customField` to `property` per default.
+* adding method `getMapping` to get detail on mappings from FlowManager
+* changing methods to extract MappingSet rules by `cleanMappingRules` and `copyMappingRules`
 
 ## version 0.2.2
 
