@@ -7,7 +7,9 @@ This page list all of the changes that came during the different release of the 
 * fix `FlowManager` instanciation when no update available for a mapping.
 * adding a parameter (`mappingRulesOnly`) to extract only the rule out of a mappingSet.\
 * adding querypath output for dataframe in `FieldGroupManager`
-* support `property` and `customFields` having the same object construction
+* support `property` and `customFields` having the same object construction\
+PATCH : 
+* moving from `customField` to `property` per default.
 
 ## version 0.2.2
 

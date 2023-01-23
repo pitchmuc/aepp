@@ -2084,6 +2084,7 @@ class FieldGroupManager:
             newField : name of the new field to create
             obj : the object associated with the new field
         """
+        foundFlag = False ## Flag to set if the operation has been realized or not
         lastField = completePathList[-1]
         fieldGroup = deepcopy(fieldGroup)
         for key in fieldGroup:
@@ -2091,20 +2092,22 @@ class FieldGroupManager:
             if type(level) == dict and key in completePathList:
                 if 'properties' in level.keys():
                     if key != lastField:
-                        res = self.__setField__(completePathList,fieldGroup[key]['properties'],newField,obj)
+                        res,foundFlag = self.__setField__(completePathList,fieldGroup[key]['properties'],newField,obj)
                         fieldGroup[key]['properties'] = res
                     else:
                         fieldGroup[key]['properties'][newField] = obj
-                        return fieldGroup
+                        foundFlag = True
+                        return fieldGroup,foundFlag
                 elif 'items' in level.keys():
                     if 'properties' in  fieldGroup[key].get('items',{}).keys():
                         if key != lastField:
-                            res = self.__setField__(completePathList,fieldGroup[key]['items']['properties'],newField,obj)
+                            res, foundFlag = self.__setField__(completePathList,fieldGroup[key]['items']['properties'],newField,obj)
                             fieldGroup[key]['items']['properties'] = res
                         else:
                             fieldGroup[key]['items']['properties'][newField] = obj
-                            return fieldGroup
-        return fieldGroup
+                            foundFlag = True
+                            return fieldGroup,foundFlag
+        return fieldGroup,foundFlag
     
     def __removeKey__(self,completePathList:list=None,fieldGroup:dict=None)->dict:
         """
@@ -2207,43 +2210,44 @@ class FieldGroupManager:
         return data
 
         
-    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None)->None:
+    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,**kwargs)->None:
         """
         Return the operation to be used on the field group with the Patch method (patchFieldGroup), based on the element passed in argument.
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field.
-                In case of array of objects, use the "[*]" notation
+                In case of array of objects, use the "[]{}" notation
             dataType : REQUIRED : the field type you want to create
                 A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
-                Example : {'field1:'string','field2':'double'}
+                Example : {'field1':'string','field2':'double'}
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
+        possible kwargs:
+            defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
         """
         typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
         if dataType not in typeTyped:
             raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object"')
         if dataType == 'object' and objectComponents is None:
-            raise AttributeError('Require a dictionary providing the object component')
-        
+            raise AttributeError('Require a dictionary providing the object component')       
         if title is None:
             title = self.__cleanPath__(path.split('.').pop())
         if title == 'items' or title == 'properties':
             raise Exception('"item" and "properties" are 2 reserved keywords')
-        pathSplit = self.__cleanPath__(path).split('.')
+        pathSplit = path.split('.')
         if pathSplit[0] == '':
             del pathSplit[0]
-        completePath = ['definitions','customFields']
+        completePath = ['definitions',kwargs.get('defaultPath','property')]
         for p in pathSplit:
             if '[]{}' in p:
+                completePath.append(self.__cleanPath__(p))
                 completePath.append('items')
                 completePath.append('properties')
-                completePath.append(self.__cleanPath__(p))
             else:
-                completePath.append('properties')
                 completePath.append(self.__cleanPath__(p))
+                completePath.append('properties')
         finalPath = '/' + '/'.join(completePath)
         operation = [{
             "op" : "add",
@@ -2270,9 +2274,10 @@ class FieldGroupManager:
                 operation[0]['value']['items']['meta:enum'] = enumValues
         return operation
 
-    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None)->dict:
+    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,**kwargs)->dict:
         """
-        Add the field to the existing fieldgroup definition
+        Add the field to the existing fieldgroup definition.
+        Returns False when the field could not be inserted.
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
                 In case of array of objects, use the "[*]" notation
@@ -2284,6 +2289,8 @@ class FieldGroupManager:
                 Example : {'field1:'string','field2':'double'}
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
+        possible kwargs:
+            defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
         """
         if path is None:
             raise ValueError("path must provided")
@@ -2325,10 +2332,13 @@ class FieldGroupManager:
             else:
                 obj['items']['enum'] = [enumValues.keys()]
                 obj['items']['meta:enum'] = enumValues
-        completePath:list[str] = ['customFields'] + pathSplit
-        customFields = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
-        self.fieldGroup['definitions'] = customFields
-        return self.fieldGroup
+        completePath:list[str] = [kwargs.get('defaultPath','property')] + pathSplit
+        customFields,foundFlag = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
+        if foundFlag == False:
+            return False
+        else:
+            self.fieldGroup['definitions'] = customFields
+            return self.fieldGroup
         
     def removeField(self,path:str)->dict:
         """
