@@ -8,6 +8,7 @@ import time
 import logging
 import pandas as pd
 import json
+import re
 
 json_extend = [
     {
@@ -52,6 +53,7 @@ class Schema:
         "profile": "https://ns.adobe.com/xdm/context/profile",
     }
     PATCH_OBJ = [{"op": "add", "path": "/meta:immutableTags-", "value": "union"}]
+    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"]
 
     def __init__(
         self,
@@ -1547,6 +1549,7 @@ class Schema:
 
     def createDescriptor(
         self,
+        descriptorObj:dict = None,
         desc_type: str = "xdm:descriptorIdentity",
         sourceSchema: str = None,
         sourceProperty: str = None,
@@ -1557,6 +1560,7 @@ class Schema:
         """
         Create a descriptor attached to a specific schema.
         Arguments:
+            descriptorObj : REQUIRED : If you wish to pass the whole object.
             desc_type : REQUIRED : the type of descriptor to create.(default Identity)
             sourceSchema : REQUIRED : the schema attached to your identity ()
             sourceProperty : REQUIRED : the path to the field
@@ -1567,21 +1571,25 @@ class Schema:
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createDescriptor")
-        path = f"/{self.container}/descriptors"
-        if sourceSchema is None or sourceProperty is None:
-            raise Exception("Missing required arguments.")
-        obj = {
-            "@type": desc_type,
-            "xdm:sourceSchema": sourceSchema,
-            "xdm:sourceVersion": kwargs.get("version", 1),
-            "xdm:sourceProperty": sourceProperty,
-        }
-        if namespace is not None:
-            obj["xdm:namespace"] = namespace
-        if primary is not None:
-            obj["xdm:isPrimary"] = primary
-        res = self.connector.postData(
-            self.endpoint + path, data=obj)
+        path = f"/tenant/descriptors"
+        if descriptorObj:
+            res = self.connector.postData(
+            self.endpoint + path, data=descriptorObj)
+        else:
+            if sourceSchema is None or sourceProperty is None:
+                raise Exception("Missing required arguments.")
+            obj = {
+                "@type": desc_type,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceVersion": kwargs.get("version", 1),
+                "xdm:sourceProperty": sourceProperty,
+            }
+            if namespace is not None:
+                obj["xdm:namespace"] = namespace
+            if primary is not None:
+                obj["xdm:isPrimary"] = primary
+            res = self.connector.postData(
+                self.endpoint + path, data=obj)
         return res
 
     def deleteDescriptor(self, descriptor_id: str = None) -> str:
@@ -1793,7 +1801,6 @@ class FieldGroupManager:
         else:
             self.schemaAPI = Schema(config_object=config_object)
         self.tenantId = f"_{self.schemaAPI.getTenantId()}"
-        self.fieldGroupDict = lambda self : self.to_dict()
         if fieldGroup is not None:
             if type(fieldGroup) == dict:
                 if fieldGroup.get("meta:resourceType",None) == "mixins":
@@ -1837,9 +1844,14 @@ class FieldGroupManager:
                         self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/profile")
                     elif "record" in cls or "https://ns.adobe.com/xdm/data/record" == cls:
                         self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/profile")
+        self.__setAttributes__(self.fieldGroup)
         if title is not None:
             self.fieldGroup['title'] = title
-        self.title = self.fieldGroup.get('title',f'unknown:{fieldGroup}')
+        
+    
+    def __setAttributes__(self,fieldGroup:dict)->None:
+        uniqueId = fieldGroup.get('id',str(int(time.time()*100))[-7:])
+        self.title = self.fieldGroup.get('title',f'unknown:{uniqueId}')
         if self.fieldGroup.get('$id',False):
             self.id = self.fieldGroup.get('$id')
         if self.fieldGroup.get('meta:altId',False):
@@ -1885,6 +1897,13 @@ class FieldGroupManager:
         path = self.__cleanPath__(path)
         pathSplit = path.split('.')
         key = pathSplit[0]
+        if 'customFields' in mydict.keys():
+            level = self.__accessorAlgo__(mydict.get('customFields',{}).get('properties',{}),'.'.join(pathSplit))
+            if 'error' not in level.keys():
+                return level
+        if 'property' in mydict.keys() :
+            level = self.__accessorAlgo__(mydict.get('property',{}).get('properties',{}),'.'.join(pathSplit))
+            return level
         level = mydict.get(key,None)
         if level is not None:
             if level["type"] == "object":
@@ -1906,14 +1925,17 @@ class FieldGroupManager:
                 return mydict
             return {'error':f'cannot find the key "{key}"'}
 
-    def __searchAlgo__(self,mydict:dict,string:str=None,partialMatch:bool=False,caseSensitive:bool=True,results:list=None,path:str=None)->list:
+    def __searchAlgo__(self,mydict:dict,string:str=None,partialMatch:bool=False,caseSensitive:bool=False,results:list=None,path:str=None,completePath:str=None)->list:
         """
         recursive method to retrieve all the elements.
         Arguments:
-            mydict : REQUIRED : The dictionary containing the elements to fetch (in "properties" key)
+            mydict : REQUIRED : The dictionary containing the elements to fetch (start with fieldGroup definition)
             string : the string to look for with dot notation.
             partialMatch : if you want to use partial match
             caseSensitive : to see if we should lower case everything
+            results : the list of results to return
+            path : the path currently set
+            completePath : the complete path from the start.
         """
         finalPath = None
         if results is None:
@@ -1935,26 +1957,34 @@ class FieldGroupManager:
                     value = deepcopy(mydict[key])
                     value['path'] = finalPath
                     value['queryPath'] = self.__cleanPath__(finalPath)
+                    value['completePath'] = completePath + "/" + key
                     results.append({key:value})
             else:
                 if caseSensitive == False:
-                    if key == keyComp:
+                    if keyComp == string:
                         finalPath = path + f".{key}"
                         value = deepcopy(mydict[key])
                         value['path'] = finalPath
                         value['queryPath'] = self.__cleanPath__(finalPath)
+                        value['completePath'] = completePath + "/" + key
                         results.append({key:value})
                 else:
-                    if key == string:
+                    if keyComp == string:
                         finalPath = path + f".{key}"
                         value = deepcopy(mydict[key])
                         value['path'] = finalPath
                         value['queryPath'] = self.__cleanPath__(finalPath)
+                        value['completePath'] = completePath + "/" + key
                         results.append({key:value})
             ## loop through keys
-            if mydict[key].get("type") == "object":
+            if mydict[key].get("type") == "object" or 'properties' in mydict[key].keys():
                 levelProperties = mydict[key].get('properties',{})
                 if levelProperties != dict():
+                    if completePath is None:
+                        tmp_completePath = f"/definitions/{key}"
+                    else:
+                        tmp_completePath = f"{completePath}/{key}"
+                    tmp_completePath += f"/properties"
                     if path is None:
                         if key != "property" and key != "customFields" :
                             tmp_path = key
@@ -1962,19 +1992,58 @@ class FieldGroupManager:
                             tmp_path = None
                     else:
                         tmp_path = f"{path}.{key}"
-                    results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path)
+                    results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path,tmp_completePath)
             elif mydict[key].get("type") == "array":
                 levelProperties = mydict[key]['items'].get('properties',{})
                 if levelProperties != dict():
+                    if completePath is None:
+                        tmp_completePath = f"/definitions/{key}"
+                    else:
+                        tmp_completePath = f"{completePath}/{key}"
+                    tmp_completePath += f"/items/properties"
                     if levelProperties is not None:
-                        if path is None: 
+                        if path is None:
                             if key != "property" and key != "customFields":
                                 tmp_path = key
                             else:
                                 tmp_path = None
                         else:
                             tmp_path = f"{path}.{key}[]{{}}"
-                        results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path)
+                        results = self.__searchAlgo__(levelProperties,string,partialMatch,caseSensitive,results,tmp_path,tmp_completePath)
+        return results
+
+    def __searchAttrAlgo__(self,mydict:dict,key:str=None,value:str=None,regex:bool=False, originalField:str=None, results:list=None)->list:
+        """
+        recursive method to retrieve all the elements.
+        Arguments:
+            mydict : REQUIRED : The dictionary containing the elements to fetch (start with fieldGroup definition)
+            key : key of the attribute
+            value : the value of that key to look for.
+            regex : if the regex match should be used.
+            originalField : the key used to dig deeper.
+            results : the list of results to return
+        """
+        if results is None:
+            results=[]
+        for k in mydict:
+            if key == k:
+                if regex:
+                    checkValue = deepcopy(mydict[k])
+                    if type(checkValue) == list or type(checkValue) == dict:
+                        checkValue = json.dumps(checkValue)
+                    if re.match(value,checkValue):
+                        if originalField is not None and originalField != 'property' and originalField != 'properties' and originalField != 'items':
+                            results.append(originalField)
+                else:
+                    if mydict[k] == value:
+                        if originalField is not None and originalField != 'property' and originalField != 'properties' and originalField != 'items':
+                            results.append(originalField)
+            ## recursive action for objects and array
+            if type(mydict[k]) == dict:
+                if k == "properties" or k == 'items':
+                    self.__searchAttrAlgo__(mydict[k],key,value,regex,originalField,results)
+                else:
+                    self.__searchAttrAlgo__(mydict[k],key,value,regex,k,results)
         return results
     
     def __transformationDict__(self,mydict:dict=None,typed:bool=False,dictionary:dict=None)->dict:
@@ -2196,18 +2265,61 @@ class FieldGroupManager:
         data = self.__accessorAlgo__(definition,path)
         return data
 
-    def searchField(self,string:str,partialMatch:bool=True,caseSensitive:bool=True)->list:
+    def searchField(self,string:str,partialMatch:bool=True,caseSensitive:bool=False)->list:
         """
         Search for a field name after the string passed.
         By default, partial match is enabled and allow 
         Arguments:
-            string : REQUIRED : the string to look for
-            partialMatch : OPTIONAL : if you want to look for complete string or not.
-            caseSensitive : OPTIONAL : if you want to compare with case sensitivity or not.
+            string : REQUIRED : the string to look for for one of the field
+            partialMatch : OPTIONAL : if you want to look for complete string or not. (default True)
+            caseSensitive : OPTIONAL : if you want to compare with case sensitivity or not. (default False)
         """
         definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
         data = self.__searchAlgo__(definition,string,partialMatch,caseSensitive)
         return data
+    
+    def searchAttribute(self,attr:dict=None,regex:bool=False,extendedResults:bool=False,joinType:str='outer', **kwargs)->list:
+        """
+        Search for an attribute and its value based on the keyword
+        Arguments:
+            attr : REQUIRED : a dictionary of key value pair(s).  Example : {"type" : "string"} 
+                NOTE : If you wish to have the array type on top of the array results, use the key "arrayType". Example : {"type" : "array","arrayType":"string"}
+                        This will automatically set the joinType to "inner". Use type for normal search. 
+            regex : OPTIONAL : if you want your value of your key to be matched via regex.
+                Note that regex will turn every comparison value to string for a "match" comparison.
+            extendedResults : OPTIONAL : If you want to have the result to contain all details of these fields. (default False)
+            joinType : OPTIONAL : If you pass multiple key value pairs, how do you want to get the match.
+                outer : provide the fields if any of the key value pair is matched.
+                inner : provide the fields if all the key value pair matched.
+        """
+        resultsDict = {f"{key}":[] for key in attr.keys()}
+        if 'arrayType' in attr.keys(): ## forcing inner join
+            joinType = 'inner'
+        definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
+        for key in attr:
+            if key == "arrayType":
+                resultsDict[key] += self.__searchAttrAlgo__(definition,"type",attr[key],regex)
+            else:
+                resultsDict[key] += self.__searchAttrAlgo__(definition,key,attr[key],regex)
+        result_combi = []
+        if joinType == 'outer':
+            for key in resultsDict:
+                result_combi += resultsDict[key]
+            result_combi = set(result_combi)
+        elif joinType == 'inner':
+            result_combi = set()
+            for key in resultsDict:
+                resultsDict[key] = set(resultsDict[key])
+                if len(result_combi) == 0:
+                    result_combi = resultsDict[key]
+                else:
+                    result_combi = result_combi.intersection(resultsDict[key]) 
+        if extendedResults:
+            result_extended = []
+            for field in result_combi:
+                result_extended += self.searchField(field,partialMatch=False,caseSensitive=True)
+            return result_extended
+        return list(result_combi)
 
         
     def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,**kwargs)->None:
@@ -2400,11 +2512,13 @@ class FieldGroupManager:
         Arguments:
             operation : REQUIRED : The list of operation to realise
         """
-        if operations is None or operations != list():
+        if operations is None or type(operations) != list:
             raise ValueError('Require a list of operations')
         if self.schemaAPI is None:
             Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.patchFieldGroup(self.id,operations)
+        self.fieldGroup = res
+        self.__setAttributes__(self.fieldGroup)
         return res
     
     def updateFieldGroup(self)->dict:
@@ -2414,6 +2528,8 @@ class FieldGroupManager:
         if self.schemaAPI is None:
             Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.putFieldGroup(self.id,self.to_xdm())
+        self.fieldGroup = res
+        self.__setAttributes__(self.fieldGroup)
         return res
     
     def createFieldGroup(self)->dict:
@@ -2430,6 +2546,8 @@ class SchemaManager:
     """
     A class to handle the schema management.
     """
+    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"]
+
     def __init__(self,schema:Union[str,dict],
                 fieldGroupIds:list=None,
                 schemaAPI:'Schema'=None,
@@ -2458,13 +2576,14 @@ class SchemaManager:
             self.schemaAPI = Schema(config_object=config_object)
         if type(schema) == dict:
             self.schema = schema
+            self.__setAttributes__(self.schema)
             allOf = self.schema.get("allOf",[])
             if len(allOf) == 0:
                 Warning("You have passed a schema with -full attribute, you should pass one referencing the fieldGroups.\n Using the meta:extends reference if possible")
-                self.fieldGroupIds = [ref for ref in self.schema['meta:extends'] if ('/mixins/' in ref or '/experience/' in ref or '/context/' in ref) and (ref != "https://ns.adobe.com/xdm/context/experienceevent" and ref != "https://ns.adobe.com/xdm/context/profile")]
-                self.schema['allOf'] = [{"$ref":ref} for ref in self.schema['meta:extends'] if ('/mixins/' in ref or 'xdm/class' in ref or 'xdm/context/' in ref) and (ref != "https://ns.adobe.com/xdm/context/experienceevent" and ref != "https://ns.adobe.com/xdm/context/profile")]
+                self.fieldGroupIds = [ref for ref in self.schema['meta:extends'] if ('/mixins/' in ref or '/experience/' in ref or '/context/' in ref) and ref != self.classId]
+                self.schema['allOf'] = [{"$ref":ref} for ref in self.schema['meta:extends'] if ('/mixins/' in ref or 'xdm/class' in ref or 'xdm/context/' in ref) and ref != self.classId]
             else:
-                self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and (obj['$ref'] != "https://ns.adobe.com/xdm/context/experienceevent" and obj['$ref'] != "https://ns.adobe.com/xdm/context/profile")]
+                self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and obj['$ref'] != self.classId]
             if self.schemaAPI is None:
                 Warning("No schema instance has been passed or config file imported.\n Aborting the creation of field Group Manager")
             else:
@@ -2478,10 +2597,10 @@ class SchemaManager:
             if self.schemaAPI is None:
                 Warning("No schema instance has been passed or config file imported.\n Aborting the retrieveal of the Schema Definition")
             else:
-                definition = self.schemaAPI.getSchema(schema,full=False)
-                self.schema = definition
+                self.schema = self.schemaAPI.getSchema(schema,full=False)
+                self.__setAttributes__(self.schema)
                 allOf = self.schema.get("allOf",[])
-                self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and (obj['$ref'] != "https://ns.adobe.com/xdm/context/experienceevent" and obj['$ref'] != "https://ns.adobe.com/xdm/context/profile")]
+                self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and obj['$ref'] != self.classId]
                 if self.schemaAPI is None:
                     Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                 else:
@@ -2493,7 +2612,6 @@ class SchemaManager:
                         self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition))
         elif schema is None:
             self.schema = {
-                    "type": "object",
                     "title": None,
                     "description": "power by aepp",
                     "allOf": [
@@ -2517,10 +2635,22 @@ class SchemaManager:
                 for fg in fieldGroupIds:
                     self.fieldGroupIds.append(fg.get('$id'))
                     self.fieldGroupsManagers.append(FieldGroupManager(fg))
-        if self.schema.get('title'):
-            self.title = self.schema.get('title')
-        self.fieldGroupTitles= [fg.title for fg in self.fieldGroupsManagers]
         
+        self.fieldGroupTitles= [fg.title for fg in self.fieldGroupsManagers]
+    
+    def __setAttributes__(self,schemaDef:dict)->None:
+        """
+        Set some basic attributes
+        """
+        if schemaDef.get('title'):
+            self.title = schemaDef.get('title')
+        if schemaDef.get('$id'):
+            self.id = schemaDef.get('$id')
+        if schemaDef.get('meta:altId'):
+            self.altId = schemaDef.get('meta:altId')
+        if schemaDef.get('meta:class'):
+            self.classId = schemaDef.get('meta:class')
+
     def __str__(self)->str:
         return json.dumps(self.schema,indent=2)
     
@@ -2568,7 +2698,29 @@ class SchemaManager:
             myResults += res
         return myResults
     
-    def addFieldGroups(self,fieldGroup:Union[str,dict]=None,fgManager:bool=False)->Union[None,'FieldGroupManager']:
+    def searchAttribute(self,attr:dict=None,regex:bool=False,extendedResults:bool=False,joinType:str='outer', **kwargs)->list:
+        """
+        Search for an attribute and its value based on the keyword
+        Arguments:
+            attr : REQUIRED : a dictionary of key value pair(s).  Example : {"type" : "string"} 
+                NOTE : If you wish to have the array type, use the key "arrayType". Example : {"type" : "array","arrayType":"string"} 
+            regex : OPTIONAL : if you want your value of your key to be matched via regex.
+                Note that regex will turn every comparison value to string for a "match" comparison.
+            extendedResults : OPTIONAL : If you want to have the result to contain all details of these fields. (default False)
+            joinType : OPTIONAL : If you pass multiple key value pairs, how do you want to get the match.
+                outer : provide the fields if any of the key value pair is matched.
+                inner : provide the fields if all the key value pair matched.
+        """
+        myResults = []
+        for fgmanager in self.fieldGroupsManagers:
+            res = fgmanager.searchAttribute(attr=attr,regex=regex,extendedResults=extendedResults,joinType=joinType)
+            if extendedResults:
+                for r in res:
+                    r['fieldGroup'] = fgmanager.title
+            myResults += res
+        return myResults
+    
+    def addFieldGroup(self,fieldGroup:Union[str,dict]=None,fgManager:bool=False)->Union[None,'FieldGroupManager']:
         """
         Add a field groups to field Group object and the schema. 
         Possible to add it to fieldGroupsManagers attribute.
@@ -2581,20 +2733,24 @@ class SchemaManager:
         if type(fieldGroup) == dict:
             if fieldGroup.get('$id') not in [fg for fg in self.fieldGroupIds]:
                 self.fieldGroupIds.append(fieldGroup['$id'])
+                self.fieldGroupTitles.append(fieldGroup['title'])
+                self.schema['allOf'].append({'$ref':fieldGroup['$id']})
             if fgManager:
                 if fieldGroup.get('$id') not in [fg.id for fg in self.fieldGroupsManagers]:
-                    fbManager = FieldGroupManager(tenantId=self.schema.get('meta:tenantNamespace','unknown'),fieldGroup=fieldGroup)
+                    fbManager = FieldGroupManager(fieldGroup=fieldGroup)
                     self.fieldGroupsManagers.append(fbManager)
                     return fbManager
         elif type(fieldGroup) == str:
             if fieldGroup not in [fg for fg in self.fieldGroupIds]:
                 self.fieldGroupIds.append(fieldGroup)
+                self.schema['allOf'].append({'$ref':fieldGroup['$id']})
             if fgManager:
                 if self.schemaAPI is None:
                     raise AttributeError('Missing the schema API attribute. Please use the addSchemaAPI method to add it.')
                 else:
                     definition = self.schemaAPI.getFieldGroup(fieldGroup)
                     fbManager = FieldGroupManager(tenantId=definition.get('meta:tenantNamespace','unknown'),fieldGroup=definition)
+                    self.fieldGroupTitles.append(fbManager.title)
                     self.fieldGroupsManagers.append(fbManager)
                     return fbManager
     
@@ -2617,6 +2773,7 @@ class SchemaManager:
             name : REQUIRED : a string to be used for the title of the FieldGroup
         """
         self.schema['title'] = name
+        self.title = name
         return None
 
     def to_dataframe(self,save:bool=False,queryPath: bool = False)->pd.DataFrame:
@@ -2646,3 +2803,109 @@ class SchemaManager:
         for mydict in list_dict:
             result = self.__simpleDeepMerge__(result,mydict)
         return result
+
+    def createSchema(self)->dict:
+        """
+        Send a createSchema request to AEP to create the schema.
+        It removes the "$id" if one was provided to avoid overriding existing ID.
+        """
+        if self.schemaAPI is None:
+            raise Exception("Require a Schema instance to connect to the API")
+        res = self.schemaAPI.createSchema(self.schema)
+        self.schema = res
+        self.__setAttributes__(self.schema)
+        return res
+    
+    def createDescriptorOperation(self,descType:str=None,
+                                completePath:str=None,
+                                identityNSCode:str=None,
+                                identityPrimary:bool=False,
+                                alternateTitle:str=None,
+                                alternateDescription:str=None,
+                                lookupSchema:str=None,
+                                targetCompletePath:str=None,
+                                )->dict:
+        """
+        Create a descriptor object to be used in the createDescriptor.
+        You can see the type of descriptor available in the DESCRIPTOR_TYPES attribute and also on the official documentation:
+        https://experienceleague.adobe.com/docs/experience-platform/xdm/api/descriptors.html?lang=en#appendix
+        Arguments:
+            descType : REQUIRED : The type to be used.
+                it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"
+            completePath : REQUIRED : the complete path of the field you want to attach a descriptor.
+            identityNSCode : OPTIONAL : if the descriptor is identity related, the namespace CODE  used.
+            identityPrimary : OPTIONAL : If the primary descriptor added is the primary identity.
+            alternateTitle : OPTIONAL : if the descriptor is alternateDisplay, the alternate title to be used.
+            alternateDescription : OPTIONAL if you wish to add a new description.
+            lookupSchema : OPTIONAL : The schema ID for the lookup if the descriptor is for lookup setup
+            targetCompletePath : OPTIONAL : if you have the complete path for the field in the target lookup schema.
+        """
+        if descType not in self.DESCRIPTOR_TYPES:
+            raise Exception(f"The value provided ({descType}) is not supported by this method")
+        if completePath is None:
+            raise ValueError("Require a field complete path")
+        if descType == "xdm:descriptorIdentity":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:namespace": identityNSCode,
+                "xdm:property": "xdm:code",
+                "xdm:isPrimary": identityPrimary
+            }
+        elif descType == "xdm:alternateDisplayInfo":
+            if alternateTitle is None:
+                raise ValueError("Require an alternate title")
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:title": {
+                    "en_us": alternateTitle
+                    }
+                }
+            if alternateDescription is not None:
+                obj["xdm:description"] = {
+                    "en_us":alternateDescription
+                }
+        elif descType == "xdm:descriptorOneToOne":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema":self.id,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty":completePath,
+                "xdm:destinationSchema":lookupSchema,
+                "xdm:destinationVersion": 1,
+            }
+            if targetCompletePath is not None:
+                obj["xdm:destinationProperty"] = targetCompletePath
+        elif descType == "xdm:descriptorReferenceIdentity":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:identityNamespace": identityNSCode
+                }
+        elif descType == "xdm:descriptorDeprecated":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath
+            }
+        return obj
+    
+    def createDescriptor(self,descriptor:dict=None)->dict:
+        """
+        Create a descriptor attached to that class bsaed on the creatorDescriptor operation provided. 
+        Arguments:
+            descriptor : REQUIRED : The operation to add a descriptor to the schema.
+        """
+        if descriptor is None:
+            raise ValueError('Require an operation to be used')
+        res = self.schemaAPI.createDescriptor(descriptor)
+        return res
+    

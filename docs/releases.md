@@ -2,6 +2,15 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.2.5
+* adding the `completePath` attribute for search result of `searchField` method in `SchemaManager`
+* fix the `getField` method and support any field type.
+* adding the `updatePolicy` method in the flow
+* fixing typo on `pathFieldGroup` method for `FieldGroupManager`.
+* updating the field group will automatically update the local copy of the definition.
+* adding the searchAttribute for `SchemaManager` and `FieldGroupManager` class.
+* add a `createSchema` method from the `SchemaManager` class.
+
 ## version 0.2.4
 * Supporting out of the box schema and field groups for `SchemaManager` & `FieldGroupManager`
 * fix `FlowManager` instanciation when no update available for a mapping.

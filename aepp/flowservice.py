@@ -4,6 +4,7 @@ from copy import deepcopy
 import time,json
 import logging
 from dataclasses import dataclass
+from typing import Union
 
 @dataclass
 class _Data:
@@ -872,6 +873,36 @@ class FlowService:
         res: dict = self.connector.patchData(
             self.endpoint + path, headers=privateHeader, data=updateObj
         )
+        return res
+    
+    def updatePolicy(self,flowId:str=None, policies:Union[list,str]=None, operation:str="Replace")->dict:
+        """
+        By passing the policy IDs as a list, we update the Policies apply to this Flow.
+        Arguments:
+            flowId : REQUIRED : The Flow ID to be updated
+            policies : REQUIRED : The list of policies Id to add to the Flow
+                example of value: "/dulepolicy/marketingActions/06621fe3q-44t3-3zu4t-90c2-y653rt3hk4o499"
+            operation : OPTIONAL : By default "replace" the current policies. It can be an "add" operation.
+        """
+        if flowId is None:
+            raise ValueError("Require a Flow ID")
+        if policies is None:
+            raise ValueError("Require a list of policy ID")
+        if type(policies) == str:
+            policies = [policies]
+        if type(policies) != list:
+            raise TypeError("The policiy ID were not passed via a string or a list of string")
+        op = [
+            {
+                "op" : operation,
+                "path":"/policy",
+                "value":{
+                    "enforcementRefs":policies
+                }
+
+            }
+        ]
+        res = self.updateFlow(flowId=flowId, operation=op)
         return res
 
 
