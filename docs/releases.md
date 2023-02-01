@@ -9,7 +9,13 @@ This page list all of the changes that came during the different release of the 
 * fixing typo on `pathFieldGroup` method for `FieldGroupManager`.
 * updating the field group will automatically update the local copy of the definition.
 * adding the searchAttribute for `SchemaManager` and `FieldGroupManager` class.
-* add a `createSchema` method from the `SchemaManager` class.
+* add a `createSchema` method from the `SchemaManager` class.\
+Patch:
+* fix when root component where search via searchField and searchAttribute
+* fix when strings were passed to add Fieldgroup to SchemaManager
+* adding the `updateSchema` method in `SchemaManager` class.
+* adding a method to return all available default field groups (`getFieldGroupsGlobal`)
+* adding `output` param or `getSchemas` and `getFieldGroups` methods
 
 ## version 0.2.4
 * Supporting out of the box schema and field groups for `SchemaManager` & `FieldGroupManager`

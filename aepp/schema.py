@@ -205,7 +205,11 @@ class Schema:
         return res
 
     def getSchemas(
-        self, classFilter: str = None, excludeAdhoc: bool = False,**kwargs
+            self, 
+            classFilter: str = None,
+            excludeAdhoc: bool = False,
+            output: str = 'raw',
+            **kwargs
     ) -> list:
         """
         Returns the list of schemas retrieved for that instances in a "results" list.
@@ -216,6 +220,7 @@ class Schema:
                     https://ns.adobe.com/xdm/context/profile
                     https://ns.adobe.com/xdm/data/adhoc
             excludeAdhoc : OPTIONAL : exclude the adhoc schemas
+            output : OPTIONAL : either "raw" for a list or "df" for dataframe
         Possible kwargs:
             debug : if set to true, will print the result when error happens
             format : if set to "xed", returns the full JSON for each resource (default : "xed-id" -  short summary)
@@ -254,6 +259,9 @@ class Schema:
         self.data.schemas_altId = {
             schem["title"]: schem["meta:altId"] for schem in data
         }
+        if output == 'df':
+            df = pd.DataFrame(data)
+            return df
         return data
 
     def getSchema(
@@ -424,13 +432,13 @@ class Schema:
             self.endpoint + path, data=changes)
         return res
 
-    def putSchema(self, schemaId: str = None, changes: dict = None, **kwargs) -> dict:
+    def putSchema(self, schemaId: str = None, schemaDef: dict = None, **kwargs) -> dict:
         """
         A PUT request essentially re-writes the schema, therefore the request body must include all fields required to create (POST) a schema.
         This is especially useful when updating a lot of information in the schema at once.
         Arguments:
             schemaId : REQUIRED : $id or meta:altId
-            change : REQUIRED : dictionary of the new schema.
+            schemaDef : REQUIRED : dictionary of the new schema.
             It requires a allOf list that contains all the attributes that are required for creating a schema.
             #/Schemas/replace_schema
             More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
@@ -439,13 +447,12 @@ class Schema:
             raise Exception("Require an ID for the schema")
         if schemaId.startswith("https://"):
             from urllib import parse
-
             schemaId = parse.quote_plus(schemaId)
         if self.loggingEnabled:
             self.logger.debug(f"Starting putSchema")
         path = f"/{self.container}/schemas/{schemaId}"
         res = self.connector.putData(
-            self.endpoint + path, data=changes, headers=self.header
+            self.endpoint + path, data=schemaDef, headers=self.header
         )
         return res
 
@@ -855,37 +862,7 @@ class Schema:
         res = self.connector.deleteData(self.endpoint + path)
         return res
 
-    # def getMixins(self, format: str = "xdm", **kwargs):
-    #     """
-    #     returns the mixins / fieldGroups of the account.
-    #     Arguments:
-    #         format : OPTIONAL : either "xdm" or "xed" format
-    #     kwargs:
-    #         debug : if set to True, will print result for errors
-    #     """
-    #     if self.loggingEnabled:
-    #         self.logger.debug(f"Starting getMixins")
-    #     path = f"/{self.container}/mixins/"
-    #     start = kwargs.get("start", 0)
-    #     params = {"start": start}
-    #     verbose = kwargs.get("debug", False)
-    #     privateHeader = deepcopy(self.header)
-    #     privateHeader["Accept"] = f"application/vnd.adobe.{format}+json"
-    #     res = self.connector.getData(
-    #         self.endpoint + path, headers=privateHeader, params=params, verbose=verbose
-    #     )
-    #     if kwargs.get("verbose", False):
-    #         if "results" not in res.keys():
-    #             print(res)
-    #     data = res["results"]
-    #     page = res["_page"]
-    #     while page["next"] is not None:
-    #         data += self.getMixins(start=page["next"])
-    #     self.data.mixins_id = {mix["title"]: mix["$id"] for mix in data}
-    #     self.data.mixins_altId = {mix["title"]: mix["meta:altId"] for mix in data}
-    #     return data
-
-    def getFieldGroups(self, format: str = "xdm", **kwargs):
+    def getFieldGroups(self, format: str = "xdm", **kwargs) -> list:
         """
         returns the fieldGroups of the account.
         Arguments:
@@ -920,6 +897,47 @@ class Schema:
             nextPage = page.get('next',None)
         self.data.fieldGroups_id = {mix["title"]: mix["$id"] for mix in data}
         self.data.fieldGroups_altId = {mix["title"]: mix["meta:altId"] for mix in data}
+        return data
+    
+    def getFieldGroupsGlobal(self,format: str = "xdm",output:str='raw', **kwargs)->list:
+        """
+        returns the global fieldGroups of the account.
+        Arguments:
+            format : OPTIONAL : either "xdm" or "xed" format
+            output : OPTIONAL : either "raw" (default) or "df" for dataframe 
+        kwargs:
+            debug : if set to True, will print result for errors
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getFieldGroups")
+        path = f"/global/fieldgroups/"
+        start = kwargs.get("start", 0)
+        params = {"start": start}
+        verbose = kwargs.get("debug", False)
+        privateHeader = deepcopy(self.header)
+        privateHeader["Accept"] = f"application/vnd.adobe.{format}+json"
+        res = self.connector.getData(
+            self.endpoint + path, headers=privateHeader, params=params, verbose=verbose
+        )
+        if kwargs.get("verbose", False):
+            if "results" not in res.keys():
+                print(res)
+        data = res["results"]
+        page = res.get("_page",{})
+        nextPage = page.get('next',None)
+        while nextPage is not None:
+            params['start'] = nextPage
+            res = self.connector.getData(
+            self.endpoint + path, headers=privateHeader, params=params, verbose=verbose
+            )
+            data += res.get("results")
+            page = res.get("_page",{})
+            nextPage = page.get('next',None)
+        self.data.fieldGroups_id = {mix["title"]: mix["$id"] for mix in data}
+        self.data.fieldGroups_altId = {mix["title"]: mix["meta:altId"] for mix in data}
+        if output == 'df':
+            df = pd.DataFrame(data)
+            return df
         return data
 
     # def getMixin(
@@ -1957,24 +1975,39 @@ class FieldGroupManager:
                     value = deepcopy(mydict[key])
                     value['path'] = finalPath
                     value['queryPath'] = self.__cleanPath__(finalPath)
-                    value['completePath'] = completePath + "/" + key
+                    if completePath is None:
+                        value['completePath'] = f"/definitions/{key}"
+                    else:
+                        value['completePath'] = completePath + "/" + key
                     results.append({key:value})
             else:
                 if caseSensitive == False:
                     if keyComp == string:
-                        finalPath = path + f".{key}"
+                        if path is not None:
+                            finalPath = path + f".{key}"
+                        else:
+                            finalPath = key
                         value = deepcopy(mydict[key])
                         value['path'] = finalPath
                         value['queryPath'] = self.__cleanPath__(finalPath)
-                        value['completePath'] = completePath + "/" + key
+                        if completePath is None:
+                            value['completePath'] = f"/definitions/{key}"
+                        else:
+                            value['completePath'] = completePath + "/" + key
                         results.append({key:value})
                 else:
                     if keyComp == string:
-                        finalPath = path + f".{key}"
+                        if path is not None:
+                            finalPath = path + f".{key}"
+                        else:
+                            finalPath = key
                         value = deepcopy(mydict[key])
                         value['path'] = finalPath
                         value['queryPath'] = self.__cleanPath__(finalPath)
-                        value['completePath'] = completePath + "/" + key
+                        if completePath is None:
+                            value['completePath'] = f"/definitions/{key}"
+                        else:
+                            value['completePath'] = completePath + "/" + key
                         results.append({key:value})
             ## loop through keys
             if mydict[key].get("type") == "object" or 'properties' in mydict[key].keys():
@@ -2734,7 +2767,7 @@ class SchemaManager:
             if fieldGroup.get('$id') not in [fg for fg in self.fieldGroupIds]:
                 self.fieldGroupIds.append(fieldGroup['$id'])
                 self.fieldGroupTitles.append(fieldGroup['title'])
-                self.schema['allOf'].append({'$ref':fieldGroup['$id']})
+                self.schema['allOf'].append({'$ref':fieldGroup['$id'],"type": "object"})
             if fgManager:
                 if fieldGroup.get('$id') not in [fg.id for fg in self.fieldGroupsManagers]:
                     fbManager = FieldGroupManager(fieldGroup=fieldGroup)
@@ -2743,7 +2776,7 @@ class SchemaManager:
         elif type(fieldGroup) == str:
             if fieldGroup not in [fg for fg in self.fieldGroupIds]:
                 self.fieldGroupIds.append(fieldGroup)
-                self.schema['allOf'].append({'$ref':fieldGroup['$id']})
+                self.schema['allOf'].append({'$ref':fieldGroup,"type": "object"})
             if fgManager:
                 if self.schemaAPI is None:
                     raise AttributeError('Missing the schema API attribute. Please use the addSchemaAPI method to add it.')
@@ -2812,6 +2845,17 @@ class SchemaManager:
         if self.schemaAPI is None:
             raise Exception("Require a Schema instance to connect to the API")
         res = self.schemaAPI.createSchema(self.schema)
+        self.schema = res
+        self.__setAttributes__(self.schema)
+        return res
+
+    def updateSchema(self)->dict:
+        """
+        Use the PUT method to replace the existing schema with the new definition.
+        """
+        if self.schemaAPI is None:
+            raise Exception("Require a Schema instance to connect to the API")
+        res = self.schemaAPI.putSchema(self.schema.id,self.schema)
         self.schema = res
         self.__setAttributes__(self.schema)
         return res
@@ -2908,4 +2952,3 @@ class SchemaManager:
             raise ValueError('Require an operation to be used')
         res = self.schemaAPI.createDescriptor(descriptor)
         return res
-    

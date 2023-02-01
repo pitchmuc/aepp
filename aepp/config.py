@@ -11,6 +11,7 @@ config_object = {
     "token": "",
     "tokenEndpoint" : "https://ims-na1.adobelogin.com/ims/exchange/jwt"
 }
+
 header = {"Accept": "application/json",
           "Content-Type": "application/json",
           "Authorization": "",

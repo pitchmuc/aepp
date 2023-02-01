@@ -124,3 +124,20 @@ One of the use-case that can be useful via schema API is to retrieve the differe
 The possible path can be used for Query Service or for Mapping service.\
 The module provide a method `getSchemaPaths` that returns a list of the paths available.\
 It takes the schemaId as parameter.
+
+## SchemaManager
+
+As using the schema and managing the field in your schema get more and more complicated over time. It became obvious that a set of methods would be required to fill the gap that the UI is not able to provide.\
+For that reason, I created a Schema Manager that will help you handling the schema composition and getting information out of your current implementation of XDM architecture.
+
+One thing to know though, is that Schema is just a wrapping representation of Field Groups attached to a class in order to give a certain representation of your data.\
+Is it a profile data ? (to give user attributes)\
+Is it timestamp related ? (to give time-based context)\
+Is it just a record of third party piece information ? (such as lookup) 
+
+In reason of that, most of the most relevant method of the `SchemaManager` class are abstracted and aggregated representation of methods used in the `FieldManagerClass`. 
+
+
+## FieldGroupManager
+
+When creating and managing schema, what really happens 
