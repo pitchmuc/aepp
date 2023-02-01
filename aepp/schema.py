@@ -2668,8 +2668,8 @@ class SchemaManager:
                 for fg in fieldGroupIds:
                     self.fieldGroupIds.append(fg.get('$id'))
                     self.fieldGroupsManagers.append(FieldGroupManager(fg))
-        
-        self.fieldGroupTitles= [fg.title for fg in self.fieldGroupsManagers]
+        self.fieldGroupTitles= tuple(fg.title for fg in self.fieldGroupsManagers)
+        self.fieldGroups = {fg.id:fg.title for fg in self.fieldGroupsManagers}
     
     def __setAttributes__(self,schemaDef:dict)->None:
         """
@@ -2753,49 +2753,45 @@ class SchemaManager:
             myResults += res
         return myResults
     
-    def addFieldGroup(self,fieldGroup:Union[str,dict]=None,fgManager:bool=False)->Union[None,'FieldGroupManager']:
+    def addFieldGroup(self,fieldGroup:Union[str,dict]=None)->Union[None,'FieldGroupManager']:
         """
         Add a field groups to field Group object and the schema. 
-        Possible to add it to fieldGroupsManagers attribute.
-        return the specific FieldGroup Manager
+        return the specific FieldGroup Manager instance.
         Arguments:
             fieldGroup : REQUIRED : The fieldGroup ID or the dictionary definition connecting to the API.
                 if a fieldGroup ID is provided, you should have added a schemaAPI previously.
-            fgManager : OPTIONAL : if you want to have a field group management instance.
         """
         if type(fieldGroup) == dict:
             if fieldGroup.get('$id') not in [fg for fg in self.fieldGroupIds]:
                 self.fieldGroupIds.append(fieldGroup['$id'])
-                self.fieldGroupTitles.append(fieldGroup['title'])
                 self.schema['allOf'].append({'$ref':fieldGroup['$id'],"type": "object"})
-            if fgManager:
-                if fieldGroup.get('$id') not in [fg.id for fg in self.fieldGroupsManagers]:
-                    fbManager = FieldGroupManager(fieldGroup=fieldGroup)
-                    self.fieldGroupsManagers.append(fbManager)
-                    return fbManager
+                
         elif type(fieldGroup) == str:
             if fieldGroup not in [fg for fg in self.fieldGroupIds]:
                 self.fieldGroupIds.append(fieldGroup)
                 self.schema['allOf'].append({'$ref':fieldGroup,"type": "object"})
-            if fgManager:
                 if self.schemaAPI is None:
                     raise AttributeError('Missing the schema API attribute. Please use the addSchemaAPI method to add it.')
                 else:
-                    definition = self.schemaAPI.getFieldGroup(fieldGroup)
-                    fbManager = FieldGroupManager(tenantId=definition.get('meta:tenantNamespace','unknown'),fieldGroup=definition)
-                    self.fieldGroupTitles.append(fbManager.title)
-                    self.fieldGroupsManagers.append(fbManager)
-                    return fbManager
+                    fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup)
+        fbManager = FieldGroupManager(fieldGroup=fieldGroup)
+        self.fieldGroupsManagers.append(fbManager)
+        self.fieldGroupTitles = tuple(fgm.title for fgm in self.fieldGroupsManagers)
+        self.fieldGroups = {fgm.id:fgm.title for fgm in self.fieldGroupsManagers}
+        return fbManager
     
-    def getFieldGroupManager(self,title:str=None)->'FieldGroupManager':
+    def getFieldGroupManager(self,fieldgroup:str=None)->'FieldGroupManager':
         """
         Return a field group Manager of a specific name.
         Only possible if fgManager was set to True during instanciation.
         Argument:
-            title : REQUIRED : The title of the field group to retrieve.
+            fieldgroup : REQUIRED : The title or the $id of the field group to retrieve.
         """
         if self.getFieldGroupManager is not None:
-            return [fg for fg in self.fieldGroupsManagers if fg.title == title][0]
+            if "ns.adobe.com" in fieldgroup: ## id
+                return [fg for fg in self.fieldGroupsManagers if fg.id == fieldgroup][0]
+            else:
+                return [fg for fg in self.fieldGroupsManagers if fg.title == fieldgroup][0]
         else:
             raise Exception("The field group manager was not set to True during instanciation. No Field Group Manager to return")
 
@@ -2855,7 +2851,7 @@ class SchemaManager:
         """
         if self.schemaAPI is None:
             raise Exception("Require a Schema instance to connect to the API")
-        res = self.schemaAPI.putSchema(self.schema.id,self.schema)
+        res = self.schemaAPI.putSchema(self.id,self.schema)
         self.schema = res
         self.__setAttributes__(self.schema)
         return res

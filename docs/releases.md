@@ -16,6 +16,7 @@ Patch:
 * adding the `updateSchema` method in `SchemaManager` class.
 * adding a method to return all available default field groups (`getFieldGroupsGlobal`)
 * adding `output` param or `getSchemas` and `getFieldGroups` methods
+* adding a `fieldGroups` attribute to `SchemaManager` instance with `$id` and `title`
 
 ## version 0.2.4
 * Supporting out of the box schema and field groups for `SchemaManager` & `FieldGroupManager`
