@@ -1,7 +1,8 @@
 import aepp
 from aepp import connector
 import logging
-
+from typing import Union
+from .configs import ConnectObject
 
 class Privacy:
     """
@@ -60,8 +61,8 @@ class Privacy:
         self,
         privacyScope: bool = True,
         aepScope: bool = False,
-        config: dict = aepp.config.config_object,
-        header=aepp.config.header,
+        config: Union[dict,ConnectObject] = aepp.config.config_object,
+        header: dict = aepp.config.header,
         loggingObject: dict = None,
         **kwargs,
     ) -> None:
@@ -81,7 +82,10 @@ class Privacy:
             self.loggingEnabled = True
             self.logger = logging.getLogger(f"{__name__}")
             self.logger.setLevel(loggingObject["level"])
-            formatter = logging.Formatter(loggingObject["format"])
+            if type(loggingObject["format"]) == str:
+                formatter = logging.Formatter(loggingObject["format"])
+            elif type(loggingObject["format"]) == logging.Formatter:
+                formatter = loggingObject["format"]
             if loggingObject["file"]:
                 fileHandler = logging.FileHandler(loggingObject["filename"])
                 fileHandler.setFormatter(formatter)
@@ -90,6 +94,11 @@ class Privacy:
                 streamHandler = logging.StreamHandler()
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
+        if type(config) == dict: ## Supporting either default setup or passing a ConnectObject
+            config = config
+        elif type(config) == ConnectObject:
+            header = config.getConfigHeader()
+            config = config.getConfigObject()
         self.connector = connector.AdobeRequest(
             config_object=config,
             header=header,

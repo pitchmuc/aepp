@@ -2,10 +2,17 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.2.6
+* adding an `updateFlow` and `updateFlowMapping` method to `FlowManager` class.
+* adding the `ConnectObect` class that will provide a more dynamic way to switch between orgs or sandboxes.
+* adding `sandbox` param in class instanciation for supporting sandbox definition at instantiation time.
+* adding support for `patchDataType` and `putDataType` operation in `Schema` class.
+* Supporting the class `Formatter` type in the logging capability.
+
 ## version 0.2.5
 * adding the `completePath` attribute for search result of `searchField` method in `SchemaManager`
 * fix the `getField` method and support any field type.
-* adding the `updatePolicy` method in the flow
+* adding the `updatePolicy` method in the flow.
 * fixing typo on `pathFieldGroup` method for `FieldGroupManager`.
 * updating the field group will automatically update the local copy of the definition.
 * adding the searchAttribute for `SchemaManager` and `FieldGroupManager` class.

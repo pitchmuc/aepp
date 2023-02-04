@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Union
 import time
 import logging
+from .configs import ConnectObject
 
 class Authoring:
     """
@@ -15,7 +16,7 @@ class Authoring:
     """
 
     def __init__(self, 
-        config_object: dict = aepp.config.config_object,
+        config: Union[dict,ConnectObject] = aepp.config.config_object,
         header: dict = aepp.config.header,
         loggingObject: dict = None,
         **kwargs,):
@@ -24,7 +25,7 @@ class Authoring:
 
         Arguments:
             loggingObject : OPTIONAL : logging object to log messages.
-            config_object : OPTIONAL : config object in the config module.
+            config : OPTIONAL : config object in the config module.
             header : OPTIONAL : header object  in the config module.
         possible kwargs:
         """
@@ -34,7 +35,10 @@ class Authoring:
             self.loggingEnabled = True
             self.logger = logging.getLogger(f"{__name__}")
             self.logger.setLevel(loggingObject["level"])
-            formatter = logging.Formatter(loggingObject["format"])
+            if type(loggingObject["format"]) == str:
+                formatter = logging.Formatter(loggingObject["format"])
+            elif type(loggingObject["format"]) == logging.Formatter:
+                formatter = loggingObject["format"]
             if loggingObject["file"]:
                 fileHandler = logging.FileHandler(loggingObject["filename"])
                 fileHandler.setFormatter(formatter)
@@ -43,8 +47,13 @@ class Authoring:
                 streamHandler = logging.StreamHandler()
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
+        if type(config) == dict: ## Supporting either default setup or passing a ConnectObject
+            config = config
+        elif type(config) == ConnectObject:
+            header = config.getConfigHeader()
+            config = config.getConfigObject()
         self.connector = connector.AdobeRequest(
-            config_object=config_object,
+            config_object=config,
             header=header,
             loggingEnabled=self.loggingEnabled,
             logger=self.logger,
@@ -52,7 +61,13 @@ class Authoring:
         self.header = self.connector.header
         # self.header.update({"Accept": "application/json"})
         self.header.update(**kwargs)
-        self.sandbox = self.connector.config["sandbox"]
+        if kwargs.get('sandbox',None) is not None: ## supporting sandbox setup on class instanciation
+            self.sandbox = kwargs.get('sandbox')
+            self.connector.config["sandbox"] = kwargs.get('sandbox')
+            self.header.update({"x-sandbox-name":kwargs.get('sandbox')})
+            self.connector.header.update({"x-sandbox-name":kwargs.get('sandbox')})
+        else:
+            self.sandbox = self.connector.config["sandbox"]
         self.endpoint = config.endpoints["global"] + config.endpoints["destinationAuthoring"]
     
     def getDestinations(self)->list:

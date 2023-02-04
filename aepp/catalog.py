@@ -10,6 +10,7 @@ import json
 import logging
 from itertools import zip_longest
 import re
+from .configs import ConnectObject
 
 @dataclass
 class _Data:
@@ -36,15 +37,18 @@ class Catalog:
     logger = None
 
     def __init__(self,
-                config:dict=aepp.config.config_object,
-                header=aepp.config.header,
+                config : Union[dict,ConnectObject]=aepp.config.config_object,
+                header : dict=aepp.config.header,
                 loggingObject:dict=None,
                 **kwargs):
         if loggingObject is not None and sorted(["level","stream","format","filename","file"]) == sorted(list(loggingObject.keys())):
             self.loggingEnabled = True
             self.logger = logging.getLogger(f"{__name__}")
             self.logger.setLevel(loggingObject["level"])
-            formatter = logging.Formatter(loggingObject["format"])
+            if type(loggingObject["format"]) == str:
+                formatter = logging.Formatter(loggingObject["format"])
+            elif type(loggingObject["format"]) == logging.Formatter:
+                formatter = loggingObject["format"]
             if loggingObject["file"]:
                 fileHandler = logging.FileHandler(loggingObject["filename"])
                 fileHandler.setFormatter(formatter)
@@ -53,10 +57,25 @@ class Catalog:
                 streamHandler = logging.StreamHandler()
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
-        self.connector = connector.AdobeRequest(config_object=config, header=header,loggingEnabled=self.loggingEnabled,logger=self.logger)
+        if type(config) == dict: ## Supporting either default setup or passing a ConnectObject
+            config = config
+        elif type(config) == ConnectObject:
+            header = config.getConfigHeader()
+            config = config.getConfigObject()
+        self.connector = connector.AdobeRequest(
+            config_object=config, 
+            header=header,
+            loggingEnabled=self.loggingEnabled,
+            logger=self.logger)
         self.header = self.connector.header
         self.header.update(**kwargs)
-        self.sandbox = self.connector.config['sandbox']
+        if kwargs.get('sandbox',None) is not None: ## supporting sandbox setup on class instanciation
+            self.sandbox = kwargs.get('sandbox')
+            self.connector.config["sandbox"] = kwargs.get('sandbox')
+            self.header.update({"x-sandbox-name":kwargs.get('sandbox')})
+            self.connector.header.update({"x-sandbox-name":kwargs.get('sandbox')})
+        else:
+            self.sandbox = self.connector.config["sandbox"]
         self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["catalog"]
         self.data = _Data()
 

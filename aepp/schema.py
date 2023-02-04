@@ -9,6 +9,7 @@ import logging
 import pandas as pd
 import json
 import re
+from .configs import ConnectObject
 
 json_extend = [
     {
@@ -58,7 +59,7 @@ class Schema:
     def __init__(
         self,
         containerId: str = "tenant",
-        config_object: dict = aepp.config.config_object,
+        config: Union[dict,ConnectObject] = aepp.config.config_object,
         header=aepp.config.header,
         loggingObject: dict = None,
         **kwargs,
@@ -68,7 +69,7 @@ class Schema:
         Arguments:
             containerId : OPTIONAL : "tenant"(default) or "global"
             loggingObject : OPTIONAL : logging object to log messages.
-            config_object : OPTIONAL : config object in the config module.
+            config : OPTIONAL : config object in the config module.
             header : OPTIONAL : header object  in the config module.
         possible kwargs:
             x-sandbox-name : name of the sandbox you want to use (default : "prod").
@@ -79,7 +80,10 @@ class Schema:
             self.loggingEnabled = True
             self.logger = logging.getLogger(f"{__name__}")
             self.logger.setLevel(loggingObject["level"])
-            formatter = logging.Formatter(loggingObject["format"])
+            if type(loggingObject["format"]) == str:
+                formatter = logging.Formatter(loggingObject["format"])
+            elif type(loggingObject["format"]) == logging.Formatter:
+                formatter = loggingObject["format"]
             if loggingObject["file"]:
                 fileHandler = logging.FileHandler(loggingObject["filename"])
                 fileHandler.setFormatter(formatter)
@@ -88,16 +92,28 @@ class Schema:
                 streamHandler = logging.StreamHandler()
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
+        if type(config) == dict: ## Supporting either default setup or passing a ConnectObject
+            config = config
+        elif type(config) == ConnectObject:
+            header = config.getConfigHeader()
+            config = config.getConfigObject()
         self.connector = connector.AdobeRequest(
-            config_object=config_object,
+            config_object=config,
             header=header,
             loggingEnabled=self.loggingEnabled,
             logger=self.logger,
         )
         self.header = self.connector.header
         self.header["Accept"] = "application/vnd.adobe.xed+json"
+        self.connector.header['Accept'] = "application/vnd.adobe.xed+json"
+        if kwargs.get('sandbox',None) is not None: ## supporting sandbox setup on class instanciation
+            self.sandbox = kwargs.get('sandbox')
+            self.connector.config["sandbox"] = kwargs.get('sandbox')
+            self.header.update({"x-sandbox-name":kwargs.get('sandbox')})
+            self.connector.header.update({"x-sandbox-name":kwargs.get('sandbox')})
+        else:
+            self.sandbox = self.connector.config["sandbox"]
         self.header.update(**kwargs)
-        self.sandbox = self.connector.config["sandbox"]
         self.endpoint = (
             aepp.config.endpoints["global"] + aepp.config.endpoints["schemas"]
         )
@@ -1479,17 +1495,67 @@ class Schema:
             )
         return res
 
-    def createDataType(self, dataType_obj: dict = None):
+    def createDataType(self, dataTypeObj: dict = None)->dict:
         """
         Create Data Type based on the object passed.
         """
-        if dataType_obj is None:
+        if dataTypeObj is None:
             raise Exception("Require a dictionary to create the Data Type")
         if self.loggingEnabled:
             self.logger.debug(f"Starting createDataTypes")
         path = f"/{self.container}/datatypes/"
         res = self.connector.postData(
-            self.endpoint + path, data=dataType_obj)
+            self.endpoint + path, data=dataTypeObj)
+        return res
+    
+    def patchDataType(self,dataTypeId:str=None,operations:list=None)->dict:
+        """
+        Patch an existing data type with the operation provided.
+        Arguments:
+            dataTypeId : REQUIRED : The Data Type ID to be used
+            operations : REQUIRED : The list of operation to be applied on that Data Type.
+                    Example : '[
+                                {
+                                "op": "replace",
+                                "path": "/loyaltyLevel/meta:enum",
+                                "value": {
+                                    "ultra-platinum": "Ultra Platinum",
+                                    "platinum": "Platinum",
+                                    "gold": "Gold",
+                                    "silver": "Silver",
+                                    "bronze": "Bronze"
+                                }
+                                }
+                            ]'
+        """
+        if dataTypeId is None:
+            raise Exception("Require a a data type ID")
+        if operations is None:
+            raise Exception("Require a list of operation to patch")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting patchDataType")
+        path = f"/{self.container}/datatypes/{dataTypeId}"
+        res = self.connector.patchData(
+            self.endpoint + path, data=operations)
+        return res
+
+    
+    def putDataType(self,dataTypeId:str=None,dataTypeObj:dict=None)->dict:
+        """
+        Replace an existing data type definition with the new definition provided.
+        Arguments:
+            dataTypeId : REQUIRED : The Data Type ID to be replaced
+            dataTypeObj : REQUIRED : The new Data Type definition.
+        """
+        if dataTypeId is None:
+            raise Exception("Require a a data type ID")
+        if dataTypeObj is None:
+            raise Exception("Require a dictionary to replace the Data Type definition")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting putDataType")
+        path = f"/{self.container}/datatypes/{dataTypeId}"
+        res = self.connector.putData(
+            self.endpoint + path, data=dataTypeObj)
         return res
 
     def getDescriptors(
@@ -1586,6 +1652,7 @@ class Schema:
             primary : OPTIONAL : Boolean (True or False) to define if it is a primary identity or not (default None).
         possible kwargs:
             version : version of the creation (default 1)
+            xdm:property : type of property
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createDescriptor")
@@ -1606,6 +1673,9 @@ class Schema:
                 obj["xdm:namespace"] = namespace
             if primary is not None:
                 obj["xdm:isPrimary"] = primary
+            for key in kwargs:
+                if 'xdm:' in key:
+                    obj[key] = kwargs.get(key)
             res = self.connector.postData(
                 self.endpoint + path, data=obj)
         return res
@@ -1629,17 +1699,20 @@ class Schema:
     def putDescriptor(
         self,
         descriptorId: str = None,
+        descriptorObj:dict = None,
         desc_type: str = "xdm:descriptorIdentity",
         sourceSchema: str = None,
         sourceProperty: str = None,
         namespace: str = None,
         xdmProperty: str = "xdm:code",
         primary: bool = False,
+        **kwargs
     ) -> dict:
         """
         Replace the descriptor with the new definition. It updates the whole definition.
         Arguments:
-            descriptorId : REQUIRED : the descriptor id to delete
+            descriptorId : REQUIRED : the descriptor id to replace
+            descriptorObj : REQUIRED : The full descriptor object if you want to pass it directly.
             desc_type : REQUIRED : the type of descriptor to create.(default Identity)
             sourceSchema : REQUIRED : the schema attached to your identity ()
             sourceProperty : REQUIRED : the path to the field
@@ -1654,7 +1727,10 @@ class Schema:
         path = f"/{self.container}/descriptors/{descriptorId}"
         if sourceSchema is None or sourceProperty is None or namespace is None:
             raise Exception("Missing required arguments.")
-        obj = {
+        if descriptorObj is not None and type(descriptorObj) == dict:
+            obj = descriptorObj
+        else:
+            obj = {
             "@type": desc_type,
             "xdm:sourceSchema": sourceSchema,
             "xdm:sourceVersion": 1,
@@ -1662,10 +1738,14 @@ class Schema:
             "xdm:namespace": namespace,
             "xdm:property": xdmProperty,
             "xdm:isPrimary": primary,
-        }
+            }
+            for key in kwargs:
+                if 'xdm:' in key:
+                    obj[key] = kwargs.get(key)
         res = self.connector.putData(
             self.endpoint + path, data=obj)
         return res
+
 
     def getAuditLogs(self, resourceId: str = None) -> list:
         """
@@ -1799,7 +1879,7 @@ class FieldGroupManager:
                 title:str=None,
                 fg_class:list=["experienceevent","profile"],
                 schemaAPI:'Schema'=None,
-                config_object: dict = aepp.config.config_object,
+                config: Union[dict,ConnectObject] = aepp.config.config_object,
                 )->None:
         """
         Instantiator for field group creation.
@@ -1810,14 +1890,14 @@ class FieldGroupManager:
             fg_class : OPTIONAL : the class that will support this field group.
                 by default events and profile, possible value : "record"
             schemaAPI : OPTIONAL : The instance of the Schema class. Provide a way to connect to the API.
-            config_object : OPTIONAL : The config object in case you want to override the configuration.
+            config : OPTIONAL : The config object in case you want to override the configuration.
         """
         
         self.fieldGroup = {}
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
         else:
-            self.schemaAPI = Schema(config_object=config_object)
+            self.schemaAPI = Schema(config=config)
         self.tenantId = f"_{self.schemaAPI.getTenantId()}"
         if fieldGroup is not None:
             if type(fieldGroup) == dict:
@@ -2585,7 +2665,7 @@ class SchemaManager:
                 fieldGroupIds:list=None,
                 schemaAPI:'Schema'=None,
                 schemaClass:str=None,
-                config_object: dict = aepp.config.config_object,
+                config: Union[dict,ConnectObject] = aepp.config.config_object,
                 )->None:
         """
         Instantiate the Schema Manager instance.
@@ -2598,7 +2678,7 @@ class SchemaManager:
             schemaClass : OPTIONAL : If you want to set the class to be a specific class.
                 Default value is profile: "https://ns.adobe.com/xdm/context/profile", can be replaced with any class definition.
                 Possible default value: "https://ns.adobe.com/xdm/context/experienceevent", "https://ns.adobe.com/xdm/context/segmentdefinition"
-            config_object : OPTIONAL : The config object in case you want to override the configuration.
+            config : OPTIONAL : The config object in case you want to override the configuration.
         """
         self.fieldGroupIds=[]
         self.fieldGroupsManagers = []
@@ -2606,7 +2686,7 @@ class SchemaManager:
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
         else:
-            self.schemaAPI = Schema(config_object=config_object)
+            self.schemaAPI = Schema(config=config)
         if type(schema) == dict:
             self.schema = schema
             self.__setAttributes__(self.schema)

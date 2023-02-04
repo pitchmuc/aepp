@@ -5,6 +5,7 @@ import time,json
 import logging
 from dataclasses import dataclass
 from typing import Union
+from .configs import ConnectObject
 
 @dataclass
 class _Data:
@@ -38,8 +39,8 @@ class FlowService:
 
     def __init__(
         self,
-        config: dict = aepp.config.config_object,
-        header=aepp.config.header,
+        config: Union[dict,ConnectObject] = aepp.config.config_object,
+        header: dict = aepp.config.header,
         loggingObject: dict = None,
         **kwargs,
     ):
@@ -56,7 +57,10 @@ class FlowService:
             self.loggingEnabled = True
             self.logger = logging.getLogger(f"{__name__}")
             self.logger.setLevel(loggingObject["level"])
-            formatter = logging.Formatter(loggingObject["format"])
+            if type(loggingObject["format"]) == str:
+                formatter = logging.Formatter(loggingObject["format"])
+            elif type(loggingObject["format"]) == logging.Formatter:
+                formatter = loggingObject["format"]
             if loggingObject["file"]:
                 fileHandler = logging.FileHandler(loggingObject["filename"])
                 fileHandler.setFormatter(formatter)
@@ -65,6 +69,11 @@ class FlowService:
                 streamHandler = logging.StreamHandler()
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
+        if type(config_object) == dict: ## Supporting either default setup or passing a ConnectObject
+            config_object = config_object
+        elif type(config_object) == ConnectObject:
+            header = config.getConfigHeader()
+            config_object = config.getConfigObject()
         self.connector = connector.AdobeRequest(
             config_object=config,
             header=header,
@@ -73,7 +82,13 @@ class FlowService:
         )
         self.header = self.connector.header
         self.header.update(**kwargs)
-        self.sandbox = self.connector.config["sandbox"]
+        if kwargs.get('sandbox',None) is not None: ## supporting sandbox setup on class instanciation
+            self.sandbox = kwargs.get('sandbox')
+            self.connector.config["sandbox"] = kwargs.get('sandbox')
+            self.header.update({"x-sandbox-name":kwargs.get('sandbox')})
+            self.connector.header.update({"x-sandbox-name":kwargs.get('sandbox')})
+        else:
+            self.sandbox = self.connector.config["sandbox"]
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["flow"]
         self.data = _Data()
 
@@ -927,11 +942,8 @@ class FlowManager:
         self.mapperAPI = dataprep.DataPrep()
         self.flowAPI = flowservice.FlowService()
         self.flowData = self.flowAPI.getFlow(flowId)
-        self.id = flowId
+        self.__setAttributes__(self.flowData)
         self.flowMapping = None
-        self.sandbox = self.flowData.get('sandboxName')
-        self.name = self.flowData.get('name')
-        self.version = self.flowData.get('version')
         self.flowSpec = {'id' : self.flowData.get('flowSpec',{}).get('id')}
         self.flowSourceConnection = {'id' : self.flowData.get('sourceConnectionIds',[None])[0]}
         self.flowTargetConnection = {'id' : self.flowData.get('targetConnectionIds',[None])[0]}
@@ -981,6 +993,17 @@ class FlowManager:
             else:
                 self.flowMapping['updatedAt'] = time.ctime(mappingInfo.get('updatedAt',0)/1000)
             self.getMapping = lambda : self.mapperAPI.getMappingSet(self.flowMapping['id'])
+
+    def __setAttributes__(self,flowData:dict)->None:
+        """
+        Set the attributes
+        """
+        self.id = flowData.get('id')
+        self.etag = flowData.get('etag')
+        self.sandbox = flowData.get('sandboxName')
+        self.name = flowData.get('name')
+        self.version = flowData.get('version')
+
 
     def __repr__(self)->str:
         data = {
@@ -1057,3 +1080,56 @@ class FlowManager:
         """
         runs = self.flowAPI.getRuns(limit,n_results,prop=f"flowId=={self.id}")
         return runs
+    
+    def updateFlow(self, operations:list=None)->dict:
+        """
+        Update the flow with the operation provided.
+        Argument:
+            operations : REQUIRED : The operation to set on the PATCH method
+                Example : 
+            [
+                {
+                    "op": "Add",
+                    "path": "/auth/params",
+                    "value": {
+                    "description": "A new description to provide further context on a specified connection or flow."
+                    }
+                }
+            ]
+        """
+        if operations is None:
+            raise ValueError("No operations has been passed")
+        res = self.flowAPI.updateFlow(self.id,self.etag,operations)
+        self.flowData = res
+        self.__setAttributes__(res)
+        return res
+    
+    def updateFlowMapping(self,mappingId:str)->dict:
+        """
+        Update the flow with the latest version of the mapping Id provided.
+        Arguments:
+            mappingId : REQUIRED : The mapping Id to be used for update.
+        """
+        transformations = deepcopy(self.flowData.get('transformations',{}))
+        myMapping = self.mapperAPI.getMappingSet(mappingId)
+        myVersion = myMapping.get('version',0)
+        operation = {}
+        myIndex = None
+        for index, transformation in enumerate(transformations):
+            if transformation.get('name') == 'Mapping':
+                myIndex=index
+                operation['mappingId'] = mappingId
+                operation['mappingVersion'] = myVersion
+        if myIndex is not None:
+            patchOperation = [{'op': 'replace',
+            'path': f'/transformations/{myIndex}',
+            'value': {'name': 'Mapping',
+            'params': {'mappingId': operation['params']['mappingId'],
+            'mappingVersion': operation['params']['mappingVersion']}}}
+            ]
+        else:
+            raise Exception('Could not find a mapping transformation in the flow')
+        res = self.updateFlow(self.id,self.etag,patchOperation)
+        self.flowData = res
+        self.__setAttributes__(res)
+        return res

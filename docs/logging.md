@@ -24,7 +24,7 @@ Here are some description of the different keys:
 * stream : If the logger should display print statements
 * file : If the logger should write the messages to a file
 * filename : name of the file where log are written
-* format : format of the logs.
+* format : format of the logs in string or an instance of the logging.Formatter class.
 
 As pythonista may have realized, the logging capability has been created based on the native `logging` module of python.\
 Documentation can be found [here](https://docs.python.org/3/library/logging.html).\
@@ -58,7 +58,7 @@ Copy of the table available [here](https://docs.python.org/3/library/logging.htm
 
 |     Attribute name      |     Format      |   Description |
 | ------------------------|-----------------|---------------|
-|  asctime   |  %(asctime)s   | Human-readable time when the LogRecord was created. By default this is of the form ‘2003-07-08 16:49:45,896’ |
+|  asctime   |  %(asctime)s   | Human-readable time when the LogRecord was created. By default this is of the form '2003-07-08 16:49:45,896' |
 |  created   |  %(created)f   | Time when the LogRecord was created (as returned by `time.time())`. |
 |  filename  |  %(filename)s  | Filename portion of pathname. |
 |  funcName  |  %(funcName)s  | Name of function containing the logging call. |

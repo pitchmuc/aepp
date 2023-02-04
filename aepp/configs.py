@@ -6,7 +6,7 @@ import json
 
 # Non standard libraries
 from .config import config_object, header
-
+from aepp import connector
 
 def find_path(path: str) -> Optional[Path]:
     """Checks if the file denoted by the specified `path` exists and returns the Path object
@@ -58,18 +58,22 @@ def createConfigFile(
         )
 
 
-def importConfigFile(path: str) -> None:
+def importConfigFile(path: str=None,connectInstance:bool=False) -> None:
     """Reads the file denoted by the supplied `path` and retrieves the configuration information
     from it.
 
     Arguments:
         path: REQUIRED : path to the configuration file. Can be either a fully-qualified or relative.
+        connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class
 
     Example of path value.
     "config.json"
     "./config.json"
     "/my-folder/config.json"
     """
+    if path is None:
+        raise ValueError("require a path to a configuration file to be provided")
+     
     config_file_path: Optional[Path] = find_path(path)
     if config_file_path is None:
         raise FileNotFoundError(
@@ -87,14 +91,17 @@ def importConfigFile(path: str) -> None:
             raise RuntimeError(
                 f"Either an `api_key` or a `client_id` should be provided."
             )
-        configure(
+        myInstance = configure(
             org_id=provided_config["org_id"],
             tech_id=provided_config["tech_id"],
             secret=provided_config["secret"],
             path_to_key=provided_config["pathToKey"],
             client_id=client_id,
             sandbox=provided_config.get("sandbox-name", "prod"),
+            connectInstance=connectInstance
         )
+        if connectInstance:
+            return myInstance
 
 
 def configure(
@@ -105,6 +112,7 @@ def configure(
     path_to_key: str = None,
     private_key: str = None,
     sandbox: str = "prod",
+    connectInstance:bool = False,
 ):
     """Performs programmatic configuration of the API using provided values.
     Arguments:
@@ -115,6 +123,7 @@ def configure(
         path_to_key : REQUIRED : If you have a file containing your private key value.
         private_key : REQUIRED : If you do not use a file but pass a variable directly.
         sandbox : OPTIONAL : If not provided, default to prod
+        connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class
     """
     if not org_id:
         raise ValueError("`org_id` must be specified in the configuration.")
@@ -141,6 +150,17 @@ def configure(
     # ensure the reset of the state by overwriting possible values from previous import.
     config_object["date_limit"] = 0
     config_object["token"] = ""
+    if connectInstance:
+        myInstance = ConnectObject(
+            org_id=org_id,
+            tech_id=tech_id,
+            secret=secret,
+            client_id=client_id,
+            path_to_key = path_to_key,
+            private_key = private_key,
+            sandbox=sandbox
+        )
+        return myInstance
 
 
 def get_private_key_from_config(config: dict) -> str:
@@ -184,3 +204,67 @@ def generateLoggingObject(level:str="WARNING",filename:str="aepp.log") -> dict:
         "filename": filename,
     }
     return myObject
+
+class ConnectObject:
+    """
+    A connect Object class that keep tracks of the configuration loaded during the importConfigFile operation or during configure operation.
+    
+    """
+
+    def __init__(self,
+            org_id: str = None,
+            tech_id: str = None,
+            secret: str = None,
+            client_id: str = None,
+            path_to_key: str = None,
+            private_key: str = None,
+            sandbox: str = "prod",
+            **kwargs)->None:
+        """
+        Take a config object and save the configuration directly in the instance of the class.
+        """
+        self.header = {"Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "",
+          "x-api-key": client_id,
+          "x-gw-ims-org-id": org_id,
+          "x-sandbox-name": sandbox
+          }
+        self.org_id = org_id
+        self.tech_id = tech_id
+        self.client_id = client_id
+        self.secret = secret
+        self.pathToKey = path_to_key
+        self.privateKey = private_key
+        self.sandbox = sandbox
+        self.token = ""
+        self.__configObject__ = {
+            "org_id": self.org_id,
+            "client_id": self.client_id,
+            "tech_id": self.tech_id,
+            "pathToKey": self.pathToKey,
+            "secret": self.secret,
+            "date_limit" : 0,
+            "sandbox": self.sandbox,
+            "token": "",
+            "tokenEndpoint" : "https://ims-na1.adobelogin.com/ims/exchange/jwt"
+        }
+    
+    def connect(self)->None:
+        """
+        Generate a token and provide a connector instance in that class.
+        """
+        self.connector = connector.AdobeRequest(self.__configObject__,self.header)
+        self.token = self.connector.token
+    
+    def getConfigObject(self)->dict:
+        """
+        Return the config object expected.
+        """
+        return self.__configObject__
+    
+    def getConfigHeader(self)->dict:
+        """
+        Return the default header
+        """
+        return self.header

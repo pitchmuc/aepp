@@ -2,6 +2,8 @@ import aepp
 from aepp import connector
 from copy import deepcopy
 import logging
+from typing import Union
+from .configs import ConnectObject
 
 
 class DataSets:
@@ -31,8 +33,8 @@ class DataSets:
 
     def __init__(
         self,
-        config: dict = aepp.config.config_object,
-        header=aepp.config.header,
+        config: Union[dict,ConnectObject] = aepp.config.config_object,
+        header: dict = aepp.config.header,
         loggingObject: dict = None,
         **kwargs,
     ):
@@ -50,7 +52,10 @@ class DataSets:
             self.loggingEnabled = True
             self.logger = logging.getLogger(f"{__name__}")
             self.logger.setLevel(loggingObject["level"])
-            formatter = logging.Formatter(loggingObject["format"])
+            if type(loggingObject["format"]) == str:
+                formatter = logging.Formatter(loggingObject["format"])
+            elif type(loggingObject["format"]) == logging.Formatter:
+                formatter = loggingObject["format"]
             if loggingObject["file"]:
                 fileHandler = logging.FileHandler(loggingObject["filename"])
                 fileHandler.setFormatter(formatter)
@@ -59,6 +64,11 @@ class DataSets:
                 streamHandler = logging.StreamHandler()
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
+        if type(config) == dict: ## Supporting either default setup or passing a ConnectObject
+            config = config
+        elif type(config) == ConnectObject:
+            header = config.getConfigHeader()
+            config = config.getConfigObject()
         self.connector = connector.AdobeRequest(
             config_object=config,
             header=header,
@@ -67,7 +77,13 @@ class DataSets:
         )
         self.header = self.connector.header
         self.header.update(**kwargs)
-        self.sandbox = self.connector.config["sandbox"]
+        if kwargs.get('sandbox',None) is not None: ## supporting sandbox setup on class instanciation
+            self.sandbox = kwargs.get('sandbox')
+            self.connector.config["sandbox"] = kwargs.get('sandbox')
+            self.header.update({"x-sandbox-name":kwargs.get('sandbox')})
+            self.connector.header.update({"x-sandbox-name":kwargs.get('sandbox')})
+        else:
+            self.sandbox = self.connector.config["sandbox"]
         self.endpoint = (
             aepp.config.endpoints["global"] + aepp.config.endpoints["dataset"]
         )
