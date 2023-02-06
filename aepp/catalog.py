@@ -344,14 +344,17 @@ class Catalog:
             return df
         return data
 
-    def createDataSets(self, name:str=None, schemaId:str=None, data: dict = None, **kwargs):
+    def createDataSets(self, data: dict = None, name:str=None, schemaId:str=None, profileEnabled:bool=False,upsert:bool=False, tags:dict=None,**kwargs):
         """
         Create a new dataSets based either on preconfigured setup or by passing the full dictionary for creation.
         Arguments:
-            name : REQUIRED : if you wish to create a dataset via autocompletion. Provide a name.
-            schemaId : REQUIRED : The schema $id reference for creating your dataSet.
             data : REQUIRED : If you want to pass the dataset object directly (not require the name and schemaId then)
                 more info: https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Datasets/postDataset
+            name : REQUIRED : if you wish to create a dataset via autocompletion. Provide a name.
+            schemaId : REQUIRED : The schema $id reference for creating your dataSet.
+            profileEnabled : OPTIONAL : If the dataset to be created with profile enbaled
+            upsert : OPTIONAL : If the dataset to be created with profile enbaled and Upsert capability.
+            tags : OPTIONAL : set of attribute to add as tags.
         possible kwargs
             requestDataSource : Set to true if you want Catalog to create a dataSource on your behalf; otherwise, pass a dataSourceId in the body.
         """
@@ -375,6 +378,20 @@ class Catalog:
                     "format": "parquet"
                 }
             }
+            if profileEnabled:
+                data['tags'] = {
+                            "unifiedIdentity": [
+                                "enabled: true"
+                            ],
+                            "unifiedProfile": [
+                                "enabled: true"
+                            ]
+                        }
+            if upsert:
+                data['tags']['unifiedProfile'] = ["enabled: true","isUpsert: true"]
+            if tags is not None and type(tags) == dict:
+                for key in tags:
+                    data['tags'][key] = tags[key]
             res = self.connector.postData(self.endpoint+path, params=params,
                              data=data)
         return res
@@ -456,24 +473,29 @@ class Catalog:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
     
-    def enableDatasetProfile(self,datasetId:str=None)->dict:
+    def enableDatasetProfile(self,datasetId:str=None,upsert:bool=False)->dict:
         """
         Enable a dataset for profile with upsert.
         Arguments:
             datasetId : REQUIRED : Dataset ID to be enabled for profile
+            upsert : OPTIONAL : If you wish to enabled the dataset for upsert.
         """
         if datasetId is None:
             raise ValueError("Require a datasetId")
         if self.loggingEnabled:
             self.logger.debug(f"Starting enableDatasetProfile for datasetId: {datasetId}")
         path = f"/dataSets/{datasetId}"
+        privateHeader = deepcopy(self.header)
+        privateHeader['Content-Type'] = "application/json-patch+json"
         data = [
             { 
                 "op": "add", 
                 "path": "/tags/unifiedProfile",
-                "value": ["enabled:true","isUpsert:true"] }
+                "value": ["enabled:true"] }
             ]
-        res = self.connector.patchData(self.endpoint+path, data=data)
+        if upsert:
+            data[0]['value'] = ["enabled:true","isUpsert:true"]
+        res = self.connector.patchData(self.endpoint+path, data=data,headers=privateHeader)
         return res
     
     def enableDatasetIdentity(self,datasetId:str=None)->dict:

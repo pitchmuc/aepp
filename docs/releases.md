@@ -8,6 +8,11 @@ This page list all of the changes that came during the different release of the 
 * adding `sandbox` param in class instanciation for supporting sandbox definition at instantiation time.
 * adding support for `patchDataType` and `putDataType` operation in `Schema` class.
 * Supporting the class `Formatter` type in the logging capability.
+* updating the `createDataSet` method in `Catalog` to allow better parameterization.
+* Changing Content-type for `enablingDatasetProfile` method. Undocumented issue for AEP.
+* adding `getLandingZoneContainer` , `exploreLandingZone`, `getLandingZoneCredential` and `getLandingZoneContent` in `FlowService` class.
+* adding `createSourceConnectionDataLandingZone` in `FlowService` class
+* 
 
 ## version 0.2.5
 * adding the `completePath` attribute for search result of `searchField` method in `SchemaManager`

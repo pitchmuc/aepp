@@ -69,11 +69,11 @@ class FlowService:
                 streamHandler = logging.StreamHandler()
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
-        if type(config_object) == dict: ## Supporting either default setup or passing a ConnectObject
-            config_object = config_object
-        elif type(config_object) == ConnectObject:
+        if type(config) == dict: ## Supporting either default setup or passing a ConnectObject
+            config = config
+        elif type(config) == ConnectObject:
             header = config.getConfigHeader()
-            config_object = config.getConfigObject()
+            config = config.getConfigObject()
         self.connector = connector.AdobeRequest(
             config_object=config,
             header=header,
@@ -90,6 +90,7 @@ class FlowService:
         else:
             self.sandbox = self.connector.config["sandbox"]
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["flow"]
+        self.endpoint_gloal = aepp.config.endpoints["global"]
         self.data = _Data()
 
     def getResource(
@@ -282,6 +283,9 @@ class FlowService:
         }
         res = self.createConnection(data=obj,responseType=kwargs.get('responseType','json'))
         return res
+    
+    
+
 
     def getConnection(self, connectionId: str = None) -> dict:
         """
@@ -703,6 +707,36 @@ class FlowService:
         }
         res = self.createSourceConnection(data=obj)
         return res
+    
+    def createSourceConnectionDataLandingZone(self,
+                        name:str=None, 
+                        format:str="delimited",
+                        fileName:str=None,
+                        )->dict:
+        """
+        Create a new data landing zone setup.
+        Arguments:
+            name : REQUIRED : A name for the connection
+            format : REQUIRED : The type of data type loaded. Default "delimited". Can be "json" or "parquet" 
+            fileName : REQUIRED : The name of the file you want to create.
+        """
+        if name is None:
+            raise ValueError("Require a name for the connection")
+        obj = {
+            "name": name,
+            "data": {
+                "format": format
+            },
+            "params": {
+                "path": fileName
+            },
+            "connectionSpec": {
+                "id": "26f526f2-58f4-4712-961d-e41bf1ccc0e8",
+                "version": "1.0"
+            }
+        }
+        res = self.createSourceConnection(obj)
+        return res
 
     def updateSourceConnection(
         self, sourceConnectionId: str = None, etag: str = None, updateObj: list = None
@@ -907,6 +941,8 @@ class FlowService:
             policies = [policies]
         if type(policies) != list:
             raise TypeError("The policiy ID were not passed via a string or a list of string")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting updatePolicy")
         op = [
             {
                 "op" : operation,
@@ -919,6 +955,64 @@ class FlowService:
         ]
         res = self.updateFlow(flowId=flowId, operation=op)
         return res
+    
+    def getLandingZoneContainer(self)->dict:
+        """
+        Returns a dictionary of the your available Data Landing Zone containers.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getLandingZoneContainer")
+        path = f"/data/foundation/connectors/landingzone"
+        params = {"type":"user_drop_zone"}
+        res = self.connector.getData(self.endpoint_gloal + path,params=params)
+        return res
+    
+    def getLandingZoneCredential(self)->dict:
+        """
+        Returns a dictionary with the credential to be used in order to create a new zone
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getLandingZoneCredential")
+        path = f"/data/foundation/connectors/landingzone/credentials"
+        params = {"type":"user_drop_zone"}
+        res = self.connector.getData(self.endpoint_gloal + path,params=params)
+        return res
+
+    def exploreLandingZone(self,fileType:str='delimited')->list:
+        """
+        Return the structure of your landing zones
+        Arguments:
+            fileType : OPTIONAL : The type of the file to see.
+        """
+        path ="/connectionSpecs/26f526f2-58f4-4712-961d-e41bf1ccc0e8/explore"
+        params = {"objectType":"root"}
+        res = self.connector.getData(self.endpoint + path,params=params)
+        return res
+
+    def getLandingZoneContent(self,fileType:str="delimited",file:str=None,determineProperties:bool=True,preview:bool=True)->list:
+        """
+        Return the structure of your landing zones
+        Arguments:
+            fileType : OPTIONAL : The type of the file to see.
+                Possible option : "delimited", "json" or "parquet"
+            file : OPTIONAL : the path to the specific file.
+            determineProperties : OPTIONAL : replace other parameter to auto-detect file properties.
+            preview : OPTIONAL : If you wish to see a preview of the file.
+        """
+        path ="/connectionSpecs/26f526f2-58f4-4712-961d-e41bf1ccc0e8/explore"
+        params = {"objectType":"file","preview":preview,}
+        if determineProperties:
+            params['determineProperties'] = True
+        if determineProperties == False and fileType is not None:
+            params['FILE_TYPE'] = fileType
+        if file:
+            params['object'] = file
+        res = self.connector.getData(self.endpoint + path,params=params)
+        return res
+    
+
+
+
 
 
 class FlowManager:

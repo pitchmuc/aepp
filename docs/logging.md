@@ -45,9 +45,9 @@ cat = catalog.Catalog(loggingObject=myLogging)
 
 The new functionality can either:
 
-* Stream data to the console. In that case, it will progressively replace some of the verbose option.
+*   Stream data to the console. In that case, it will progressively replace some of the verbose option.
 
-* Write data to a log file. In that case, the default name of the log file will be `aepp.log`. You can change that in the config object.
+*   Write data to a log file. In that case, the default name of the log file will be `aepp.log`. You can change that in the config object.
 
 Be careful at which level you are instanciating the logging capability. The default level is `WARNING`.
 
