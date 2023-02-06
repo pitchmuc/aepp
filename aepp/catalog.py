@@ -344,7 +344,16 @@ class Catalog:
             return df
         return data
 
-    def createDataSets(self, data: dict = None, name:str=None, schemaId:str=None, profileEnabled:bool=False,upsert:bool=False, tags:dict=None,**kwargs):
+    def createDataSets(self, 
+                data: dict = None,
+                name:str=None, 
+                schemaId:str=None, 
+                profileEnabled:bool=False,
+                identityEnabled:bool=False,
+                upsert:bool=False,
+                tags:dict=None,
+                systemLabels:list[str]=None,
+                **kwargs):
         """
         Create a new dataSets based either on preconfigured setup or by passing the full dictionary for creation.
         Arguments:
@@ -353,6 +362,7 @@ class Catalog:
             name : REQUIRED : if you wish to create a dataset via autocompletion. Provide a name.
             schemaId : REQUIRED : The schema $id reference for creating your dataSet.
             profileEnabled : OPTIONAL : If the dataset to be created with profile enbaled
+            identityEnabled : OPTIONAL : If the dataset should create new identities
             upsert : OPTIONAL : If the dataset to be created with profile enbaled and Upsert capability.
             tags : OPTIONAL : set of attribute to add as tags.
         possible kwargs
@@ -376,22 +386,20 @@ class Catalog:
                     "persisted": True,
                     "containerFormat": "parquet",
                     "format": "parquet"
-                }
+                },
+                "tags" : {}
             }
             if profileEnabled:
-                data['tags'] = {
-                            "unifiedIdentity": [
-                                "enabled: true"
-                            ],
-                            "unifiedProfile": [
-                                "enabled: true"
-                            ]
-                        }
+                data['tags']["unifiedProfile"] = ["enabled: true"]
+            if identityEnabled:
+                data['tags']["unifiedIdentity"] = ["enabled: true"]
             if upsert:
                 data['tags']['unifiedProfile'] = ["enabled: true","isUpsert: true"]
             if tags is not None and type(tags) == dict:
                 for key in tags:
                     data['tags'][key] = tags[key]
+            if systemLabels is not None and type(systemLabels) == list:
+                data["systemLabels"] = systemLabels
             res = self.connector.postData(self.endpoint+path, params=params,
                              data=data)
         return res

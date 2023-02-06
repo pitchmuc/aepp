@@ -12,7 +12,7 @@ This page list all of the changes that came during the different release of the 
 * Changing Content-type for `enablingDatasetProfile` method. Undocumented issue for AEP.
 * adding `getLandingZoneContainer` , `exploreLandingZone`, `getLandingZoneCredential` and `getLandingZoneContent` in `FlowService` class.
 * adding `createSourceConnectionDataLandingZone` in `FlowService` class
-* 
+* adding support for systemLabels in DataSet creation.
 
 ## version 0.2.5
 * adding the `completePath` attribute for search result of `searchField` method in `SchemaManager`
