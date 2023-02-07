@@ -277,7 +277,7 @@ class QueryService:
         if self.loggingEnabled:
             self.logger.debug(f"Starting postQuery")
         if data is None:
-            if sql is None or name is None:
+            if (sql is None and templateId is None) or name is None:
                 raise AttributeError("You are missing required arguments.")
             if type(ctasParameters) is dict:
                 if (
@@ -290,9 +290,10 @@ class QueryService:
             data = {
                 "name": name,
                 "description": description,
-                "dbName": dbname,
-                "sql": sql,
+                "dbName": dbname
             }
+            if sql is not None:
+                data["sql"] = sql
             if templateId is not None:
                 data["templateId"] = templateId
             if queryParameters is not None:
@@ -463,6 +464,7 @@ class QueryService:
             name : OPTIONAL : Name of the query
             dbname : OPTIONAL : the dataset name (default prod:all)
             sql: OPTIONAL : the SQL query as a string.
+            templateId : OPTIONAL : The Template ID to be used
             queryParameters : OPTIONAL : in case you are using template, providing the paramter in a dictionary.
             ctasParameters: OPTIONAL : in case you want to create a dataset out of that query, dictionary is required with "datasetName" and "description".
             schedule : OPTIONAL : Dictionary giving the instruction to schedule the query.
@@ -470,7 +472,7 @@ class QueryService:
         if self.loggingEnabled:
             self.logger.debug(f"Starting createSchedule")
         if scheduleQuery is None:
-            if name is None or sql is None or schedule is None:
+            if name is None or (sql is None and templateId is None) or schedule is None:
                 raise Exception(
                     "Expecting either scheduleQUery dictionary or data in parameters"
                 )
@@ -478,11 +480,12 @@ class QueryService:
                 "query": {
                     "name": name,
                     "description": description,
-                    "dbName": dbname,
-                    "sql": sql,
+                    "dbName": dbname
                 },
                 "schedule": schedule,
             }
+            if sql is not None:
+                scheduleQuery["query"]["sql"] = sql
             if templateId is not None:
                 scheduleQuery["query"]["templateId"] = templateId
             if queryParameters is not None:

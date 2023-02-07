@@ -1925,9 +1925,22 @@ class FieldGroupManager:
                             },
                         }
                     },
+                    "property":{
+                        "type" : "object",
+                        "properties":{
+                            self.tenantId:{
+                                "properties":{},
+                                "type" : "object"
+                            },
+                        }
+                    },
                 },
                 'allOf':[{
                     "$ref": "#/definitions/customFields",
+                    "type": "object"
+                },
+                {
+                    "$ref": "#/definitions/property",
                     "type": "object"
                 }],
                 "meta:intendedToExtend":[],

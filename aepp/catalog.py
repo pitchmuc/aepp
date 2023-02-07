@@ -365,6 +365,7 @@ class Catalog:
             identityEnabled : OPTIONAL : If the dataset should create new identities
             upsert : OPTIONAL : If the dataset to be created with profile enbaled and Upsert capability.
             tags : OPTIONAL : set of attribute to add as tags.
+            systemLabels : OPTIONAL : A list of string to attribute system based label on creation.
         possible kwargs
             requestDataSource : Set to true if you want Catalog to create a dataSource on your behalf; otherwise, pass a dataSourceId in the body.
         """
