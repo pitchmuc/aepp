@@ -113,14 +113,14 @@ class AdobeRequest:
             "exp": now_plus_24h,
             "iss": config["org_id"],
             "sub": config["tech_id"],
-            "https://ims-na1.adobelogin.com/s/ent_dataservices_sdk": True,
-            "aud": f'https://ims-na1.adobelogin.com/c/{config["client_id"]}',
+            f"{self.config['imsEndpoint']}/s/ent_dataservices_sdk": True,
+            "aud": f'{self.config["imsEndpoint"]}/c/{config["client_id"]}',
         }
         # privacy topic
         if kwargs.get("privacyScope", False):
-            jwt_payload["https://ims-na1.adobelogin.com/s/ent_gdpr_sdk"] = True
+            jwt_payload[f"{self.config['imsEndpoint']}/s/ent_gdpr_sdk"] = True
         if kwargs.get("aepScope", True) == False:
-            del jwt_payload["https://ims-na1.adobelogin.com/s/ent_dataservices_sdk"]
+            del jwt_payload[f"{self.config['imsEndpoint']}/s/ent_dataservices_sdk"]
         encoded_jwt = self._get_jwt(payload=jwt_payload, private_key=private_key)
 
         payload = {
