@@ -283,9 +283,6 @@ class FlowService:
         }
         res = self.createConnection(data=obj,responseType=kwargs.get('responseType','json'))
         return res
-    
-    
-
 
     def getConnection(self, connectionId: str = None) -> dict:
         """
@@ -344,6 +341,14 @@ class FlowService:
         except:
             return res
 
+    def getConnectionSpecsMap(self) -> dict:
+        """
+        Returns a mapping of connection spec name to connection spec ID.
+        If that doesn't work, return the response.
+        """
+        specs_info = self.getConnectionSpecs()
+        return {spec["name"]: spec["id"] for spec in specs_info if "id" in spec and "name" in spec}
+
     def getConnectionSpec(self, specId: str = None) -> dict:
         """
         Returns the detail for a specific connection.
@@ -357,6 +362,19 @@ class FlowService:
         path: str = f"/connectionSpecs/{specId}"
         res: dict = self.connector.getData(self.endpoint + path)
         return res.get('items',[{}])[0]
+
+    def getConnectionSpecIdFromName(self, name: str = None) -> int:
+        """
+        Returns the connection spec ID corresponding to a connection spec name.
+        Arguments:
+            name : REQUIRED : The specification name of a connection
+        """
+        if name is None:
+            raise Exception("Require a name to be present")
+        spec_name_to_id = self.getConnectionSpecsMap()
+        if name not in spec_name_to_id:
+            raise Exception(f"Connection spec name '{name}' not found")
+        return spec_name_to_id[name]
 
     def getFlows(
         self,
@@ -452,7 +470,21 @@ class FlowService:
         res: dict = self.connector.deleteData(self.endpoint + path)
         return res
 
-    def createFlow(self, obj: dict = None) -> dict:
+    def createFlow(
+        self,
+        flow_spec_id: str,
+        name: str = None,
+        source_connection_id: str = None,
+        target_connection_id: str = None,
+        schedule_start_time: str = None,
+        schedule_frequency: str = "minute",
+        schedule_interval: int = 15,
+        transformation_mapping_id: str = None,
+        transformation_name: str = None,
+        transformation_version: int = 0,
+        obj: dict = None,
+        version: str = "1.0"
+    ) -> dict:
         """
         Create a flow with the API.
         Arguments:
@@ -461,20 +493,145 @@ class FlowService:
                 requires following keys : name, flowSpec, sourceConnectionIds, targetConnectionIds, transformations, scheduleParams.
         """
         if obj is None:
-            raise Exception("Require a dictionary to create the flow")
-        if "name" not in obj.keys():
-            raise KeyError("missing 'name' parameter in the dictionary")
-        if "flowSpec" not in obj.keys():
-            raise KeyError("missing 'flowSpec' parameter in the dictionary")
-        if "sourceConnectionIds" not in obj.keys():
-            raise KeyError("missing 'sourceConnectionIds' parameter in the dictionary")
-        if "targetConnectionIds" not in obj.keys():
-            raise KeyError("missing 'targetConnectionIds' parameter in the dictionary")
+            if any(param is None for param in [name, source_connection_id, target_connection_id]):
+                raise KeyError("Require either obj or all of 'name', 'source_connection_id', 'target_connection_id'")
+            if schedule_frequency not in ("minute", "hour"):
+                raise ValueError("schedule frequency has to be either minute or hour")
+            obj = {
+                "name": name,
+                "flowSpec": {
+                    "id": flow_spec_id,
+                    "version": version
+                },
+                "sourceConnectionIds": [
+                    source_connection_id
+                ],
+                "targetConnectionIds": [
+                    target_connection_id
+                ],
+                "transformations": [],
+                "scheduleParams": {
+                    "startTime": schedule_start_time,
+                    "frequency": schedule_frequency,
+                    "interval": str(schedule_interval)
+                }
+            }
+            if transformation_mapping_id is not None:
+                obj["transformations"] = [
+                    {
+                        "name": transformation_name,
+                        "params": {
+                            "mappingId": transformation_mapping_id,
+                            "mappingVersion": transformation_version
+                        }
+                    }
+                ]
+        else:
+            if "name" not in obj.keys():
+                raise KeyError("missing 'name' parameter in the dictionary")
+            if "flowSpec" not in obj.keys():
+                raise KeyError("missing 'flowSpec' parameter in the dictionary")
+            if "sourceConnectionIds" not in obj.keys():
+                raise KeyError("missing 'sourceConnectionIds' parameter in the dictionary")
+            if "targetConnectionIds" not in obj.keys():
+                raise KeyError("missing 'targetConnectionIds' parameter in the dictionary")
         if self.loggingEnabled:
             self.logger.debug(f"Starting createFlow")
         path: str = "/flows"
         res: dict = self.connector.postData(self.endpoint + path, data=obj)
         return res
+
+    def createFlowDataLakeToDataLandingZone(
+        self,
+        name: str,
+        source_connection_id: str,
+        target_connection_id: str,
+        schedule_start_time: str,
+        schedule_frequency: str = "hour",
+        schedule_interval: int = 3,
+        transformation_mapping_id: str = None,
+        transformation_name: str = None,
+        transformation_version: int = 0,
+        version: str = "1.0",
+        flow_spec_name: str = "Data Landing Zone",
+        source_spec_name: str = "activation-datalake",
+        target_spec_name: str = "Data Landing Zone"
+    ) -> dict:
+        """
+        Create a Data Flow to move data from Data Lake to the Data Landing Zone.
+        Arguments:
+            name : REQUIRED : The name of the Data Flow.
+            source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake.
+            target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone.
+            schedule_start_time : REQUIRED : The time from which the Data Flow should start running.
+            schedule_frequency : OPTIONAL : The granularity of the Data Flow. Currently only "hour" supported.
+            schedule_interval : OPTIONAL : The interval on which the Data Flow runs. Either 3, 6, 9, 12 or 24. Default to 3.
+            transformation_mapping_id : OPTIONAL : If a transformation is required, its mapping ID.
+            transformation_name : OPTIONAL : If a transformation is required, its name.
+            transformation_version : OPTIONAL : If a transformation is required, its version.
+            version : OPTIONAL : The version of the Data Flow.
+            flow_spec_name : OPTIONAL : The name of the Data Flow specification. Same for all customers.
+        """
+        flow_spec_id = self.getFlowSpecIdFromNames(flow_spec_name, source_spec_name, target_spec_name)
+        return self.createFlow(
+            flow_spec_id=flow_spec_id,
+            name=name,
+            source_connection_id=source_connection_id,
+            target_connection_id=target_connection_id,
+            schedule_start_time=schedule_start_time,
+            schedule_frequency=schedule_frequency,
+            schedule_interval=schedule_interval,
+            transformation_mapping_id=transformation_mapping_id,
+            transformation_name=transformation_name,
+            transformation_version=transformation_version,
+            version=version
+        )
+
+    def createFlowDataLandingZoneToDataLake(
+        self,
+        name: str,
+        source_connection_id: str,
+        target_connection_id: str,
+        schedule_start_time: str,
+        schedule_frequency: str = "minute",
+        schedule_interval: int = 15,
+        transformation_mapping_id: str = None,
+        transformation_name: str = None,
+        transformation_version: int = 0,
+        version: str = "1.0",
+        flow_spec_name: str = "CloudStorageToAEP",
+        source_spec_name: str = "landing-zone",
+        target_spec_name: str = "datalake"
+    ) -> dict:
+        """
+        Create a Data Flow to move data from Data Lake to the Data Landing Zone.
+        Arguments:
+            name : REQUIRED : The name of the Data Flow.
+            source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake.
+            target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone.
+            schedule_start_time : REQUIRED : The time from which the Data Flow should start running.
+            schedule_frequency : OPTIONAL : The granularity of the Data Flow. Can be "hour" or "minute". Default to "minute".
+            schedule_interval : OPTIONAL : The interval on which the Data Flow runs. Default to 15
+            transformation_mapping_id : OPTIONAL : If a transformation is required, its mapping ID.
+            transformation_name : OPTIONAL : If a transformation is required, its name.
+            transformation_version : OPTIONAL : If a transformation is required, its version.
+            version : OPTIONAL : The version of the Data Flow.
+            flow_spec_name : OPTIONAL : The name of the Data Flow specification. Same for all customers.
+        """
+        flow_spec_id = self.getFlowSpecIdFromNames(flow_spec_name, source_spec_name, target_spec_name)
+        return self.createFlow(
+            flow_spec_id=flow_spec_id,
+            name=name,
+            source_connection_id=source_connection_id,
+            target_connection_id=target_connection_id,
+            schedule_start_time=schedule_start_time,
+            schedule_frequency=schedule_frequency,
+            schedule_interval=schedule_interval,
+            transformation_mapping_id=transformation_mapping_id,
+            transformation_name=transformation_name,
+            transformation_version=transformation_version,
+            version=version
+        )
 
     def updateFlow(
         self, flowId: str = None, etag: str = None, updateObj: list = None
@@ -530,6 +687,33 @@ class FlowService:
         res: dict = self.connector.getData(self.endpoint + path, params=params)
         items: list = res["items"]
         return items
+
+    def getFlowSpecIdFromNames(
+        self,
+        flow_spec_name: str,
+        source_spec_name: str = None,
+        target_spec_name: str = None
+    ) -> str:
+        """
+        Return the Flow specification ID corresponding to some conditions..
+        Arguments:
+            flow_spec_name : REQUIRED : The flow specification name to look for
+            source_spec_name : OPTIONAL : Additional filter to only return a flow with a source specification ID.
+            target_spec_name : OPTIONAL : Additional filter to only return a flow with a target specification ID.
+        """
+        flows = self.getFlowSpecs(f"name=={flow_spec_name}")
+        if source_spec_name is not None:
+            source_spec_id = self.getConnectionSpecIdFromName(source_spec_name)
+            flows = [flow for flow in flows if source_spec_id in flow["sourceConnectionSpecIds"]]
+        if target_spec_name is not None:
+            target_spec_id = self.getConnectionSpecIdFromName(target_spec_name)
+            flows = [flow for flow in flows if target_spec_id in flow["targetConnectionSpecIds"]]
+        if len(flows) != 1:
+            raise Exception(f"Expected a single flow specification mapping to flow name '{flow_spec_name}', "
+                            f"source spec name '{source_spec_name}' and target spec name '{target_spec_name}'"
+                            f"but got {len(flows)}")
+        flow_spec_id = flows[0]["id"]
+        return flow_spec_id
 
     def getFlowSpec(self, flowSpecId) -> dict:
         """
@@ -683,6 +867,7 @@ class FlowService:
         name: str = None,
         format: str = "delimited",
         description: str = "",
+        spec_name: str = "Streaming Connection"
     ) -> dict:
         """
         Create a source connection based on streaming connection created.
@@ -691,16 +876,18 @@ class FlowService:
             name : REQUIRED : Name of the Connection.
             format : REQUIRED : format of the data sent (default : delimited)
             description : REQUIRED : Description of of the Connection Source.
+            spec_name : OPTIONAL : The name of the source specification corresponding to Streaming.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createSourceConnectionStreaming")
+        spec_id = self.getConnectionSpecIdFromName(spec_name)
         obj = {
             "name": name,
             "providerId": "521eee4d-8cbe-4906-bb48-fb6bd4450033",
             "description": description,
             "baseConnectionId": connectionId,
             "connectionSpec": {
-                "id": "bc7b00d6-623a-4dfc-9fdb-f1240aeadaeb",
+                "id": spec_id,
                 "version": "1.0",
             },
             "data": {"format": format},
@@ -708,31 +895,79 @@ class FlowService:
         res = self.createSourceConnection(data=obj)
         return res
     
-    def createSourceConnectionDataLandingZone(self,
-                        name:str=None, 
-                        format:str="delimited",
-                        fileName:str=None,
-                        )->dict:
+    def createSourceConnectionDataLandingZone(
+        self,
+        name: str = None,
+        format: str = "delimited",
+        path: str = None,
+        type: str = "file",
+        recursive: bool = False,
+        spec_name: str = "landing-zone"
+    ) -> dict:
         """
-        Create a new data landing zone setup.
+        Create a new data landing zone connection.
         Arguments:
             name : REQUIRED : A name for the connection
             format : REQUIRED : The type of data type loaded. Default "delimited". Can be "json" or "parquet" 
-            fileName : REQUIRED : The name of the file you want to create.
+            path : REQUIRED : The path to the data you want to ingest. Can be a single file or folder.
+            type : OPTIONAL : Use "file" if path refers to individual file, otherwise "folder".
+            recursive : OPTIONAL : Whether to look for files recursively under the path or not.
+            spec_name : OPTIONAL : The name of the source specification corresponding to Data Landing Zone.
         """
         if name is None:
             raise ValueError("Require a name for the connection")
+        spec_id = self.getConnectionSpecIdFromName(spec_name)
         obj = {
             "name": name,
             "data": {
                 "format": format
             },
             "params": {
-                "path": fileName
+                "path": path,
+                "type": type,
+                "recursive": recursive
             },
             "connectionSpec": {
-                "id": "26f526f2-58f4-4712-961d-e41bf1ccc0e8",
+                "id": spec_id,
                 "version": "1.0"
+            }
+        }
+        res = self.createSourceConnection(obj)
+        return res
+
+    def createSourceConnectionDataLake(
+        self,
+        name: str = None,
+        format: str = "delimited",
+        dataset_ids: list = [],
+        spec_name: str = "activation-datalake"
+    ) -> dict:
+        """
+        Create a new data lake connection.
+        Arguments:
+            name : REQUIRED : A name for the connection
+            format : REQUIRED : The type of data type loaded. Default "delimited". Can be "json" or "parquet"
+            dataset_ids : REQUIRED : A list of dataset IDs acting as a source of data.
+            spec_name : OPTIONAL : The name of the source specification corresponding to Data Lake.
+        """
+        if name is None:
+            raise ValueError("Require a name for the connection")
+        if len(dataset_ids) == 0:
+            raise ValueError("Expected at least 1 dataset ID to be passed")
+        spec_id = self.getConnectionSpecIdFromName(spec_name)
+        obj = {
+            "name": name,
+            "data": {
+                "format": format
+            },
+            "connectionSpec": {
+                "id": spec_id,
+                "version": "1.0"
+            },
+            "params": {
+                "datasets": [{
+                    "dataSetId": dataset_id,
+                } for dataset_id in dataset_ids]
             }
         }
         res = self.createSourceConnection(obj)
@@ -858,6 +1093,50 @@ class FlowService:
             res: dict = self.connector.postData(self.endpoint + path, data=obj)
         return res
 
+    def createTargetConnectionDataLandingZone(
+        self,
+        name: str = None,
+        format: str = "delimited",
+        path: str = None,
+        type: str = "file",
+        version: str = "1.0",
+        description: str = "",
+        spec_name: str = "Data Landing Zone"
+    ) -> dict:
+        """
+        Create a target connection to the Data Landing Zone
+        Arguments:
+                name : REQUIRED : The name of the target connection
+                format : REQUIRED : Data format to be used
+                path : REQUIRED : The path to the data you want to ingest. Can be a single file or folder.
+                type : OPTIONAL : Use "file" if path refers to individual file, otherwise "folder".
+                version : REQUIRED : version of your target destination
+                description : OPTIONAL : description of your target destination.
+                spec_name : OPTIONAL : The name of the target specification corresponding to Data Lake.
+        """
+        if name is None:
+            raise ValueError("Require a name for the connection")
+        spec_id = self.getConnectionSpecIdFromName(spec_name)
+        obj = {
+            "name": name,
+            "description": description,
+            "data": {
+                "format": format
+            },
+            "params": {
+                "path": path,
+                "type": type
+            },
+            "connectionSpec": {
+                "id": spec_id,
+                "version": version
+            }
+        }
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createTargetConnectionDataLandingZone")
+        res = self.createTargetConnection(data=obj)
+        return res
+
     def createTargetConnectionDataLake(
         self,
         name: str = None,
@@ -866,6 +1145,7 @@ class FlowService:
         format: str = "delimited",
         version: str = "1.0",
         description: str = "",
+        spec_name: str = "datalake"
     ) -> dict:
         """
         Create a target connection to the AEP Data Lake.
@@ -876,7 +1156,11 @@ class FlowService:
             format : REQUIRED : format of your data inserted
             version : REQUIRED : version of your target destination
             description : OPTIONAL : description of your target destination.
+            spec_name : OPTIONAL : The name of the target specification corresponding to Data Lake.
         """
+        if name is None:
+            raise ValueError("Require a name for the connection")
+        spec_id = self.getConnectionSpecIdFromName(spec_name)
         targetObj = {
             "name": name,
             "description": description,
@@ -889,7 +1173,7 @@ class FlowService:
             },
             "params": {"dataSetId": datasetId},
             "connectionSpec": {
-                "id": "c604ff05-7f1a-43c0-8e18-33bf874cb11c",
+                "id": spec_id,
                 "version": version,
             },
         }
