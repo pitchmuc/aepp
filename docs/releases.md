@@ -13,7 +13,9 @@ This page list all of the changes that came during the different release of the 
 * adding `getLandingZoneContainer` , `exploreLandingZone`, `getLandingZoneCredential` and `getLandingZoneContent` in `FlowService` class.
 * adding `createSourceConnectionDataLandingZone` in `FlowService` class
 * adding support for `systemLabels` parameters in DataSet creation.
-* fixing issue on Query Service when you can only pass the `templateId` parameter
+* fixing issue on Query Service when you can only pass the `templateId` parameter\
+Patch 
+* fix query service endpoints reference
 
 ## version 0.2.5
 * adding the `completePath` attribute for search result of `searchField` method in `SchemaManager`

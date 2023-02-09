@@ -1,5 +1,4 @@
 # Internal Library
-from aepp import config
 from aepp import connector
 import pandas as pd
 from typing import Union
@@ -62,8 +61,8 @@ class QueryService:
 
     def __init__(
         self,
-        config: Union[dict,ConnectObject] = config.config_object,
-        header:dict = config.header,
+        config: Union[dict,ConnectObject] = aepp.config.config_object,
+        header:dict = aepp.config.header,
         loggingObject: dict = None,
         **kwargs,
     ) -> None:
@@ -115,7 +114,7 @@ class QueryService:
             self.connector.header.update({"x-sandbox-name":kwargs.get('sandbox')})
         else:
             self.sandbox = self.connector.config["sandbox"]
-        self.endpoint = config.endpoints["global"] + config.endpoints["query"]
+        self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["query"]
 
     def getResource(
         self,
