@@ -510,12 +510,14 @@ class FlowService:
                     target_connection_id
                 ],
                 "transformations": [],
-                "scheduleParams": {
-                    "startTime": schedule_start_time,
-                    "frequency": schedule_frequency,
-                    "interval": str(schedule_interval)
-                }
+                "scheduleParams": {}
             }
+            if schedule_start_time is not None:
+                obj["scheduleParams"]["startTime"] = schedule_start_time
+            if schedule_frequency is not None:
+                obj["scheduleParams"]["frequency"] = schedule_frequency
+            if schedule_interval is not None:
+                obj["scheduleParams"]["interval"] = str(schedule_interval)
             if transformation_mapping_id is not None:
                 obj["transformations"] = [
                     {
