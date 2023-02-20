@@ -83,9 +83,9 @@ Example : You cannot delete a class if it is used in a schema and you cannot del
 
 From bottom to top, here is the list of elements.
 
-1. Data Types : a single piece of data description
-2. Mixins : can contains several data types
-3. Class : define the type of schema that will be built
+1. Class : define the type of schema that will be built
+2. Data Types : a single piece of data description
+3. Mixins : can contains several data types
 4. Schema : use class and mixins to build a data model
 
 ### 4. Descriptors are important
