@@ -1884,8 +1884,8 @@ class FieldGroupManager:
         """
         Instantiator for field group creation.
         Arguments:
-            fieldGroup : OPTIONAL : the field group definition as dictionary OR the endpoint to access it.
-                If you pass the $id or altId, you should pass the schemaAPI instance. 
+            fieldGroup : OPTIONAL : the field group definition as dictionary OR the $id/altId to access it.
+                If you pass the $id or altId, you should pass the schemaAPI instance or have uploaded a configuration file.
             title : OPTIONAL : If you want to name the field group.
             fg_class : OPTIONAL : the class that will support this field group.
                 by default events and profile, possible value : "record"
@@ -1958,6 +1958,7 @@ class FieldGroupManager:
         self.__setAttributes__(self.fieldGroup)
         if title is not None:
             self.fieldGroup['title'] = title
+            self.title = title
         
     
     def __setAttributes__(self,fieldGroup:dict)->None:
@@ -2393,8 +2394,8 @@ class FieldGroupManager:
 
     def searchField(self,string:str,partialMatch:bool=True,caseSensitive:bool=False)->list:
         """
-        Search for a field name after the string passed.
-        By default, partial match is enabled and allow 
+        Search for a field name based the string passed.
+        By default, partial match is enabled and allow case sensitivity option.
         Arguments:
             string : REQUIRED : the string to look for for one of the field
             partialMatch : OPTIONAL : if you want to look for complete string or not. (default True)
@@ -2406,7 +2407,8 @@ class FieldGroupManager:
     
     def searchAttribute(self,attr:dict=None,regex:bool=False,extendedResults:bool=False,joinType:str='outer', **kwargs)->list:
         """
-        Search for an attribute and its value based on the keyword
+        Search for an attribute on the field of the field groups.
+        Returns either the list of fields that match this search or their full definitions.
         Arguments:
             attr : REQUIRED : a dictionary of key value pair(s).  Example : {"type" : "string"} 
                 NOTE : If you wish to have the array type on top of the array results, use the key "arrayType". Example : {"type" : "array","arrayType":"string"}
@@ -2600,14 +2602,18 @@ class FieldGroupManager:
             success = self.__removeKey__(completePath,self.fieldGroup['definitions'])
         return success
 
-    def to_dict(self,typed:bool=True)->dict:
+    def to_dict(self,typed:bool=True,save:bool=False)->dict:
         """
         Generate a dictionary representing the field group constitution
         Arguments:
-            typed : OPTIONAL : If you want the type associated with the field group to be given. 
+            typed : OPTIONAL : If you want the type associated with the field group to be given.
+            save : OPTIONAL : If you wish to save the dictionary in a JSON file
         """
         definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
         data = self.__transformationDict__(definition,typed)
+        if save:
+            filename = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
+            aepp.saveFile(module='schema',file=data,filename=f"{filename}.json",type_file='json')
         return data
 
     def to_dataframe(self,save:bool=False,queryPath:bool=False)->pd.DataFrame:
@@ -2622,7 +2628,7 @@ class FieldGroupManager:
         data = self.__transformationDF__(definition,queryPath=queryPath)
         df = pd.DataFrame(data)
         if save:
-            title = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}.csv')
+            title = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
             df.to_csv(f"{title}.csv",index=False)
         return df
     
@@ -2834,7 +2840,7 @@ class SchemaManager:
                 Note that regex will turn every comparison value to string for a "match" comparison.
             extendedResults : OPTIONAL : If you want to have the result to contain all details of these fields. (default False)
             joinType : OPTIONAL : If you pass multiple key value pairs, how do you want to get the match.
-                outer : provide the fields if any of the key value pair is matched.
+                outer : provide the fields if any of the key value pair is matched. (default)
                 inner : provide the fields if all the key value pair matched.
         """
         myResults = []
@@ -2906,9 +2912,10 @@ class SchemaManager:
                 save as csv with the title used. Not title, used "unknown_schema_" + timestamp.
             queryPath : OPTIONAL : If you want to have the query path to be used.
         """
-        df = pd.DataFrame({'path':[],'type':[]})
+        df = pd.DataFrame({'path':[],'type':[],'fieldGroup':[]})
         for fgmanager in self.fieldGroupsManagers:
             tmp_df = fgmanager.to_dataframe(queryPath=queryPath)
+            tmp_df['fieldGroup'] = fgmanager.title
             df = df.append(tmp_df,ignore_index=True)
         if save:
             title = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}.csv')

@@ -5,6 +5,23 @@ It will include some examples but be aware that not all methods will be document
 To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/schema-registry/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
+
+## Menu
+- [Importing the module](#importing-the-module)
+- [Generating a Schema instance](#generating-a-schema-instance)
+    - [Using Kwargs](#using-kwargs)
+- [Tips for Schema instance](#tips-for-schema-requests)
+    - [Generate Samples](#1-generate-samples)
+    - [Using parameters in getSchema](#2-using-parameters-in-getschema)
+    - [Hiearchy matters](#3-hierarchy-matters)
+    - [Descriptors are important](#4-descriptors-are-important)
+- [Use Cases for Schema class](#use-cases)
+    - [Copying a mixin for ingestion](#copying-a-mixin-for-ingestion)
+    - [Creating ExperienceEvent and Profile Schema](#creating-experienceevent-and-profile-schema)
+    - [Get Paths for schema](#get-paths-from-schema)
+- [Schema Manager](#schemamanager)
+- [Field Group Manager](#fieldgroupmanager)
+
 ## Importing the module
 
 Before importing the module, you would need to import the configuration file, or alternatively provide the information required for the API connection through the configure method. [see getting starting](./getting-started.md)
@@ -18,7 +35,7 @@ aepp.importConfigFile('myConfig_file.json')
 from aepp import schema
 ```
 
-## Generating an instance
+## Generating a Schema instance
 
 Because you can connect to multiple AEP instance at once, or multiple sandboxes, you would need to setup an instance of the `Schema` class from that module.\
 Following the previous method described above, you can realize this:
@@ -136,8 +153,288 @@ Is it timestamp related ? (to give time-based context)\
 Is it just a record of third party piece information ? (such as lookup) 
 
 In reason of that, most of the most relevant method of the `SchemaManager` class are abstracted and aggregated representation of methods used in the `FieldManagerClass`. 
+The `SchemaManager` class is not an official Adobe schema manager and any method there needs to be tested before being used in production.
+
+### Instantiation of Schema Manager
+
+The `SchemaManager` class can be instanciated with these parameters:
+  * schemaId : OPTIONAL : Either a schemaId ($id or altId) or the schema dictionary itself.
+        If schemaId is passed, you need to provide the schemaAPI connection as well.
+        If no schema ID is passed, then it will create an empty schema.
+  * fieldGroupIds : OPTIONAL : Possible to specify a list of fieldGroup. 
+        Either a list of fieldGroupIds (schemaAPI should be provided as well) or list of dictionary definition 
+  * schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
+  * schemaClass : OPTIONAL : If you want to set the class to be a specific class.
+        Default value is profile: "https://ns.adobe.com/xdm/context/profile", can be replaced with any class definition.
+        Possible default value: "https://ns.adobe.com/xdm/context/experienceevent", "https://ns.adobe.com/xdm/context/segmentdefinition"
+  * config : OPTIONAL : The config object in case you want to override the configuration.
+
+By default, it will use the default config that has been used for the `Schema` class.\
+However, you can use the `schemaAPI` parameter to pass an instance of the `Schema` class you want to use or you can pass the `config` object.
+
+
+There are several attribute available from the instanciation of the schema:
+* title : The title of the schema
+* fieldGroups : A dictionary of the title and ID of the field groups
+* fieldGroupTitles : A list of the field group titles
+* fieldGroupIds : A list of the field groups Id
+* fieldGroupsManagers : A list of Field Group Manager instances
+
+
+### Methods of Schema Manager
+
+The different methods available from the instantiation are:
+
+#### searchField
+
+The `searchField` method provide a way to search for a specific field name.\
+It takes 3 arguments:
+* string : REQUIRED : The string you are looking for
+* partialMatch : OPTIONAL : If you want to use partial match (default True)
+* caseSensitive : OPTIONAL : If you want to remove the case sensitivity.
+
+The output will provide you with the element itself with additional attributes:
+* path of the field with annotation if it is (in) a list
+* the query path that you can use in Query Service
+* the complete path that contains the complete path of that field
+* the field group that contains that field
+
+Example:
+```python
+
+mySchemaManagerInstance = schema.SchemaManager('<schemaId>')
+mySchemaManagerInstance.searchField('myfield')
+
+```
+
+#### searchAttribute
+
+The `searchAttribute` will search for any attribute that you have specified and will return either a list of the field that contains that field.\
+You can also return the complete object description of the field matching your attributes search.
+
+The parameter of that methods are:
+* attr : REQUIRED : a dictionary of key value pair(s).  Example : {"type" : "string"} 
+    NOTE : If you wish to have the array type, use the key "arrayType". Example : {"type" : "array","arrayType":"string"} 
+* regex : OPTIONAL : if you want your value of your key to be matched via regex.
+    Note that regex will turn every comparison value to string for a "match" comparison.
+* extendedResults : OPTIONAL : If you want to have the result to contain all details of these fields. (default False)
+* joinType : OPTIONAL : If you pass multiple key value pairs, how do you want to get the match.
+    outer : provide the fields if any of the key value pair is matched.(default)
+    inner : provide the fields if all the key value pair matched.
+
+#### addFieldGroup
+
+This method allows you to directly add a field group to the schema definition.\
+It takes one argument:
+* fieldGroup : REQUIRED : The fieldGroup ID or the dictionary definition connecting to the API.
+                if a fieldGroup ID is provided, you should have added a schemaAPI previously.
+
+#### getFieldGroupManager
+
+This method will return the Field Group Manager instance used in the background of the `SchemaManager`.\
+It takes one argument:
+* fieldgroup : REQUIRED : The title or the $id of the field group to retrieve.
+
+#### setTitle
+
+This method will set a title for the Schema. It takes one argument:
+* name : REQUIRED : a string to be used for the title of the FieldGroup
+
+#### to_dataframe
+
+This method returns a dataframe that shows you all available fields of your schema in a tabular format (dataframe from pandas).\
+It also provide the type of the field itself and the field group of the field.\
+It takes 2 arguments:
+* save : OPTIONAL : If you wish to save it with the title used by the field group.
+    save as csv with the title used. Not title, used "unknown_schema_" + timestamp.
+* queryPath : OPTIONAL : If you want to have the query path to be used.
+
+#### to_dict
+
+This methods returns a dictionary representation of the schema, so you can better see the nested structure of your schema.\
+You can then save that structure in a JSON file. It also provides the type of the fields.
+No argument can be passed in that method.
+
+#### createSchema
+
+This method will try to create a Schema based on your different field group ids.\
+NOTE: It removes the "$id" if one was provided to avoid overriding existing ID.\
+Therefore you could generate 2 times the same schema.\
+It is meant to be used for new schema creation, not for schema duplication.
+
+#### updateSchema
+
+Use the PUT method to replace the existing schema with the new definition.
+
+#### createDescriptorOperation
+
+Descriptor are an important part of the schema as it can define identity, lookup and so on.\
+However, the descriptor are quite diverse and it can be a complicated operation to create the correct descriptor definition from scratch.\
+This method helps you to prepare the descriptor to be used.\
+You can see the type of descriptor available in the DESCRIPTOR_TYPES attribute and also on the official documentation: <https://experienceleague.adobe.com/docs/experience-platform/xdm/api/descriptors.html?lang=en#appendix>\
+Many arguments are possible:
+* descType : REQUIRED : The type to be used.
+    it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"
+* completePath : REQUIRED : the complete path of the field you want to attach a descriptor.
+* identityNSCode : OPTIONAL : if the descriptor is identity related, the namespace CODE  used.
+* identityPrimary : OPTIONAL : If the primary descriptor added is the primary identity.
+* alternateTitle : OPTIONAL : if the descriptor is alternateDisplay, the alternate title to be used.
+* alternateDescription : OPTIONAL if you wish to add a new description.
+* lookupSchema : OPTIONAL : The schema ID for the lookup if the descriptor is for lookup setup
+* targetCompletePath : OPTIONAL : if you have the complete path for the field in the target lookup schema.
+
+#### createDescriptor
+
+Once you have prepare your descriptor with the `createDescriptorOperation` method. You can use the result in that method to attach that descriptor to the schema.\
+Only one argument can be used:
+* descriptor : REQUIRED : The operation to add a descriptor to the schema.
 
 
 ## FieldGroupManager
 
-When creating and managing schema, what really happens 
+When creating and managing schema, what really happens is that you are managing the field groups that are contained in the schema.\
+Therefore, I would believe that managing a Field Group is actually the most important part of managing schemas.\
+Schemas are "just" a container of field groups ids with an assigned class.
+
+### Field Group Manager instance
+
+You can access a field group manager instance by 2 methods: 
+* from `SchemaManager`, the `getFieldGroupManager` method will provide you with an instance of that class by passing the title or the $id of the field group you want.
+* from instantiation of the `FieldGroupManager` class.
+
+To instantiate the FieldGroupManager you can pass the following arguments:
+* fieldGroup : OPTIONAL : the field group definition as dictionary OR the $id to access it.
+    If you pass the $id or altId, you should pass the schemaAPI instance or have uploaded a configuration file.
+    If you do not pass a field group (ID), an empty field group is created. 
+* title : OPTIONAL : If you want to name the field group.
+* fg_class : OPTIONAL : the class that will support this field group.
+    by default events and profile, possible value : "record"
+* schemaAPI : OPTIONAL : The instance of the Schema class. Provide a way to connect to the API.
+* config : OPTIONAL : The config object in case you want to override the configuration.
+
+Instanciation of the FieldGroupManager provide several attributes:
+* fieldGroup : Definition of the field group
+* title : Title of the field group
+* id : ID of the field group
+* altId : The alt:Id of the field group.
+
+### Field Groups Manager methods
+
+The different methods available, once the instantiation of the Field Group Manager is done, are:
+
+#### setTitle
+
+This method set the tile of the field group. It takes one argument:
+* name : REQUIRED : a string to be used for the title of the FieldGroup
+
+
+#### getField
+
+This method return the field definition based on a dot notation.\
+It takes one argument:
+* path : REQUIRED : path with dot notation to which field you want to access
+
+
+#### searchField
+
+Search for a field name based on the string passed.\
+By default, partial match is enabled and allow case sensitivity option.\
+Arguments:
+* string : REQUIRED : the string to look for for one of the field
+* partialMatch : OPTIONAL : if you want to look for complete string or not. (default True)
+* caseSensitive : OPTIONAL : if you want to compare with case sensitivity or not. (default False)
+
+#### searchAttribute
+
+Search for an attribute on the field of the field groups.\
+Returns either the list of fields that match this search or their full definitions.\
+Arguments:
+* attr : REQUIRED : a dictionary of key value pair(s).  Example : {"type" : "string"} 
+    NOTE : If you wish to have the array type on top of the array results, use the key "arrayType". Example : {"type" : "array","arrayType":"string"}
+            This will automatically set the joinType to "inner". Use type for normal search. 
+* regex : OPTIONAL : if you want your value of your key to be matched via regex.
+    Note that regex will turn every comparison value to string for a "match" comparison.
+* extendedResults : OPTIONAL : If you want to have the result to contain all details of these fields. (default False)
+* joinType : OPTIONAL : If you pass multiple key value pairs, how do you want to get the match.
+    outer : provide the fields if any of the key value pair is matched.
+    inner : provide the fields if all the key value pair matched.
+
+#### addFieldOperation
+
+When adding a field to a field group, you can use a POST method to just add the additional fields.\
+For that purpose, you need to provide a list of operation in that post method. The addFieldOperation method helps you to prepare this statement.\
+Return the operation to be used on the field group with the Patch method (patchFieldGroup), based on the element passed in arguments.\
+Arguments:
+* path : REQUIRED : path with dot notation where you want to create that new field.
+* dataType : REQUIRED : the field type you want to create
+    A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
+    NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
+* title : OPTIONAL : if you want to have a custom title.
+* objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
+    Example : {'field1':'string','field2':'double'}
+* array : OPTIONAL : Boolean. If the element to create is an array. False by default.
+* enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}\
+possible kwargs:
+* defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
+
+Examples : *TBD*
+
+#### addField
+
+This method will add the field directly in the field group definition contained in the instance.\
+You can then use the upgradeFieldGroup method to replace the existing definition with a new one.\
+It returns False when the field could not be inserted.
+Arguments:
+* path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
+* dataType : REQUIRED : the field type you want to create
+    A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
+    NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
+* title : OPTIONAL : if you want to have a custom title.
+* objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
+    Example : {'field1:'string','field2':'double'}
+* array : OPTIONAL : Boolean. If the element to create is an array. False by default.
+* enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}\
+possible kwargs:
+* defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
+
+#### removeField
+
+Remove a field from the definition based on the path provided.
+NOTE: A path that has received data cannot be removed from a schema or field group.
+Argument:
+* path : REQUIRED : The path to be removed from the definition.
+
+#### to_dict
+Generate a dictionary representing the field group constitution\
+Arguments:
+* typed : OPTIONAL : If you want the type associated with the field group to be given.
+* save : OPTIONAL : If you wish to save the dictionary in a JSON file
+    The title used. If no title, used "unknown_fieldGroup_" + timestamp.
+
+
+#### to_dataframe
+
+Generate a dataframe with the row representing each possible path.\
+Arguments:\
+* save : OPTIONAL : If you wish to save it with the title used by the field group.
+    save as csv with the title used. If no title, used "unknown_fieldGroup_" + timestamp.
+* queryPath : OPTIONAL : If you want to have the query path to be used.
+
+### to_xdm
+
+Returns the complete field group definition as XDM.
+
+### patchFieldGroup
+
+Use the POST method to patch the field group. It can be used with the result of the `addFieldGroupOperation` method.\
+Patch the field group with the given operation.\
+Arguments:
+* operation : REQUIRED : The list of operation to realise
+
+#### updateFieldGroup
+
+Use the PUT method to push the current field group representation to AEP via API request.
+
+#### createFieldGroup
+
+Use the POST method to create the field group in the organization.
