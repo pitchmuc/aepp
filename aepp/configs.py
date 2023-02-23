@@ -5,7 +5,7 @@ from typing import Optional
 import json
 
 # Non standard libraries
-from .config import config_object, header
+from .config import config_object, header, endpoints
 from aepp import connector
 
 def find_path(path: str) -> Optional[Path]:
@@ -30,6 +30,7 @@ def find_path(path: str) -> Optional[Path]:
 def createConfigFile(
     destination: str = "config_aep_template.json",
     sandbox: str = "prod",
+    environment: str = "prod",
     verbose: object = False,
     **kwargs,
 ) -> None:
@@ -47,6 +48,7 @@ def createConfigFile(
         "secret": "<YourSecret>",
         "pathToKey": "<path/to/your/privatekey.key>",
         "sandbox-name": sandbox,
+        "environment": environment
     }
     if ".json" not in destination:
         destination: str = f"{destination}.json"
@@ -98,7 +100,8 @@ def importConfigFile(path: str=None,connectInstance:bool=False) -> None:
             path_to_key=provided_config["pathToKey"],
             client_id=client_id,
             sandbox=provided_config.get("sandbox-name", "prod"),
-            connectInstance=connectInstance
+            connectInstance=connectInstance,
+            environment=provided_config.get("environment", "prod")
         )
         if connectInstance:
             return myInstance
@@ -112,7 +115,8 @@ def configure(
     path_to_key: str = None,
     private_key: str = None,
     sandbox: str = "prod",
-    connectInstance:bool = False,
+    connectInstance: bool = False,
+    environment: str = "prod"
 ):
     """Performs programmatic configuration of the API using provided values.
     Arguments:
@@ -124,6 +128,7 @@ def configure(
         private_key : REQUIRED : If you do not use a file but pass a variable directly.
         sandbox : OPTIONAL : If not provided, default to prod
         connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class
+        environment : OPTIONAL : If not provided, default to prod
     """
     if not org_id:
         raise ValueError("`org_id` must be specified in the configuration.")
@@ -147,6 +152,18 @@ def configure(
     config_object["private_key"] = private_key
     config_object["sandbox"] = sandbox
     header["x-sandbox-name"] = sandbox
+
+    # ensure we refer to the right environment endpoints
+    config_object["environment"] = environment
+    if environment == "prod":
+        endpoints["global"] = "https://platform.adobe.io"
+        config_object["imsEndpoint"] = "https://ims-na1.adobelogin.com"
+    else:
+        endpoints["global"] = f"https://platform-{environment}.adobe.io"
+        config_object["imsEndpoint"] = "https://ims-na1-stg1.adobelogin.com"
+    endpoints["streaming"]["inlet"] = f"{endpoints['global']}/data/core/edge"
+    config_object["tokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/exchange/jwt"
+
     # ensure the reset of the state by overwriting possible values from previous import.
     config_object["date_limit"] = 0
     config_object["token"] = ""
