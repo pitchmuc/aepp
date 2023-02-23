@@ -163,7 +163,7 @@ The `SchemaManager` class can be instanciated with these parameters:
         If no schema ID is passed, then it will create an empty schema.
   * fieldGroupIds : OPTIONAL : Possible to specify a list of fieldGroup. 
         Either a list of fieldGroupIds (schemaAPI should be provided as well) or list of dictionary definition 
-  * schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
+  * schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class or you should have import and/or pass the config object.
   * schemaClass : OPTIONAL : If you want to set the class to be a specific class.
         Default value is profile: "https://ns.adobe.com/xdm/context/profile", can be replaced with any class definition.
         Possible default value: "https://ns.adobe.com/xdm/context/experienceevent", "https://ns.adobe.com/xdm/context/segmentdefinition"
@@ -438,3 +438,4 @@ Use the PUT method to push the current field group representation to AEP via API
 #### createFieldGroup
 
 Use the POST method to create the field group in the organization.
+
