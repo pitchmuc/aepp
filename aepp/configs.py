@@ -116,12 +116,13 @@ def configure(
     private_key: str = None,
     sandbox: str = "prod",
     connectInstance: bool = False,
-    environment: str = "prod"
+    environment: str = "prod",
+    auth_code: str = None
 ):
     """Performs programmatic configuration of the API using provided values.
     Arguments:
         org_id : REQUIRED : Organization ID
-        tech_id : REQUIRED : Technical Account ID
+        tech_id : OPTIONAL : Technical Account ID
         secret : REQUIRED : secret generated for your connection
         client_id : REQUIRED : The client_id (old api_key) provided by the JWT connection.
         path_to_key : REQUIRED : If you have a file containing your private key value.
@@ -129,19 +130,17 @@ def configure(
         sandbox : OPTIONAL : If not provided, default to prod
         connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class
         environment : OPTIONAL : If not provided, default to prod
+        auth_code : OPTIONAL : If an authorization code is used directly instead of generating via JWT
     """
     if not org_id:
         raise ValueError("`org_id` must be specified in the configuration.")
     if not client_id:
         raise ValueError("`client_id` must be specified in the configuration.")
-    if not tech_id:
-        raise ValueError("`tech_id` must be specified in the configuration.")
     if not secret:
         raise ValueError("`secret` must be specified in the configuration.")
-    if not path_to_key and not private_key:
-        raise ValueError(
-            "`pathToKey` or `private_key` must be specified in the configuration."
-        )
+    if (auth_code is not None and (path_to_key is not None or private_key is not None)) \
+            or (auth_code is None and path_to_key is None and private_key is None):
+        raise ValueError("either `auth_code` needs to be specified or one of `private_key` or `path_to_key`")
     config_object["org_id"] = org_id
     header["x-gw-ims-org-id"] = org_id
     config_object["client_id"] = client_id
@@ -150,6 +149,7 @@ def configure(
     config_object["secret"] = secret
     config_object["pathToKey"] = path_to_key
     config_object["private_key"] = private_key
+    config_object["auth_code"] = auth_code
     config_object["sandbox"] = sandbox
     header["x-sandbox-name"] = sandbox
 
@@ -162,7 +162,8 @@ def configure(
         endpoints["global"] = f"https://platform-{environment}.adobe.io"
         config_object["imsEndpoint"] = "https://ims-na1-stg1.adobelogin.com"
     endpoints["streaming"]["inlet"] = f"{endpoints['global']}/data/core/edge"
-    config_object["tokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/exchange/jwt"
+    config_object["jwtTokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/exchange/jwt"
+    config_object["oathTokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/token/v1"
 
     # ensure the reset of the state by overwriting possible values from previous import.
     config_object["date_limit"] = 0

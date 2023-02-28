@@ -4,12 +4,23 @@ from aepp import config, configs
 ## External module
 import json
 import os
+from dataclasses import dataclass
 from typing import Dict, Optional, Union
 from copy import deepcopy
 import time
 import requests
+from requests import Response
 from pathlib import Path
 import jwt
+
+
+@dataclass
+class TokenInfo:
+    """
+    Represents an IMS token along with metadata associated to it.
+    """
+    token: str
+    expiry: int
 
 
 class AdobeRequest:
@@ -23,6 +34,7 @@ class AdobeRequest:
         self,
         config_object: dict = config.config_object,
         header: dict = config.header,
+        endpoints: dict = config.endpoints,
         verbose: bool = False,
         loggingEnabled: bool = False,
         logger: object = None,
@@ -34,6 +46,7 @@ class AdobeRequest:
         Arguments:
             config_object : OPTIONAL : Require the importConfig file to have been used.
             header : OPTIONAL : Header that you are already using.
+            endpoints : OPTIONAL : Maps service to their endpoint.
             verbose : OPTIONAL : display comment while running
             loggingEnabled : OPTIONAL : if the logging is enable for that instance.
             logger : OPTIONAL : instance of the logger created
@@ -45,36 +58,33 @@ class AdobeRequest:
             )
         self.config = deepcopy(config_object)
         self.header = deepcopy(header)
+        self.endpoints = deepcopy(endpoints)
         self.loggingEnabled = loggingEnabled
         self.logger = logger
         self.retry = retry
         if self.config["token"] == "" or time.time() > self.config["date_limit"]:
-            if "aepScope" in kwargs.keys() and "privacyScope" in kwargs.keys():
-                token_with_expiry = self.get_token_and_expiry_for_config(
+            if self.config["private_key"] is not None or self.config["pathToKey"] is not None:
+                token_info = self.get_jwt_token_and_expiry_for_config(
                     config=self.config,
                     verbose=verbose,
                     aepScope=kwargs.get("aepScope"),
                     privacyScope=kwargs.get("privacyScope"),
                 )
-                self.token = token_with_expiry["token"]
-                self.config["token"] = self.token
-                self.config["date_limit"] = (
-                    time.time() + token_with_expiry["expiry"] / 1000 - 500
-                )
-                self.header.update({"Authorization": f"Bearer {self.token}"})
             else:
-                token_with_expiry = self.get_token_and_expiry_for_config(
+                token_info = self.get_oath_token_and_expiry_for_config(
                     config=self.config,
-                    verbose=verbose,
-                    aepScope=kwargs.get("aepScope"),
-                    privacyScope=kwargs.get("privacyScope"),
+                    verbose=verbose
                 )
-                self.token = token_with_expiry["token"]
-                self.config["token"] = self.token
-                self.config["date_limit"] = (
-                    time.time() + token_with_expiry["expiry"] / 1000 - 500
-                )
-                self.header.update({"Authorization": f"Bearer {self.token}"})
+            self.token = token_info.token
+            self.config["token"] = self.token
+            self.config["date_limit"] = (
+                time.time() + token_info.expiry / 1000 - 500
+            )
+            self.header.update({"Authorization": f"Bearer {self.token}"})
+
+        # x-sandbox-id is required when using non-user token, but forbidden for user token
+        if self.config["auth_code"] is not None and "x-sandbox-id" not in self.header:
+            self.update_sandbox_id(self.config["sandbox"])
 
     def _find_path(self, path: str) -> Optional[Path]:
         """Checks if the file denoted by the specified `path` exists and returns the Path object
@@ -94,12 +104,43 @@ class AdobeRequest:
         else:
             return None
 
-    def get_token_and_expiry_for_config(
-        self, config: dict, verbose: bool = False, save: bool = False, **kwargs
-    ) -> Dict[str, str]:
+    def get_oath_token_and_expiry_for_config(
+        self,
+        config: dict,
+        verbose: bool = False,
+        save: bool = False
+    ) -> TokenInfo:
         """
-        Retrieve the token by using the information provided by the user during the import importConfigFile function.
-        ArgumentS :
+        Retrieve the access token by using the OAuth information provided by the user
+        during the import importConfigFile function.
+        Arguments :
+            config : REQUIRED : Configuration object.
+            verbose : OPTIONAL : Default False. If set to True, print information.
+            save : OPTIONAL : Default False. If set to True, save the toke in the .
+        """
+        oath_payload = {
+            "grant_type": "authorization_code",
+            "client_id": config["client_id"],
+            "client_secret": config["secret"],
+            "code": config["auth_code"]
+        }
+        response = requests.post(
+            config["oathTokenEndpoint"], data=oath_payload
+        )
+        return self._token_postprocess(response=response, verbose=verbose, save=save)
+
+    def get_jwt_token_and_expiry_for_config(
+        self,
+        config: dict,
+        verbose: bool = False,
+        save: bool = False,
+        **kwargs
+    ) -> TokenInfo:
+        """
+        Retrieve the access token by using the JWT information provided by the user
+        during the import importConfigFile function.
+        Arguments :
+            config : REQUIRED : Configuration object.
             verbose : OPTIONAL : Default False. If set to True, print information.
             save : OPTIONAL : Default False. If set to True, save the toke in the .
         """
@@ -119,7 +160,7 @@ class AdobeRequest:
         # privacy topic
         if kwargs.get("privacyScope", False):
             jwt_payload[f"{self.config['imsEndpoint']}/s/ent_gdpr_sdk"] = True
-        if kwargs.get("aepScope", True) == False:
+        if kwargs.get("aepScope", True) is False:
             del jwt_payload[f"{self.config['imsEndpoint']}/s/ent_dataservices_sdk"]
         encoded_jwt = self._get_jwt(payload=jwt_payload, private_key=private_key)
 
@@ -129,8 +170,23 @@ class AdobeRequest:
             "jwt_token": encoded_jwt,
         }
         response = requests.post(
-            config["tokenEndpoint"], headers=header_jwt, data=payload
+            config["jwtTokenEndpoint"], headers=header_jwt, data=payload
         )
+        return self._token_postprocess(response=response, verbose=verbose, save=save)
+
+    def _token_postprocess(
+        self,
+        response: Response,
+        verbose: bool = False,
+        save: bool = False
+    ) -> TokenInfo:
+        """
+        Parse the IMS response to extract token information
+        Arguments :
+            response : REQUIRED : API response payload from IMS.
+            verbose : OPTIONAL : Default False. If set to True, print information.
+            save : OPTIONAL : Default False. If set to True, save the toke in the .
+        """
         json_response = response.json()
         try:
             self.token = json_response["access_token"]
@@ -151,7 +207,7 @@ class AdobeRequest:
             self.logger.debug(
                 f"token valid till : {time.ctime(time.time() + expiry / 1000)}"
             )
-        return {"token": self.token, "expiry": expiry}
+        return TokenInfo(token=self.token, expiry=expiry)
 
     def _get_jwt(self, payload: dict, private_key: str) -> str:
         """
@@ -170,7 +226,7 @@ class AdobeRequest:
         if now > self.config["date_limit"]:
             if self.loggingEnabled:
                 self.logger.warning("token expired. Trying to retrieve a new token")
-            token_with_expiry = self.get_token_and_expiry_for_config(config=self.config)
+            token_with_expiry = self.get_jwt_token_and_expiry_for_config(config=self.config)
             self.token = token_with_expiry["token"]
             self.config["token"] = self.token
             if self.loggingEnabled:
@@ -189,6 +245,22 @@ class AdobeRequest:
         if not sandbox:
             raise Exception("require a sandbox")
         self.header["x-sandbox-name"] = sandbox
+
+    def update_sandbox_id(self, sandbox: str) -> None:
+        """
+        Update the sandbox ID used for the request.
+        This is required when using non-user credentials.
+        Arguments:
+            sandbox : REQUIRED : the sandbox name to use for the requests
+        """
+        if not sandbox:
+            raise Exception("require a sandbox")
+        endpoint = f"{self.endpoints['global']}{self.endpoints['sandboxes']}/sandboxes/{sandbox}"
+        res = self.getData(endpoint)
+        if "id" not in res:
+            raise Exception("sandbox Id not found")
+        sandbox_id = res["id"]
+        self.header["x-sandbox-id"] = sandbox_id
 
     def getData(
         self,
