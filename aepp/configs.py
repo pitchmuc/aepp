@@ -103,8 +103,8 @@ def importConfigFile(path: str=None,connectInstance:bool=False) -> None:
             connectInstance=connectInstance,
             environment=provided_config.get("environment", "prod")
         )
-        if connectInstance:
-            return myInstance
+    if connectInstance:
+        return myInstance
 
 
 def configure(
@@ -237,6 +237,7 @@ class ConnectObject:
             path_to_key: str = None,
             private_key: str = None,
             sandbox: str = "prod",
+            environment: str = "prod",
             **kwargs)->None:
         """
         Take a config object and save the configuration directly in the instance of the class.
@@ -248,6 +249,16 @@ class ConnectObject:
           "x-gw-ims-org-id": org_id,
           "x-sandbox-name": sandbox
           }
+        ## setting environment prod vs non-prod for token generation
+        if environment == "prod":
+            self.globalEndpoint = "https://platform.adobe.io"
+            self.imsEndpoint = "https://ims-na1.adobelogin.com"
+        else:
+            self.globalEndpoint = f"https://platform-{environment}.adobe.io"
+            self.imsEndpoint = "https://ims-na1-stg1.adobelogin.com"
+        self.streamInletEndpoint = f"{self.globalEndpoint}/data/core/edge"
+        self.jwtEndpoint = f"{self.imsEndpoint}/ims/exchange/jwt"
+        self.oathEndpoint = f"{self.imsEndpoint}/ims/token/v1"
         self.org_id = org_id
         self.tech_id = tech_id
         self.client_id = client_id
@@ -261,11 +272,14 @@ class ConnectObject:
             "client_id": self.client_id,
             "tech_id": self.tech_id,
             "pathToKey": self.pathToKey,
+            "private_key": self.privateKey,
             "secret": self.secret,
             "date_limit" : 0,
             "sandbox": self.sandbox,
             "token": "",
-            "tokenEndpoint" : "https://ims-na1.adobelogin.com/ims/exchange/jwt"
+            "imsEndpoint" : self.imsEndpoint,
+            "jwtTokenEndpoint" : self.jwtEndpoint,
+            "oathTokenEndpoint" : self.oathEndpoint 
         }
     
     def connect(self)->None:

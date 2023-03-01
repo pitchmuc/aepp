@@ -13,7 +13,6 @@ from requests import Response
 from pathlib import Path
 import jwt
 
-
 @dataclass
 class TokenInfo:
     """
@@ -32,7 +31,7 @@ class AdobeRequest:
 
     def __init__(
         self,
-        config_object: dict = config.config_object,
+        config: Union[dict,configs.ConnectObject] = config.config_object,
         header: dict = config.header,
         endpoints: dict = config.endpoints,
         verbose: bool = False,
@@ -52,11 +51,13 @@ class AdobeRequest:
             logger : OPTIONAL : instance of the logger created
             retry : OPTIONAL : When GET request fails, if set to an int, it will retry this number of time
         """
-        if config_object["org_id"] == "":
+        if type(config) != dict:
+            config = config.getConfigObject()
+        if config["org_id"] == "":
             raise Exception(
                 "You have to upload the configuration file with importConfigFile or configure method."
             )
-        self.config = deepcopy(config_object)
+        self.config = deepcopy(config)
         self.header = deepcopy(header)
         self.endpoints = deepcopy(endpoints)
         self.loggingEnabled = loggingEnabled
@@ -106,7 +107,7 @@ class AdobeRequest:
 
     def get_oath_token_and_expiry_for_config(
         self,
-        config: dict,
+        config: Union[dict,configs.ConnectObject],
         verbose: bool = False,
         save: bool = False
     ) -> TokenInfo:
@@ -118,6 +119,8 @@ class AdobeRequest:
             verbose : OPTIONAL : Default False. If set to True, print information.
             save : OPTIONAL : Default False. If set to True, save the toke in the .
         """
+        if type(config)!= dict:
+            config = config.getConfigObject()
         oath_payload = {
             "grant_type": "authorization_code",
             "client_id": config["client_id"],
@@ -131,7 +134,7 @@ class AdobeRequest:
 
     def get_jwt_token_and_expiry_for_config(
         self,
-        config: dict,
+        config: Union[dict,configs.ConnectObject],
         verbose: bool = False,
         save: bool = False,
         **kwargs
@@ -144,6 +147,8 @@ class AdobeRequest:
             verbose : OPTIONAL : Default False. If set to True, print information.
             save : OPTIONAL : Default False. If set to True, save the toke in the .
         """
+        if type(config) != dict:
+            config = config.getConfigObject()
         private_key = configs.get_private_key_from_config(config)
         header_jwt = {
             "cache-control": "no-cache",
