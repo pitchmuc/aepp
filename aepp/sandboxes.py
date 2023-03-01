@@ -128,6 +128,14 @@ class Sandboxes:
         res = self.connector.getData(path)
         return res
 
+    def getSandboxId(self, name: str) -> str:
+        """
+        Retrieve the ID of a sandbox by name.
+        Argument:
+            name : REQUIRED : name of Sandbox
+        """
+        return self.getSandbox(name)["id"]
+
     def deleteSandbox(self, name: str) -> dict:
         """
         Delete a sandbox by its name.

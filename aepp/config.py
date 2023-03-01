@@ -5,12 +5,14 @@ config_object = {
     "client_id": "",
     "tech_id": "",
     "pathToKey": "",
+    "auth_code": "",
     "secret": "",
     "date_limit": 0,
     "sandbox": "",
     "environment": "",
     "token": "",
-    "tokenEndpoint": "",
+    "jwtTokenEndpoint": "",
+    "oathTokenEndpoint": "",
     "imsEndpoint": ""
 }
 
