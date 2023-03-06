@@ -67,7 +67,7 @@ class Instance:
             self.sandbox = self.connector.config["sandbox"]
         self.endpoint = config.endpoints["global"] + config.endpoints["destinationInstance"]
         
-        def createAdhocTask(self, adhocObj: dict = None, version)->dict:
+        def createAdhocTask(self, adhocObj: dict = None, accept: str = None)->dict:
             """
             Create an Adhoc Request based on the definition passed in argument.
             Arguments:
@@ -77,7 +77,7 @@ class Instance:
                 self.logger.debug(f"Starting creating adhoc task")
             if adhocObj is None or type(adhocObj) != dict:
                 raise Exception("Require a dictionary defining the adhoc task configuration")
-            self.header.update("Accept", version)
+            self.header.update("Accept", accept)
             path = "/adhocrun"
             res = self.connector.postData(self.endpoint + path, data=adhocObj)
             return res
