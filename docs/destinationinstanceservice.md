@@ -44,5 +44,5 @@ The Destination module will enable you to create adhoc request for export segmen
 ## Destination Instance Service methods
 This part is describing the different methods available from that module, once you have generated your instance.
 
-* createAdhocTask
-create adhoc task for export segments/datasets
+* createAdHocDatasetExport
+create adhoc task for export datasets

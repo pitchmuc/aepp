@@ -118,6 +118,22 @@ myDict = {
 profiles = myProfiles.getEntities(request_data=myDict)
 ```
 
+#### Delete Entities
+
+You can use this method to delete an entitty:
+
+The method takes 4 arguments:
+
+* schema_name: class name of the schema to be retrieved. (Default: _xdm.context.profile)
+* entityId:  identity ID
+* entityIdNS: Identity Namespace code. Required if entityId is used.
+
+Example:
+
+```python
+profile = myProfiles.deleteEntity(schema_name="_xdm.context.experienceevent", entityId="09237308232164398232158732346",entityIdNS='ecid'")
+```
+
 ### Get the Merge policies & create Merge policies
 
 One other use-case for the endpoint is to retrieve your different Merge Policies inplace, in order to analyze or modify them.\

@@ -1,10 +1,7 @@
 # Internal Library
 import aepp
 from aepp import connector
-from aepp import config
-from copy import deepcopy
 from typing import Union
-import time
 import logging
 from .configs import ConnectObject
 
@@ -67,17 +64,18 @@ class Instance:
             self.sandbox = self.connector.config["sandbox"]
         self.endpoint = config.endpoints["global"] + config.endpoints["destinationInstance"]
         
-        def createAdhocTask(self, adhocObj: dict = None, accept: str = None)->dict:
-            """
-            Create an Adhoc Request based on the definition passed in argument.
-            Arguments:
-                adhocObj : REQUIRED : Object containing the definition of the adhoc request.
-            """
-            if self.loggingEnabled:
-                self.logger.debug(f"Starting creating adhoc task")
-            if adhocObj is None or type(adhocObj) != dict:
-                raise Exception("Require a dictionary defining the adhoc task configuration")
-            self.header.update("Accept", accept)
-            path = "/adhocrun"
-            res = self.connector.postData(self.endpoint + path, data=adhocObj)
-            return res
+        
+    def createAdHocDatasetExport(self, adhocObj: dict = None)->dict:
+        """
+        Create an Adhoc Request based on the definition passed in argument.
+        Arguments:
+            adhocObj : REQUIRED : Object containing the definition of the adhoc request.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting creating adhoc task")
+        if adhocObj is None or type(adhocObj) != dict:
+            raise Exception("Require a dictionary defining the adhoc task configuration")
+        self.header.update({"Accept":"application/vnd.adobe.adhoc.activation+json; version=3"})
+        path = "/adhocrun"
+        res = self.connector.postData(self.endpoint + path, data=adhocObj)
+        return res

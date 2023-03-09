@@ -6,10 +6,12 @@ config_object = {
     "tech_id": "",
     "pathToKey": "",
     "secret": "",
-    "date_limit" : 0,
+    "date_limit": 0,
     "sandbox": "",
+    "environment": "",
     "token": "",
-    "tokenEndpoint" : "https://ims-na1.adobelogin.com/ims/exchange/jwt"
+    "tokenEndpoint": "",
+    "imsEndpoint": ""
 }
 
 header = {"Accept": "application/json",
@@ -22,7 +24,8 @@ header = {"Accept": "application/json",
 
 # endpoints
 endpoints = {
-    "global": "https://platform.adobe.io",
+    # global endpoint is https://platform.adobe.io in prod, otherwise https://platform-$ENV.adobe.io
+    "global": "",
     "schemas": "/data/foundation/schemaregistry",
     "query": "/data/foundation/query",
     "catalog": "/data/foundation/catalog",
@@ -34,18 +37,18 @@ endpoints = {
     "sensei": "/data/sensei",
     "access": "/data/foundation/access-control",
     "flow": "/data/foundation/flowservice",
-    "privacy":"/data/core/privacy",
+    "privacy": "/data/core/privacy",
     "dataaccess": "/data/foundation/export",
-    "mapping":"/data/foundation/conversion",
-    "policy":"/data/foundation/dulepolicy",
-    "dataset":"/data/foundation/dataset",
-    "ingestion":"/data/foundation/import",
-    "observability":"/data/infrastructure/observability/insights",
-    "destinationAuthoring" : "/data/core/activation/authoring",
-    "destinationInstance" : "/data/core/activation/disflowprovider"
+    "mapping": "/data/foundation/conversion",
+    "policy": "/data/foundation/dulepolicy",
+    "dataset": "/data/foundation/dataset",
+    "ingestion": "/data/foundation/import",
+    "observability": "/data/infrastructure/observability/insights",
+    "destinationAuthoring": "/data/core/activation/authoring",
+    "destinationInstance" : "/data/core/activation/disflowprovider",
     "streaming": {
-        "inlet": "https://platform.adobe.io/data/core/edge",
-        "collection" : "https://dcs.adobedc.net"
+        "inlet": "",
+        "collection": "https://dcs.adobedc.net"
     },
-    "audit":"/data/foundation"
+    "audit": "/data/foundation"
 }

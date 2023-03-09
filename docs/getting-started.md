@@ -41,11 +41,18 @@ Normally your config file will look like this:
     "tech_id": "<something>@techacct.adobe.com",
     "secret": "<YourSecret>",
     "pathToKey": "<path/to/your/privatekey.key>",
-    "sandbox-name": "prod"
+    "sandbox-name": "prod",
+    "environment": "prod"
 }
 ```
 
-**Note** By default, we are setting the sandbox name to "prod". If you don't know what that value, you can override it via a paramter.
+**Note** By default, we are setting the sandbox name to "prod". If you don't know what that value, you can override it via a parameter.
+
+### Environments
+
+By default, the environment is set to `prod`. This is different from the sandbox, as it refers to the physical environment where the organization was setup.
+
+For all AEP customers "prod" is what should be used, but for internal accounts it can be set to "stage" or "int".
 
 ### Importing the config file and working with a sub module
 
@@ -64,18 +71,35 @@ In that case, you can directly pass the elements in the configure method.
 
 ```python
 import aepp
-aepp.configure(org_id=my_org_id,tech_id=my_tech_id, secret=my_secret,path_to_key=my_path_to_key,client_id=my_client_id)
+aepp.configure(
+    org_id=my_org_id,
+    tech_id=my_tech_id, 
+    secret=my_secret,
+    path_to_key=my_path_to_key,
+    client_id=my_client_id,
+    environment="prod"
+)
 ```
 
 In case you do not want to use a private.key file, you can also provide the private key as a string.
 
 ```python
 import aepp
-aepp.configure(org_id=my_org_id,tech_id=my_tech_id, secret=my_secret,private_key=my_key_as_string,client_id=my_client_id)
+aepp.configure(
+    org_id=my_org_id,
+    tech_id=my_tech_id, 
+    secret=my_secret,
+    private_key=my_key_as_string,
+    client_id=my_client_id,
+    environment="prod"
+)
 ```
 
 **NOTE** : In both case, I didn't provide a `sandbox` parameter but this parameter does exist and can be used to setup a specific sandbox.\
 By default, the prod sandbox will be used.
+
+**NOTE** The `environment` parameter is optional and defaults to "prod".
+
 
 ### Importing a module to work with
 

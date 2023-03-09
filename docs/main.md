@@ -40,6 +40,7 @@ The method is the `importConfigFile`\
 Argument:
 
 * path: REQUIRED : path to the configuration file. Can be either a fully-qualified or relative.
+* connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class. (default False)
 
 ## Configure connection
 
@@ -55,6 +56,35 @@ Arguments:
 * path_to_key : REQUIRED : If you have a file containing your private key value.
 * private_key : REQUIRED : If you do not use a file but pass a variable directly.
 * sandbox : OPTIONAL : If not provided, default to prod
+* connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class (default False)
+* environment : OPTIONAL : If not provided, default to prod
+
+### The `connectInstance` parameter
+
+In an environment when you have multiple organization and / or multiple sandboxes to manage via `aepp`, it would be cumbersome to import the new environment any time you want to switch the Organuzation or the sandbox.\
+For that use-case, we provide a way for you to save your configuration in an instance of a `ConnectObject` class.\
+This class will save your organization, your sandbox and any information related to your configuration setup.\
+Therefore, in instanciation of any class later on, such as Schema class per example, you can pass the appropriate instance to connect to the right organization.
+
+Example: 
+
+```python
+import aepp
+myOrg1 = aepp.importConfigFile('org1_config.json',connectInstance=True)
+myOrg2 = aepp.importConfigFile('org1_config.json',connectInstance=True)
+
+from aepp import catalog, schema
+
+### conecting to the schema Registry endpoint for the org 1
+schema1 = schema.Schema(config=myOrg1)
+## connecting for org 2 
+schema2 = schema.Schema(config=myOrg2)
+
+### Same for Catalog
+catalog2 = catalog.Catalog(config=myOrg2)
+catalog1 = catalog.Catalog(config=myOrg1)
+
+```
 
 ## Generating the logging object
 
