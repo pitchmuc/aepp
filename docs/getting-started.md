@@ -24,7 +24,26 @@ Make sure to save the "private.key" file and write the information of your conne
 
 The following examples will be python code sample that shows you how to use the tool.
 
+### Authentication methods
+
+There are 2 ways to authenticate with `aepp`:
+- JWT-based authentication
+- OAuth-based authentication
+
+By default we use JWT-based authentication. This is appropriate for users who have developer access to their AEP instance. This requires the following information:
+- Client ID
+- Client secret
+- Technical Account ID
+- Private key
+
+The other method of authentication is based on the OAuth protocol. This is more intended for services and internal developer. This requires the following information:
+- Client ID
+- Client secret
+- Authorization code - note that this can be either a permanent or temporary code.
+
 ### Importing and create a config file
+
+To create a config file for JWT-based authentication, use the code below:
 
 ```python
 import aepp
@@ -46,6 +65,26 @@ Normally your config file will look like this:
 }
 ```
 
+If you want to use OAuth-based authentication, use the following code:
+
+```python
+import aepp
+aepp.createConfigFile(destination='template_config.json', auth_type="oauth")
+```
+
+The resulting file will have different fields:
+
+```JSON
+{
+    "org_id": "<orgID>",
+    "client_id": "<client_id>",
+    "secret": "<YourSecret>",
+    "sandbox-name": "prod",
+    "environment": "prod",
+    "auth_code": "<auth_code>"
+}
+```
+
 **Note** By default, we are setting the sandbox name to "prod". If you don't know what that value, you can override it via a parameter.
 
 ### Environments
@@ -61,6 +100,13 @@ Once your config file has been generated, you can import it in your script.
 ```python
 import aepp
 aepp.importConfigFile('myConfig_file.json')
+```
+
+By default, this will only configure using the JWT information from your config file. If you have a config with OAuth information, instead use the following:
+
+```python
+import aepp
+aepp.importConfigFile('myConfig_file.json', auth_type="oauth")
 ```
 
 ### Alternative method for cloud configuration
@@ -95,8 +141,34 @@ aepp.configure(
 )
 ```
 
+If you instead want to use OAuth-based authentication, simply use different parameters when calling `configure`:
+
+```python
+import aepp
+aepp.configure(
+    org_id=my_org_id,
+    secret=my_secret,
+    client_id=my_client_id,
+    auth_code=my_auth_code,
+    environment="prod"
+)
+```
+
 **NOTE** : In both case, I didn't provide a `sandbox` parameter but this parameter does exist and can be used to setup a specific sandbox.\
-By default, the prod sandbox will be used.
+By default, the prod sandbox will be used. To use that, use the code below:
+
+```python
+import aepp
+aepp.configure(
+    org_id=my_org_id,
+    tech_id=my_tech_id, 
+    secret=my_secret,
+    private_key=my_key_as_string,
+    client_id=my_client_id,
+    environment="prod",
+    sandbox=my_sandbox_id
+)
+```
 
 **NOTE** The `environment` parameter is optional and defaults to "prod".
 

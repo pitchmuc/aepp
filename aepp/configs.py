@@ -32,6 +32,7 @@ def createConfigFile(
     sandbox: str = "prod",
     environment: str = "prod",
     verbose: object = False,
+    auth_type: str = "jwt",
     **kwargs,
 ) -> None:
     """
@@ -40,16 +41,23 @@ def createConfigFile(
         destination : OPTIONAL : if you wish to save the file at a specific location.
         sandbox : OPTIONAL : You can directly set your sandbox name in this parameter.
         verbose : OPTIONAL : set to true, gives you a print stateent where is the location.
+        auth_type : OPTIONAL : type of authentication, either "jwt" or "oauth"
     """
     json_data: dict = {
         "org_id": "<orgID>",
         "client_id": "<client_id>",
-        "tech_id": "<something>@techacct.adobe.com",
         "secret": "<YourSecret>",
-        "pathToKey": "<path/to/your/privatekey.key>",
         "sandbox-name": sandbox,
         "environment": environment
     }
+    if auth_type == "jwt":
+        json_data["tech_id"] = "<something>@techacct.adobe.com"
+        json_data["pathToKey"] = "<path/to/your/privatekey.key>"
+    elif auth_type == "oauth":
+        json_data["auth_code"] = "<auth_code>"
+    else:
+        raise ValueError("unsupported authentication type, currently only jwt and oauth are supported")
+
     if ".json" not in destination:
         destination: str = f"{destination}.json"
     with open(destination, "w") as cf:
@@ -60,13 +68,18 @@ def createConfigFile(
         )
 
 
-def importConfigFile(path: str=None,connectInstance:bool=False) -> None:
+def importConfigFile(
+    path: str = None,
+    connectInstance: bool = False,
+    auth_type: str = "jwt"
+):
     """Reads the file denoted by the supplied `path` and retrieves the configuration information
     from it.
 
     Arguments:
         path: REQUIRED : path to the configuration file. Can be either a fully-qualified or relative.
         connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class
+        auth_type : OPTIONAL : type of authentication, either "jwt" or "oauth"
 
     Example of path value.
     "config.json"
@@ -93,16 +106,26 @@ def importConfigFile(path: str=None,connectInstance:bool=False) -> None:
             raise RuntimeError(
                 f"Either an `api_key` or a `client_id` should be provided."
             )
-        myInstance = configure(
-            org_id=provided_config["org_id"],
-            tech_id=provided_config["tech_id"],
-            secret=provided_config["secret"],
-            path_to_key=provided_config["pathToKey"],
-            client_id=client_id,
-            sandbox=provided_config.get("sandbox-name", "prod"),
-            connectInstance=connectInstance,
-            environment=provided_config.get("environment", "prod")
-        )
+
+        args = {
+            "org_id": provided_config["org_id"],
+            "client_id": client_id,
+            "secret": provided_config["secret"],
+            "sandbox": provided_config.get("sandbox-name", "prod"),
+            "environment": provided_config.get("environment", "prod"),
+            "connectInstance": connectInstance
+        }
+
+        if auth_type == "jwt":
+            args["tech_id"] = provided_config["tech_id"]
+            args["path_to_key"] = provided_config["pathToKey"]
+        elif auth_type == "oauth":
+            args["auth_code"] = provided_config["auth_code"]
+        else:
+            raise ValueError("unsupported authentication type, currently only jwt and oauth are supported")
+
+        myInstance = configure(**args)
+
     if connectInstance:
         return myInstance
 
