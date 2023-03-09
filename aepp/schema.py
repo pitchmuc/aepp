@@ -2064,8 +2064,15 @@ class FieldGroupManager:
                     ### checking if element is an array without deeper object level
                     if mydict[key].get('type') == 'array' and mydict[key]['items'].get('properties',None) is None:
                         finalPath = path + f".{key}[]"
+                        if path is not None:
+                            finalPath = path + f".{key}"
+                        else:
+                            finalPath = f"{key}"
                     else:
-                        finalPath = path + f".{key}"
+                        if path is not None:
+                            finalPath = path + f".{key}"
+                        else:
+                            finalPath = f"{key}"
                     value = deepcopy(mydict[key])
                     value['path'] = finalPath
                     value['queryPath'] = self.__cleanPath__(finalPath)

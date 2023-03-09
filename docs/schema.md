@@ -179,6 +179,7 @@ There are several attribute available from the instanciation of the schema:
 * fieldGroupTitles : A list of the field group titles
 * fieldGroupIds : A list of the field groups Id
 * fieldGroupsManagers : A list of Field Group Manager instances
+* classId : The class assigned to that schema
 
 
 ### Methods of Schema Manager
