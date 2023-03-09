@@ -72,7 +72,7 @@ class AdobeRequest:
                     privacyScope=kwargs.get("privacyScope"),
                 )
             else:
-                token_info = self.get_oath_token_and_expiry_for_config(
+                token_info = self.get_oauth_token_and_expiry_for_config(
                     config=self.config,
                     verbose=verbose
                 )
@@ -105,7 +105,7 @@ class AdobeRequest:
         else:
             return None
 
-    def get_oath_token_and_expiry_for_config(
+    def get_oauth_token_and_expiry_for_config(
         self,
         config: Union[dict,configs.ConnectObject],
         verbose: bool = False,
@@ -121,14 +121,14 @@ class AdobeRequest:
         """
         if type(config)!= dict:
             config = config.getConfigObject()
-        oath_payload = {
+        oauth_payload = {
             "grant_type": "authorization_code",
             "client_id": config["client_id"],
             "client_secret": config["secret"],
             "code": config["auth_code"]
         }
         response = requests.post(
-            config["oathTokenEndpoint"], data=oath_payload
+            config["oauthTokenEndpoint"], data=oauth_payload
         )
         return self._token_postprocess(response=response, verbose=verbose, save=save)
 

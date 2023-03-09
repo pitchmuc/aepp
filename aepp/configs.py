@@ -186,7 +186,7 @@ def configure(
         config_object["imsEndpoint"] = "https://ims-na1-stg1.adobelogin.com"
     endpoints["streaming"]["inlet"] = f"{endpoints['global']}/data/core/edge"
     config_object["jwtTokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/exchange/jwt"
-    config_object["oathTokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/token/v1"
+    config_object["oauthTokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/token/v1"
 
     # ensure the reset of the state by overwriting possible values from previous import.
     config_object["date_limit"] = 0

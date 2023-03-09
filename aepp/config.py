@@ -12,7 +12,7 @@ config_object = {
     "environment": "",
     "token": "",
     "jwtTokenEndpoint": "",
-    "oathTokenEndpoint": "",
+    "oauthTokenEndpoint": "",
     "imsEndpoint": ""
 }
 
