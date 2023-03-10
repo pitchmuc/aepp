@@ -24,15 +24,15 @@ The following documentation will provide you with more information on its capabi
 ## The Instance class
 
 The Authoring class is the default API connector that you would encounter for any other submodules on this python module.\
-This class can be instanciated by calling the `Instance()` from the `destinationinstanceservice` module.
+This class can be instantiated by calling the `Instance()` from the `destinationinstanceservice` module.
 
 Following the previous method described above, you can realize this:
 
 ```python
-mySDK = destinationinstanceservice.Instance()
+mySDK = destinationinstanceservice.DestinationInstanceService()
 ```
 
-3 parameters are possible for the instanciation of the class:
+3 parameters are possible for the instantiation of the class:
 
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)

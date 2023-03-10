@@ -5,7 +5,7 @@ from typing import Union
 import logging
 from .configs import ConnectObject
 
-class Instance:
+class DestinationInstanceService:
     """
     This class is referring to Destination Instance Service capability for AEP.
     """
@@ -15,7 +15,7 @@ class Instance:
         loggingObject: dict = None,
         **kwargs,):
         """
-        Instanciating the class for destination instance service
+        Instantiating the class for destination instance service
 
         Arguments:
             loggingObject : OPTIONAL : logging object to log messages.
@@ -55,7 +55,7 @@ class Instance:
         self.header = self.connector.header
         # self.header.update({"Accept": "application/json"})
         self.header.update(**kwargs)
-        if kwargs.get('sandbox',None) is not None: ## supporting sandbox setup on class instanciation
+        if kwargs.get('sandbox',None) is not None: ## supporting sandbox setup on class instantiation
             self.sandbox = kwargs.get('sandbox')
             self.connector.config["sandbox"] = kwargs.get('sandbox')
             self.header.update({"x-sandbox-name":kwargs.get('sandbox')})
@@ -65,17 +65,24 @@ class Instance:
         self.endpoint = config.endpoints["global"] + config.endpoints["destinationInstance"]
         
         
-    def createAdHocDatasetExport(self, adhocObj: dict = None)->dict:
+    def createAdHocDatasetExport(self, flowIdToDatasetIds: dict = None)->dict:
         """
-        Create an Adhoc Request based on the definition passed in argument.
+        Create an Adhoc Request based on the flowId and the datasetId passed in argument.
         Arguments:
-            adhocObj : REQUIRED : Object containing the definition of the adhoc request.
+            flowIdToDatasetIds : REQUIRED :  dict containing the definition of flowId to datasetIds
         """
         if self.loggingEnabled:
-            self.logger.debug(f"Starting creating adhoc task")
-        if adhocObj is None or type(adhocObj) != dict:
-            raise Exception("Require a dictionary defining the adhoc task configuration")
+            self.logger.debug(f"Starting creating adhoc dataset export")
+        if flowIdToDatasetIds is None or type(flowIdToDatasetIds) != dict:
+            raise Exception("Require a dict for defining the flowId to datasetIds mapping")
+        activationInfo = {'activationInfo': {'destinations': []}};
+        for flowId, datasetIds in flowIdToDatasetIds.items():
+            destination = {'flowId': flowId, 'datasets': []}
+            for datasetId in datasetIds:
+                dataset = {'id': datasetId}
+                destination['datasets'].append(dataset)
+            activationInfo['activationInfo']['destinations'].append(destination)
         self.header.update({"Accept":"application/vnd.adobe.adhoc.activation+json; version=3"})
         path = "/adhocrun"
-        res = self.connector.postData(self.endpoint + path, data=adhocObj)
+        res = self.connector.postData(self.endpoint + path, data=activationInfo)
         return res
