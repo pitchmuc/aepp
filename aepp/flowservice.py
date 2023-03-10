@@ -1242,27 +1242,92 @@ class FlowService:
         res = self.updateFlow(flowId=flowId, operation=op)
         return res
     
-    def getLandingZoneContainer(self)->dict:
+    def getLandingZoneContainer(
+        self,
+        dlz_type: str = "user_drop_zone"
+    ) -> dict:
         """
-        Returns a dictionary of the your available Data Landing Zone containers.
+        Returns a dictionary of the available Data Landing Zone container information.
+        Arguments:
+            dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getLandingZoneContainer")
         path = f"/data/foundation/connectors/landingzone"
-        params = {"type":"user_drop_zone"}
-        res = self.connector.getData(self.endpoint_gloal + path,params=params)
+        params = {"type": dlz_type}
+        res = self.connector.getData(self.endpoint_gloal + path, params=params)
         return res
+
+    def getLandingZoneContainerName(
+        self,
+        dlz_type: str = "user_drop_zone"
+    ) -> str:
+        """
+        Returns the name of the DLZ container corresponding to this type.
+        Arguments:
+            dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+        """
+        return self.getLandingZoneContainer(dlz_type=dlz_type)["containerName"]
+
+    def getLandingZoneContainerTTL(
+        self,
+        dlz_type: str = "user_drop_zone"
+    ) -> int:
+        """
+        Returns the TTL in days of the DLZ container corresponding to this type.
+        Arguments:
+            dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+        """
+        return int(self.getLandingZoneContainer(dlz_type=dlz_type)["containerTTL"])
     
-    def getLandingZoneCredential(self)->dict:
+    def getLandingZoneCredential(
+        self,
+        dlz_type: str = "user_drop_zone"
+    ) -> dict:
         """
         Returns a dictionary with the credential to be used in order to create a new zone
+        Arguments:
+            dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getLandingZoneCredential")
         path = f"/data/foundation/connectors/landingzone/credentials"
-        params = {"type":"user_drop_zone"}
+        params = {"type": dlz_type}
         res = self.connector.getData(self.endpoint_gloal + path,params=params)
         return res
+
+    def getLandingZoneSASUri(
+        self,
+        dlz_type: str = "user_drop_zone"
+    ) -> str:
+        """
+        Returns the SAS URI of the DLZ container corresponding to this type.
+        Arguments:
+            dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+        """
+        return self.getLandingZoneCredential(dlz_type=dlz_type)["SASUri"]
+
+    def getLandingZoneSASToken(
+        self,
+        dlz_type: str = "user_drop_zone"
+    ) -> str:
+        """
+        Returns the SAS token of the DLZ container corresponding to this type.
+        Arguments:
+            dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+        """
+        return self.getLandingZoneCredential(dlz_type=dlz_type)["SASToken"]
+
+    def getLandingZoneStorageAccountName(
+        self,
+        dlz_type: str = "user_drop_zone"
+    ) -> str:
+        """
+        Returns the storage account name of the DLZ container corresponding to this type.
+        Arguments:
+            dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+        """
+        return self.getLandingZoneCredential(dlz_type=dlz_type)["storageAccountName"]
 
     def exploreLandingZone(self,fileType:str='delimited')->list:
         """
