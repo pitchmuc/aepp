@@ -32,6 +32,7 @@ def createConfigFile(
     sandbox: str = "prod",
     environment: str = "prod",
     verbose: object = False,
+    auth_type: str = "jwt",
     **kwargs,
 ) -> None:
     """
@@ -40,16 +41,23 @@ def createConfigFile(
         destination : OPTIONAL : if you wish to save the file at a specific location.
         sandbox : OPTIONAL : You can directly set your sandbox name in this parameter.
         verbose : OPTIONAL : set to true, gives you a print stateent where is the location.
+        auth_type : OPTIONAL : type of authentication, either "jwt" or "oauth"
     """
     json_data: dict = {
         "org_id": "<orgID>",
         "client_id": "<client_id>",
-        "tech_id": "<something>@techacct.adobe.com",
         "secret": "<YourSecret>",
-        "pathToKey": "<path/to/your/privatekey.key>",
         "sandbox-name": sandbox,
         "environment": environment
     }
+    if auth_type == "jwt":
+        json_data["tech_id"] = "<something>@techacct.adobe.com"
+        json_data["pathToKey"] = "<path/to/your/privatekey.key>"
+    elif auth_type == "oauth":
+        json_data["auth_code"] = "<auth_code>"
+    else:
+        raise ValueError("unsupported authentication type, currently only jwt and oauth are supported")
+
     if ".json" not in destination:
         destination: str = f"{destination}.json"
     with open(destination, "w") as cf:
@@ -60,13 +68,18 @@ def createConfigFile(
         )
 
 
-def importConfigFile(path: str=None,connectInstance:bool=False) -> None:
+def importConfigFile(
+    path: str = None,
+    connectInstance: bool = False,
+    auth_type: str = "jwt"
+):
     """Reads the file denoted by the supplied `path` and retrieves the configuration information
     from it.
 
     Arguments:
         path: REQUIRED : path to the configuration file. Can be either a fully-qualified or relative.
         connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class
+        auth_type : OPTIONAL : type of authentication, either "jwt" or "oauth"
 
     Example of path value.
     "config.json"
@@ -93,18 +106,28 @@ def importConfigFile(path: str=None,connectInstance:bool=False) -> None:
             raise RuntimeError(
                 f"Either an `api_key` or a `client_id` should be provided."
             )
-        myInstance = configure(
-            org_id=provided_config["org_id"],
-            tech_id=provided_config["tech_id"],
-            secret=provided_config["secret"],
-            path_to_key=provided_config["pathToKey"],
-            client_id=client_id,
-            sandbox=provided_config.get("sandbox-name", "prod"),
-            connectInstance=connectInstance,
-            environment=provided_config.get("environment", "prod")
-        )
-        if connectInstance:
-            return myInstance
+
+        args = {
+            "org_id": provided_config["org_id"],
+            "client_id": client_id,
+            "secret": provided_config["secret"],
+            "sandbox": provided_config.get("sandbox-name", "prod"),
+            "environment": provided_config.get("environment", "prod"),
+            "connectInstance": connectInstance
+        }
+
+        if auth_type == "jwt":
+            args["tech_id"] = provided_config["tech_id"]
+            args["path_to_key"] = provided_config["pathToKey"]
+        elif auth_type == "oauth":
+            args["auth_code"] = provided_config["auth_code"]
+        else:
+            raise ValueError("unsupported authentication type, currently only jwt and oauth are supported")
+
+        myInstance = configure(**args)
+
+    if connectInstance:
+        return myInstance
 
 
 def configure(
@@ -116,12 +139,13 @@ def configure(
     private_key: str = None,
     sandbox: str = "prod",
     connectInstance: bool = False,
-    environment: str = "prod"
+    environment: str = "prod",
+    auth_code: str = None
 ):
     """Performs programmatic configuration of the API using provided values.
     Arguments:
         org_id : REQUIRED : Organization ID
-        tech_id : REQUIRED : Technical Account ID
+        tech_id : OPTIONAL : Technical Account ID
         secret : REQUIRED : secret generated for your connection
         client_id : REQUIRED : The client_id (old api_key) provided by the JWT connection.
         path_to_key : REQUIRED : If you have a file containing your private key value.
@@ -129,19 +153,17 @@ def configure(
         sandbox : OPTIONAL : If not provided, default to prod
         connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class
         environment : OPTIONAL : If not provided, default to prod
+        auth_code : OPTIONAL : If an authorization code is used directly instead of generating via JWT
     """
     if not org_id:
         raise ValueError("`org_id` must be specified in the configuration.")
     if not client_id:
         raise ValueError("`client_id` must be specified in the configuration.")
-    if not tech_id:
-        raise ValueError("`tech_id` must be specified in the configuration.")
     if not secret:
         raise ValueError("`secret` must be specified in the configuration.")
-    if not path_to_key and not private_key:
-        raise ValueError(
-            "`pathToKey` or `private_key` must be specified in the configuration."
-        )
+    if (auth_code is not None and (path_to_key is not None or private_key is not None)) \
+            or (auth_code is None and path_to_key is None and private_key is None):
+        raise ValueError("either `auth_code` needs to be specified or one of `private_key` or `path_to_key`")
     config_object["org_id"] = org_id
     header["x-gw-ims-org-id"] = org_id
     config_object["client_id"] = client_id
@@ -150,6 +172,7 @@ def configure(
     config_object["secret"] = secret
     config_object["pathToKey"] = path_to_key
     config_object["private_key"] = private_key
+    config_object["auth_code"] = auth_code
     config_object["sandbox"] = sandbox
     header["x-sandbox-name"] = sandbox
 
@@ -162,7 +185,8 @@ def configure(
         endpoints["global"] = f"https://platform-{environment}.adobe.io"
         config_object["imsEndpoint"] = "https://ims-na1-stg1.adobelogin.com"
     endpoints["streaming"]["inlet"] = f"{endpoints['global']}/data/core/edge"
-    config_object["tokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/exchange/jwt"
+    config_object["jwtTokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/exchange/jwt"
+    config_object["oauthTokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/token/v1"
 
     # ensure the reset of the state by overwriting possible values from previous import.
     config_object["date_limit"] = 0
@@ -236,6 +260,7 @@ class ConnectObject:
             path_to_key: str = None,
             private_key: str = None,
             sandbox: str = "prod",
+            environment: str = "prod",
             **kwargs)->None:
         """
         Take a config object and save the configuration directly in the instance of the class.
@@ -247,6 +272,16 @@ class ConnectObject:
           "x-gw-ims-org-id": org_id,
           "x-sandbox-name": sandbox
           }
+        ## setting environment prod vs non-prod for token generation
+        if environment == "prod":
+            self.globalEndpoint = "https://platform.adobe.io"
+            self.imsEndpoint = "https://ims-na1.adobelogin.com"
+        else:
+            self.globalEndpoint = f"https://platform-{environment}.adobe.io"
+            self.imsEndpoint = "https://ims-na1-stg1.adobelogin.com"
+        self.streamInletEndpoint = f"{self.globalEndpoint}/data/core/edge"
+        self.jwtEndpoint = f"{self.imsEndpoint}/ims/exchange/jwt"
+        self.oathEndpoint = f"{self.imsEndpoint}/ims/token/v1"
         self.org_id = org_id
         self.tech_id = tech_id
         self.client_id = client_id
@@ -260,11 +295,14 @@ class ConnectObject:
             "client_id": self.client_id,
             "tech_id": self.tech_id,
             "pathToKey": self.pathToKey,
+            "private_key": self.privateKey,
             "secret": self.secret,
             "date_limit" : 0,
             "sandbox": self.sandbox,
             "token": "",
-            "tokenEndpoint" : "https://ims-na1.adobelogin.com/ims/exchange/jwt"
+            "imsEndpoint" : self.imsEndpoint,
+            "jwtTokenEndpoint" : self.jwtEndpoint,
+            "oathTokenEndpoint" : self.oathEndpoint 
         }
     
     def connect(self)->None:
