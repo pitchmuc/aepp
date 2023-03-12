@@ -9,6 +9,8 @@ This page list all of the changes that came during the different release of the 
   * Use `DataClass` for better abstraction of Token endpoint response.
   * sandbox management for JW and Service Token
 * fix issue on `SchemaManager` and `FieldGroupManager` for searching for fields at root.
+* adding first set of test 
+* support JSON file for `uploadSmallFile` method in `ingestion` module
 
 ## version 0.2.7
 

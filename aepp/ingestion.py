@@ -2,10 +2,11 @@ import aepp
 from aepp import connector
 from copy import deepcopy
 import requests
-from typing import IO, Union
+from typing import Union
 import logging
+import json
+from pathlib import Path
 from .configs import ConnectObject
-
 
 class DataIngestion:
     """
@@ -193,7 +194,7 @@ class DataIngestion:
         batchId: str = None,
         datasetId: str = None,
         filePath: str = None,
-        data: Union[list, dict] = None,
+        data: Union[list, dict,str] = None,
         verbose: bool = False,
     ) -> dict:
         """
@@ -203,6 +204,7 @@ class DataIngestion:
             datasetId : REQUIRED : The dataSetId related to where the data are ingested to.
             filePath : REQUIRED : the filePath that will store the value.
             data : REQUIRED : The data to be uploaded (following the type provided). List or Dictionary, depending if multiline is enabled.
+                You can also pass a JSON file path. If the element is a string and ends with ".json", the file will be loaded and transform automatically to a dictionary. 
             verbose: OPTIONAL : if you wish to see comments around the
         """
         if batchId is None:
@@ -220,6 +222,10 @@ class DataIngestion:
         privateHeader = deepcopy(self.header)
         privateHeader["Content-Type"] = "application/octet-stream"
         path = f"/batches/{batchId}/datasets/{datasetId}/files/{filePath}"
+        if type(data) == str:
+            if '.json' in data:
+                with open(Path(path),'r') as f:
+                    data = json.load(f)
         res = self.connector.putData(
             self.endpoint + path, data=data, headers=privateHeader
         )
