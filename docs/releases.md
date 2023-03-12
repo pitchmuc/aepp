@@ -11,6 +11,7 @@ This page list all of the changes that came during the different release of the 
 * fix issue on `SchemaManager` and `FieldGroupManager` for searching for fields at root.
 * adding first set of test 
 * support JSON file for `uploadSmallFile` method in `ingestion` module
+* fixing header `'Content-Type'` header param for `enableDatasetIdentity` in `catalog` module.
 
 ## version 0.2.7
 

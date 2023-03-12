@@ -524,7 +524,9 @@ class Catalog:
                 "path": "/tags/unifiedIdentity",
                 "value": ["enabled:true"] }
             ]
-        res = self.connector.patchData(self.endpoint+path, data=data)
+        privateHeader = deepcopy(self.header)
+        privateHeader['Content-Type'] = "application/json-patch+json"
+        res = self.connector.patchData(self.endpoint+path, data=data,headers=privateHeader)
         return res
     
     def disableDatasetProfile(self,datasetId: str = None)->dict:
