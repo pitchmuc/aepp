@@ -680,12 +680,69 @@ class Schema:
                     }
                     allOf.append(subObj)
         res = self.putSchema(schemaDef)
-        return res
+        return res        
 
-
+    def getClasses(self, 
+                   prop:str=None,
+                   orderBy:str=None,
+                   limit:int=300, 
+                   output:str='raw',
+                   excludeAdhoc: bool = False,
+                   **kwargs):
+        """
+        Return the classes of the AEP Instances.
+        Arguments:
+            prop : OPTIONAL : A comma-separated list of top-level object properties to be returned in the response. 
+                            For example, property=meta:intendedToExtend==https://ns.adobe.com/xdm/context/profile
+            oderBy : OPTIONAL : Sort the listed resources by specified fields. For example orderby=title
+            limit : OPTIONAL : Number of resources to return per request, default 300 - the max.
+            excludeAdhoc : OPTIONAL : Exlcude the Adhoc classes that have been created.
+            output : OPTIONAL : type of output, default "raw", can be "df" for dataframe.
+        kwargs:
+            debug : if set to True, will print result for errors
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getClasses")
+        privateHeader = deepcopy(self.header)
+        privateHeader.update({"Accept": "application/vnd.adobe.xdm-id+json"})
+        params = {"limit":limit}
+        if excludeAdhoc:
+            params["property"] = "meta:extends!=https://ns.adobe.com/xdm/data/adhoc"
+        if prop is not None:
+            if 'property' not in params.keys():
+                params["property"] = prop
+            else:
+                params["property"] += prop
+        if orderBy is not None:
+            params['orderby'] = orderBy
+        path = f"/{self.container}/classes/"
+        verbose = kwargs.get("verbose", False)
+        res = self.connector.getData(
+            self.endpoint + path, headers=privateHeader, params=params, verbose=verbose
+        )
+        if kwargs.get("debug", False):
+            if "results" not in res.keys():
+                print(res)
+        data = res["results"]
+        page = res["_page"]
+        while page["next"] is not None:
+            params["start"]= page["next"]
+            res = self.connector.getData(
+                self.endpoint + path, headers=privateHeader, params=params, verbose=verbose
+            )
+            data += res["results"]
+            page = res["_page"]
+        if output=="df":
+            df = pd.DataFrame(data)
+            return df
+        return data
         
-
-    def getClasses(self, prop:str=None,orderBy:str=None,limit:int=300, output:str='raw',**kwargs):
+    def getClassesGlobal(self, 
+                   prop:str=None,
+                   orderBy:str=None,
+                   limit:int=300, 
+                   output:str='raw',
+                   **kwargs):
         """
         Return the classes of the AEP Instances.
         Arguments:
@@ -703,10 +760,13 @@ class Schema:
         privateHeader.update({"Accept": "application/vnd.adobe.xdm-id+json"})
         params = {"limit":limit}
         if prop is not None:
-            params["property"] = prop
+            if 'property' not in params.keys():
+                params["property"] = prop
+            else:
+                params["property"] += prop
         if orderBy is not None:
             params['orderby'] = orderBy
-        path = f"/{self.container}/classes/"
+        path = f"/global/classes/"
         verbose = kwargs.get("verbose", False)
         res = self.connector.getData(
             self.endpoint + path, headers=privateHeader, params=params, verbose=verbose
