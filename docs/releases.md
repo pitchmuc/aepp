@@ -2,6 +2,27 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.2.8
+
+* support for Service Token
+  * refactoring of token generation to suport user-based-token
+  * Use `DataClass` for better abstraction of Token endpoint response.
+  * sandbox management for JW and Service Token
+* fix issue on `SchemaManager` and `FieldGroupManager` for searching for fields at root.
+
+## version 0.2.7
+
+* adding environment for AEP API endpoints for non-prod endpoints
+* Update the `flowservice` module to support dataset egress
+  * `createFlowDataLakeToDataLandingZone` method has been added
+  * `createTargetConnectionDataLandingZone` method has been added
+* Update the `flowservice` module to look the connection spec IDs from API instead of hardcoding them
+  * method `getConnectionSpecIdFromName` has been added
+  * method `getFlowSpecIdFromNames` has been added (not to be used for Destination SDK flows)
+* `createFlow`method has been improved with additional parameters
+* `createFlowDataLandingZoneToDataLake` has been created to simplify Data Landing Zone ingestion
+  * `createSourceConnectionDataLandingZone` has been created
+
 ## version 0.2.6
 * adding an `updateFlow` and `updateFlowMapping` method to `FlowManager` class.
 * adding the `ConnectObect` class that will provide a more dynamic way to switch between orgs or sandboxes.
