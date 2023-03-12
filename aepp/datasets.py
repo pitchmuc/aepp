@@ -88,7 +88,7 @@ class DataSets:
             aepp.config.endpoints["global"] + aepp.config.endpoints["dataset"]
         )
 
-    def getLabelSchemaTests(self, dataSetId: str = None) -> dict:
+    def getLabels(self, dataSetId: str = None) -> dict:
         """
         Return the labels assigned to a dataSet
         Argument:
