@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock, ANY
 
 class DestinationInstanceServiceTest(unittest.TestCase):
     ADHOC_INPUT = {"flow1": ["dataset1"], "flow2": ["dataset2", "dataset3"]}
+    ADHOC_EXPECTED_PAYLOAD = {'activationInfo': {'destinations': [{'flowId': 'flow1', 'datasets': [{'id': 'dataset1'}]}, {'flowId': 'flow2', 'datasets': [{'id': 'dataset2'}, {'id': 'dataset3'}]}]}}
     
     @patch("aepp.connector.AdobeRequest")
     def test_create_adhoc_dataset_export(self, mock_connector):
@@ -14,7 +15,7 @@ class DestinationInstanceServiceTest(unittest.TestCase):
         result = destination_instance_service_obj.createAdHocDatasetExport(self.ADHOC_INPUT)
         assert(result is not None)
         instance_conn.postData.assert_called_once()
-        instance_conn.postData.assert_called_with(ANY, data={'activationInfo': {'destinations': [{'flowId': 'flow1', 'datasets': [{'id': 'dataset1'}]}, {'flowId': 'flow2', 'datasets': [{'id': 'dataset2'}, {'id': 'dataset3'}]}]}})
+        instance_conn.postData.assert_called_with(ANY, data=self.ADHOC_EXPECTED_PAYLOAD)
 
     @patch("aepp.connector.AdobeRequest")
     def test_create_adhoc_dataset_export_invalid_input(self, mock_connector):
