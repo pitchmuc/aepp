@@ -172,6 +172,22 @@ aepp.configure(
 
 **NOTE** The `environment` parameter is optional and defaults to "prod".
 
+### Tip for multi sandbox work
+
+The `aepp` module contains a parameter named `connectInstance` for `importConfig` and `configure` methods that provide a way to store the configuration setup.\
+As you import the config file, you will default any instantiation of the sub module to the latest loaded configuration.\
+Using this parameter will make the methods returning an instance of the `ConnectObject` class.\
+That will store the information required to connect to your IMS or sandbox setup (secret, client_id, tech_id, IMSorg, etc...)
+
+You can use that instance then in any of the module that is provided with the aepp package and that are related to the AEP API.
+
+Example:
+
+```python
+import aepp
+myOrg1 = aepp.importConfigFile('org1_config.json',connectInstance=True)
+```
+
 
 ### Importing a module to work with
 
@@ -183,10 +199,14 @@ Example with schema sub module and Schema class.
 ```python
 import aepp
 aepp.importConfigFile('myConfig_file.json')
+## using the connectInstance parameter
+config1 = aepp.importConfigFile('myConfig_file.json',connectInstance=True)
 
 from aepp import schema
 
 mySchemaInstance = schema.Schema()
+## using the instance of config use 
+mySchemaInstance = schema.Schema(config=config1)
 
 ```
 
