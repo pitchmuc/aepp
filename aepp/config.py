@@ -47,6 +47,7 @@ endpoints = {
     "ingestion": "/data/foundation/import",
     "observability": "/data/infrastructure/observability/insights",
     "destinationAuthoring": "/data/core/activation/authoring",
+    "destinationInstance" : "/data/core/activation/disflowprovider",
     "streaming": {
         "inlet": "",
         "collection": "https://dcs.adobedc.net"

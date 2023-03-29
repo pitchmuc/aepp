@@ -55,6 +55,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [datasets](./docs/datasets.md)
 * [ingestion](./docs/ingestion.md)
 * [destination Authoring](./docs/destination.md)
+* [destination Instance](./docs/destinationinstanceservice.md)
 * [observability](./docs/observability.md)
 * accesscontrol
 * sensei
