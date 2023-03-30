@@ -161,7 +161,7 @@ class Sandboxes:
         if self.loggingEnabled:
             self.logger.debug(f"Starting resetSandbox")
         path = self.endpoint + f"/sandboxes/{name}"
-        res = self.connector.putData(path)
+        res = self.connector.putData(path, data={'action':'reset'})
         return res
 
     def updateSandbox(self, name: str, action: dict = None) -> dict:
