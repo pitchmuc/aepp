@@ -9,6 +9,8 @@ This page list all of the changes that came during the different release of the 
 * logging some errors when identified in the connector `getData` operation
 * returning errors for getSchemas operation
 * Fixing `getRuns` in `FlowService` class when there are no runs to fetch.
+* adding the possibility to extract `description` field when running `to_dataframe` in Schema and Field Group Managers
+* adding the `getDataSetObservableSchema` method to retrieve all fields that contains data.
 
 ## version 0.2.8
 

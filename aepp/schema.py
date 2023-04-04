@@ -2278,7 +2278,7 @@ class FieldGroupManager:
                         dictionary[key] = ""
         return dictionary 
 
-    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,queryPath:bool=False)->dict:
+    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,queryPath:bool=False,description:bool=False,xdmType:bool=False)->dict:
         """
         Transform the current XDM schema to a dictionary.
         Arguments:
@@ -2286,11 +2286,15 @@ class FieldGroupManager:
             dictionary : the dictionary that gather the paths
             path : path that is currently being developed
             queryPath: boolean to tell if we want to add the query path
+            description : boolean to tell if you want to retrieve the description
+            xdmType : boolean to know if you want to retrieve the xdm Type
         """
         if dictionary is None:
             dictionary = {'path':[],'type':[]}
             if queryPath:
-                 dictionary['querypath'] = []
+                dictionary['querypath'] = []
+            if description:
+                dictionary['description'] = []
         else:
             dictionary = dictionary
         for key in mydict:
@@ -2308,9 +2312,11 @@ class FieldGroupManager:
                         dictionary["type"].append(f"{mydict[key].get('type')}")
                         if queryPath:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
+                        if description:
+                            dictionary["description"].append(f"{mydict[key].get('description','')}")
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
-                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath)
+                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath,description)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
@@ -2322,13 +2328,17 @@ class FieldGroupManager:
                         dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
                         if queryPath and tmp_path is not None:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
-                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath)
+                        if description and tmp_path is not None:
+                            dictionary["description"].append(mydict[key]['items'].get('description',''))
+                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,description)
                     else:
                         finalpath = f"{path}.{key}"
                         dictionary["path"].append(finalpath)
                         dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
                         if queryPath and finalpath is not None:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
+                        if description and finalpath is not None:
+                            dictionary["description"].append(mydict[key]['items'].get('description',''))
                 else:
                     if path is not None:
                         finalpath = f"{path}.{key}"
@@ -2338,6 +2348,9 @@ class FieldGroupManager:
                     dictionary["type"].append(mydict[key].get('type','object'))
                     if queryPath and finalpath is not None:
                         dictionary["querypath"].append(self.__cleanPath__(finalpath))
+                    if description and finalpath is not None:
+                        dictionary["description"].append(mydict[key].get('description',''))
+
         return dictionary
     
     def __setField__(self,completePathList:list=None,fieldGroup:dict=None,newField:str=None,obj:dict=None)->dict:
@@ -2685,16 +2698,17 @@ class FieldGroupManager:
             aepp.saveFile(module='schema',file=data,filename=f"{filename}.json",type_file='json')
         return data
 
-    def to_dataframe(self,save:bool=False,queryPath:bool=False)->pd.DataFrame:
+    def to_dataframe(self,save:bool=False,queryPath:bool=False,description:bool=False)->pd.DataFrame:
         """
         Generate a dataframe with the row representing each possible path.
         Arguments:
             save : OPTIONAL : If you wish to save it with the title used by the field group.
                 save as csv with the title used. Not title, used "unknown_fieldGroup_" + timestamp.
             queryPath : OPTIONAL : If you want to have the query path to be used.
+            description : OPTIONAL : If you want to have the description used
         """
         definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
-        data = self.__transformationDF__(definition,queryPath=queryPath)
+        data = self.__transformationDF__(definition,queryPath=queryPath,description=description)
         df = pd.DataFrame(data)
         if save:
             title = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
@@ -2973,7 +2987,7 @@ class SchemaManager:
         self.title = name
         return None
 
-    def to_dataframe(self,save:bool=False,queryPath: bool = False)->pd.DataFrame:
+    def to_dataframe(self,save:bool=False,queryPath: bool = False,description:bool = False)->pd.DataFrame:
         """
         Extract the information from the Field Group to DataFrame. You need to have instanciated the Field Group manager.
         Arguments:
@@ -2983,7 +2997,7 @@ class SchemaManager:
         """
         df = pd.DataFrame({'path':[],'type':[],'fieldGroup':[]})
         for fgmanager in self.fieldGroupsManagers:
-            tmp_df = fgmanager.to_dataframe(queryPath=queryPath)
+            tmp_df = fgmanager.to_dataframe(queryPath=queryPath,description=description)
             tmp_df['fieldGroup'] = fgmanager.title
             df = df.append(tmp_df,ignore_index=True)
         if save:

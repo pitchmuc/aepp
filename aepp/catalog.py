@@ -419,6 +419,22 @@ class Catalog:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
+    def getDataSetObservableSchema(self, datasetId: str = None):
+        """
+        Return a single dataset observable schema.
+        Which means that the fields that has been used in that dataset.
+        Arguments:
+            datasetId : REQUIRED : Id of the dataset for which the observable schema should be retrieved.
+        """
+        if datasetId is None:
+            raise Exception("Expected a datasetId argument")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getDataset for : {datasetId}")
+        path = f"/dataSets/{datasetId}"
+        params = {"properties" : "observableSchema"}
+        res = self.connector.getData(self.endpoint+path,params=params, headers=self.header)
+        return res
+
     def deleteDataSet(self, datasetId: str = None):
         """
         Delete a dataset by its id.
