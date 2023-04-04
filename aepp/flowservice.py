@@ -752,7 +752,7 @@ class FlowService:
         if kwargs.get("continuationToken", False):
             params["continuationToken"] = kwargs.get("continuationToken")
         res: dict = self.connector.getData(self.endpoint + path, params=params)
-        items: list = res["items"]
+        items: list = res.get("items",[])
         nextPage = res["_links"].get("next", {}).get("href", "")
         while nextPage != "" and len(items) < float(n_results):
             token: str = res["_links"]["next"].get("href", "")

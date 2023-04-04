@@ -260,7 +260,9 @@ class Schema:
         if kwargs.get("debug", False):
             if "results" not in res.keys():
                 print(res)
-        data = res["results"]
+        data = res.get("results",[])
+        if len(data) == 0:
+            return res
         page = res.get("_page",{})
         nextPage = page.get('next',None)
         while nextPage is not None:

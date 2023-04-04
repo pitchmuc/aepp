@@ -2,6 +2,14 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.2.9
+
+* adding a new module : `destinationInstanceService`
+  * The new module will help provide destination support.
+* logging some errors when identified in the connector `getData` operation
+* returning errors for getSchemas operation
+* Fixing `getRuns` in `FlowService` class when there are no runs to fetch.
+
 ## version 0.2.8
 
 * support for Service Token
