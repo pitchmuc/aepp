@@ -477,8 +477,8 @@ class FlowService:
         source_connection_id: str = None,
         target_connection_id: str = None,
         schedule_start_time: str = None,
-        schedule_frequency: str = "minute",
-        schedule_interval: int = 15,
+        schedule_time_unit: str = "hour",
+        schedule_interval: int = 3,
         transformation_mapping_id: str = None,
         transformation_name: str = None,
         transformation_version: int = 0,
@@ -514,8 +514,8 @@ class FlowService:
             }
             if schedule_start_time is not None:
                 obj["scheduleParams"]["startTime"] = schedule_start_time
-            if schedule_frequency is not None:
-                obj["scheduleParams"]["frequency"] = schedule_frequency
+            if schedule_time_unit is not None:
+                obj["scheduleParams"]["timeUnit"] = schedule_time_unit
             if schedule_interval is not None:
                 obj["scheduleParams"]["interval"] = str(schedule_interval)
             if transformation_mapping_id is not None:
