@@ -3141,3 +3141,19 @@ class SchemaManager:
             raise ValueError('Require an operation to be used')
         res = self.schemaAPI.createDescriptor(descriptor)
         return res
+
+    def compareObservableSchema(self,observableSchemaManager:'ObservableSchemaManager'=None)->pd.DataFrame:
+        """
+        A method to compare the existing schema with the observable schema and find out the difference in them.
+        It output a dataframe with all of the path, the field group, the type (if provided) and the part availability (in that dataset)
+        Arguments:
+            observableSchemaManager : REQUIRED : the ObservableSchemaManager class instance.
+        """
+        df_schema = self.to_dataframe()
+        df_obs = observableSchemaManager.to_dataframe()
+        df_merge = df_schema.merge(df_obs,left_on='path',right_on='path',how='left',indicator=True)
+        df_merge = df_merge.rename(columns={"_merge": "availability",'type_x':'type'})
+        df_merge = df_merge.drop("type_y",axis=1)
+        df_merge['availability'] = df_merge['availability'].str.replace('left_only','schema_only')
+        df_merge['availability'] = df_merge['availability'].str.replace('both','schema_dataset')
+        return df_merge
