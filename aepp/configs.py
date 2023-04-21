@@ -81,7 +81,8 @@ def createConfigFile(
 def importConfigFile(
     path: str = None,
     connectInstance: bool = False,
-    auth_type: str = "jwt"
+    auth_type: str = "jwt",
+    sandbox:str = None,
 ):
     """Reads the file denoted by the supplied `path` and retrieves the configuration information
     from it.
@@ -90,6 +91,7 @@ def importConfigFile(
         path: REQUIRED : path to the configuration file. Can be either a fully-qualified or relative.
         connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class
         auth_type : OPTIONAL : type of authentication, either "jwt" or "oauth"
+        sandbox : OPTIONAL : The sandbox to force on it
 
     Example of path value.
     "config.json"
@@ -116,7 +118,6 @@ def importConfigFile(
             raise RuntimeError(
                 f"Either an `api_key` or a `client_id` should be provided."
             )
-
         args = {
             "org_id": provided_config["org_id"],
             "client_id": client_id,
@@ -125,6 +126,8 @@ def importConfigFile(
             "environment": provided_config.get("environment", "prod"),
             "connectInstance": connectInstance
         }
+        if sandbox is not None: ## overriding sandbox from parameter
+            args["sandbox"] = sandbox
 
         if auth_type == "jwt":
             args["tech_id"] = provided_config["tech_id"]
@@ -333,3 +336,14 @@ class ConnectObject:
         Return the default header
         """
         return self.header
+
+    def setSandbox(self,sandbox:str=None)->dict:
+        """
+        Update the sandbox used
+        """
+        if sandbox is None:
+            return None
+        self.sandbox = sandbox
+        self.header["x-sandbox-name"] = sandbox
+        self.__configObject__["sandbox"] = sandbox
+        return self.getConfigObject()
