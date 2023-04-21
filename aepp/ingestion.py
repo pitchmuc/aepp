@@ -65,7 +65,7 @@ class DataIngestion:
             header = config.getConfigHeader()
             config = config.getConfigObject()
         self.connector = connector.AdobeRequest(
-            config_object=config, 
+            config=config, 
             header=header,
             logger=self.logger,
             loggingEnabled=self.loggingEnabled)

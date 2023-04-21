@@ -85,7 +85,7 @@ class FlowService:
             header = config.getConfigHeader()
             config = config.getConfigObject()
         self.connector = connector.AdobeRequest(
-            config_object=config,
+            config=config,
             header=header,
             loggingEnabled=self.loggingEnabled,
             logger=self.logger,

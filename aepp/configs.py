@@ -272,6 +272,7 @@ class ConnectObject:
             client_id: str = None,
             path_to_key: str = None,
             private_key: str = None,
+            auth_code:str=None,
             sandbox: str = "prod",
             environment: str = "prod",
             **kwargs)->None:
@@ -302,6 +303,7 @@ class ConnectObject:
         self.pathToKey = path_to_key
         self.privateKey = private_key
         self.sandbox = sandbox
+        self.auth_code = auth_code
         self.token = ""
         self.__configObject__ = {
             "org_id": self.org_id,
@@ -315,7 +317,8 @@ class ConnectObject:
             "token": "",
             "imsEndpoint" : self.imsEndpoint,
             "jwtTokenEndpoint" : self.jwtEndpoint,
-            "oathTokenEndpoint" : self.oathEndpoint 
+            "oathTokenEndpoint" : self.oathEndpoint,
+            "auth_code": self.auth_code
         }
     
     def connect(self)->None:
