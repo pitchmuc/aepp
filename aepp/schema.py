@@ -3066,6 +3066,7 @@ class SchemaManager:
             descType : REQUIRED : The type to be used.
                 it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"
             completePath : REQUIRED : the complete path of the field you want to attach a descriptor.
+                Example: '/definitions/customFields/properties/_tenant/properties/tenantObject/properties/field'
             identityNSCode : OPTIONAL : if the descriptor is identity related, the namespace CODE  used.
             identityPrimary : OPTIONAL : If the primary descriptor added is the primary identity.
             alternateTitle : OPTIONAL : if the descriptor is alternateDisplay, the alternate title to be used.
