@@ -138,7 +138,7 @@ class AdobeRequest:
             "code": config["auth_code"]
         }
         response = requests.post(
-            config["oauthTokenEndpoint"], data=oauth_payload
+            config["oauthTokenEndpoint"], data=oauth_payload, verify=False
         )
         return self._token_postprocess(response=response, verbose=verbose, save=save)
 
@@ -185,7 +185,7 @@ class AdobeRequest:
             "jwt_token": encoded_jwt,
         }
         response = requests.post(
-            config["jwtTokenEndpoint"], headers=header_jwt, data=payload
+            config["jwtTokenEndpoint"], headers=header_jwt, data=payload, verify=False
         )
         return self._token_postprocess(response=response, verbose=verbose, save=save)
 
@@ -297,20 +297,20 @@ class AdobeRequest:
                 f"Start GET request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None and data is None:
-            res = requests.get(endpoint, headers=headers)
+            res = requests.get(endpoint, headers=headers, verify=False)
         elif params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.get(endpoint, headers=headers, params=params)
+            res = requests.get(endpoint, headers=headers, params=params, verify=False)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.get(endpoint, headers=headers, data=data)
+            res = requests.get(endpoint, headers=headers, data=data, verify=False)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.get(endpoint, headers=headers, params=params, data=data)
+            res = requests.get(endpoint, headers=headers, params=params, data=data, verify=False)
         if self.loggingEnabled:
             self.logger.debug(f"endpoint used: {res.request.url}")
             self.logger.debug(f"params used: {params}")
@@ -369,9 +369,9 @@ class AdobeRequest:
                 f"Start GET request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None:
-            res = requests.head(endpoint, headers=headers)
+            res = requests.head(endpoint, headers=headers, verify=False)
         if params is not None:
-            res = requests.head(endpoint, headers=headers, params=params)
+            res = requests.head(endpoint, headers=headers, params=params, verify=False)
         try:
             res_header = res.headers()
         except:
@@ -406,27 +406,27 @@ class AdobeRequest:
                 f"Start POST request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None and data is None:
-            res = requests.post(endpoint, headers=headers)
+            res = requests.post(endpoint, headers=headers, verify=False)
         elif params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.post(endpoint, headers=headers, params=params)
+            res = requests.post(endpoint, headers=headers, params=params, verify=False)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.post(endpoint, headers=headers, data=json.dumps(data))
+            res = requests.post(endpoint, headers=headers, data=json.dumps(data), verify=False)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.post(
-                endpoint, headers=headers, params=params, data=json.dumps(data)
+                endpoint, headers=headers, params=params, data=json.dumps(data), verify=False
             )
         elif bytesData is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"bytes data used")
             res = requests.post(
-                endpoint, headers=headers, params=params, data=bytesData
+                endpoint, headers=headers, params=params, data=bytesData, verify=False
             )
         try:
             formatUse = kwargs.get("format", "json")
@@ -481,17 +481,17 @@ class AdobeRequest:
         if params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.patch(endpoint, headers=headers, params=params)
+            res = requests.patch(endpoint, headers=headers, params=params, verify=False)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.patch(endpoint, headers=headers, data=json.dumps(data))
+            res = requests.patch(endpoint, headers=headers, data=json.dumps(data), verify=False)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.patch(
-                endpoint, headers=headers, params=params, data=json.dumps(data)
+                endpoint, headers=headers, params=params, data=json.dumps(data), verify=False
             )
         try:
             res_json = res.json()
@@ -535,17 +535,17 @@ class AdobeRequest:
         if params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.put(endpoint, headers=headers, params=params)
+            res = requests.put(endpoint, headers=headers, params=params, verify=False)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.put(endpoint, headers=headers, data=json.dumps(data))
+            res = requests.put(endpoint, headers=headers, data=json.dumps(data), verify=False)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.put(
-                endpoint, headers=headers, params=params, data=json.dumps(data)
+                endpoint, headers=headers, params=params, data=json.dumps(data), verify=False
             )
         try:
             res_json = res.json()
@@ -578,9 +578,9 @@ class AdobeRequest:
                 f"Start PUT request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None:
-            res = requests.delete(endpoint, headers=headers)
+            res = requests.delete(endpoint, headers=headers, verify=False)
         elif params is not None:
-            res = requests.delete(endpoint, headers=headers, params=params)
+            res = requests.delete(endpoint, headers=headers, params=params, verify=False)
         try:
             status_code = res.status_code
             if status_code >= 400:

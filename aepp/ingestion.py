@@ -330,7 +330,7 @@ class DataIngestion:
         if self.loggingEnabled:
             self.logger.debug(f"Uploading large part for batch ID: ({batchId})")
         path = f"/batches/{batchId}/datasets/{datasetId}/files/{filePath}"
-        res = requests.patch(self.endpoint + path, data=data, headers=privateHeader)
+        res = requests.patch(self.endpoint + path, data=data, headers=privateHeader, verify=False)
         res_json = res.json()
         return res_json
 
