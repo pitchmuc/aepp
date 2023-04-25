@@ -73,6 +73,7 @@ class AdobeRequest:
         self.loggingEnabled = loggingEnabled
         self.logger = logger
         self.retry = retry
+        requests.packages.urllib3.disable_warnings()
         if self.config["token"] == "" or time.time() > self.config["date_limit"]:
             if self.config["private_key"] is not None or self.config["pathToKey"] is not None:
                 token_info = self.get_jwt_token_and_expiry_for_config(

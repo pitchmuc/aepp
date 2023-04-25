@@ -41,6 +41,7 @@ class DataIngestion:
             header : OPTIONAL : header object  in the config module.
         Additional kwargs will update the header.
         """
+        requests.packages.urllib3.disable_warnings()
         if loggingObject is not None and sorted(
             ["level", "stream", "format", "filename", "file"]
         ) == sorted(list(loggingObject.keys())):
