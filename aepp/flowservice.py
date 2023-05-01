@@ -1392,16 +1392,25 @@ class FlowManager:
             flowId : REQUIRED : A flow ID
         """
         from aepp import schema, catalog,dataprep,flowservice
-        self.schemaAPI = schema.Schema()
-        self.catalogAPI = catalog.Catalog()
-        self.mapperAPI = dataprep.DataPrep()
-        self.flowAPI = flowservice.FlowService()
+        self.schemaAPI = schema.Schema(config=config)
+        self.catalogAPI = catalog.Catalog(config=config)
+        self.mapperAPI = dataprep.DataPrep(config=config)
+        self.flowAPI = flowservice.FlowService(config=config)
         self.flowData = self.flowAPI.getFlow(flowId)
         self.__setAttributes__(self.flowData)
         self.flowMapping = None
         self.flowSpec = {'id' : self.flowData.get('flowSpec',{}).get('id')}
         self.flowSourceConnection = {'id' : self.flowData.get('sourceConnectionIds',[None])[0]}
         self.flowTargetConnection = {'id' : self.flowData.get('targetConnectionIds',[None])[0]}
+        sourceConnections:list = self.flowData.get('inheritedAttributes',{}).get('sourceConnections',[{}])
+        self.connectionInfo = {}
+        for element in sourceConnections:
+            if 'typeInfo' in element.keys():
+                self.connectionInfo = {'id':element.get('id'),'name':element.get('typeInfo',{}).get('id')}
+            if 'baseConnection' in element.keys():
+                self.connectionInfo = {'id':element.get('baseConnection',{}).get('id'),'name':None}
+        if self.connectionInfo.get('id',None) is not None and self.connectionInfo.get('name',None) is None:
+            self.connectionInfo['name'] = self.flowAPI.getConnection(self.connectionInfo['id']).get('items',[{}])[0].get('name')
         for trans in self.flowData.get('transformations',[{}]):
             if trans.get('name') == 'Mapping':
                 self.flowMapping = {'id':trans.get('params',{}).get('mappingId')}
@@ -1419,24 +1428,37 @@ class FlowManager:
             if self.flowSourceConnection['connectionSpec'].get('id') is not None:
                 connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
                 self.flowSourceConnection['connectionSpec']['name'] = connSpec.get('name')
+            if connSpec.get('sourceSpec',{}).get('attributes',{}).get('uiAttributes',{}).get('isSource',False):
+                self.connectionType = 'source'
+            elif  connSpec.get('attributes',{}).get('isDestination',False):
+                self.connectionType = 'destination'
+            self.frequency = connSpec.get('sourceSpec',{}).get('attributes',{}).get('uiAttributes',{}).get('frequency',{}).get('key','unknown')
         ## Target Connection part
         if self.flowTargetConnection['id'] is not None:
             targetConnData = self.flowAPI.getTargetConnection(self.flowTargetConnection['id'])
-            self.flowTargetConnection['name'] = targetConnData.get('name')
-            self.flowTargetConnection['data'] = targetConnData.get('data')
-            self.flowTargetConnection['params'] = targetConnData.get('params')
-            self.flowTargetConnection['connectionSpec'] = targetConnData.get('connectionSpec')
-            if self.flowTargetConnection['connectionSpec'].get('id') is not None:
+            self.flowTargetConnection['name']:str = targetConnData.get('name')
+            self.flowTargetConnection['data']:dict = targetConnData.get('data',{})
+            self.flowTargetConnection['params']:dict = targetConnData.get('params',{})
+            self.flowTargetConnection['connectionSpec']:dict = targetConnData.get('connectionSpec',{})
+            if self.flowTargetConnection['connectionSpec'].get('id',None) is not None:
                 connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
                 self.flowTargetConnection['connectionSpec']['name'] = connSpec.get('name')
         ## Catalog part
         if 'dataSetId' in self.flowTargetConnection['params'].keys():
             datasetInfo = self.catalogAPI.getDataSet(self.flowTargetConnection['params']['dataSetId'])
-            self.flowTargetConnection['params']['datasetName'] = datasetInfo[list(datasetInfo.keys())[0]].get('name')
+            if 'status' in datasetInfo.keys():
+                if datasetInfo['status'] == 404:
+                    self.flowTargetConnection['params']['datasetName'] = 'DELETED'
+            else:
+                self.flowTargetConnection['params']['datasetName'] = datasetInfo[list(datasetInfo.keys())[0]].get('name')
         ## Schema part
-        if 'schema' in self.flowTargetConnection['data'].keys():
-            schemaInfo = self.schemaAPI.getSchema(self.flowTargetConnection['data']['schema']['id'],full=False)
-            self.flowTargetConnection['data']['schema']['name'] = schemaInfo.get('title')
+        if 'schema' in self.flowTargetConnection.get('data',{}).keys():
+            if self.flowTargetConnection.get('data',{}).get('schema',None) is not None:
+                ## handling inconsistency in the response
+                schemaId = self.flowTargetConnection['data']['schema'].get('id',self.flowTargetConnection['data']['schema'].get('schemaId',None))
+                if schemaId is not None:
+                    schemaInfo = self.schemaAPI.getSchema(schemaId,full=False)
+                    self.flowTargetConnection['data']['schema']['name'] = schemaInfo.get('title')
         ## Mapping
         if self.flowMapping is not None:
             mappingInfo = self.mapperAPI.getMappingSet(self.flowMapping['id'])
@@ -1465,6 +1487,8 @@ class FlowManager:
                 "id" : self.id,
                 "name": self.name,
                 "version":self.version,
+                "connectionName" : self.connectionInfo.get('name','unknown'),
+                "frequency" : self.frequency,
                 "flowSpecs": self.flowSpec,
                 "sourceConnection": self.flowSourceConnection,
                 "targetConnection": self.flowTargetConnection,
@@ -1478,6 +1502,8 @@ class FlowManager:
                 "id" : self.id,
                 "name": self.name,
                 "version":self.version,
+                "connectionName" : self.connectionInfo.get('name','unknown'),
+                "frequency" : self.frequency,
                 "flowSpecs": self.flowSpec,
                 "sourceConnection": self.flowSourceConnection,
                 "targetConnection": self.flowTargetConnection,
@@ -1485,6 +1511,21 @@ class FlowManager:
         if self.flowMapping is not None:
             data['mapping'] = self.flowMapping
         return json.dumps(data,indent=2)
+
+    def summary(self):
+        data = {
+                "id" : self.id,
+                "name": self.name,
+                "version":self.version,
+                "connectionName" : self.connectionInfo.get('name','unknown'),
+                "frequency" : self.frequency,
+                "flowSpecs": self.flowSpec,
+                "sourceConnection": self.flowSourceConnection,
+                "targetConnection": self.flowTargetConnection,
+            }
+        if self.flowMapping is not None:
+            data['mapping'] = self.flowMapping
+        return data
 
     def getFlowSpec(self)->dict:
         """

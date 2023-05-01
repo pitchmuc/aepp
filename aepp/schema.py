@@ -1966,7 +1966,7 @@ class FieldGroupManager:
         """
         
         self.fieldGroup = {}
-        if schemaAPI is not None:
+        if schemaAPI is not None and type(schemaAPI) == 'Schema':
             self.schemaAPI = schemaAPI
         else:
             self.schemaAPI = Schema(config=config)
@@ -1974,7 +1974,10 @@ class FieldGroupManager:
         if fieldGroup is not None:
             if type(fieldGroup) == dict:
                 if fieldGroup.get("meta:resourceType",None) == "mixins":
-                    self.fieldGroup = fieldGroup
+                    if fieldGroup.get('definitions',None) is not None:
+                        self.fieldGroup = fieldGroup
+                    else:
+                        self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
             elif type(fieldGroup) == str and (fieldGroup.startswith('https:') or fieldGroup.startswith(f'{self.tenantId}.')):
                 if self.schemaAPI is None:
                     raise Exception("You try to retrieve the fieldGroup definition from the id, but no API has been passed in the schemaAPI parameter.")
@@ -2612,7 +2615,6 @@ class FieldGroupManager:
         Returns False when the field could not be inserted.
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
-                In case of array of objects, use the "[*]" notation
             dataType : REQUIRED : the field type you want to create
                 A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
@@ -2742,6 +2744,12 @@ class FieldGroupManager:
         if self.schemaAPI is None:
             Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.patchFieldGroup(self.id,operations)
+        if 'status' in res.keys():
+            if res['status'] >= 400:
+                print(res['title'])
+                return res
+            else:
+                return res
         self.fieldGroup = res
         self.__setAttributes__(self.fieldGroup)
         return res
@@ -2753,6 +2761,12 @@ class FieldGroupManager:
         if self.schemaAPI is None:
             Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.putFieldGroup(self.id,self.to_xdm())
+        if 'status' in res.keys():
+            if res['status'] >= 400:
+                print(res['title'])
+                return res
+            else:
+                return res
         self.fieldGroup = res
         self.__setAttributes__(self.fieldGroup)
         return res
@@ -2764,6 +2778,14 @@ class FieldGroupManager:
         if self.schemaAPI is None:
             Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.createFieldGroup(self.to_xdm())
+        if 'status' in res.keys():
+            if res['status'] >= 400:
+                print(res['title'])
+                return res
+            else:
+                return res
+        self.fieldGroup = res
+        self.__setAttributes__(self.fieldGroup)
         return res
 
 
@@ -3045,6 +3067,12 @@ class SchemaManager:
         if self.schemaAPI is None:
             raise Exception("Require a Schema instance to connect to the API")
         res = self.schemaAPI.putSchema(self.id,self.schema)
+        if 'status' in res.keys():
+            if res['status'] == 400:
+                print(res['title'])
+                return res
+            else:
+                return res
         self.schema = res
         self.__setAttributes__(self.schema)
         return res
