@@ -1964,7 +1964,7 @@ class FieldGroupManager:
             schemaAPI : OPTIONAL : The instance of the Schema class. Provide a way to connect to the API.
             config : OPTIONAL : The config object in case you want to override the configuration.
         """
-        
+        self.EDITABLE = False
         self.fieldGroup = {}
         if schemaAPI is not None and type(schemaAPI) == 'Schema':
             self.schemaAPI = schemaAPI
@@ -1975,16 +1975,29 @@ class FieldGroupManager:
             if type(fieldGroup) == dict:
                 if fieldGroup.get("meta:resourceType",None) == "mixins":
                     if fieldGroup.get('definitions',None) is not None:
-                        self.fieldGroup = fieldGroup
+                        if 'mixins' in fieldGroup.get('$id'):
+                            self.EDITABLE = True
+                            self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
+                        else:
+                            tmp_def = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True) ## handling default mixins
+                            tmp_def['definitions'] = tmp_def['properties']
+                            self.fieldGroup = tmp_def
                     else:
                         self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
             elif type(fieldGroup) == str and (fieldGroup.startswith('https:') or fieldGroup.startswith(f'{self.tenantId}.')):
                 if self.schemaAPI is None:
                     raise Exception("You try to retrieve the fieldGroup definition from the id, but no API has been passed in the schemaAPI parameter.")
-                self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
+                if 'mixins' in fieldGroup:
+                    self.EDITABLE = True
+                    self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
+                else: ## handling default mixins
+                    tmp_def = self.schemaAPI.getFieldGroup(fieldGroup,full=True) ## handling default mixins
+                    tmp_def['definitions'] = tmp_def['properties']
+                    self.fieldGroup = tmp_def
             else:
                 raise ValueError("the element pass is not a field group definition")
         else:
+            self.EDITABLE = True
             self.fieldGroup = {
                 "title" : "",
                 "meta:resourceType":"mixins",
@@ -2839,6 +2852,7 @@ class SchemaManager:
                         definition = self.schemaAPI.getFieldGroup(ref,full=False)
                     else:
                         definition = self.schemaAPI.getFieldGroup(ref,full=True)
+                        definition['definitions'] = definition['properties']
                     self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition))
         elif type(schema) == str:
             if self.schemaAPI is None:
@@ -2856,6 +2870,7 @@ class SchemaManager:
                             definition = self.schemaAPI.getFieldGroup(ref,full=False)
                         else:
                             definition = self.schemaAPI.getFieldGroup(ref,full=True)
+                            definition['definitions'] = definition['properties']
                         self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition))
         elif schema is None:
             self.schema = {
