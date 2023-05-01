@@ -38,7 +38,7 @@ setuptools.setup(
     description="Package to manage AEP API endpoint and some helper functions",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pitchmuc/aep",
+    url="https://github.com/adobe/aepp",
     packages=setuptools.find_packages(),
     include_package_data=True,
     classifiers=[
