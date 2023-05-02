@@ -435,7 +435,7 @@ class Catalog:
         Which means that the fields that has been used in that dataset.
         Arguments:
             datasetId : REQUIRED : Id of the dataset for which the observable schema should be retrieved.
-            appendDatasetInfo : OPTIONAL : If set to True, it will append the datasetId to the dictionary return
+            appendDatasetInfo : OPTIONAL : If set to True, it will append the "datasetId" into the dictionary return
         """
         if datasetId is None:
             raise Exception("Expected a datasetId argument")
@@ -445,7 +445,8 @@ class Catalog:
         params = {"properties" : "observableSchema"}
         res = self.connector.getData(self.endpoint+path,params=params, headers=self.header)
         data = res[list(res.keys())[0]] ## accessing the observableSchema
-        data['aepp:info'] = datasetId
+        if appendDatasetInfo:
+            data['datasetId'] = datasetId
         return data
 
     def deleteDataSet(self, datasetId: str = None) -> None:
