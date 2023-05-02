@@ -1399,6 +1399,7 @@ class FlowManager:
         self.flowData = self.flowAPI.getFlow(flowId)
         self.__setAttributes__(self.flowData)
         self.flowMapping = None
+        self.datasetId = None
         self.flowSpec = {'id' : self.flowData.get('flowSpec',{}).get('id')}
         self.flowSourceConnection = {'id' : self.flowData.get('sourceConnectionIds',[None])[0]}
         self.flowTargetConnection = {'id' : self.flowData.get('targetConnectionIds',[None])[0]}
@@ -1439,6 +1440,9 @@ class FlowManager:
             self.flowTargetConnection['name']:str = targetConnData.get('name')
             self.flowTargetConnection['data']:dict = targetConnData.get('data',{})
             self.flowTargetConnection['params']:dict = targetConnData.get('params',{})
+            for key, value in self.flowTargetConnection['params'].items():
+                if key == 'datasetId':
+                    self.datasetId = value
             self.flowTargetConnection['connectionSpec']:dict = targetConnData.get('connectionSpec',{})
             if self.flowTargetConnection['connectionSpec'].get('id',None) is not None:
                 connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
