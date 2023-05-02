@@ -363,7 +363,7 @@ class Catalog:
                 upsert:bool=False,
                 tags:dict=None,
                 systemLabels:list[str]=None,
-                **kwargs):
+                **kwargs)-> dict:
         """
         Create a new dataSets based either on preconfigured setup or by passing the full dictionary for creation.
         Arguments:
@@ -415,7 +415,7 @@ class Catalog:
                              data=data)
         return res
 
-    def getDataSet(self, datasetId: str = None):
+    def getDataSet(self, datasetId: str = None) -> dict:
         """
         Return a single dataset.
         Arguments:
@@ -429,12 +429,13 @@ class Catalog:
         res = self.connector.getData(self.endpoint+path, headers=self.header)
         return res
 
-    def getDataSetObservableSchema(self, datasetId: str = None):
+    def getDataSetObservableSchema(self, datasetId: str = None,appendDatasetInfo:bool=False) -> dict:
         """
         Return a single dataset observable schema.
         Which means that the fields that has been used in that dataset.
         Arguments:
             datasetId : REQUIRED : Id of the dataset for which the observable schema should be retrieved.
+            appendDatasetInfo : OPTIONAL : If set to True, it will append the datasetId to the dictionary return
         """
         if datasetId is None:
             raise Exception("Expected a datasetId argument")
@@ -444,9 +445,10 @@ class Catalog:
         params = {"properties" : "observableSchema"}
         res = self.connector.getData(self.endpoint+path,params=params, headers=self.header)
         data = res[list(res.keys())[0]] ## accessing the observableSchema
+        data['aepp:info'] = datasetId
         return data
 
-    def deleteDataSet(self, datasetId: str = None):
+    def deleteDataSet(self, datasetId: str = None) -> None:
         """
         Delete a dataset by its id.
         Arguments:

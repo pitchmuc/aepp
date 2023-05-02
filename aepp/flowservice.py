@@ -1484,6 +1484,7 @@ class FlowManager:
         self.sandbox = flowData.get('sandboxName')
         self.name = flowData.get('name')
         self.version = flowData.get('version')
+        self.state = flowData.get('state')
 
 
     def __repr__(self)->str:
