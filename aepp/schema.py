@@ -2043,6 +2043,12 @@ class FieldGroupManager:
                         self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/profile")
                     elif "record" in cls or "https://ns.adobe.com/xdm/data/record" == cls:
                         self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/profile")
+        if len(self.fieldGroup.get('allOf',[]))>1:
+            ### handling the custom field group based on existing ootb field groups
+            for element in self.fieldGroup.get('allOf'):
+                if element.get('$ref') != '#/definitions/customFields' and element.get('$ref') != '#/definitions/property':
+                    additionalDefinition = self.schemaAPI.getFieldGroup(element.get('$ref'),full=True)
+                    self.fieldGroup['definitions'] = self.__simpleDeepMerge__(self.fieldGroup['definitions'],additionalDefinition.get('properties'))
         self.__setAttributes__(self.fieldGroup)
         if title is not None:
             self.fieldGroup['title'] = title
@@ -2325,7 +2331,7 @@ class FieldGroupManager:
             dictionary = dictionary
         for key in mydict:
             if type(mydict[key]) == dict:
-                if mydict[key].get('type') == 'object':
+                if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys():
                     if path is None:
                         if key != "property" and key != "customFields":
                             tmp_path = key
