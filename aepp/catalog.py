@@ -165,6 +165,21 @@ class Catalog:
                 self.logger.info(f"Issue creating a stream of messages")
             return None
 
+    def getLastBatches(self,dataSetId:str=None)->list:
+        """
+        Returns the last batch from a specific datasetId.
+        Arguments:
+            dataSetId : OPTIONAL : the datasetId to be retrieved the batch about
+
+        """
+        path = "/lastBatches"
+        params = {}
+        if dataSetId is not None:
+            params['dataSetId'] = dataSetId
+        res = self.connector.getData(self.endpoint+path,params=params)
+        return res
+        
+
     def getBatches(self,limit:int=10, n_results:int=None,output:str='raw',**kwargs)->Union[pd.DataFrame,dict]:
         """
         Retrieve a list of batches.
