@@ -16,6 +16,8 @@ import logging
 from .configs import ConnectObject
 
 class DestinationInstanceService:
+    loggingEnabled = False
+    logger = None
     """
     This class is referring to Destination Instance Service capability for AEP.
     """
