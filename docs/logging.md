@@ -4,9 +4,9 @@ The loggin capability enables you to log the activities of the modules in a file
 
 ## Configuration
 
-You can enable logging capability when instanciating the different classes in the submodules.
+You can enable logging capability when instantiating the different classes in the submodules.
 
-It requires to pass an object during the class instanciation process, to the parameter `loggingObject`.\
+It requires to pass an object during the class instantiation process, to the parameter `loggingObject`.\
 A template of the object can be created via the `generateLoggingObject` method, available directly in the `aepp` module.\
 This method takes no argument and returns the following object:
 
@@ -30,7 +30,7 @@ As pythonista may have realized, the logging capability has been created based o
 Documentation can be found [here](https://docs.python.org/3/library/logging.html).\
 It also means that it doesn't require any new module import.
 
-Example of instanciation of a class with the logging object:
+Example of instantiation of a class with the logging object:
 
 ```python
 import aepp
