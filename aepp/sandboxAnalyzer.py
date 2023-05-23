@@ -16,6 +16,7 @@ from .configs import ConnectObject
 import pandas as pd
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
+import datetime
 
 class SandboxAnalyzer:
     """
@@ -50,9 +51,11 @@ class SandboxAnalyzer:
         if sandbox is None:
             raise ValueError("Require a sandbox")
         self.overview = None
-        self.schemaOverview = None
-        self.fieldGroupsOverview = None
-        self.identitiesOverview = None
+        self.overviewSchemas = None
+        self.overviewFieldGroups = None
+        self.overviewIdentities = None
+        self.overviewSegments = None
+        self.overviewDatasets = None
         if loggingObject is not None and sorted(
             ["level", "stream", "format", "filename", "file"]
         ) == sorted(list(loggingObject.keys())):
@@ -122,7 +125,7 @@ class SandboxAnalyzer:
                     self.overview.to_csv(f'overview_{self.sandbox}.csv',index=False)
                 return self.overview
         overview = {'Schemas':[],'Datasets':[],'Segments':[],'DataSources':[],'Destinations':[]}
-        self.schemas = self.schemaAPI.getSchemas(excludeAdhoc=True)
+        self.schemas:list = self.schemaAPI.getSchemas(excludeAdhoc=True)
         overview['Schemas'].append(len(self.schemas))
         self.segments:list = self.segmentationAPI.getSegments()
         overview['Segments'].append(len(self.segments))
@@ -184,10 +187,10 @@ class SandboxAnalyzer:
             max_workers : OPTIONAL : parallel processing of schemaManager instanciation
         """
         if cache:
-            if self.schemaOverview is not None:
+            if self.overviewSchemas is not None:
                 if save:
-                    self.schemaOverview.to_csv(f'overview_schema_{self.sandbox}.csv',index=False)
-                return self.schemaOverview
+                    self.overviewSchemas.to_csv(f'overview_schema_{self.sandbox}.csv',index=False)
+                return self.overviewSchemas
         self.list_schemaManagers = self.__buildSchemaManagerList__(max_workers=max_workers)
         schemaDict = {sch.id : {'name':sch.title,'class':'','datasets':0,'fieldGroups':len(sch.fieldGroups),'identities':0,'lookups':0,'identityMap':False} for sch in self.list_schemaManagers}
         for sch in self.list_schemaManagers:
@@ -212,7 +215,7 @@ class SandboxAnalyzer:
             if self.catalogAPI.data.schema_ref[dataset]['id'] in schemaDict.keys():
                 schemaDict[self.catalogAPI.data.schema_ref[dataset]['id']]['datasets'] +=1
         df_schema = pd.DataFrame(schemaDict).T
-        self.schemaOverview = df_schema
+        self.overviewSchemas = df_schema
         if save:
             df_schema.to_csv(f'overview_schema_{self.sandbox}.csv',index=False)
         return df_schema
@@ -230,10 +233,10 @@ class SandboxAnalyzer:
             max_workers : OPTIONAL : parallel processing of FieldGroupManager instanciation
         """
         if cache:
-            if self.fieldGroupsOverview is not None:
+            if self.overviewFieldGroups is not None:
                 if save:
-                    self.fieldGroupsOverview.to_csv(f'overview_fieldgroups_{self.sandbox}.csv',index=False)
-                return self.fieldGroupsOverview
+                    self.overviewFieldGroups.to_csv(f'overview_fieldgroups_{self.sandbox}.csv',index=False)
+                return self.overviewFieldGroups
         self.fieldGroups = self.schemaAPI.getFieldGroups()
         listFGids = [fg['$id'] for fg in self.fieldGroups]
         with ThreadPoolExecutor(max_workers=max_workers,thread_name_prefix = 'Thread') as thread_pool:
@@ -247,26 +250,108 @@ class SandboxAnalyzer:
                 if fgID in fieldGroupDict.keys():
                     fieldGroupDict[fgID]['schemas'] += 1
         df_fieldGroups = pd.DataFrame(fieldGroupDict).T
-        self.fieldGroupsOverview = df_fieldGroups
+        self.overviewFieldGroups = df_fieldGroups
         if save:
             df_fieldGroups.to_csv(f'overview_fieldgroups_{self.sandbox}.csv',index=False)
         return df_fieldGroups
     
     def identitiesAnalyzer(self,save:bool=False,cache:bool=True)->pd.DataFrame:
         """
-        Return a table with the identities used in that sandboxes.
+        Return a dataframe with the identities used in that sandbox.
         """
         if cache:
-            if self.identitiesOverview is not None:
+            if self.overviewIdentities is not None:
                 if save:
-                    self.identitiesOverview.to_csv(f'overview_identities_{self.sandbox}.csv',index=False)
-                return self.identitiesOverview
+                    self.overviewIdentities.to_csv(f'overview_identities_{self.sandbox}.csv',index=False)
+                return self.overviewIdentities
         identities = self.identityAPI.getIdentities()
-        self.identitiesOverview = pd.DataFrame(identities)
+        self.overviewIdentities = pd.DataFrame(identities)
         identities_namespaces = self.profileAPI.getPreviewNamespace()
         df_identities_namespace = pd.DataFrame(identities_namespaces['data'])
         df_IDNS_limit = df_identities_namespace[['code','fullIDsCount','fullIDsFragmentCount']]
-        self.identitiesOverview = pd.merge(self.identitiesOverview,df_IDNS_limit,left_on='code',right_on='code')
+        self.overviewIdentities = pd.merge(self.overviewIdentities,df_IDNS_limit,left_on='code',right_on='code')
         if save:
-            self.identitiesOverview.to_csv(f'overview_identities_{self.sandbox}.csv',index=False)
-        return self.identitiesOverview
+            self.overviewIdentities.to_csv(f'overview_identities_{self.sandbox}.csv',index=False)
+        return self.overviewIdentities
+    
+    def segementsAnalyzer(self,save:bool,cache:bool=True)->pd.DataFrame:
+        """
+        Returns a dataframe with the segment information in that sandbox.
+        Update and create also the merge policies overview.
+        """
+        if cache:
+            if self.overviewSegments is not None:
+                if save:
+                    self.overviewSegments.to_csv('',index=False)
+                return self.overviewSegments
+        self.mergePolicies = self.profileAPI.getMergePolicies()
+        mergePoliciesIdName = {merg['id']:merg['name'] for merg in self.mergePolicies}
+        overview_mergePolicies = {merg['id']:{'name' : merg['name'], 'segments':0} for merg in self.mergePolicies}
+        def evaluationType(evaluationInfo:dict):
+            """Evaluate the type of segment"""
+            if evaluationInfo['synchronous']['enabled']:
+                return "Edge"
+            elif evaluationInfo['continuous']['enabled']:
+                return "Streaming"
+            elif evaluationInfo['batch']['enabled']:
+                return "Batch"
+        if cache:
+            segments = self.segments
+        else:
+            segments = self.segmentationAPI.getSegments()
+        overview_segments = {seg['name']:{
+            'description':seg.get('description'),
+            'evaluationType':evaluationType(seg['evaluationInfo']),
+            'mergePolicies':mergePoliciesIdName[seg['mergePolicyId']]}
+                for seg in segments
+                }
+        for seg in segments:
+            overview_mergePolicies[seg['mergePolicyId']]['segments'] +=1
+        self.mergePoliciesOverview = pd.DataFrame(overview_mergePolicies).T
+        self.overviewSegments = pd.DataFrame(overview_segments).T
+        return self.overviewSegments
+    
+    def datasetAnalyzer(self,save:bool=False,cache:bool=True)->pd.DataFrame:
+        """
+        Returns a dataframe with the dataset analysis
+        """
+        if cache:
+            if self.overviewDatasets is not None:
+                if save:
+                    self.overviewDatasets.to_csv(f"overview_dataset_{self.sandbox}.csv")
+                return self.overviewDatasets
+        dict_schemaId_SchemaName = {sc['id']:sc['title'] for sc in self.schemas}
+        overviewDatasets = {myId:{
+            "name":name,
+            'flows':0,
+            'schemaRef':dict_schemaId_SchemaName[schemaId],
+            'enabledProfile':False,
+            'identities':0, 
+            'errorLast7days':0,
+            'lastBatchIngestion':None}
+                for myId,name,schemaId in zip(self.realDatasetIds,self.realDatasetNames,self.realDataset_SchemasIds)
+            }
+        ### Profile storage
+        datasetProfileDistribution = self.profileAPI.getPreviewDataSet().get('data',{})
+        for dataset in datasetProfileDistribution:
+            overviewDatasets[dataset['value']]['identities'] = dataset['fullIDsCount']
+        ### Batch errors & Profile enabled
+        week_ago = datetime.datetime.now() - datetime.timedelta(days=7)
+        week_ago_ts = datetime.datetime.timestamp(week_ago)*1000
+        for datasetId in tuple(overviewDatasets.keys()):
+            tmp_dataset = self.catalogAPI.getDataSet(datasetId)
+            tmp_dataset = tmp_dataset[list(tmp_dataset.keys())[0]]
+            if 'enabled:true' in tmp_dataset.get('tags',{}).get('unifiedProfile',[]):
+                overviewDatasets[datasetId]['enabledProfile'] = True
+            tmp_failedBatches = self.catalogAPI.getFailedBatchesDF(dataSet=datasetId,limit=100)
+            if len(tmp_failedBatches)>0:
+                overviewDatasets[datasetId]['errorLast7days'] = len(tmp_failedBatches[tmp_failedBatches['timestamp']>week_ago_ts])
+        ## last batch error
+        lastBatches = self.catalogAPI.getLastBatches(limit=100)
+        for key in lastBatches.keys():
+            if key in overviewDatasets.keys():
+                overviewDatasets[key]['lastBatchIngestion'] = time.ctime(lastBatches[key]['updated']/1000)
+        self.overviewDatasets = pd.DataFrame(overviewDatasets).T
+        if save:
+            self.overviewDatasets.to_csv(f"overview_dataset_{self.sandbox}.csv")
+        return self.overviewDatasets
