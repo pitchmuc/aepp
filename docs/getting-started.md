@@ -5,7 +5,7 @@
 - [Create a Developer Project ](#create-a-developer-project)
     - [JWT connection](#jwt-connection)
     - [Oauth Server-to-Server](#oauth-server-to-server)
-    
+    - [Oauth V1](#oauth-v1)
 - [Using the module](#using-the-module)
     - [Create a Config file](#create-a-config-file)
     - [Environments](#environments)
@@ -63,6 +63,15 @@ You will need to have the following information saved to be used later:
 - Scopes
 - IMS Org
 
+### Oauth V1
+
+For internal usage of the aepp module, for Adobe teams, you can also use the oauth v1 to interact with other services.
+You will need to have the following information saved to be used later:
+- Client ID
+- Client secret
+- Technical Account ID
+- auth_code
+- IMS Org
 
 ## Using the module
 
@@ -83,7 +92,8 @@ The `createConfigFile` is the method directly available out of aepp module to he
 As explained above, there are 2 options:
 
 * JWT config file (Legacy)
-* Oauth config file (New)
+* Oauth V2 config file (New)
+* Oauth V1 config (internal Adobe)
 
 To create a config file for JWT, use the code below:
 
@@ -107,11 +117,11 @@ Normally your config file will look like this:
 }
 ```
 
-If you want to use OAuth-based authentication, use the following code:
+If you want to use OAuth-V2-based authentication, use the following code:
 
 ```python
 import aepp
-aepp.createConfigFile(destination='template_config.json', auth_type="oauth")
+aepp.createConfigFile(destination='template_config.json', auth_type="oauthV2")
 ```
 
 The resulting file will have different fields:
@@ -127,18 +137,37 @@ The resulting file will have different fields:
 }
 ```
 
+If you want to use OAuth-V1-based authentication, use the following code:
+
+```python
+import aepp
+aepp.createConfigFile(destination='template_config.json', auth_type="oauthV1")
+```
+The resulting file will have different fields:
+
+```JSON
+{
+    "org_id": "<orgID>",
+    "client_id": "<client_id>",
+    "secret": "<YourSecret>",
+    "sandbox-name": "prod",
+    "environment": "prod",
+    "auth_code": "<auth_code>"
+}
+```
+
 In both cases, remove the `<placeholder>` and replace them with your information.\
 All information are available on your project page on developer.adobe.com
 
 **Note** By default, we are setting the sandbox name to "prod". If you don't know what that value, you can override it via a parameter.
 
-**Note** The default behavior has been changed starting June 2023, where oauth is the default type of configuration file created in case you omit the parameter.
+**Note** The default behavior has been changed starting June 2023, where oauthV2 is the default type of configuration file created in case you omit the parameter.
 
 Parameter for `createConfigFile` method:
 
 * destination : OPTIONAL : The name of the file to be created (with a dedicated path if needed)
 * sandbox : OPTIONAL : You can directly set your sandbox name in this parameter.
-* auth_type : OPTIONAL : type of authentication, either "jwt" or "oauth" (default oauth)
+* auth_type : OPTIONAL : type of authentication, either "jwt" or "oauthV2" or "oauthV1" (default oauthV2)
 * verbose : OPTIONAL : set to true, gives you a print stateent where is the location.
 
 
@@ -202,7 +231,7 @@ aepp.configure(
 )
 ```
 
-If you instead want to use OAuth-based authentication, simply use different parameters when calling `configure`:
+If you instead want to use OAuth-V2-based authentication, simply use different parameters when calling `configure`:
 
 ```python
 import aepp
@@ -215,8 +244,21 @@ aepp.configure(
 )
 ```
 
+If you instead want to use OAuth-V1-based authentication, simply use different parameters when calling `configure`:
+
+```python
+import aepp
+aepp.configure(
+    org_id=my_org_id,
+    secret=my_secret,
+    client_id=my_client_id,
+    auth_code=my_auth_code,
+    environment="prod"
+)
+```
+
 **NOTE** : In both case, I didn't provide a `sandbox` parameter but this parameter does exist and can be used to setup a specific sandbox.\
-By default, the `prod` sandbox will be used. To use that, use the code below:
+By default, the `prod` sandbox will be used. To use that, use the code below (for JWT):
 
 ```python
 import aepp
@@ -250,7 +292,6 @@ import aepp
 myOrg1 = aepp.importConfigFile('org1_config.json',connectInstance=True)
 ```
 
-
 ## Importing a sub module to work with
 
 You can then import the sub module and you will require to instantiate the class inside that module.\
@@ -269,7 +310,6 @@ from aepp import schema
 mySchemaInstance = schema.Schema()
 ## using the instance of config use 
 mySchemaInstance = schema.Schema(config=config1)
-
 ```
 
 This works exactly the same for all of the sub modules mentioned in the [README page](../README.md).

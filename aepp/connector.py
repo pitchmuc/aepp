@@ -83,8 +83,14 @@ class AdobeRequest:
                     aepScope=kwargs.get("aepScope"),
                     privacyScope=kwargs.get("privacyScope"),
                 )
+            elif self.config["scopes"] is not None:
+                self.connectionType = 'oauthV2'
+                token_info = self.get_oauth_token_and_expiry_for_config(
+                    config=self.config,
+                    verbose=verbose
+                )
             else:
-                self.connectionType = 'oauth'
+                self.connectionType = 'oauthV1'
                 token_info = self.get_oauth_token_and_expiry_for_config(
                     config=self.config,
                     verbose=verbose
@@ -93,12 +99,15 @@ class AdobeRequest:
             self.config["token"] = self.token
             if self.connectionType == 'jwt':
                 timeScale = 1000 ## jwt returns milliseconds expiry
-            elif self.connectionType == 'oauth':
+            elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
                 timeScale = 1 ## oauth returns seconds expiry
             self.config["date_limit"] = (
                 time.time() + token_info.expiry / timeScale - 500
             )
             self.header.update({"Authorization": f"Bearer {self.token}"})
+        # x-sandbox-id is required when using non-user token, but forbidden for user token
+        if self.connectionType == 'oauthV1' and "x-sandbox-id" not in self.header:
+            self.update_sandbox_id(self.config["sandbox"])
 
     def _find_path(self, path: str) -> Optional[Path]:
         """Checks if the file denoted by the specified `path` exists and returns the Path object
@@ -134,15 +143,26 @@ class AdobeRequest:
         """
         if type(config)!= dict:
             config = config.getConfigObject()
-        oauth_payload = {
-            "grant_type": "client_credentials",
-            "client_id": config["client_id"],
-            "client_secret": config["secret"],
-            "scope": config["scopes"]
-        }
-        response = requests.post(
-            config["oauthTokenEndpoint"], data=oauth_payload, verify=False
-        )
+        if self.connectionType == 'oauthV1':
+            oauth_payload = {
+                "grant_type": "authorization_code",
+                "client_id": config["client_id"],
+                "client_secret": config["secret"],
+                "code": config["auth_code"]
+            }
+            response = requests.post(
+                config["oauthTokenEndpointV1"], data=oauth_payload, verify=False
+            )
+        elif self.connectionType == 'oauthV2':
+            oauth_payload = {
+                "grant_type": "client_credentials",
+                "client_id": config["client_id"],
+                "client_secret": config["secret"],
+                "scope": config["scopes"]
+            }
+            response = requests.post(
+                config["oauthTokenEndpointV2"], data=oauth_payload, verify=False
+            )
         return self._token_postprocess(response=response, verbose=verbose, save=save)
 
     def get_jwt_token_and_expiry_for_config(
@@ -246,15 +266,19 @@ class AdobeRequest:
                 self.logger.warning("token expired. Trying to retrieve a new token")
             if self.connectionType == 'jwt':
                 token_with_expiry = self.get_jwt_token_and_expiry_for_config(config=self.config)
-            elif self.connectionType == 'oauth':
+            elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
                 token_with_expiry = self.get_oauth_token_and_expiry_for_config(config=self.config)
             self.token = token_with_expiry["token"]
             self.config["token"] = self.token
             if self.loggingEnabled:
                 self.logger.info("new token retrieved : {self.token}")
             self.header.update({"Authorization": f"Bearer {self.token}"})
+            if self.connectionType == 'jwt':
+                timeScale = 1000 ## jwt returns milliseconds expiry
+            elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
+                timeScale = 1 ## oauth returns seconds expiry
             self.config["date_limit"] = (
-                time.time() + token_with_expiry["expiry"] / 1000 - 500
+                time.time() + token_with_expiry["expiry"] / timeScale - 500
             )
 
     def updateSandbox(self, sandbox: str) -> None:
@@ -270,7 +294,7 @@ class AdobeRequest:
     def update_sandbox_id(self, sandbox: str) -> None:
         """
         Update the sandbox ID used for the request.
-        This is required when using non-user credentials.
+        This is required when using non-user credentials. Only internal adobe tools and oauth V1 can access this.
         Arguments:
             sandbox : REQUIRED : the sandbox name to use for the requests
         """

@@ -22,7 +22,8 @@ config_object = {
     "environment": "",
     "token": "",
     "jwtTokenEndpoint": "",
-    "oauthTokenEndpoint": "",
+    "oauthTokenEndpointV1": "",
+    "oauthTokenEndpointV2": "",
     "imsEndpoint": ""
 }
 
