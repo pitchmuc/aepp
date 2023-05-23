@@ -30,7 +30,7 @@ The datasets module provides a class that you can use for managing your labels o
 ## The Datasets class
 
 The Datasets class uses the default API connector that you would encounter for any other submodules on this python module.\
-This class can be instanciated by calling the `Datasets()` from the `datasets` module.
+This class can be instantiated by calling the `Datasets()` from the `datasets` module.
 
 Following the previous method described above, you can realize this:
 
@@ -38,7 +38,7 @@ Following the previous method described above, you can realize this:
 datasetslabels = datasets.Datasets()
 ```
 
-2 parameters are possible for the instanciation of the class:
+2 parameters are possible for the instantiation of the class:
 
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)

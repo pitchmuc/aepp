@@ -11,7 +11,7 @@ Arguments:
 
 * destination : OPTIONAL : if you wish to save the file at a specific location.
 * sandbox : OPTIONAL : You can directly set your sandbox name in this parameter.
-* verbose : OPTIONAL : set to true, gives you a print stateent where is the location.
+* verbose : OPTIONAL : set to true, gives you a print statement where is the location.
 
 The JSON file is having this structure:
 
@@ -64,7 +64,7 @@ Arguments:
 In an environment when you have multiple organization and / or multiple sandboxes to manage via `aepp`, it would be cumbersome to import the new environment any time you want to switch the Organuzation or the sandbox.\
 For that use-case, we provide a way for you to save your configuration in an instance of a `ConnectObject` class.\
 This class will save your organization, your sandbox and any information related to your configuration setup.\
-Therefore, in instanciation of any class later on, such as Schema class per example, you can pass the appropriate instance to connect to the right organization.
+Therefore, in instantiation of any class later on, such as Schema class per example, you can pass the appropriate instance to connect to the right organization.
 
 Example: 
 

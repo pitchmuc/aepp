@@ -7,20 +7,50 @@ Alternatively, you can use the docstring in the methods to have more information
 
 
 ## Menu
-- [Importing the module](#importing-the-module)
-- [Generating a Schema instance](#generating-a-schema-instance)
-    - [Using Kwargs](#using-kwargs)
-- [Tips for Schema instance](#tips-for-schema-requests)
-    - [Generate Samples](#1-generate-samples)
-    - [Using parameters in getSchema](#2-using-parameters-in-getschema)
-    - [Hiearchy matters](#3-hierarchy-matters)
-    - [Descriptors are important](#4-descriptors-are-important)
-- [Use Cases for Schema class](#use-cases)
+- [Schema module in aepp](#schema-module-in-aepp)
+  - [Menu](#menu)
+  - [Importing the module](#importing-the-module)
+  - [Generating a Schema instance](#generating-a-schema-instance)
+    - [Using kwargs](#using-kwargs)
+  - [Tips for schema requests](#tips-for-schema-requests)
+    - [1. Generate Samples](#1-generate-samples)
+    - [2. Using parameters in getSchema](#2-using-parameters-in-getschema)
+    - [3. Hierarchy matters](#3-hierarchy-matters)
+    - [4. Descriptors are important](#4-descriptors-are-important)
+  - [Use Cases](#use-cases)
     - [Copying a mixin for ingestion](#copying-a-mixin-for-ingestion)
     - [Creating ExperienceEvent and Profile Schema](#creating-experienceevent-and-profile-schema)
-    - [Get Paths for schema](#get-paths-from-schema)
-- [Schema Manager](#schemamanager)
-- [Field Group Manager](#fieldgroupmanager)
+    - [Get paths from schema](#get-paths-from-schema)
+  - [SchemaManager](#schemamanager)
+    - [Instantiation of Schema Manager](#instantiation-of-schema-manager)
+    - [Methods of Schema Manager](#methods-of-schema-manager)
+      - [searchField](#searchfield)
+      - [searchAttribute](#searchattribute)
+      - [addFieldGroup](#addfieldgroup)
+      - [getFieldGroupManager](#getfieldgroupmanager)
+      - [setTitle](#settitle)
+      - [to\_dataframe](#to_dataframe)
+      - [to\_dict](#to_dict)
+      - [createSchema](#createschema)
+      - [updateSchema](#updateschema)
+      - [createDescriptorOperation](#createdescriptoroperation)
+      - [createDescriptor](#createdescriptor)
+  - [FieldGroupManager](#fieldgroupmanager)
+    - [Field Group Manager instance](#field-group-manager-instance)
+    - [Field Groups Manager methods](#field-groups-manager-methods)
+      - [setTitle](#settitle-1)
+      - [getField](#getfield)
+      - [searchField](#searchfield-1)
+      - [searchAttribute](#searchattribute-1)
+      - [addFieldOperation](#addfieldoperation)
+      - [addField](#addfield)
+      - [removeField](#removefield)
+      - [to\_dict](#to_dict-1)
+      - [to\_dataframe](#to_dataframe-1)
+    - [to\_xdm](#to_xdm)
+    - [patchFieldGroup](#patchfieldgroup)
+      - [updateFieldGroup](#updatefieldgroup)
+      - [createFieldGroup](#createfieldgroup)
 
 ## Importing the module
 
@@ -44,7 +74,7 @@ Following the previous method described above, you can realize this:
 mySchemaConnection1 = schema.Schema()
 ```
 
-Several paramters are possibles when instanciating the class:\
+Several parameters are possibles when instantiating the class:\
 
 * container_id : OPTIONAL : "tenant"(default) or "global"
 * config : OPTIONAL : config object in the config module (example : aepp.config.config_object)
@@ -95,7 +125,7 @@ With these parameters you may achieve returning a specific view fitting your nee
 
 ### 3. Hierarchy matters
 
-Knowning the relationships / hierarchy between the different component of schema constructors will help you on your pipeline.\
+Knowing the relationships / hierarchy between the different component of schema constructors will help you on your pipeline.\
 Example : You cannot delete a class if it is used in a schema and you cannot delete a mixin if it is used in a Schema.
 
 From bottom to top, here is the list of elements.
@@ -157,7 +187,7 @@ The `SchemaManager` class is not an official Adobe schema manager and any method
 
 ### Instantiation of Schema Manager
 
-The `SchemaManager` class can be instanciated with these parameters:
+The `SchemaManager` class can be instantiated with these parameters:
   * schemaId : OPTIONAL : Either a schemaId ($id or altId) or the schema dictionary itself.
         If schemaId is passed, you need to provide the schemaAPI connection as well.
         If no schema ID is passed, then it will create an empty schema.
@@ -173,7 +203,7 @@ By default, it will use the default config that has been used for the `Schema` c
 However, you can use the `schemaAPI` parameter to pass an instance of the `Schema` class you want to use or you can pass the `config` object.
 
 
-There are several attribute available from the instanciation of the schema:
+There are several attribute available from the instantiation of the schema:
 * title : The title of the schema
 * fieldGroups : A dictionary of the title and ID of the field groups
 * fieldGroupTitles : A list of the field group titles
@@ -313,7 +343,7 @@ To instantiate the FieldGroupManager you can pass the following arguments:
 * schemaAPI : OPTIONAL : The instance of the Schema class. Provide a way to connect to the API.
 * config : OPTIONAL : The config object in case you want to override the configuration.
 
-Instanciation of the FieldGroupManager provide several attributes:
+Instantiation of the FieldGroupManager provide several attributes:
 * fieldGroup : Definition of the field group
 * title : Title of the field group
 * id : ID of the field group
@@ -374,7 +404,7 @@ Arguments:
 * objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
     Example : {'field1':'string','field2':'double'}
 * array : OPTIONAL : Boolean. If the element to create is an array. False by default.
-* enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}\
+* enumValues : OPTIONAL : If your field is an enum, provide a dictionary of value and display name, such as : {'value':'display'}\
 possible kwargs:
 * defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
 
@@ -394,7 +424,7 @@ Arguments:
 * objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
     Example : {'field1:'string','field2':'double'}
 * array : OPTIONAL : Boolean. If the element to create is an array. False by default.
-* enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}\
+* enumValues : OPTIONAL : If your field is an enum, provide a dictionary of value and display name, such as : {'value':'display'}\
 possible kwargs:
 * defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
 

@@ -25,7 +25,7 @@ The following documentation will provide you with more information on its capabi
 ## The Profile class
 
 The customerprofile class will use the default API connector that you would encounter for any other submodules on this python module.\
-This class can be instanciated by calling the `Profile()` from the `customerprofile` module.
+This class can be instantiated by calling the `Profile()` from the `customerprofile` module.
 
 Following the previous method described above, you can realize this:
 
@@ -33,7 +33,7 @@ Following the previous method described above, you can realize this:
 myProfiles = customerprofile.Profile()
 ```
 
-2 parameters are possible for the instanciation of the class:
+2 parameters are possible for the instantiation of the class:
 
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)

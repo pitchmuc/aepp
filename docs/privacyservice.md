@@ -50,7 +50,7 @@ The following documentation will provide you with more information on its capabi
 ## The Privacy class
 
 The `Privacy` class uses the default API connector that you would encounter for any other submodules on this python module.\
-This class can be instanciated by calling the `Privacy()` from the `privacyservice` module.
+This class can be instantiated by calling the `Privacy()` from the `privacyservice` module.
 
 Following the previous method described above, you can realize this:
 
@@ -58,7 +58,7 @@ Following the previous method described above, you can realize this:
 privacy = privacyservice.Privacy()
 ```
 
-2 parameters are possible for the instanciation of the class:
+2 parameters are possible for the instantiation of the class:
 
 * privacyScope : REQUIRED : set the connection retrieved process with the Privacy JWT scope (default True)
 * aepScope : OPTIONAL : set the connection retrieved process with the AEP JWT scope if set to True (default False)

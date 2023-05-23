@@ -15,7 +15,7 @@ This page list all of the changes that came during the different release of the 
 ## version 0.2.8
 
 * support for Service Token
-  * refactoring of token generation to suport user-based-token
+  * refactoring of token generation to support user-based-token
   * Use `DataClass` for better abstraction of Token endpoint response.
   * sandbox management for JW and Service Token
 * fix issue on `SchemaManager` and `FieldGroupManager` for searching for fields at root.
@@ -39,7 +39,7 @@ This page list all of the changes that came during the different release of the 
 ## version 0.2.6
 * adding an `updateFlow` and `updateFlowMapping` method to `FlowManager` class.
 * adding the `ConnectObect` class that will provide a more dynamic way to switch between orgs or sandboxes.
-* adding `sandbox` param in class instanciation for supporting sandbox definition at instantiation time.
+* adding `sandbox` param in class instantiation for supporting sandbox definition at instantiation time.
 * adding support for `patchDataType` and `putDataType` operation in `Schema` class.
 * Supporting the class `Formatter` type in the logging capability.
 * updating the `createDataSet` method in `Catalog` to allow better parameterization.
@@ -69,7 +69,7 @@ Patch:
 
 ## version 0.2.4
 * Supporting out of the box schema and field groups for `SchemaManager` & `FieldGroupManager`
-* fix `FlowManager` instanciation when no update available for a mapping.
+* fix `FlowManager` instantiation when no update available for a mapping.
 * adding a parameter (`mappingRulesOnly`) to extract only the rule out of a mappingSet.\
 * adding querypath output for dataframe in `FieldGroupManager`
 * support `property` and `customFields` having the same object construction\

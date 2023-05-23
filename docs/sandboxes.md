@@ -24,7 +24,7 @@ The following documentation will provide you with more information on its usage.
 ## The Sandbox class
 
 The Sandbox class is generating a connection to use the different methods directly on your AEP sandbox / instance.\
-This class can be instanciated by calling the `Sandboxes()` from the `sandboxes` module.
+This class can be instantiated by calling the `Sandboxes()` from the `sandboxes` module.
 
 Following the previous method described above, you can realize this:
 
@@ -32,7 +32,7 @@ Following the previous method described above, you can realize this:
 mySands = sandboxes.Sandboxes()
 ```
 
-3 parameters can be provided for the instanciation of the class:
+3 parameters can be provided for the instantiation of the class:
 
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)

@@ -12,7 +12,7 @@ A user coming on the website will probably have a cookie ID that will enable its
 At the same time, if the user is login in to your platform, chances are that (s)he also has a customer ID that can be attached, this would be a second identity (identity B).
 
 Adobe Experience Platform enable the tracking of these identity as their own entity and you can then use them within your schema, independently of their schema field name.\
-By defining the idenitites agnosticly, you will create an identity graph of the users that will enable AEP to build a 360° view of your users, their different activities (captures in datasets) will be linked together and you will be able to place condition or trigger on the full user profile.
+By defining the identities in an agnostic fashion, you will create an identity graph of the users that will enable AEP to build a 360° view of your users, their different activities (captures in datasets) will be linked together and you will be able to place condition or trigger on the full user profile.
 
 You can see the setup of identities as the Relationship definition of your different user profile in your system.\
 You will have, most probably:
@@ -60,7 +60,7 @@ The following documentation will provide you with more information on its usage.
 ## The Identity class
 
 The Identity class is the default API connector that you would encounter for any other submodules on this python module.\
-This class can be instanciated by calling the `Identity()` from the `identity` module.
+This class can be instantiated by calling the `Identity()` from the `identity` module.
 
 Following the previous method described above, you can realize this:
 
@@ -68,7 +68,7 @@ Following the previous method described above, you can realize this:
 myIds = identity.Identity(region='va7')
 ```
 
-3 parameters are possible for the instanciation of the class:
+3 parameters are possible for the instantiation of the class:
 
 * region : **REQUIRED** : The region to be used for identity database. By default, the NLD2 will be selected. (other choice : va7)
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)

@@ -18,13 +18,13 @@ aepp.importConfigFile('myConfig_file.json')
 from aepp import observability
 ```
 
-The destination module provides a class that you can use to generate a SDK taking care of transfering some information to specific destination endpoints.\
+The destination module provides a class that you can use to generate a SDK taking care of transferring some information to specific destination endpoints.\
 The following documentation will provide you with more information on its capabilities.
 
 ## The Observability class
 
 The Observability class allows you to discover statistics on the AEP processing.\
-This class can be instanciated by calling the `Observability()` from the `observability` module.
+This class can be instantiated by calling the `Observability()` from the `observability` module.
 
 Following the previous method described above, you can realize this:
 
@@ -32,7 +32,7 @@ Following the previous method described above, you can realize this:
 obs = observability.Observability()
 ```
 
-2 parameters are possible for the instanciation of the class:
+2 parameters are possible for the instantiation of the class:
 
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)

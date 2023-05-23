@@ -213,7 +213,7 @@ mySchemaInstance = schema.Schema(config=config1)
 This works exactly the same for all of the sub modules mentioned in the [README page](../README.md).
 Note the queryservice and privacyservice have exceptions mentioned on the README.
 
-The idea to have a class instanciated for each submodule has been made in order to allow to work with several sandboxes (or organization) in the same environment.\
+The idea to have a class instantiated for each submodule has been made in order to allow to work with several sandboxes (or organization) in the same environment.\
 You can always access the sandbox used by using the instance `sandbox` attribute.\
 Following the previous example:
 
