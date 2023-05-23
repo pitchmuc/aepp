@@ -16,6 +16,8 @@ import logging
 from .configs import ConnectObject
 
 class DestinationInstanceService:
+    loggingEnabled = False
+    logger = None
     """
     This class is referring to Destination Instance Service capability for AEP.
     """
@@ -72,7 +74,7 @@ class DestinationInstanceService:
             self.connector.header.update({"x-sandbox-name":kwargs.get('sandbox')})
         else:
             self.sandbox = self.connector.config["sandbox"]
-        self.endpoint = config.endpoints["global"] + config.endpoints["destinationInstance"]
+        self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["destinationInstance"]
         
         
     def createAdHocDatasetExport(self, flowIdToDatasetIds: dict = None)->dict:
