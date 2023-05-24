@@ -68,7 +68,7 @@ def createConfigFile(
     elif auth_type == "oauthV1":
         json_data["auth_code"] = "<auth_code>"
     else:
-        raise ValueError("unsupported authentication type, currently only jwt and oauth are supported")
+        raise ValueError("unsupported authentication type, currently only jwt, oauthV1 and oauthV2 are supported")
     if ".json" not in destination:
         destination: str = f"{destination}.json"
     with open(destination, "w") as cf:
@@ -184,9 +184,9 @@ def configure(
         raise ValueError("`client_id` must be specified in the configuration.")
     if not secret:
         raise ValueError("`secret` must be specified in the configuration.")
-    if (scopes is not None and (path_to_key is not None or private_key is not None)) \
-            or (scopes is None and path_to_key is None and private_key is None):
-        raise ValueError("either `scopes` needs to be specified or one of `private_key` or `path_to_key`")
+    if (scopes is not None and (path_to_key is not None or private_key is not None) and auth_code is not None) \
+            or (scopes is None and path_to_key is None and private_key is None and auth_code is None):
+        raise ValueError("either `scopes` needs to be specified or one of `private_key` or `path_to_key` or an `auth_code`")
     config_object["org_id"] = org_id
     header["x-gw-ims-org-id"] = org_id
     config_object["client_id"] = client_id

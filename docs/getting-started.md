@@ -1,19 +1,20 @@
 # Getting started with aepp
 
 ## Menu
-- [Installing the module](#installing-the-module)
-- [Create a Developer Project ](#create-a-developer-project)
+
+-   [Installing the module](#installing-the-module)
+-   [Create a Developer Project ](#create-a-developer-project)
     - [JWT connection](#jwt-connection)
     - [Oauth Server-to-Server](#oauth-server-to-server)
     - [Oauth V1](#oauth-v1)
-- [Using the module](#using-the-module)
+-   [Using the module](#using-the-module)
     - [Create a Config file](#create-a-config-file)
     - [Environments](#environments)
     - [Importing the config file](#importing-the-config-file)
     - [Alternative method for cloud configuration](#alternative-method-for-cloud-configuration)
-    - [The ConnectInstance parameter](#the-ConnectInstance-parameter)
-- [Importing a sub module to work with](#importing-a-sub-module-to-work-with)
-- [Help](#help)
+    - [The ConnectInstance parameter](#the-connectinstance-parameter)
+-   [Importing a sub module to work with](#importing-a-sub-module-to-work-with)
+-   [Help](#help)
 
 ## Installing the module
 
@@ -37,7 +38,7 @@ When creating a project you have the possibility to use 2 authentication methods
 ### JWT connection
 
 Originally, the module create a connection to the API endpoints using a JWT integration.\
-**IMPORTANT**: This integration is now legacy and will be replaced by the oauth token integration. See [Oauth server part](#oauth-server).\
+**IMPORTANT**: This integration is now legacy and will be replaced by the oauth token integration. See [Oauth server part](#oauth-server-to-server).\
 
 In order to use it, you would need to create this JWT integration directly in developer.adobe.com.\
 Make sure you have developer rights and attaching the correct product profile to your integration.\
@@ -52,8 +53,9 @@ To use the JWT integration, it requires the following information to be passed l
 
 ### Oauth Server-to-Server
 
-In 2023, the Oauth Server token has been introduced in the API environment of Adobe.\
-`aepp` is now supporting this capabiliy and you can create an `Oauth Server-to-Server` integration.
+In 2023, the Oauth Server-to-Server token has been introduced in the API environment of Adobe.\
+`aepp` is now supporting this capabiliy and you can create an `Oauth Server-to-Server` integration.\
+In the config file, it is named `oauthV2`.
 
 in developer.adobe.com, make sure you have developer rights and attaching the correct product profile to your integration.\
 You will need to have the following information saved to be used later:
@@ -69,8 +71,7 @@ For internal usage of the aepp module, for Adobe teams, you can also use the oau
 You will need to have the following information saved to be used later:
 - Client ID
 - Client secret
-- Technical Account ID
-- auth_code
+- auth_code : note that this can be either a permanent or temporary code
 - IMS Org
 
 ## Using the module
