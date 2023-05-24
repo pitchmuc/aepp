@@ -2,9 +2,11 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
-## version 0.2.12
+## version 0.3.0
 
 * Supporting Oauth V2 token for authentication in the config file and configure methods.See [getting-started](./getting-started.md).
+* Change in the default config file creation. It is now automatically creating a config file giving information for Oauth Server-to-Server integration
+* Change for Oauth V1, the parameter value is now `oauthV1` instead of `oauth` when importing the config file. Automatically, the type of authentication is detected but you can still force the type of authentication to be done via the `auth_type` parameter.
 
 ## version 0.2.11
 
