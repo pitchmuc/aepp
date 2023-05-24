@@ -15,14 +15,15 @@ config_object = {
     "client_id": "",
     "tech_id": "",
     "pathToKey": "",
-    "auth_code": "",
+    "scopes": "",
     "secret": "",
     "date_limit": 0,
     "sandbox": "",
     "environment": "",
     "token": "",
     "jwtTokenEndpoint": "",
-    "oauthTokenEndpoint": "",
+    "oauthTokenEndpointV1": "",
+    "oauthTokenEndpointV2": "",
     "imsEndpoint": ""
 }
 

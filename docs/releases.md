@@ -2,6 +2,14 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.2.12
+
+* Supporting Oauth V2 token for authentication in the config file and configure methods.See [getting-started](./getting-started.md).
+
+## version 0.2.11
+
+* Supporting the disabling SSL certificate disablement capability
+
 ## version 0.2.9
 
 * adding a new module : `destinationInstanceService`

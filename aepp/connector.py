@@ -76,26 +76,37 @@ class AdobeRequest:
         requests.packages.urllib3.disable_warnings()
         if self.config["token"] == "" or time.time() > self.config["date_limit"]:
             if self.config["private_key"] is not None or self.config["pathToKey"] is not None:
+                self.connectionType = 'jwt'
                 token_info = self.get_jwt_token_and_expiry_for_config(
                     config=self.config,
                     verbose=verbose,
                     aepScope=kwargs.get("aepScope"),
                     privacyScope=kwargs.get("privacyScope"),
                 )
+            elif self.config["scopes"] is not None:
+                self.connectionType = 'oauthV2'
+                token_info = self.get_oauth_token_and_expiry_for_config(
+                    config=self.config,
+                    verbose=verbose
+                )
             else:
+                self.connectionType = 'oauthV1'
                 token_info = self.get_oauth_token_and_expiry_for_config(
                     config=self.config,
                     verbose=verbose
                 )
             self.token = token_info.token
             self.config["token"] = self.token
+            if self.connectionType == 'jwt':
+                timeScale = 1000 ## jwt returns milliseconds expiry
+            elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
+                timeScale = 1 ## oauth returns seconds expiry
             self.config["date_limit"] = (
-                time.time() + token_info.expiry / 1000 - 500
+                time.time() + token_info.expiry / timeScale - 500
             )
             self.header.update({"Authorization": f"Bearer {self.token}"})
-
         # x-sandbox-id is required when using non-user token, but forbidden for user token
-        if self.config["auth_code"] is not None and "x-sandbox-id" not in self.header:
+        if self.connectionType == 'oauthV1' and "x-sandbox-id" not in self.header:
             self.update_sandbox_id(self.config["sandbox"])
 
     def _find_path(self, path: str) -> Optional[Path]:
@@ -132,15 +143,26 @@ class AdobeRequest:
         """
         if type(config)!= dict:
             config = config.getConfigObject()
-        oauth_payload = {
-            "grant_type": "authorization_code",
-            "client_id": config["client_id"],
-            "client_secret": config["secret"],
-            "code": config["auth_code"]
-        }
-        response = requests.post(
-            config["oauthTokenEndpoint"], data=oauth_payload, verify=False
-        )
+        if self.connectionType == 'oauthV1':
+            oauth_payload = {
+                "grant_type": "authorization_code",
+                "client_id": config["client_id"],
+                "client_secret": config["secret"],
+                "code": config["auth_code"]
+            }
+            response = requests.post(
+                config["oauthTokenEndpointV1"], data=oauth_payload, verify=False
+            )
+        elif self.connectionType == 'oauthV2':
+            oauth_payload = {
+                "grant_type": "client_credentials",
+                "client_id": config["client_id"],
+                "client_secret": config["secret"],
+                "scope": config["scopes"]
+            }
+            response = requests.post(
+                config["oauthTokenEndpointV2"], data=oauth_payload, verify=False
+            )
         return self._token_postprocess(response=response, verbose=verbose, save=save)
 
     def get_jwt_token_and_expiry_for_config(
@@ -210,7 +232,7 @@ class AdobeRequest:
         except KeyError:
             print("Issue retrieving token")
             print(json_response)
-        expiry = json_response["expires_in"] - 500
+        expiry = json_response["expires_in"]
         if save:
             with open("token.txt", "w") as f:
                 f.write(self.token)
@@ -218,10 +240,10 @@ class AdobeRequest:
         if self.loggingEnabled:
             self.logger.debug(f"token retrieved: {self.token}")
         if verbose:
-            print("token valid till : " + time.ctime(time.time() + expiry / 1000))
+            print("token valid till : " + time.ctime(time.time() + expiry))
         if self.loggingEnabled:
             self.logger.debug(
-                f"token valid till : {time.ctime(time.time() + expiry / 1000)}"
+                f"token valid till : {time.ctime(time.time() + expiry)}"
             )
         return TokenInfo(token=self.token, expiry=expiry)
 
@@ -242,14 +264,21 @@ class AdobeRequest:
         if now > self.config["date_limit"]:
             if self.loggingEnabled:
                 self.logger.warning("token expired. Trying to retrieve a new token")
-            token_with_expiry = self.get_jwt_token_and_expiry_for_config(config=self.config)
+            if self.connectionType == 'jwt':
+                token_with_expiry = self.get_jwt_token_and_expiry_for_config(config=self.config)
+            elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
+                token_with_expiry = self.get_oauth_token_and_expiry_for_config(config=self.config)
             self.token = token_with_expiry["token"]
             self.config["token"] = self.token
             if self.loggingEnabled:
                 self.logger.info("new token retrieved : {self.token}")
             self.header.update({"Authorization": f"Bearer {self.token}"})
+            if self.connectionType == 'jwt':
+                timeScale = 1000 ## jwt returns milliseconds expiry
+            elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
+                timeScale = 1 ## oauth returns seconds expiry
             self.config["date_limit"] = (
-                time.time() + token_with_expiry["expiry"] / 1000 - 500
+                time.time() + token_with_expiry["expiry"] / timeScale - 500
             )
 
     def updateSandbox(self, sandbox: str) -> None:
@@ -265,7 +294,7 @@ class AdobeRequest:
     def update_sandbox_id(self, sandbox: str) -> None:
         """
         Update the sandbox ID used for the request.
-        This is required when using non-user credentials.
+        This is required when using non-user credentials. Only internal adobe tools and oauth V1 can access this.
         Arguments:
             sandbox : REQUIRED : the sandbox name to use for the requests
         """
