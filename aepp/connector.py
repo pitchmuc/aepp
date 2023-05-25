@@ -382,7 +382,8 @@ class AdobeRequest:
         ## returning some errors in the console
         if type(res_json) == dict:
             if 'status' in res_json.keys() and 'report' in res_json.keys():
-                self.logger.warning(json.dumps(res_json,indent=2))
+                if self.loggingEnabled:
+                    self.logger.warning(json.dumps(res_json,indent=2))
         return res_json
 
     def headData(
