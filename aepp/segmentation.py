@@ -264,7 +264,7 @@ class Segmentation:
         if self.loggingEnabled:
             self.logger.debug(f"Starting updateSegment")
         path = f"/segment/definitions/{segment_id}"
-        checks = "name,description,expression,schema,ttlInDays".split(
+        checks = "name,expression,schema,ttlInDays".split(
             ","
         )  # mandatory elements in segment definition
         if len(set(checks) & set(segment_data.keys())) != len(checks):
