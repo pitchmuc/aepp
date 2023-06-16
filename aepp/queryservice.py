@@ -231,9 +231,9 @@ class QueryService:
             arguments["excludeSoftDeleted"] = kwargs.get("excludeSoftDeleted", True)
             arguments["excludeHidden"] = kwargs.get("excludeHidden", True)
             arguments["isPrevLink"] = kwargs.get("isPrevLink", "")
-        res = self.connector.getData(self.endpoint + path, params=arguments)
-        data = res["queries"]
-        nextPage = res["_links"].get("next", {}).get("href", "")
+        res:dict = self.connector.getData(self.endpoint + path, params=arguments)
+        data:list = res.get("queries",[])
+        nextPage = res.get("_links",{}).get("next", {}).get("href", "")
         while nextPage != "":
             hrefParams = nextPage.split("?")[1]
             orderBy = re.search("orderby=(.+?)(&|$)", hrefParams)

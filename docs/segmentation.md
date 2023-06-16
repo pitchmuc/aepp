@@ -24,7 +24,7 @@ The following documentation will provide you with more information on its capabi
 ## The Segmentation class
 
 The Segmentation class uses the default API connector that you would encounter for any other submodules on this python module.\
-This class can be instanciated by calling the `Segmentation()` from the `segmentation` module.
+This class can be instantiated by calling the `Segmentation()` from the `segmentation` module.
 
 Following the previous method described above, you can realize this:
 
@@ -32,7 +32,7 @@ Following the previous method described above, you can realize this:
 mySegs = segmentation.Segmentation()
 ```
 
-2 parameters are possible for the instanciation of the class:
+2 parameters are possible for the instantiation of the class:
 
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
@@ -81,7 +81,7 @@ You can realize a preview that will give you an estimate without actually creati
 
 For that you would need to run 2 methods from the modules:
 
-`createPreview` : This method will take the PQL statement (and optionaly the schema class) to actually create a segment preview.
+`createPreview` : This method will take the PQL statement (and optionally the schema class) to actually create a segment preview.
 
 and
 
@@ -89,7 +89,7 @@ and
 
 Another way to realize that is to use the `estimateExpression` that is available through that API.\
 This method takes the 2 previous methods previously presented and linked them together.\
-It takes the the PQL statement and optionaly the schema class.
+It takes the the PQL statement and optionally the schema class.
 
 ### Segments Jobs
 

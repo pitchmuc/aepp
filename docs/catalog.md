@@ -50,7 +50,7 @@ The following documentation will provide you with more information on its capabi
 ## The Catalog class
 
 The Catalog class is the default API connector that you would encounter for any other submodules on this python module.\
-This class can be instanciated by calling the `Catalog()` from the `catalog` module.
+This class can be instantiated by calling the `Catalog()` from the `catalog` module.
 
 Following the previous method described above, you can realize this:
 
@@ -58,7 +58,7 @@ Following the previous method described above, you can realize this:
 myCat = catalog.Catalog()
 ```
 
-2 parameters are possible for the instanciation of the class:
+2 parameters are possible for the instantiation of the class:
 
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
