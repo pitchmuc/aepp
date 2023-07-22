@@ -316,7 +316,7 @@ class Policy:
         res = self.connector.putData(self.endpoint + path, data=data)
         return res
 
-    def getMarketingActionsCore(
+    def getMarketingActionsCores(
         self, prop: str = None, limit: int = 10, **kwargs
     ) -> list:
         """
@@ -327,7 +327,7 @@ class Policy:
             limit : OPTIONAL : number of results to be returned.
         """
         if self.loggingEnabled:
-            self.logger.debug(f"Starting getMarketingActionsCore")
+            self.logger.debug(f"Starting getMarketingActionsCores")
         path = "/marketingActions/core"
         params = {"limit": limit}
         if prop is not None:
@@ -341,3 +341,97 @@ class Policy:
             data += res["children"]
             nextPage = res["_links"]["page"].get("href", "")
         return data
+    
+    def getMarketingActionsCore(self, mktActionName:str=None)->dict:
+        """
+        Get a specific marketing action core by marketing Action Name.
+        Arguments:
+            mktActionName : REQUIRED : The marketing action name to be provided.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getMarketingActionsCore")
+        if mktActionName is None:
+            raise ValueError("Must provide a Marketing Action Name")
+        path = f"/marketingActions/core/{mktActionName}"
+        data = self.connector.getData(self.endpoint+path)
+        return data
+
+    def getCustomMarketingActions(self,prop:str=None,limit:int=10,**kwargs)->list:
+        """
+        Retrieve a list of custom Marketing Actions
+        Arguments:
+            prop : OPTIONAL : Filters responses based on whether a specific property exists, or whose value passes a conditional expression (e.g. ?property=name==C1). Only the name property is supported for core resources. 
+                For custom resources, additional supported property values include "status", "created", "createdClient", "createdUser", "updated", "updatedClient", and "updatedUser"
+        Possible kwargs:
+            orderby : A comma-separated list of properties by which the returned list of resources will be sorted.
+            start : Indicates the pagination value for the returned list. This value should be obtained from a previous call's _page.next property. Should be omitted for a first page of results.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getCustomMarketingActions")
+        params = {"limit" : limit}
+        if prop is not None:
+            params["property"] = prop
+        if kwargs.get('orderby',None) is not None:
+            params["orderby"] = kwargs.get('orderby')
+        if kwargs.get('start',None) is not None:
+            params['start'] = kwargs.get('start')
+        path = f"/marketingActions/custom"
+        res = self.connector.getData(self.endpoint + path,params = params)
+        data = res['children']
+        nextPage = res.get("_page",{}).get('next','')
+        while nextPage!= "":
+            params['start'] = nextPage
+            res = self.connector.getData(self.endpoint + path,params = params)
+            data += res['children']
+            nextPage = res.get("_page",{}).get('next','')
+        return data
+    
+    def getCustomMarketingAction(self,mktActionName:str=None)->dict:
+        """
+        Return a specific marketing action
+        Arguments:
+            mktActionName : REQUIRED : The marketing action name to be returned.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getCustomMarketingAction")
+        if mktActionName is None:
+            raise ValueError("Require a custom marketing action name")
+        path = f"/marketingActions/custom/{mktActionName}"
+        data = self.connector.getData(self.endpoint+path)
+        return data
+    
+    def createOrupdateCustomMarketingAction(self,name:str=None,description:str="")->dict:
+        """
+        Create or update a custom marketing action based on the parameter provided.
+        Arguments:
+            name : REQUIRED : The name of the custom marketing action
+            description : OPTIONAL : the description for that custom marketing action.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createOrupdateCustomMarketingAction")
+        if name is None:
+            raise ValueError("Require a name for your custom marketing action")
+        path = f"/marketingActions/custom/{name}"
+        data = {
+            "name":name,
+            "description" : description
+        }
+        res = self.connector.putData(self.endpoint+path,data=data)
+        return res
+    
+    def deleteCustomMarketingAction(self,mktActionName:str=None)->dict:
+        """
+        Delete a specific custom Marketing action
+        Arguments:
+            mktActionName : REQUIRED : The marketing action name to be deleted.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteCustomMarketingAction")
+        if mktActionName is None:
+            raise ValueError("Require a marketing action name to be deleted")
+        path = f"/marketingActions/custom/{mktActionName}"
+        res = self.connector.deleteData(self.endpoint+path)
+        return res
+    
+    
+        

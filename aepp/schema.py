@@ -1870,7 +1870,7 @@ class Schema:
         res: list = self.connector.postData(self.endpoint + path, data=dataResource)
         return res
 
-    def extendFieldGroup(self,fieldGroupId:str=None,values:list=None)->dict:
+    def extendFieldGroup(self,fieldGroupId:str=None,values:list=None,tenant:str='tenant')->dict:
         """
         Patch a Field Group to extend its compatibility with ExperienceEvents, IndividualProfile and Record.
         Arguments:
@@ -1880,19 +1880,23 @@ class Schema:
                       "https://ns.adobe.com/xdm/context/experienceevent",
                     ]
                 by default profile and experienceEvent will be added to the FieldGroup.
+            tenant : OPTIONAL : default "tenant", possible value 'global'
         """
         if fieldGroupId is None:
             raise Exception("Require a field Group ID")
         if self.loggingEnabled:
             self.logger.debug(f"Starting extendFieldGroup")
-        path = f"/{self.container}/fieldgroups/{fieldGroupId}"
+        path = f"/{tenant}/fieldgroups/{fieldGroupId}"
+        if values is not None:
+            list_fgs = values
+        else:
+            list_fgs = ["https://ns.adobe.com/xdm/context/profile",
+                      "https://ns.adobe.com/xdm/context/experienceevent"]
         operation = [
            { 
             "op": "replace",
             "path": "/meta:intendedToExtend",
-            "value": ["https://ns.adobe.com/xdm/context/profile",
-                      "https://ns.adobe.com/xdm/context/experienceevent",
-                    ]
+            "value": list_fgs
             }
         ]
         res = self.connector.patchData(self.endpoint + path,data=operation)
@@ -2867,14 +2871,17 @@ class SchemaManager:
                 self.schema = self.schemaAPI.getSchema(schema,full=False)
                 self.__setAttributes__(self.schema)
                 allOf = self.schema.get("allOf",[])
-                self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and obj['$ref'] != self.classId]
+                self.fieldGroupIds = [obj.get('$ref','') for obj in allOf if ('/mixins/' in obj.get('$ref','') or '/experience/' in obj.get('$ref','') or '/context/' in obj.get('$ref','')) and obj.get('$ref','') != self.classId]
                 if self.schemaAPI is None:
                     Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                 else:
                     for ref in self.fieldGroupIds:
                         if '/mixins/' in ref:
                             definition = self.schemaAPI.getFieldGroup(ref,full=False)
+                        elif ref == '':
+                            pass
                         else:
+                            ## if the fieldGroup is an OOTB one
                             definition = self.schemaAPI.getFieldGroup(ref,full=True)
                             definition['definitions'] = definition['properties']
                         self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition))
