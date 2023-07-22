@@ -433,5 +433,74 @@ class Policy:
         res = self.connector.deleteData(self.endpoint+path)
         return res
     
+    def evaluateMarketingActionDataset(self,
+                                typeMktAction:str="core",
+                                mktActionName:str=None,
+                                entityType:str="dataSet",
+                                entityId:str=None,
+                                entityMeta:list=None,
+                                draftEvaluation:bool=False,
+                                )->dict:
+        """
+        Evaluate either Marketing Action core or custom based on parameter again some field on a datasetId.
+        Arguments
+            typeMktAction : REQUIRED : Default to "core", can be "custom"
+            mktActionName : REQUIRED : The name of the marketing action to be evaluated
+            entityType : REQUIRED : The type of entity to be tested against. Usually "dataSet", so set as default.
+            entityId : REQUIRED : The Id of the entity to be tested.
+            entityMeta : REQUIRED : A list of field to be tested for the marketing action in case of a dataset.
+            draftEvaluation : OPTIONAL : If true, the system checks for policy violations among policies with DRAFT status as well as ENABLED status. Otherwise, only ENABLED policies are checked.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting evaluateMarketingActionDataset")
+        if typeMktAction is None:
+            raise ValueError("Should have typeMktAction defined. Either 'core' or 'custom'")
+        if mktActionName is None:
+            raise ValueError("Should have mktActionName defined.")
+        if entityType is None:
+            raise ValueError("Should have entityType defined.")
+        if entityId is None:
+            raise ValueError("Should have entityId defined.")
+        params = {}
+        path = f"/marketingActions/{typeMktAction}/{mktActionName}/constraints"
+        data = [
+                    {
+                    "entityType": entityType,
+                    "entityId": entityId,
+                    }
+                ]
+        if entityMeta is not None:
+            data[0]['entityMeta']={"fields":entityMeta}
+        if draftEvaluation:
+            params["includeDraft"] = True
+        res = self.connector.postData(self.endpoint+path,data=data)
+        return res
     
-        
+    def evaluateMarketingActionUsageLabel(self,
+                                          typeMktAction:str='core',
+                                          mktActionName:str=None,
+                                          duleLabels:str=None,
+                                          draftEvaluation:bool=False
+                                          )->dict:
+        """
+        This call returns a set of constraints that would govern an attempt to perform the given marketing action on a hypothetical source of data containing specific data usage labels.
+        Arguments:
+            typeMktAction : REQUIRED : Default to "core", can be "custom"
+            mktActionName : REQUIRED : The name of the marketing action to be evaluated
+            duleLabels : REQUIRED: A comma-separated list of data usage labels that would be present on data that you want to test for policy violations.
+            draftEvaluation : OPTIONAL : If true, the system checks for policy violations among policies with DRAFT status as well as ENABLED status. Otherwise, only ENABLED policies are checked.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting evaluateMarketingActionDataset")
+        if typeMktAction is None:
+            raise ValueError("Should have typeMktAction defined. Either 'core' or 'custom'")
+        if mktActionName is None:
+            raise ValueError("Should have mktActionName defined.")
+        if duleLabels is None:
+            raise ValueError("Should have duleLabels defined.")
+        path = f"marketingActions/{typeMktAction}/{mktActionName}/constraints"
+        params = {"duleLabels":duleLabels}
+        if draftEvaluation:
+            params['includeDraft'] = draftEvaluation
+        res = self.connector.getData(self.endpoint+path,params=params)
+        return res

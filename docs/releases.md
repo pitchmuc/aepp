@@ -3,7 +3,11 @@
 This page list all of the changes that came during the different release of the aepp module.
 ## Version 0.3.1
 
-* 
+* adding methods for Policy module.
+  * `evaluateMarketingActionUsageLabel`
+  * `evaluateMarketingActionDataset`
+  * `createOrupdateCustomMarketingAction`
+  * `getCustomMarketingAction`
 
 
 ## version 0.3.0
