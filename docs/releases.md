@@ -8,6 +8,7 @@ This page list all of the changes that came during the different release of the 
   * `evaluateMarketingActionDataset`
   * `createOrupdateCustomMarketingAction`
   * `getCustomMarketingAction`
+* Fixing issue on Schema Manager when multiple sandboxes are used.
 
 
 ## version 0.3.0

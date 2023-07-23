@@ -2684,7 +2684,7 @@ class FieldGroupManager:
                 obj['items'] = self.__transformFieldType__(dataType)
         if enumValues is not None and type(enumValues) == dict:
             if array == False:
-                obj['enum'] = [enumValues.keys()]
+                obj['enum'] = list(enumValues.keys())
                 obj['meta:enum'] = enumValues
             else:
                 obj['items']['enum'] = [enumValues.keys()]
@@ -2863,7 +2863,7 @@ class SchemaManager:
                     else:
                         definition = self.schemaAPI.getFieldGroup(ref,full=True)
                         definition['definitions'] = definition['properties']
-                    self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition))
+                    self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,config=config))
         elif type(schema) == str:
             if self.schemaAPI is None:
                 Warning("No schema instance has been passed or config file imported.\n Aborting the retrieveal of the Schema Definition")
@@ -2884,7 +2884,7 @@ class SchemaManager:
                             ## if the fieldGroup is an OOTB one
                             definition = self.schemaAPI.getFieldGroup(ref,full=True)
                             definition['definitions'] = definition['properties']
-                        self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition))
+                        self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,config=config))
         elif schema is None:
             self.schema = {
                     "title": None,
@@ -2905,11 +2905,11 @@ class SchemaManager:
                         Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                     else:
                         definition = self.schemaAPI.getFieldGroup(ref)
-                        self.fieldGroupsManagers.append(FieldGroupManager(definition))
+                        self.fieldGroupsManagers.append(FieldGroupManager(definition,config=config))
             elif fieldGroupIds[0] == dict:
                 for fg in fieldGroupIds:
                     self.fieldGroupIds.append(fg.get('$id'))
-                    self.fieldGroupsManagers.append(FieldGroupManager(fg))
+                    self.fieldGroupsManagers.append(FieldGroupManager(fg,config=config))
         self.fieldGroupTitles= tuple(fg.title for fg in self.fieldGroupsManagers)
         self.fieldGroups = {fg.id:fg.title for fg in self.fieldGroupsManagers}
     
