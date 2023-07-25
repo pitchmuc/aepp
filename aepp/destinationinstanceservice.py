@@ -94,7 +94,7 @@ class DestinationInstanceService:
                 dataset = {'id': datasetId}
                 destination['datasets'].append(dataset)
             activationInfo['activationInfo']['destinations'].append(destination)
-        self.header.update({"Accept":"application/vnd.adobe.adhoc.activation+json; version=3"})
+        self.header.update({"Accept":"application/vnd.adobe.adhoc.dataset.activation+json; version=1"})
         path = "/adhocrun"
         res = self.connector.postData(self.endpoint + path, data=activationInfo)
         return res

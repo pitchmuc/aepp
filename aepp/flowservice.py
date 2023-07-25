@@ -1370,11 +1370,17 @@ class FlowService:
             params['object'] = file
         res = self.connector.getData(self.endpoint + path,params=params)
         return res
-    
 
-
-
-
+    def postFlowAction(self,flowId:str,action:str)->dict:
+        if flowId is None:
+            raise Exception("Require a flowId to be present")
+        if action is None:
+            raise Exception("Require an action to be present")
+        path = "/flows/" + flowId + "/action?op=" + action
+        privateHeader = deepcopy(self.header)
+        privateHeader.pop("Content-Type")
+        res = self.connector.postData(endpoint=self.endpoint + path, headers=privateHeader)
+        return res
 
 class FlowManager:
     """
