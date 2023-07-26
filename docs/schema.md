@@ -406,6 +406,7 @@ Arguments:
 * array : OPTIONAL : Boolean. If the element to create is an array. False by default.
 * enumValues : OPTIONAL : If your field is an enum, provide a dictionary of value and display name, such as : {'value':'display'}\
 possible kwargs:
+* enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
 * defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
 
 Examples : *TBD*
@@ -425,6 +426,7 @@ Arguments:
     Example : {'field1:'string','field2':'double'}
 * array : OPTIONAL : Boolean. If the element to create is an array. False by default.
 * enumValues : OPTIONAL : If your field is an enum, provide a dictionary of value and display name, such as : {'value':'display'}\
+* enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
 possible kwargs:
 * defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
 

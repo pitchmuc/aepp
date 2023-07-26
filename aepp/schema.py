@@ -2568,7 +2568,7 @@ class FieldGroupManager:
         return list(result_combi)
 
         
-    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,**kwargs)->None:
+    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,**kwargs)->None:
         """
         Return the operation to be used on the field group with the Patch method (patchFieldGroup), based on the element passed in argument.
         Arguments:
@@ -2582,6 +2582,7 @@ class FieldGroupManager:
                 Example : {'field1':'string','field2':'double'}
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
+            enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
         """
@@ -2625,14 +2626,16 @@ class FieldGroupManager:
         operation[0]['value']['title'] = title
         if enumValues is not None and type(enumValues) == dict:
             if array == False:
-                operation[0]['value']['enum'] = [enumValues.keys()]
                 operation[0]['value']['meta:enum'] = enumValues
+                if enumType:
+                    operation[0]['value']['enum'] = list(enumValues.keys())
             else:
-                operation[0]['value']['items']['enum'] = [enumValues.keys()]
                 operation[0]['value']['items']['meta:enum'] = enumValues
+                if enumType:
+                    operation[0]['value']['items']['enum'] = list(enumValues.keys())
         return operation
 
-    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,**kwargs)->dict:
+    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,**kwargs)->dict:
         """
         Add the field to the existing fieldgroup definition.
         Returns False when the field could not be inserted.
@@ -2646,6 +2649,7 @@ class FieldGroupManager:
                 Example : {'field1:'string','field2':'double'}
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
+            enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
         """
@@ -2684,11 +2688,13 @@ class FieldGroupManager:
                 obj['items'] = self.__transformFieldType__(dataType)
         if enumValues is not None and type(enumValues) == dict:
             if array == False:
-                obj['enum'] = list(enumValues.keys())
                 obj['meta:enum'] = enumValues
+                if enumType:
+                    obj['enum'] = list(enumValues.keys())
             else:
-                obj['items']['enum'] = [enumValues.keys()]
                 obj['items']['meta:enum'] = enumValues
+                if enumType:
+                    obj['items']['enum'] = list(enumValues.keys())
         completePath:list[str] = [kwargs.get('defaultPath','property')] + pathSplit
         customFields,foundFlag = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
         if foundFlag == False:
