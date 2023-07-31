@@ -453,7 +453,7 @@ class DataIngestion:
         privateHeader = deepcopy(self.header)
         if inletId is None:
             raise Exception("Require a connectionId to be present")
-        if data is None and type(data) != list:
+        if data is None or type(data) != list:
             raise Exception("Require a list of dictionary to be send for ingestion")
         if flowId is not None:
             privateHeader['x-adobe-flow-id'] = flowId
