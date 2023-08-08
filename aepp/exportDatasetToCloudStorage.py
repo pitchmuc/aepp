@@ -25,12 +25,26 @@ from tenacity import wait_fixed
 from tenacity import stop_after_attempt
 
 class ExportDatasetToCloudStorage:
+    """
+    A class for exporting dataset to cloud storage functionality
+    Attributes
+    ----------
+    flow_conn : module
+        flow service connection
+    dis_conn : module
+        destination instance service connection
+    username : str
+        the log in for the os
+    logger: module
+        class logger
+    """
+
     global flow_conn
     global dis_conn
     global username
     global logger
-    dlz_connection_spec_id = "10440537-2a7b-4583-ac39-ed38d4b848e8"
-    dlz_flow_spec_id = "cd2fc47e-e838-4f38-a581-8fff2f99b63a"
+    DLZ_CONNECTION_SPEC_ID = "10440537-2a7b-4583-ac39-ed38d4b848e8"
+    DLZ_FLOW_SEPC_ID = "cd2fc47e-e838-4f38-a581-8fff2f99b63a"
     def __init__(
             self,
             config: Union[dict,ConnectObject] = aepp.config.config_object,
@@ -57,7 +71,15 @@ class ExportDatasetToCloudStorage:
         #Add the created handler to this logger
         self.logger.addHandler(handler)
 
-    def createDataFlowIfNotExists(self, dataset_id, compression_type, data_format, export_path, on_schedule, config_path, initial_delay = 600):
+    def createDataFlowIfNotExists(
+            self,
+            dataset_id: str,
+            compression_type: str,
+            data_format: str,
+            export_path: str,
+            on_schedule: bool,
+            config_path: str,
+            initial_delay: int = 600):
         """
         Create a data flow if not being saved in config file
         Arguments:
@@ -88,7 +110,14 @@ class ExportDatasetToCloudStorage:
             dataflow_id = self.createDataFlow(dataset_id, compression_type, data_format, export_path, on_schedule, config_path)
         self.createFlowRun(dataflow_id, dataset_id, on_schedule, initial_delay)
 
-    def createDataFlow(self, dataset_id, compression_type, data_format, export_path, on_schedule, config_path):
+    def createDataFlow(
+            self,
+            dataset_id: str,
+            compression_type: str,
+            data_format: str,
+            export_path: str,
+            on_schedule: bool,
+            config_path: str):
         """
         Create a data flow as it is not saved in config
         Arguments:
@@ -113,12 +142,14 @@ class ExportDatasetToCloudStorage:
     def createBaseConnection(self) -> str:
         """
         Create a base connection for Data Landing Zone Destination
+        Returns:
+            base_connection_id(str)
         """
         base_connection_res = self.flow_conn.createConnection(data={
             "name": f"[CMLE][Week2] Base Connection to DLZ created by {self.username}",
             "auth": None,
             "connectionSpec": {
-                "id": self.dlz_connection_spec_id,
+                "id": self.DLZ_CONNECTION_SPEC_ID,
                 "version": "1.0"
             }
         })
@@ -129,11 +160,13 @@ class ExportDatasetToCloudStorage:
         except KeyError:
             raise RuntimeError(f"Error when creating base connection: {base_connection_res}")
 
-    def createSourceConnection(self, dataset_id) -> str:
+    def createSourceConnection(self, dataset_id: str) -> str:
         """
         Create a source connection for Data Landing Zone Destination
         Arguments:
           dataset_id : REQUIRED : The dataset that needs to be exported
+        Returns:
+          source_connection_id(str)
         """
         source_res = self.flow_conn.createSourceConnectionDataLake(
             name=f"[CMLE][Week2] Featurized Dataset source connection created by {self.username}",
@@ -147,7 +180,7 @@ class ExportDatasetToCloudStorage:
         except KeyError:
             raise RuntimeError(f"Error when creating source connection: {source_res}")
 
-    def createTargetConnection(self, base_connection_id, compression_type, data_format, export_path) -> str:
+    def createTargetConnection(self, base_connection_id: str, compression_type: str, data_format: str, export_path: str) -> str:
         """
         Create a target connection for Data Landing Zone Destination
         Arguments:
@@ -159,6 +192,8 @@ class ExportDatasetToCloudStorage:
                 json
                 parquet
             export_path : REQUIRED : define the folder path in your dlz container
+        Returns:
+          target_connection_id(str)
         """
         target_res = self.flow_conn.createTargetConnection(
             data={
@@ -171,7 +206,7 @@ class ExportDatasetToCloudStorage:
                     "path": export_path
                 },
                 "connectionSpec": {
-                    "id": self.dlz_connection_spec_id,
+                    "id": self.DLZ_CONNECTION_SPEC_ID,
                     "version": "1.0"
                 }
             }
@@ -183,13 +218,15 @@ class ExportDatasetToCloudStorage:
         except KeyError:
             raise RuntimeError(f"Error when creating target connection: {target_res}")
 
-    def createFlow(self, source_connection_id, target_connection_id, on_schedule):
+    def createFlow(self, source_connection_id: str, target_connection_id: str, on_schedule: bool) -> str:
         """
         Create a data flow for Data Landing Zone Destination
         Arguments:
           source_connection_id : REQUIRED : The source connection id created in previous step
           target_connection_id : REQUIRED : The target connection id created in previous step
           on_schedule: REQUIRED: define whether you would like to have the export following a fixed schedule or not
+        Returns:
+          dataflow_id(str)
         """
         if on_schedule:
             schedule_params = {
@@ -207,7 +244,7 @@ class ExportDatasetToCloudStorage:
         flow_obj = {
             "name": f"[CMLE][Week2] Flow for Featurized Dataset to DLZ created by {self.username}",
             "flowSpec": {
-                "id": self.dlz_flow_spec_id,
+                "id": self.DLZ_FLOW_SEPC_ID,
                 "version": "1.0"
             },
             "sourceConnectionIds": [
@@ -221,7 +258,7 @@ class ExportDatasetToCloudStorage:
         }
         flow_res = self.flow_conn.createFlow(
             obj = flow_obj,
-            flow_spec_id = self.dlz_flow_spec_id
+            flow_spec_id = self.DLZ_FLOW_SEPC_ID
         )
         try:
             dataflow_id = flow_res["id"]
@@ -230,7 +267,7 @@ class ExportDatasetToCloudStorage:
         except KeyError:
             raise RuntimeError(f"Error when creating data flow: {flow_res}")
 
-    def createFlowRun(self, dataflow_id, dataset_id, on_schedule, initial_delay = 300):
+    def createFlowRun(self, dataflow_id: str, dataset_id: str, on_schedule: bool, initial_delay: int = 300):
         """
         Create a data flow run
         Arguments:
@@ -280,23 +317,27 @@ class ExportDatasetToCloudStorage:
             #disable flow after the adhoc run is completed
             self.flow_conn.postFlowAction(dataflow_id, "disable")
 
-    def checkIfRetry(self, res):
+    def checkIfRetry(self, res: dict):
         """
         check whether retry is needed base on the error message
         Arguments:
         res : REQUIRED : response from adhoc dataset export
+        Returns:
+          if retry is needed or not(boolean)
         """
         error = str(res)
         self.logger.info(f"Checking if retry is needed for adhoc dataset export response {res}")
         return error.find("Following order ID(s) are not ready for dataset export") != -1
 
 
-    def retryOnNotReadyException(self, dataflow_id, dataset_id, wait_time = 60, max_attempts = 5):
+    def retryOnNotReadyException(self, dataflow_id: str, dataset_id: str, wait_time: int = 60, max_attempts: int= 5):
         """
         retry adhoc dataset export based on the error type
         Arguments:
               dataflow_id : REQUIRED : The flow that needs to be triggered a flow run
               dataset_id : REQUIRED : The dataset that needs to be exported
+              wait_time: OPTIONAL: the wait time between each retry
+              max_attempts: OPTIONAL: the maximum retry attempts
         """
-        retryer = Retrying(retry = retry_if_result(self.checkIfRetry()),wait= wait_fixed(wait_time), stop=stop_after_attempt(max_attempts))
+        retryer = Retrying(retry = retry_if_result(self.checkIfRetry),wait= wait_fixed(wait_time), stop=stop_after_attempt(max_attempts))
         return retryer(self.dis_conn.createAdHocDatasetExport, {dataflow_id: [dataset_id]})
