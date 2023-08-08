@@ -1,25 +1,29 @@
+#  Copyright 2023 Adobe. All rights reserved.
+#  This file is licensed to you under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License. You may obtain a copy
+#  of the License at http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software distributed under
+#  the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+#  OF ANY KIND, either express or implied. See the License for the specific language
+#  governing permissions and limitations under the License.
+
+# internal library
 from configparser import ConfigParser
-import os
 
 class Utils:
 
-    global config_path
-
-    def __init__(self):
-        self.config_path = os.path.join(os.environ["ADOBE_HOME"], "conf", "config.ini")
-
-    def check_if_exist(self, section, field_name):
+    @staticmethod
+    def check_if_exists(section, field_name, config_path):
         config = ConfigParser()
-        config.read(self.config_path)
-        exist_field = config.get(section, field_name)
-        if exist_field:
-            return exist_field
-        else:
-            return None
+        config.read(config_path)
+        return config.get(section, field_name) or None
 
-    def save_field_in_config(self, section, field_name, value):
+
+    @staticmethod
+    def save_field_in_config(section, field_name, value, config_path):
         config = ConfigParser()
-        config.read(self.config_path)
+        config.read(config_path)
         config.set(section, field_name, value)
-        with open(self.config_path, "w") as configfile:
+        with open(config_path, "w") as configfile:
             config.write(configfile)

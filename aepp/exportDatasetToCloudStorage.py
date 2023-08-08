@@ -1,60 +1,165 @@
-import flowservice
-import destinationinstanceservice
+#  Copyright 2023 Adobe. All rights reserved.
+#  This file is licensed to you under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License. You may obtain a copy
+#  of the License at http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software distributed under
+#  the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+#  OF ANY KIND, either express or implied. See the License for the specific language
+#  governing permissions and limitations under the License.
+
+# Internal Library
+
+import aepp
+from aepp import flowservice
+from aepp import destinationinstanceservice
 import os
 import time
+import logging
+from typing import Union
 from utils import Utils
+from .configs import ConnectObject
+from tenacity import Retrying
+from tenacity import retry_if_result
+from tenacity import wait_fixed
+from tenacity import stop_after_attempt
 
 class ExportDatasetToCloudStorage:
     global flow_conn
     global dis_conn
-    global utils
     global username
-    def __init__(self):
-        self.username = os.getlogin()
-        self.flow_conn = flowservice.FlowService()
-        self.dis_conn = destinationinstanceservice.DestinationInstanceService()
-        self.utils = Utils()
+    global logger
+    dlz_connection_spec_id = "10440537-2a7b-4583-ac39-ed38d4b848e8"
+    dlz_flow_spec_id = "cd2fc47e-e838-4f38-a581-8fff2f99b63a"
+    def __init__(
+            self,
+            config: Union[dict,ConnectObject] = aepp.config.config_object,
+            header: dict = aepp.config.header
+    ):
+        """
+        initialize the Export Dataset to CloudStorage instance.
+        Arguments:
+            config : OPTIONAL : config object in the config module.
+            header : OPTIONAL : header object  in the config module.
+        """
 
-    def createDataFlowIfNotExists(self, dataset_id, compression_type, data_format, export_path, on_schedule):
-        dataflow_id = self.utils.check_if_exist("Platform", "dataflow_id")
+        self.username = os.getlogin()
+        self.flow_conn = flowservice.FlowService(config=config, header=header)
+        self.dis_conn = destinationinstanceservice.DestinationInstanceService(config=config, header=header)
+        self.logger = logging.getLogger(f"{__name__}")
+        self.logger.setLevel(logging.INFO)
+        #Create a stream-based handler that writes the log entries into the standard output stream
+        handler = logging.StreamHandler()
+        #Create a formatter for the logs
+        formatter = logging.Formatter('%(created)f:%(module)s:%(message)s')
+        #Set the created formatter as the formatter of the handler
+        handler.setFormatter(formatter)
+        #Add the created handler to this logger
+        self.logger.addHandler(handler)
+
+    def createDataFlowIfNotExists(self, dataset_id, compression_type, data_format, export_path, on_schedule, config_path, initial_delay = 600):
+        """
+        Create a data flow if not being saved in config file
+        Arguments:
+          dataset_id : REQUIRED : The dataset that needs to be exported
+          compression_type: REQUIRED : define compression type to use when saving data to file. Possible values:
+            gzip
+            none
+          data_format : REQUIRED : define the data format . Possible values:
+            json
+            parquet
+          export_path : REQUIRED : define the folder path in your dlz container
+          on_schedule: REQUIRED: define whether you would like to have the export following a fixed schedule or not
+          config_path: REQUIRED: define the path of your aepp config file
+        """
+        dataflow_id = Utils.check_if_exists("Platform", "dataflow_id", config_path)
         if dataflow_id is not None:
+            self.logger.info(f"Flow {dataflow_id} has already existed in config")
             flow = self.flow_conn.getFlow(dataflow_id)
             source_connection_id = flow["sourceConnectionIds"][0]
             source_connection = self.flow_conn.getSourceConnection(source_connection_id)
             exist_dataset_id = source_connection["params"]["datasets"][0]["dataSetId"]
-            if exist_dataset_id == dataset_id and flow["state"] == "disabled":
+            if exist_dataset_id != dataset_id:
+                dataflow_id = self.createDataFlow(dataset_id, compression_type, data_format, export_path, on_schedule, config_path)
+            elif flow["state"] == "disabled":
                 self.flow_conn.postFlowAction(dataflow_id, "enable")
-            else:
-                dataflow_id = self.createDataFlow(dataset_id, compression_type, data_format, export_path, on_schedule)
-        self.createFlowRun(dataflow_id, dataset_id, on_schedule)
+                self.logger.info(f"Flow {dataflow_id} with dataset {dataset_id} is enabled")
+        else:
+            dataflow_id = self.createDataFlow(dataset_id, compression_type, data_format, export_path, on_schedule, config_path)
+        self.createFlowRun(dataflow_id, dataset_id, on_schedule, initial_delay)
 
-    def createDataFlow(self, dataset_id, compression_type, data_format, export_path, on_schedule):
-        source_res = self.flow_conn.createSourceConnectionDataLake(
-            name=f"[CMLE][Week2] Featurized Dataset source connection created by {self.username}",
-            dataset_ids=[dataset_id],
-            format="parque"
-        )
-        try:
-            source_connection_id = source_res["id"]
-            print("sourceConnectionId " + source_connection_id + "has been created.")
-        except KeyError:
-            raise RuntimeError(f"Error when creating source connection: {source_res}")
+    def createDataFlow(self, dataset_id, compression_type, data_format, export_path, on_schedule, config_path):
+        """
+        Create a data flow as it is not saved in config
+        Arguments:
+          dataset_id : REQUIRED : The dataset that needs to be exported
+          compression_type: REQUIRED : define compression type to use when saving data to file. Possible values:
+            gzip
+            none
+          data_format : REQUIRED : define the data format . Possible values:
+            json
+            parquet
+          export_path : REQUIRED : define the folder path in your dlz container
+          on_schedule: REQUIRED: define whether you would like to have the export following a fixed schedule or not
+        """
+        base_connection_id = self.createBaseConnection()
+        source_connection_id = self.createSourceConnection(dataset_id)
+        target_connection_id = self.createTargetConnection(base_connection_id, compression_type, data_format, export_path)
+        dataflow_id = self.createFlow(source_connection_id, target_connection_id, on_schedule)
+        #save dataflow_id to config
+        Utils.save_field_in_config("Platform", "dataflow_id", dataflow_id, config_path)
+        return dataflow_id
 
-        connection_spec_id = "10440537-2a7b-4583-ac39-ed38d4b848e8"
+    def createBaseConnection(self) -> str:
+        """
+        Create a base connection for Data Landing Zone Destination
+        """
         base_connection_res = self.flow_conn.createConnection(data={
             "name": f"[CMLE][Week2] Base Connection to DLZ created by {self.username}",
             "auth": None,
             "connectionSpec": {
-                "id": connection_spec_id,
+                "id": self.dlz_connection_spec_id,
                 "version": "1.0"
             }
         })
         try:
             base_connection_id = base_connection_res["id"]
-            print("baseConnectionId " + base_connection_id + "has been created")
+            self.logger.info("baseConnectionId " + base_connection_id + "has been created")
+            return base_connection_id
         except KeyError:
             raise RuntimeError(f"Error when creating base connection: {base_connection_res}")
 
+    def createSourceConnection(self, dataset_id) -> str:
+        """
+        Create a source connection for Data Landing Zone Destination
+        Arguments:
+          dataset_id : REQUIRED : The dataset that needs to be exported
+        """
+        source_res = self.flow_conn.createSourceConnectionDataLake(
+            name=f"[CMLE][Week2] Featurized Dataset source connection created by {self.username}",
+            dataset_ids=[dataset_id],
+            format="parquet"
+        )
+        try:
+            source_connection_id = source_res["id"]
+            self.logger.info("sourceConnectionId " + source_connection_id + " has been created.")
+            return source_connection_id
+        except KeyError:
+            raise RuntimeError(f"Error when creating source connection: {source_res}")
+
+    def createTargetConnection(self, base_connection_id, compression_type, data_format, export_path) -> str:
+        """
+        Create a target connection for Data Landing Zone Destination
+        Arguments:
+            base_connection_id : REQUIRED : The base connection id created in previous step
+            compression_type: REQUIRED : define compression type to use when saving data to file. Possible values:
+                gzip
+                none
+            data_format : REQUIRED : define the data format . Possible values:
+                json
+                parquet
+            export_path : REQUIRED : define the folder path in your dlz container
+        """
         target_res = self.flow_conn.createTargetConnection(
             data={
                 "name": f"[CMLE][Week2] Data Landing Zone target connection created by {self.username}",
@@ -66,17 +171,26 @@ class ExportDatasetToCloudStorage:
                     "path": export_path
                 },
                 "connectionSpec": {
-                    "id": connection_spec_id,
+                    "id": self.dlz_connection_spec_id,
                     "version": "1.0"
                 }
             }
         )
         try:
             target_connection_id = target_res["id"]
-            print("targetconnectionId " + target_connection_id + " has been created")
+            self.logger.info("targetconnectionId " + target_connection_id + " has been created")
+            return target_connection_id
         except KeyError:
             raise RuntimeError(f"Error when creating target connection: {target_res}")
 
+    def createFlow(self, source_connection_id, target_connection_id, on_schedule):
+        """
+        Create a data flow for Data Landing Zone Destination
+        Arguments:
+          source_connection_id : REQUIRED : The source connection id created in previous step
+          target_connection_id : REQUIRED : The target connection id created in previous step
+          on_schedule: REQUIRED: define whether you would like to have the export following a fixed schedule or not
+        """
         if on_schedule:
             schedule_params = {
                 "interval": 3,
@@ -89,11 +203,11 @@ class ExportDatasetToCloudStorage:
                 "timeUnit": "day",
                 "startTime": int(time.time() + 60*60*24*365)
             }
-        flow_spec_id = "cd2fc47e-e838-4f38-a581-8fff2f99b63a"
+
         flow_obj = {
             "name": f"[CMLE][Week2] Flow for Featurized Dataset to DLZ created by {self.username}",
             "flowSpec": {
-                "id": flow_spec_id,
+                "id": self.dlz_flow_spec_id,
                 "version": "1.0"
             },
             "sourceConnectionIds": [
@@ -107,27 +221,35 @@ class ExportDatasetToCloudStorage:
         }
         flow_res = self.flow_conn.createFlow(
             obj = flow_obj,
-            flow_spec_id = flow_spec_id
+            flow_spec_id = self.dlz_flow_spec_id
         )
         try:
             dataflow_id = flow_res["id"]
-            print("dataflowId " + dataflow_id + " has been created")
+            self.logger.info("dataflowId " + dataflow_id + " has been created")
+            return dataflow_id
         except KeyError:
             raise RuntimeError(f"Error when creating data flow: {flow_res}")
 
-        #save dataflow_id to config
-        self.utils.save_field_in_config("Platform", "dataflow_id", dataflow_id)
-        return dataflow_id
-
-    def createFlowRun(self, dataflow_id, dataset_id, on_schedule):
+    def createFlowRun(self, dataflow_id, dataset_id, on_schedule, initial_delay = 300):
+        """
+        Create a data flow run
+        Arguments:
+          dataflow_id : REQUIRED : The flow that needs to be triggered a flow run
+          dataset_id : REQUIRED : The dataset that needs to be exported
+          on_schedule: REQUIRED: define whether you would like to have the export following a fixed schedule or not
+        """
         if not on_schedule:
+            #set up initial delay due to hollow refresh time interval
+            self.logger.info(f"Waiting for flow {dataflow_id} to refreshed after {initial_delay} seconds")
+            time.sleep(initial_delay)
+            self.logger.info(f"Start create adhoc dataset export for flow {dataflow_id} with dataset {dataset_id }")
             res = self.retryOnNotReadyException(dataflow_id = dataflow_id, dataset_id= dataset_id)
-            flowRunId = res["destinations"][0]["datasets"][0]["statusURL"].rsplit('/', 1)[-1]
+            flow_run_id = res["destinations"][0]["datasets"][0]["statusURL"].rsplit('/', 1)[-1]
             #check if flowRun has finished
             finished = False
             while not finished:
                 try:
-                    run = self.flow_conn.getRun(runId = flowRunId)["items"][0]
+                    run = self.flow_conn.getRun(runId = flow_run_id)["items"][0]
                     run_id = run["id"]
                     run_started_at = run["metrics"]["durationSummary"]["startedAtUTC"]
                     run_ended_at = run["metrics"]["durationSummary"]["completedAtUTC"]
@@ -135,45 +257,46 @@ class ExportDatasetToCloudStorage:
                     run_size_mb = run["metrics"]["sizeSummary"]["outputBytes"] / 1024. / 1024.
                     run_num_rows = run["metrics"]["recordSummary"]["outputRecordCount"]
                     run_num_files = run["metrics"]["fileSummary"]["outputFileCount"]
-                    print(f"Run ID {run_id} completed with: duration={run_duration_secs} secs; size={run_size_mb} MB; num_rows={run_num_rows}; num_files={run_num_files}")
+                    self.logger.info(f"Run ID {run_id} completed with: duration={run_duration_secs} secs; size={run_size_mb} MB; num_rows={run_num_rows}; num_files={run_num_files}")
                     finished = True
                 except Exception as e:
-                    print(f"No runs completed yet for flow {self.dataflow_Id}")
+                    self.logger.warn(f"No runs completed yet for flow {dataflow_id}")
                     time.sleep(30)
             #push the startDate to a year from now
-            startTime = int(time.time() + 60*60*24*365)
+            start_time = int(time.time() + 60*60*24*365)
             op = [
                 {
                     "op" : "Replace",
                     "path":"/scheduleParams",
                     "value":{
-                        "startTime": startTime
+                        "startTime": start_time
                     }
 
                 }
             ]
-            flowRes = self.flow_conn.getFlow(dataflow_id)
-            eTag = flowRes["etag"]
-            self.flow_conn.updateFlow(dataflow_id,eTag,op)
+            flow_res = self.flow_conn.getFlow(dataflow_id)
+            etag = flow_res["etag"]
+            self.flow_conn.updateFlow(dataflow_id,etag,op)
             #disable flow after the adhoc run is completed
             self.flow_conn.postFlowAction(dataflow_id, "disable")
 
-    def retryOnNotReadyException(self, dataflow_id, dataset_id, max_attempts=3, delay=60):
-        #set up initial delay due to hollow refresh time interval
-        time.sleep(300)
-        attempts = 1
-        while attempts <= max_attempts:
-            print("attempt adhoc dataset export " + str(attempts) + " time(s)")
-            res = self.dis_conn.createAdHocDatasetExport({dataflow_id: [dataset_id]})
-            try:
-                statusURL = res["destinations"][0]["datasets"][0]["statusURL"]
-                return res
-            except KeyError:
-                error = str(res)
-                if error.find("Following order ID(s) are not ready for dataset export") != -1:
-                    attempts += 1
-                    print(f"Retrying in {delay} seconds...")
-                    time.sleep(delay)
-                else:
-                    raise RuntimeError(f"Error happens during adhoc dataset export {error}")
-        raise RuntimeError(f"Maximum retry attempts ({max_attempts}) reached. Aborting.")
+    def checkIfRetry(self, res):
+        """
+        check whether retry is needed base on the error message
+        Arguments:
+        res : REQUIRED : response from adhoc dataset export
+        """
+        error = str(res)
+        self.logger.info(f"Checking if retry is needed for adhoc dataset export response {res}")
+        return error.find("Following order ID(s) are not ready for dataset export") != -1
+
+
+    def retryOnNotReadyException(self, dataflow_id, dataset_id, wait_time = 60, max_attempts = 5):
+        """
+        retry adhoc dataset export based on the error type
+        Arguments:
+              dataflow_id : REQUIRED : The flow that needs to be triggered a flow run
+              dataset_id : REQUIRED : The dataset that needs to be exported
+        """
+        retryer = Retrying(retry = retry_if_result(self.checkIfRetry()),wait= wait_fixed(wait_time), stop=stop_after_attempt(max_attempts))
+        return retryer(self.dis_conn.createAdHocDatasetExport, {dataflow_id: [dataset_id]})
