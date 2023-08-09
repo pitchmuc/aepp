@@ -254,7 +254,7 @@ class ExportDatasetToCloudStorage:
         Returns:
           dataflow_id(str)
         """
-        schedule_params
+        schedule_params = {}
         if on_schedule:
             schedule_params = {
                 "interval": 3,
