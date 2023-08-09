@@ -13,7 +13,6 @@
 import aepp
 from aepp import flowservice
 from aepp import destinationinstanceservice
-import os
 import time
 import logging
 from typing import Union
@@ -23,6 +22,31 @@ from tenacity import Retrying
 from tenacity import retry_if_result
 from tenacity import wait_fixed
 from tenacity import stop_after_attempt
+from dataclasses import dataclass,asdict,field
+
+@dataclass
+class Flow:
+    name: str = None
+    flowSpec: dict = field(default_factory=dict)
+    sourceConnectionIds: list = field(default_factory=list)
+    targetConnectionIds: list= field(default_factory=list)
+    scheduleParams: dict = field(default_factory=dict)
+    transformations: list = field(default_factory=list)
+
+    def __init__(self,
+                 name: str,
+                 flow_spec: dict,
+                 source_connection_id: str,
+                 target_connection_id: str,
+                 schedule_params: dict,
+                 transformations: dict
+                 ):
+        self.name = name
+        self.sourceConnectionIds = [source_connection_id]
+        self.targetConnectionIds = [target_connection_id]
+        self.flowSpec = flow_spec
+        self.scheduleParams = schedule_params
+        self.transformations = transformations
 
 class ExportDatasetToCloudStorage:
     """
@@ -39,10 +63,10 @@ class ExportDatasetToCloudStorage:
         class logger
     """
 
-    global flow_conn
-    global dis_conn
-    global username
-    global logger
+    flow_conn = None
+    dis_conn = None
+    username = None
+    logger = None
     DLZ_CONNECTION_SPEC_ID = "10440537-2a7b-4583-ac39-ed38d4b848e8"
     DLZ_FLOW_SEPC_ID = "cd2fc47e-e838-4f38-a581-8fff2f99b63a"
     def __init__(
@@ -230,6 +254,7 @@ class ExportDatasetToCloudStorage:
         Returns:
           dataflow_id(str)
         """
+        schedule_params
         if on_schedule:
             schedule_params = {
                 "interval": 3,
@@ -242,22 +267,18 @@ class ExportDatasetToCloudStorage:
                 "timeUnit": "day",
                 "startTime": int(time.time() + 60*60*24*365)
             }
-
-        flow_obj = {
-            "name": f"[CMLE][Week2] Flow for Featurized Dataset to DLZ created by {self.username}",
-            "flowSpec": {
+        flow_data = Flow(
+            name = f"[CMLE][Week2] Flow for Featurized Dataset to DLZ created by {self.username}",
+            flow_spec = {
                 "id": self.DLZ_FLOW_SEPC_ID,
                 "version": "1.0"
             },
-            "sourceConnectionIds": [
-                source_connection_id
-            ],
-            "targetConnectionIds": [
-                target_connection_id
-            ],
-            "transformations": [],
-            "scheduleParams": schedule_params
-        }
+            source_connection_id = source_connection_id,
+            target_connection_id = target_connection_id,
+            schedule_params = schedule_params,
+            transformations = []
+        )
+        flow_obj = asdict(flow_data)
         flow_res = self.flow_conn.createFlow(
             obj = flow_obj,
             flow_spec_id = self.DLZ_FLOW_SEPC_ID
