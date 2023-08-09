@@ -17,7 +17,7 @@ import os
 import time
 import logging
 from typing import Union
-from utils import Utils
+from aepp.utils import Utils
 from .configs import ConnectObject
 from tenacity import Retrying
 from tenacity import retry_if_result
