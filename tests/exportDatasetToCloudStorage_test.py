@@ -108,7 +108,7 @@ class ExportDatasetToCloudStorageTest(unittest.TestCase):
         "private_key": ""
     }
 
-    @patch('utils.Utils.check_if_exists', MagicMock(return_value = "test_dataflow_id"))
+    @patch('aepp.utils.Utils.check_if_exists', MagicMock(return_value = "test_dataflow_id"))
     @patch('aepp.flowservice.FlowService.getFlow', MagicMock(return_value = flow_response))
     @patch('aepp.flowservice.FlowService.getSourceConnection', MagicMock(return_value = source_connection))
     @patch('aepp.flowservice.FlowService.getRun', MagicMock(return_value = flow_run))
@@ -118,7 +118,7 @@ class ExportDatasetToCloudStorageTest(unittest.TestCase):
         export_obj = ExportDatasetToCloudStorage(username="test user", config= self.config, header= MagicMock())
         export_obj.createDataFlowIfNotExists("test", "gzip", "parquet", "test", False, "test", 0)
 
-    @patch('utils.Utils.check_if_exists', MagicMock(return_value = "test_dataflow_id"))
+    @patch('aepp.utils.Utils.check_if_exists', MagicMock(return_value = "test_dataflow_id"))
     @patch('aepp.flowservice.FlowService.getFlow', MagicMock(return_value = flow_response))
     @patch('aepp.flowservice.FlowService.getSourceConnection', MagicMock(return_value = source_connection))
     @patch("aepp.connector.AdobeRequest", MagicMock())
@@ -131,7 +131,7 @@ class ExportDatasetToCloudStorageTest(unittest.TestCase):
     @patch('aepp.flowservice.FlowService.createSourceConnection', MagicMock(return_value = source_connection))
     @patch('aepp.flowservice.FlowService.createTargetConnection', MagicMock(return_value = target_connection))
     @patch('aepp.flowservice.FlowService.createFlow', MagicMock(return_value = flow_response))
-    @patch('utils.Utils.save_field_in_config', MagicMock())
+    @patch('aepp.utils.Utils.save_field_in_config', MagicMock())
     @patch("aepp.connector.AdobeRequest", MagicMock())
     def test_create_dataflow_if_not_exist(self):
         export_obj = ExportDatasetToCloudStorage(username="test user", config= self.config, header= MagicMock())
