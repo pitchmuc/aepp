@@ -91,20 +91,37 @@ class ExportDatasetToCloudStorageTest(unittest.TestCase):
         "message": "Following order ID(s) are not ready for dataset export"
     }
 
+    config = {
+        "org_id": "3ADF23C463D98F640A494032@AdobeOrg",
+        "client_id": "35e6e4d205274c4ca1418805ac41153b",
+        "tech_id": "test005@techacct.adobe.com",
+        "pathToKey": "/Users/Downloads/config/private.key",
+        "auth_code": "",
+        "secret": "test",
+        "date_limit": 0,
+        "sandbox": "prod",
+        "environment": "stage",
+        "token": "token",
+        "jwtTokenEndpoint": "https://ims-na1.adobelogin.com/ims/exchange/jwt/",
+        "oauthTokenEndpoint": "",
+        "imsEndpoint": "https://ims-na1-stg1.adobelogin.com",
+        "private_key": ""
+    }
+
     @patch('utils.Utils.check_if_exists', MagicMock(return_value = "test_dataflow_id"))
     @patch('aepp.flowservice.FlowService.getFlow', MagicMock(return_value = flow_response))
     @patch('aepp.flowservice.FlowService.getSourceConnection', MagicMock(return_value = source_connection))
     @patch('aepp.flowservice.FlowService.getRun', MagicMock(return_value = flow_run))
     @patch('aepp.destinationinstanceservice.DestinationInstanceService.createAdHocDatasetExport', MagicMock(return_value = adhoc_success_response))
     def test_create_dataflow_if_exist(self):
-        export_obj = ExportDatasetToCloudStorage(MagicMock(), MagicMock(), MagicMock())
+        export_obj = ExportDatasetToCloudStorage(username="test user", config= self.config, header= MagicMock())
         export_obj.createDataFlowIfNotExists("test", "gzip", "parquet", "test", False, "test", 0)
 
     @patch('utils.Utils.check_if_exists', MagicMock(return_value = "test_dataflow_id"))
     @patch('aepp.flowservice.FlowService.getFlow', MagicMock(return_value = flow_response))
     @patch('aepp.flowservice.FlowService.getSourceConnection', MagicMock(return_value = source_connection))
     def test_create_dataflow_on_schedule(self):
-        export_obj = ExportDatasetToCloudStorage(MagicMock(), MagicMock(), MagicMock())
+        export_obj = ExportDatasetToCloudStorage(username="test user", config= self.config, header= MagicMock())
         export_obj.createDataFlowIfNotExists("test", "gzip", "parquet", "test", True, "test", 0)
 
     @patch('aepp.flowservice.FlowService.createConnection', MagicMock(return_value = base_connection))
@@ -114,18 +131,18 @@ class ExportDatasetToCloudStorageTest(unittest.TestCase):
     @patch('aepp.flowservice.FlowService.createFlow', MagicMock(return_value = flow_response))
     @patch('utils.Utils.save_field_in_config', MagicMock())
     def test_create_dataflow_if_not_exist(self):
-        export_obj = ExportDatasetToCloudStorage(MagicMock(), MagicMock(), MagicMock())
+        export_obj = ExportDatasetToCloudStorage(username="test user", config= self.config, header= MagicMock())
         return_dataflow_id = export_obj.createDataFlow("test", "gzip", "parquet", "test", False, "test")
         assert (return_dataflow_id == self.flow_response["id"])
 
     @patch('aepp.destinationinstanceservice.DestinationInstanceService.createAdHocDatasetExport', MagicMock(return_value = adhoc_success_response))
     def test_retry_on_success_response(self):
-        export_obj = ExportDatasetToCloudStorage(MagicMock(), MagicMock(), MagicMock())
+        export_obj = ExportDatasetToCloudStorage(username="test user", config= self.config, header= MagicMock())
         assert(export_obj.retryOnNotReadyException("test", "test", 1, 1) == self.adhoc_success_response)
 
     @patch('aepp.destinationinstanceservice.DestinationInstanceService.createAdHocDatasetExport', MagicMock(return_value = adhoc_non_retry_error))
     def test_no_retry_error(self):
-        export_obj = ExportDatasetToCloudStorage(MagicMock(), MagicMock(), MagicMock())
+        export_obj = ExportDatasetToCloudStorage(username="test user", config= self.config, header= MagicMock())
         assert (export_obj.retryOnNotReadyException("test", "test", 1, 1) == self.adhoc_non_retry_error)
 
     @patch('aepp.destinationinstanceservice.DestinationInstanceService.createAdHocDatasetExport', MagicMock(return_value = adhoc_retry_error))
