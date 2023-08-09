@@ -147,7 +147,7 @@ class ExportDatasetToCloudStorageTest(unittest.TestCase):
 
     @patch('aepp.destinationinstanceservice.DestinationInstanceService.createAdHocDatasetExport', MagicMock(return_value = adhoc_retry_error))
     def test_retry_error(self):
-        export_obj = ExportDatasetToCloudStorage(MagicMock(), MagicMock(), MagicMock())
+        export_obj = ExportDatasetToCloudStorage(username="test user", config= self.config, header= MagicMock())
         try:
             export_obj.retryOnNotReadyException("test", "test", 1, 1)
             self.fail("expect a retry error")
