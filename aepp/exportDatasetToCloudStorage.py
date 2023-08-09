@@ -47,17 +47,19 @@ class ExportDatasetToCloudStorage:
     DLZ_FLOW_SEPC_ID = "cd2fc47e-e838-4f38-a581-8fff2f99b63a"
     def __init__(
             self,
+            username: str,
             config: Union[dict,ConnectObject] = aepp.config.config_object,
             header: dict = aepp.config.header
     ):
         """
         initialize the Export Dataset to CloudStorage instance.
         Arguments:
+            username : REQUIRED: username that will be used in cmle entity names
             config : OPTIONAL : config object in the config module.
             header : OPTIONAL : header object  in the config module.
         """
 
-        self.username = os.getlogin()
+        self.username = username
         self.flow_conn = flowservice.FlowService(config=config, header=header)
         self.dis_conn = destinationinstanceservice.DestinationInstanceService(config=config, header=header)
         self.logger = logging.getLogger(f"{__name__}")
