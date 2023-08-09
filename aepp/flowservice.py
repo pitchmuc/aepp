@@ -1373,9 +1373,9 @@ class FlowService:
 
     def postFlowAction(self,flowId:str,action:str)->dict:
         if flowId is None:
-            raise Exception("Require a flowId to be present")
+            raise Exception("Requires a flowId to be present")
         if action is None:
-            raise Exception("Require an action to be present")
+            raise Exception("Requires an action to be present")
         path = "/flows/" + flowId + "/action?op=" + action
         privateHeader = deepcopy(self.header)
         privateHeader.pop("Content-Type")
