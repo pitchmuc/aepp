@@ -13,7 +13,7 @@ import unittest
 from unittest.mock import patch, MagicMock, ANY
 from tenacity import RetryError
 
-class ExportDatasetToCloudStorageTest(unittest.TestCase):
+class ExportDatasetToDataLandingZoneTest(unittest.TestCase):
     flow_response = {
         "id": "df193495-9837-407f-9d50-e51efc067cb5",
         "sourceConnectionIds": [

@@ -65,7 +65,9 @@ class ExportDatasetToDataLandingZone:
 
     flow_conn = None
     dis_conn = None
+    #fixed connection spec id for Data Landing Zone, reference: https://experienceleague.adobe.com/docs/experience-platform/destinations/api/export-datasets.html?lang=en
     DLZ_CONNECTION_SPEC_ID = "10440537-2a7b-4583-ac39-ed38d4b848e8"
+    #fixed flow spec id for Data Landing Zone, reference: https://experienceleague.adobe.com/docs/experience-platform/destinations/api/export-datasets.html?lang=en
     DLZ_FLOW_SEPC_ID = "cd2fc47e-e838-4f38-a581-8fff2f99b63a"
     def __init__(
             self,
