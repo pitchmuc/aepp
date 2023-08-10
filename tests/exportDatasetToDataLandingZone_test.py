@@ -115,7 +115,7 @@ class ExportDatasetToCloudStorageTest(unittest.TestCase):
     @patch('aepp.destinationinstanceservice.DestinationInstanceService.createAdHocDatasetExport', MagicMock(return_value = adhoc_success_response))
     @patch("aepp.connector.AdobeRequest", MagicMock())
     def test_create_dataflow_if_exist(self):
-        export_obj = ExportDatasetToDataLandingZone(username="test user", config= self.config, header= MagicMock())
+        export_obj = ExportDatasetToDataLandingZone(config= self.config, header= MagicMock())
         export_obj.createDataFlowIfNotExists("test", "gzip", "parquet", "test", False, "test", 0)
 
     @patch('aepp.utils.Utils.check_if_exists', MagicMock(return_value = "test_dataflow_id"))
@@ -123,7 +123,7 @@ class ExportDatasetToCloudStorageTest(unittest.TestCase):
     @patch('aepp.flowservice.FlowService.getSourceConnection', MagicMock(return_value = source_connection))
     @patch("aepp.connector.AdobeRequest", MagicMock())
     def test_create_dataflow_on_schedule(self):
-        export_obj = ExportDatasetToDataLandingZone(username="test user", config= self.config, header= MagicMock())
+        export_obj = ExportDatasetToDataLandingZone(config= self.config, header= MagicMock())
         export_obj.createDataFlowIfNotExists("test", "gzip", "parquet", "test", True, "test", 0)
 
     @patch('aepp.flowservice.FlowService.createConnection', MagicMock(return_value = base_connection))
@@ -134,26 +134,26 @@ class ExportDatasetToCloudStorageTest(unittest.TestCase):
     @patch('aepp.utils.Utils.save_field_in_config', MagicMock())
     @patch("aepp.connector.AdobeRequest", MagicMock())
     def test_create_dataflow_if_not_exist(self):
-        export_obj = ExportDatasetToDataLandingZone(username="test user", config= self.config, header= MagicMock())
+        export_obj = ExportDatasetToDataLandingZone(config= self.config, header= MagicMock())
         return_dataflow_id = export_obj.createDataFlow("test", "gzip", "parquet", "test", False, "test")
         assert (return_dataflow_id == self.flow_response["id"])
 
     @patch('aepp.destinationinstanceservice.DestinationInstanceService.createAdHocDatasetExport', MagicMock(return_value = adhoc_success_response))
     @patch("aepp.connector.AdobeRequest", MagicMock())
     def test_retry_on_success_response(self):
-        export_obj = ExportDatasetToDataLandingZone(username="test user", config= self.config, header= MagicMock())
+        export_obj = ExportDatasetToDataLandingZone(config= self.config, header= MagicMock())
         assert(export_obj.retryOnNotReadyException("test", "test", 1, 1) == self.adhoc_success_response)
 
     @patch('aepp.destinationinstanceservice.DestinationInstanceService.createAdHocDatasetExport', MagicMock(return_value = adhoc_non_retry_error))
     @patch("aepp.connector.AdobeRequest", MagicMock())
     def test_no_retry_error(self):
-        export_obj = ExportDatasetToDataLandingZone(username="test user", config= self.config, header= MagicMock())
+        export_obj = ExportDatasetToDataLandingZone(config= self.config, header= MagicMock())
         assert (export_obj.retryOnNotReadyException("test", "test", 1, 1) == self.adhoc_non_retry_error)
 
     @patch('aepp.destinationinstanceservice.DestinationInstanceService.createAdHocDatasetExport', MagicMock(return_value = adhoc_retry_error))
     @patch("aepp.connector.AdobeRequest", MagicMock())
     def test_retry_error(self):
-        export_obj = ExportDatasetToDataLandingZone(username="test user", config= self.config, header= MagicMock())
+        export_obj = ExportDatasetToDataLandingZone(config= self.config, header= MagicMock())
         try:
             export_obj.retryOnNotReadyException("test", "test", 1, 1)
             self.fail("expect a retry error")
