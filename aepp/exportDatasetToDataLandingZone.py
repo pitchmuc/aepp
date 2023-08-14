@@ -47,6 +47,32 @@ class Flow:
         self.flowSpec = flow_spec
         self.scheduleParams = schedule_params
         self.transformations = transformations
+@dataclass
+class ScheduleParams:
+    interval: int = 0
+    timeUnit: str = None
+    startTime: int = 0
+    def __init__(self,
+                 interval: int,
+                 timeUnit: str,
+                 startTime: int):
+        self.interval = interval
+        self.timeUnit = timeUnit
+        self.startTime = startTime
+
+@dataclass
+class FlowOp:
+    op: str = None
+    path: str = None
+    value: dict = field(default_factory=dict)
+
+    def __init__(self,
+                 op: str,
+                 path: str,
+                 value: dict):
+        self.op = op
+        self.path = path
+        self.value = value
 
 class ExportDatasetToDataLandingZone:
     """
@@ -272,19 +298,11 @@ class ExportDatasetToDataLandingZone:
         Returns:
           dataflow_id(str)
         """
-        schedule_params = {}
         if on_schedule:
-            schedule_params = {
-                "interval": 3,
-                "timeUnit": "hour",
-                "startTime": int(time.time())
-            }
+            schedule_params = asdict(ScheduleParams(interval=3, timeUnit="hour", startTime=int(time.time())))
         else:
-            schedule_params = {
-                "interval": 1,
-                "timeUnit": "day",
-                "startTime": int(time.time() + 60*60*24*365)
-            }
+            schedule_params = asdict(ScheduleParams(interval=1, timeUnit="day", startTime=int(time.time() + 60*60*24*365)))
+
         flow_data = Flow(
             name = entity_name,
             flow_spec = {
@@ -347,16 +365,7 @@ class ExportDatasetToDataLandingZone:
                     time.sleep(30)
             #push the startDate to a year from now
             start_time = int(time.time() + 60*60*24*365)
-            op = [
-                {
-                    "op" : "Replace",
-                    "path":"/scheduleParams",
-                    "value":{
-                        "startTime": start_time
-                    }
-
-                }
-            ]
+            op = [asdict(FlowOp(op="Replace", path="/scheduleParams", value={"startTime": start_time}))]
             flow_res = self.flow_conn.getFlow(dataflow_id)
             etag = flow_res["etag"]
             self.flow_conn.updateFlow(dataflow_id,etag,op)
