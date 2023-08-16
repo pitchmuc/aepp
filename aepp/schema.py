@@ -1933,7 +1933,7 @@ class Schema:
          tenantId = self.getTenantId()
          return FieldGroupManager(tenantId=tenantId,fieldGroup=fieldGroup,title=title,fg_class=fg_class,schemaAPI=self)
     
-    def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None,fgManager:bool=False) -> 'FieldGroupManager':
+    def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None) -> 'FieldGroupManager':
          """
          Generate a Schema Manager instance using the information provided by the schema instance.
          Arguments:
@@ -1941,7 +1941,64 @@ class Schema:
             fieldGroups : OPTIONAL : If you wish to add a list of fieldgroups.
             fgManager : OPTIONAL : If you wish to handle the different field group passed into a Field Group Manager instance and have additional methods available.
          """
-         return SchemaManager(schema=schema,fieldGroups=fieldGroups,schemaAPI=self,fgManager=fgManager)
+         return SchemaManager(schema=schema,fieldGroups=fieldGroups,schemaAPI=self)
+
+    def compareDFschemas(self,df1,df2,**kwargs)->dict:
+        """
+        Compare 2 schema dataframe returned by the SchemaManager `to_dataframe` method.
+        Arguments:
+            df1 : REQUIRED : the first schema dataframe to compare
+            df2 : REQUIRED : the second schema dataframe to compare
+        possible keywords:
+            title1 : title of the schema used in the dataframe 1 (default df1)
+            title2 : title of the schema used in the dataframe 2 (default df2)
+        The title1 and title2 will be used instead of df1 or df2 in the results keys presented below.
+
+        Results: 
+            Results are stored in a dictionary with these keys:
+            - df1 (or title1) : copy of the dataframe 1 passed
+            - df2 (or title2) : copy of the dataframe 2 passed
+            - fielgroups: dictionary containing
+                - aligned : boolean to define if the schema dataframes contain the same field groups
+                - df1_missingFieldGroups : tuple of field groups missing on df1 compare to df2
+                - df2_missingFieldGroups : tuple of field groups missing on df2 compare to df1
+            - paths: dictionary containing
+                - aligned : boolean to define if the schema dataframes contain the same fields.
+                - df1_missing : tuple of the paths missing in df1 compare to df2
+                - df2_missing : tuple of the paths missing in df2 compare to df1
+            - type_issues: list of all the paths that are not of the same type in both schemas.
+        """
+        if type(df1) != pd.DataFrame or type(df2) != pd.DataFrame:
+            raise TypeError('Require dataframes to be passed')
+        if 'path' not in df1.columns or 'type' not in df1.columns or 'fieldGroup' not in df1.columns:
+            raise AttributeError('Your data frame 1 is incomplete, it does not contain one of the following columns : path, type, fieldGroup')
+        if 'path' not in df2.columns or 'type' not in df2.columns or 'fieldGroup' not in df2.columns:
+            raise AttributeError('Your data frame 2 is incomplete, it does not contain one of the following columns : path, type, fieldGroup')
+        name1 = kwargs.get('title1','df1')
+        name2 = kwargs.get('title2','df2')
+        dict_result = {f'{name1}':df1.copy(),f'{name2}':df2.copy()}
+        fieldGroups1 = tuple(sorted(df1.fieldGroup.unique()))
+        fieldGroups2 = tuple(sorted(df2.fieldGroup.unique()))
+        if fieldGroups1 == fieldGroups2:
+            dict_result['fieldGroups'] = {'aligned':True}
+        else:
+            dict_result['fieldGroups'] = {'aligned':False}
+            dict_result['fieldGroups'][f'{name1}_missingFieldGroups'] = tuple(set(fieldGroups2).difference(set(fieldGroups1)))
+            dict_result['fieldGroups'][f'{name2}_missingFieldGroups'] = tuple(set(fieldGroups1).difference(set(fieldGroups2)))
+        path_fg1 = tuple(sorted(df1.path.unique()))
+        path_fg2 = tuple(sorted(df2.path.unique()))
+        if path_fg1 == path_fg2:
+            dict_result['paths'] = {'aligned':True}
+        else:
+            dict_result['paths'] = {'aligned':False}
+            dict_result['paths'][f'{name1}_missing'] = tuple(set(path_fg2).difference(set(path_fg1)))
+            dict_result['paths'][f'{name2}_missing'] = tuple(set(path_fg1).difference(set(path_fg2)))
+        common_paths = tuple(set(path_fg2).intersection(set(path_fg1)))
+        dict_result['type_issues'] = [] 
+        for path in common_paths:
+            if df1[df1['path'] == path]['type'].values[0] != df2[df2['path'] == path]['type'].values[0]:
+                dict_result['type_issues'].append(path)
+        return dict_result
 
 
 
@@ -1970,7 +2027,7 @@ class FieldGroupManager:
         """
         self.EDITABLE = False
         self.fieldGroup = {}
-        if schemaAPI is not None and type(schemaAPI) == 'Schema':
+        if schemaAPI is not None and type(schemaAPI) == Schema:
             self.schemaAPI = schemaAPI
         else:
             self.schemaAPI = Schema(config=config)
@@ -2819,7 +2876,7 @@ class SchemaManager:
     DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"]
 
     def __init__(self,schema:Union[str,dict],
-                fieldGroupIds:list=None,
+                fieldGroups:list=None,
                 schemaAPI:'Schema'=None,
                 schemaClass:str=None,
                 config: Union[dict,ConnectObject] = aepp.config.config_object,
@@ -2829,7 +2886,7 @@ class SchemaManager:
         Arguments:
             schemaId : OPTIONAL : Either a schemaId ($id or altId) or the schema dictionary itself.
                 If schemaId is passed, you need to provide the schemaAPI connection as well.
-            fieldGroupIds : OPTIONAL : Possible to specify a list of fieldGroup. 
+            fieldGroups : OPTIONAL : Possible to specify a list of fieldGroup. 
                 Either a list of fieldGroupIds (schemaAPI should be provided as well) or list of dictionary definition 
             schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
             schemaClass : OPTIONAL : If you want to set the class to be a specific class.
@@ -2863,7 +2920,7 @@ class SchemaManager:
                     else:
                         definition = self.schemaAPI.getFieldGroup(ref,full=True)
                         definition['definitions'] = definition['properties']
-                    self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,config=config))
+                    self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI))
         elif type(schema) == str:
             if self.schemaAPI is None:
                 Warning("No schema instance has been passed or config file imported.\n Aborting the retrieveal of the Schema Definition")
@@ -2884,7 +2941,7 @@ class SchemaManager:
                             ## if the fieldGroup is an OOTB one
                             definition = self.schemaAPI.getFieldGroup(ref,full=True)
                             definition['definitions'] = definition['properties']
-                        self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,config=config))
+                        self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI))
         elif schema is None:
             self.schema = {
                     "title": None,
@@ -2897,19 +2954,19 @@ class SchemaManager:
                     }
         if schemaClass is not None:
             self.schema['allOf'][0]['$ref'] = schemaClass
-        if fieldGroupIds is not None and type(fieldGroupIds) == list:
-            if fieldGroupIds[0] == str:
-                for fgId in fieldGroupIds:
+        if fieldGroups is not None and type(fieldGroups) == list:
+            if fieldGroups[0] == str:
+                for fgId in fieldGroups:
                     self.fieldGroupIds.append(fgId)
                     if self.schemaAPI is None:
                         Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                     else:
                         definition = self.schemaAPI.getFieldGroup(ref)
-                        self.fieldGroupsManagers.append(FieldGroupManager(definition,config=config))
-            elif fieldGroupIds[0] == dict:
-                for fg in fieldGroupIds:
+                        self.fieldGroupsManagers.append(FieldGroupManager(definition,schemaAPI=self.schemaAPI))
+            elif fieldGroups[0] == dict:
+                for fg in fieldGroups:
                     self.fieldGroupIds.append(fg.get('$id'))
-                    self.fieldGroupsManagers.append(FieldGroupManager(fg,config=config))
+                    self.fieldGroupsManagers.append(FieldGroupManager(fg,schemaAPI=self.schemaAPI))
         self.fieldGroupTitles= tuple(fg.title for fg in self.fieldGroupsManagers)
         self.fieldGroups = {fg.id:fg.title for fg in self.fieldGroupsManagers}
     

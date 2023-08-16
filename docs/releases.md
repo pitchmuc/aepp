@@ -1,6 +1,7 @@
 # Releases information
 
 This page list all of the changes that came during the different release of the aepp module.
+
 ## Version 0.3.1
 
 * adding methods for Policy module.
@@ -9,6 +10,9 @@ This page list all of the changes that came during the different release of the 
   * `createOrupdateCustomMarketingAction`
   * `getCustomMarketingAction`
 * Fixing issue on Schema Manager when multiple sandboxes are used.
+* adding `compareDFschemas` method in schema module and `Schema` class.
+* removing & renaming parameters for `SchemaManager` methods in `Schema` class.
+* Fixing `schemaAPI` reference in `FieldGroupManager` instantiation
 
 
 ## version 0.3.0
