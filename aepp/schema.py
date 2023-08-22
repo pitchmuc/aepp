@@ -691,7 +691,7 @@ class Schema:
                         "meta:xdmType": fieldGroupIds[mixin],
                     }
                     allOf.append(subObj)
-        res = self.putSchema(schemaDef)
+        res = self.putSchema(schemaId,schemaDef)
         return res        
 
     def getClasses(self, 
