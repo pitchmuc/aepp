@@ -1,6 +1,18 @@
 # Releases information
 
 This page list all of the changes that came during the different release of the aepp module.
+## Version 0.3.2
+* adding exportDatasetToDataLandingZone module.
+  * `createDataFlowIfNotExists`
+  * `createDataFlow`
+  * `createBaseConnection`
+  * `createSourceConnection`
+  * `createSourceConnection`
+  * `createTargetConnection`
+  * `createFlow`
+  * `createFlowRun`
+  * `checkIfRetry`
+* Fixing addFieldGroupToSchema
 
 ## Version 0.3.1
 
