@@ -1,18 +1,6 @@
 # Releases information
 
 This page list all of the changes that came during the different release of the aepp module.
-## Version 0.3.2
-* adding exportDatasetToDataLandingZone module.
-  * `createDataFlowIfNotExists`
-  * `createDataFlow`
-  * `createBaseConnection`
-  * `createSourceConnection`
-  * `createSourceConnection`
-  * `createTargetConnection`
-  * `createFlow`
-  * `createFlowRun`
-  * `checkIfRetry`
-* Fixing addFieldGroupToSchema
 
 ## Version 0.3.1
 
@@ -25,6 +13,17 @@ This page list all of the changes that came during the different release of the 
 * adding `compareDFschemas` method in schema module and `Schema` class.
 * removing & renaming parameters for `SchemaManager` methods in `Schema` class.
 * Fixing `schemaAPI` reference in `FieldGroupManager` instantiation
+* adding exportDatasetToDataLandingZone module.
+  * `createDataFlowIfNotExists`
+  * `createDataFlow`
+  * `createBaseConnection`
+  * `createSourceConnection`
+  * `createSourceConnection`
+  * `createTargetConnection`
+  * `createFlow`
+  * `createFlowRun`
+  * `checkIfRetry`
+* Fixing addFieldGroupToSchema
 
 
 ## version 0.3.0
