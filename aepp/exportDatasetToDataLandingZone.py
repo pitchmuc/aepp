@@ -129,7 +129,7 @@ class ExportDatasetToDataLandingZone:
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
 
-    def createDataFlowIfNotExists(
+    def createDataFlowRunIfNotExists(
             self,
             dataset_id: str,
             compression_type: str,
@@ -138,7 +138,7 @@ class ExportDatasetToDataLandingZone:
             on_schedule: bool,
             config_path: str,
             entity_name: str,
-            initial_delay: int = 600):
+            initial_delay: int = 600) -> str:
         """
         Create a data flow if not being saved in config file
         Arguments:
@@ -152,6 +152,8 @@ class ExportDatasetToDataLandingZone:
           export_path : REQUIRED : define the folder path in your dlz container
           on_schedule: REQUIRED: define whether you would like to have the export following a fixed schedule or not
           config_path: REQUIRED: define the path of your aepp config file
+        Returns:
+            dataflow_id(str)
         """
         dataflow_id = Utils.check_if_exists("Platform", "dataflow_id", config_path)
         if dataflow_id is not None:
@@ -168,8 +170,9 @@ class ExportDatasetToDataLandingZone:
                 if self.loggingEnabled:
                     self.logger.info(f"Flow {dataflow_id} with dataset {dataset_id} is enabled")
         else:
-            dataflow_id = self.createDataFlow(dataset_id, compression_type, data_format, export_path, on_schedule, config_path)
+            dataflow_id = self.createDataFlow(dataset_id, compression_type, data_format, export_path, on_schedule, config_path, entity_name)
         self.createFlowRun(dataflow_id, dataset_id, on_schedule, initial_delay)
+        return dataflow_id
 
     def createDataFlow(
             self,
@@ -220,7 +223,7 @@ class ExportDatasetToDataLandingZone:
         try:
             base_connection_id = base_connection_res["id"]
             if self.loggingEnabled:
-                self.logger.info("baseConnectionId " + base_connection_id + " has been created")
+                self.logger.info("baseConnection " + base_connection_id + " has been created")
             return base_connection_id
         except KeyError:
             raise RuntimeError(f"Error when creating base connection: {base_connection_res}")
@@ -242,7 +245,7 @@ class ExportDatasetToDataLandingZone:
         try:
             source_connection_id = source_res["id"]
             if self.loggingEnabled:
-                self.logger.info("sourceConnectionId " + source_connection_id + " has been created.")
+                self.logger.info("sourceConnection " + source_connection_id + " has been created.")
             return source_connection_id
         except KeyError:
             raise RuntimeError(f"Error when creating source connection: {source_res}")
@@ -282,7 +285,7 @@ class ExportDatasetToDataLandingZone:
         try:
             target_connection_id = target_res["id"]
             if self.loggingEnabled:
-                self.logger.info("targetconnectionId " + target_connection_id + " has been created")
+                self.logger.info("targetConnection " + target_connection_id + " has been created")
             return target_connection_id
         except KeyError:
             raise RuntimeError(f"Error when creating target connection: {target_res}")
@@ -322,7 +325,7 @@ class ExportDatasetToDataLandingZone:
         try:
             dataflow_id = flow_res["id"]
             if self.loggingEnabled:
-                self.logger.info("dataflowId " + dataflow_id + " has been created")
+                self.logger.info("dataflow " + dataflow_id + " has been created")
             return dataflow_id
         except KeyError:
             raise RuntimeError(f"Error when creating data flow: {flow_res}")
@@ -338,7 +341,7 @@ class ExportDatasetToDataLandingZone:
         if not on_schedule:
             #set up initial delay due to hollow refresh time interval
             if self.loggingEnabled:
-                self.logger.info(f"Waiting for flow {dataflow_id} to refreshed after {initial_delay} seconds")
+                self.logger.info(f"Waiting for flow {dataflow_id} to be refreshed after {initial_delay} seconds")
             time.sleep(initial_delay)
             if self.loggingEnabled:
                 self.logger.info(f"Start create adhoc dataset export for flow {dataflow_id} with dataset {dataset_id }")
