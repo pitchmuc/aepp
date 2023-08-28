@@ -117,7 +117,7 @@ class ExportDatasetToDataLandingZoneTest(unittest.TestCase):
     @patch("aepp.connector.AdobeRequest", MagicMock())
     def test_create_dataflow_if_exist(self):
         export_obj = ExportDatasetToDataLandingZone(config= self.config, header= MagicMock())
-        export_obj.createDataFlowIfNotExists(dataset_id="test", compression_type="gzip", data_format="parquet", export_path="test", on_schedule=False, config_path="test", entity_name="test", initial_delay=0)
+        export_obj.createDataFlowRunIfNotExists(dataset_id="test", compression_type="gzip", data_format="parquet", export_path="test", on_schedule=False, config_path="test", entity_name="test", initial_delay=0)
 
     @patch('aepp.utils.Utils.check_if_exists', MagicMock(return_value = "test_dataflow_id"))
     @patch('aepp.flowservice.FlowService.getFlow', MagicMock(return_value = flow_response))
@@ -125,7 +125,7 @@ class ExportDatasetToDataLandingZoneTest(unittest.TestCase):
     @patch("aepp.connector.AdobeRequest", MagicMock())
     def test_create_dataflow_on_schedule(self):
         export_obj = ExportDatasetToDataLandingZone(config= self.config, header= MagicMock())
-        export_obj.createDataFlowIfNotExists(dataset_id="test", compression_type="gzip", data_format="parquet", export_path="test", on_schedule=True, config_path="test",entity_name="test", initial_delay=0)
+        export_obj.createDataFlowRunIfNotExists(dataset_id="test", compression_type="gzip", data_format="parquet", export_path="test", on_schedule=True, config_path="test",entity_name="test", initial_delay=0)
 
     @patch('aepp.flowservice.FlowService.createConnection', MagicMock(return_value = base_connection))
     @patch('aepp.flowservice.FlowService.getConnectionSpecIdFromName', MagicMock(return_value = connection_spec))
