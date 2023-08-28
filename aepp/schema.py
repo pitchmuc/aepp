@@ -1985,15 +1985,17 @@ class Schema:
             dict_result['fieldGroups'] = {'aligned':False}
             dict_result['fieldGroups'][f'{name1}_missingFieldGroups'] = tuple(set(fieldGroups2).difference(set(fieldGroups1)))
             dict_result['fieldGroups'][f'{name2}_missingFieldGroups'] = tuple(set(fieldGroups1).difference(set(fieldGroups2)))
-        path_fg1 = tuple(sorted(df1.path.unique()))
-        path_fg2 = tuple(sorted(df2.path.unique()))
-        if path_fg1 == path_fg2:
+        path_df1 = tuple(sorted(df1.path.unique()))
+        path_df2 = tuple(sorted(df2.path.unique()))
+        if path_df1 == path_df2:
             dict_result['paths'] = {'aligned':True}
         else:
             dict_result['paths'] = {'aligned':False}
-            dict_result['paths'][f'{name1}_missing'] = tuple(set(path_fg2).difference(set(path_fg1)))
-            dict_result['paths'][f'{name2}_missing'] = tuple(set(path_fg1).difference(set(path_fg2)))
-        common_paths = tuple(set(path_fg2).intersection(set(path_fg1)))
+            list_path_missing_from_df2 = list(set(path_df2).difference(set(path_df1)))
+            list_path_missing_from_df1 = tuple(set(path_df1).difference(set(path_df2)))
+            dict_result['paths'][f'{name1}_missing'] = df2[df2["path"].isin(list_path_missing_from_df2)]
+            dict_result['paths'][f'{name2}_missing'] = df1[df1["path"].isin(list_path_missing_from_df1)]
+        common_paths = tuple(set(path_df2).intersection(set(path_df1)))
         dict_result['type_issues'] = [] 
         for path in common_paths:
             if df1[df1['path'] == path]['type'].values[0] != df2[df2['path'] == path]['type'].values[0]:
