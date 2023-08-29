@@ -3140,7 +3140,7 @@ class SchemaManager:
         for fgmanager in self.fieldGroupsManagers:
             tmp_df = fgmanager.to_dataframe(queryPath=queryPath,description=description)
             tmp_df['fieldGroup'] = fgmanager.title
-            df = df.concat(tmp_df,ignore_index=True)
+            df = pd.concat([df,tmp_df],ignore_index=True)
         if save:
             title = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}.csv')
             df.to_csv(f"{title}.csv",index=False)
