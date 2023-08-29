@@ -23,7 +23,11 @@ This page list all of the changes that came during the different release of the 
   * `createFlow`
   * `createFlowRun`
   * `checkIfRetry`
-* Fixing addFieldGroupToSchema
+* Fixing addFieldGroupToSchema\
+Patches: 
+* Changing return type of `compareDFschemas` method to dataFrame
+* Fixing `FieldGroupManager` discovery of custom data type
+* More robust `getFailedBatchDF` method
 
 
 ## version 0.3.0

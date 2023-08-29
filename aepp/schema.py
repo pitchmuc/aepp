@@ -2039,8 +2039,11 @@ class FieldGroupManager:
                 if fieldGroup.get("meta:resourceType",None) == "mixins":
                     if fieldGroup.get('definitions',None) is not None:
                         if 'mixins' in fieldGroup.get('$id'):
-                            self.EDITABLE = True
                             self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
+                            if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group 
+                                self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True)
+                            else:
+                                self.EDITABLE = True
                         else:
                             tmp_def = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True) ## handling default mixins
                             tmp_def['definitions'] = tmp_def['properties']
@@ -2051,8 +2054,11 @@ class FieldGroupManager:
                 if self.schemaAPI is None:
                     raise Exception("You try to retrieve the fieldGroup definition from the id, but no API has been passed in the schemaAPI parameter.")
                 if 'mixins' in fieldGroup:
-                    self.EDITABLE = True
                     self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
+                    if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group 
+                        self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True)
+                    else:
+                        self.EDITABLE = True
                 else: ## handling default mixins
                     tmp_def = self.schemaAPI.getFieldGroup(fieldGroup,full=True) ## handling default mixins
                     tmp_def['definitions'] = tmp_def['properties']
@@ -2645,6 +2651,8 @@ class FieldGroupManager:
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
         """
+        if self.EDITABLE == False:
+            raise Exception("The Field Group is not Editable via Field Group Manager")
         typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
         if dataType not in typeTyped:
             raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object"')
@@ -2712,6 +2720,8 @@ class FieldGroupManager:
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
         """
+        if self.EDITABLE == False:
+            raise Exception("The Field Group is not Editable via Field Group Manager")
         if path is None:
             raise ValueError("path must provided")
         typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
@@ -2769,6 +2779,8 @@ class FieldGroupManager:
         Argument:
             path : REQUIRED : The path to be removed from the definition.
         """
+        if self.EDITABLE == False:
+            raise Exception("The Field Group is not Editable via Field Group Manager")
         if path is None:
             raise ValueError('Require a path to remove it')
         pathSplit = self.__cleanPath__(path).split('.')
@@ -2827,6 +2839,8 @@ class FieldGroupManager:
         Arguments:
             operation : REQUIRED : The list of operation to realise
         """
+        if self.EDITABLE == False:
+            raise Exception("The Field Group is not Editable via Field Group Manager")
         if operations is None or type(operations) != list:
             raise ValueError('Require a list of operations')
         if self.schemaAPI is None:
@@ -2846,6 +2860,8 @@ class FieldGroupManager:
         """
         Use the PUT method to push the current field group representation to AEP via API request.
         """
+        if self.EDITABLE == False:
+            raise Exception("The Field Group is not Editable via Field Group Manager")
         if self.schemaAPI is None:
             Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.putFieldGroup(self.id,self.to_xdm())

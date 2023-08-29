@@ -247,7 +247,7 @@ class Catalog:
             self.logger.debug(f"Starting getFailedBatchesDF")
         dict_failed = {}
         for batch in res:
-            if res[batch]['relatedObjects'][0]['type'] == "dataSet":
+            if res.get(batch,{}).get('relatedObjects',[{'type':'unknown'}])[0]['type'] == "dataSet":
                 datasetId = res[batch]['relatedObjects'][0]['id']
             dict_failed[batch] = {
                 "timestamp" : res[batch]['created'],
