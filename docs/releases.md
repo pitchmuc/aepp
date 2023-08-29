@@ -28,6 +28,7 @@ Patches:
 * Changing return type of `compareDFschemas` method to dataFrame
 * Fixing `FieldGroupManager` discovery of custom data type
 * More robust `getFailedBatchDF` method
+* supporting pandas > 2.0 by replacing `append` with `concat`
 
 
 ## version 0.3.0
