@@ -28,7 +28,8 @@ Patches:
 * Changing return type of `compareDFschemas` method to dataFrame
 * Fixing `FieldGroupManager` discovery of custom data type
 * More robust `getFailedBatchDF` method
-* supporting pandas > 2.0 by replacing `append` with `concat`
+* Supporting pandas > 2.0 by replacing `append` with `concat`
+* Fixing support to `getEntity` method in `customerProfile` for experienceEvents data.
 
 
 ## version 0.3.0
