@@ -254,8 +254,9 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getSchemas")
         path = f"/{self.container}/schemas/"
-        start = kwargs.get("start", 0)
-        params = {"start": start}
+        params = {}
+        if(kwargs.get("start")):
+            params["start"] = kwargs.get("start")
         if classFilter is not None:
             params["property"] = f"meta:intendedToExtend=={classFilter}"
         if excludeAdhoc:
