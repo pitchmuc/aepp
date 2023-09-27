@@ -5,12 +5,27 @@ It will include some examples but be aware that not all methods will be document
 To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/catalog/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
-## What is the catalog capability in AEP ?
+## Menu
+- [Catalog module in aepp](#catalog-module-in-aepp)
+  - [Menu](#menu)
+  - [What is the catalog capability in AEP](#what-is-the-catalog-capability-in-aep)
+  - [Importing the module](#importing-the-module)
+  - [The Catalog class](#the-catalog-class)
+    - [Using kwargs](#using-kwargs)
+  - [Catalog use-cases](#catalog-use-cases)
+    - [1. Listing the current datasets](#listing-the-current-datasets)
+      - [The data attribute](#The-data-attribute)
+    - [2. Monitor batch ingestion](#monitor-batch-ingestion)
+    - [3. Retrieve failed batches as DataFrame](#retrieve-failed-batches-as-dataframe)
+    - [4. Create DataSet](#create-dataset)
+  - [Use Cases](#use-cases)
+
+## What is the catalog capability in AEP
 
 Catalog is the system of record for data location and lineage within Adobe Experience Platform. Catalog Service does not contain the actual files or directories that contain the data. Instead, it holds the metadata and description of those files and directories.
 
-Catalog acts as a metadata store or “catalog” where you can find information about your data within Experience Platform.\
-Simply put, Catalog acts as a metadata store or “catalog” where you can find information about your data within Experience Platform. You can use Catalog to answer the following questions:
+Catalog acts as a metadata store or "catalog" where you can find information about your data within Experience Platform.\
+Simply put, Catalog acts as a metadata store or "catalog" where you can find information about your data within Experience Platform. You can use Catalog to answer the following questions:
 
 * Where is my data located?
 * At what stage of processing is this data?
@@ -58,6 +73,7 @@ Following the previous method described above, you can realize this:
 myCat = catalog.Catalog()
 ```
 
+### Using kwargs
 2 parameters are possible for the instantiation of the class:
 
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
@@ -78,11 +94,13 @@ In order to realize that, you can `getDatasets()` method.
 This will return the list of the dataset with all information attached to them.\
 The data returned could be overwhelming if you just want to have the basic information.\
 For that reason, the realization of that method will feed 3 data attributes on your instance.\
-You can access them by using:
+You can access them by using the `data` attribute on that instance:
 
-* `data.table_names`: gives you the dataSet names & Query Service names
-* `data.schema_ref`: gives you the dataSet names & their schema reference
-* `data.ids` : gives you the dataSet name and their Ids
+### The data attribute
+
+* `catalogInstance.data.table_names`: gives you the dataSet names & Query Service names
+* `catalogInstance.data.schema_ref`: gives you the dataSet names & their schema reference
+* `catalogInstance.data.ids` : gives you the dataSet name and their Ids
 
 ```python
 myCat = catalog.Catalog()
@@ -178,3 +196,77 @@ Example of a request type (with createDataSource set to `True`):\
 ```
 
 Note that you can create dataSet for parquet or JSON format data type.
+
+## Catalog Methods
+
+### Get Methods
+
+The get methods are GET HTTP protocole.\
+
+**getResource** : Template for requesting data with a GET method.\
+It is using the Header of the `Catalog` instance in order to acces some resource / URL.\
+Arguments:
+  * endpoint : REQUIRED : The URL to GET
+  * params: OPTIONAL : dictionary of the params to fetch
+  * format : OPTIONAL : Type of response returned. Possible values:\
+        json : default\
+        txt : text file\
+        raw : a response object from the requests module
+
+**getLastBatches** : Returns the last batch from a specific datasetId.\
+Arguments:
+  * dataSetId : OPTIONAL : the datasetId to be retrieved the batch about
+
+**getBatches** : Retrieve a list of batches.\
+Arguments:
+  * limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
+  * n_results : OPTIONAL :  number of result you want to get in total. (will loop)
+  * output : OPTIONAL : Can be "raw" response (dict) or "dataframe".
+  Possible kwargs:
+  * created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
+  * createdAfter : Exclusively filter records created after this timestamp. 
+  * createdBefore : Exclusively filter records created before this timestamp.
+  * start : Returns results from a specific offset of objects. This was previously called offset. (see next line)
+  *  offset : Will offset to the next limit (sort of pagination)        
+  * updated : Filter by the Unix timestamp (in milliseconds) for the time of last modification.
+  * createdUser : Filter by the ID of the user who created this object.
+  * dataSet : Used to filter on the related object: &dataSet=dataSetId.
+  * version : Filter by Semantic version of the account. Updated when the object is modified.
+  * status : Filter by the current (mutable) status of the batch.
+  * orderBy : Sort parameter and direction for sorting the response. 
+        Ex. orderBy=asc:created,updated. This was previously called sort.
+  * properties : A comma separated whitelist of top-level object properties to be returned in the response.\
+    Used to cut down the number of properties and amount of data returned in the response bodies.
+  * size : The number of bytes processed in the batch.
+
+**getFailedBatchesDF** :  Abstraction of getBatches method that focus on failed batches and return a dataframe with the batchId and errors.\
+Also adding some meta data information from the batch information provided.\
+Arguments:
+  * limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
+  * n_results : OPTIONAL :  number of result you want to get in total. (will loop)
+  * orderBy : OPTIONAL : The order of the batch. Default "desc:created"\
+    Possible kwargs: Any additional parameter for filtering the requests
+
+
+
+### Create Methods
+
+The create methods are POST HTTP protocole.\
+
+
+## Other methods
+
+The other methods can be PUT, PATCH or wrapping methods.
+
+**decodeStreamBatch** : Decode the full txt batch via the codecs module.\
+Usually the full batch is returned by the getResource method with format == "txt".\
+Arguments:
+  * message: REQUIRED : the text file return from the failed batch message.
+  
+return `None` when issue is raised
+
+**jsonStreamMessages** : Try to create a list of dictionary messages from the decoded stream batch extracted from the decodeStreamBatch method.\  Arguments:
+  * message : REQUIRED : a decoded text file, usually returned from the decodeStreamBatch method
+  * verbose : OPTIONAL : print errors and information on the decoding.
+        
+return `None` when issue is raised

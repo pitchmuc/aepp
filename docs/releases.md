@@ -30,7 +30,10 @@ Patches:
 * More robust `getFailedBatchDF` method
 * Supporting pandas > 2.0 by replacing `append` with `concat`
 * Fixing support to `getEntity` method in `customerProfile` for experienceEvents data.
-
+* Fixing `start` parameter that is not supported for `getSchemas` anymore.
+* default the getSchemas to not get the adhoc schema.
+* Fixing the FieldGroupManager intantiation.
+* adding documentation on the Catalog
 
 ## version 0.3.0
 

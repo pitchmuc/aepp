@@ -170,7 +170,6 @@ class Catalog:
         Returns the last batch from a specific datasetId.
         Arguments:
             dataSetId : OPTIONAL : the datasetId to be retrieved the batch about
-
         """
         path = "/lastBatches"
         params = {}

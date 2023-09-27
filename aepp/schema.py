@@ -233,7 +233,7 @@ class Schema:
     def getSchemas(
             self, 
             classFilter: str = None,
-            excludeAdhoc: bool = False,
+            excludeAdhoc: bool = True,
             output: str = 'raw',
             **kwargs
     ) -> list:
@@ -254,8 +254,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getSchemas")
         path = f"/{self.container}/schemas/"
-        start = kwargs.get("start", 0)
-        params = {"start": start}
+        params = {}
         if classFilter is not None:
             params["property"] = f"meta:intendedToExtend=={classFilter}"
         if excludeAdhoc:
@@ -1930,8 +1929,7 @@ class Schema:
              fieldGroup : OPTIONAL : the field group definition as dictionary OR the ID to access it OR nothing if you want to start from scratch
              title : OPTIONAL : If you wish to change the tile of the field group.
          """
-         tenantId = self.getTenantId()
-         return FieldGroupManager(tenantId=tenantId,fieldGroup=fieldGroup,title=title,fg_class=fg_class,schemaAPI=self)
+         return FieldGroupManager(fieldGroup=fieldGroup,title=title,fg_class=fg_class,schemaAPI=self)
     
     def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None) -> 'FieldGroupManager':
          """
@@ -2041,7 +2039,7 @@ class FieldGroupManager:
                         if 'mixins' in fieldGroup.get('$id'):
                             self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
                             if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group 
-                                self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True)
+                                self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
                             else:
                                 self.EDITABLE = True
                         else:
@@ -2056,7 +2054,7 @@ class FieldGroupManager:
                 if 'mixins' in fieldGroup:
                     self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
                     if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group 
-                        self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True)
+                        self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
                     else:
                         self.EDITABLE = True
                 else: ## handling default mixins
