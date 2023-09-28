@@ -16,6 +16,7 @@ import pandas as pd
 import logging
 from typing import Union
 from .configs import ConnectObject
+from urllib import parse
 
 
 class Profile:
@@ -95,6 +96,7 @@ class Profile:
         entityId: str = None,
         entityIdNS: str = None,
         mergePoliciyId: str = None,
+        n_events : int = 1000,
         **kwargs,
     ) -> dict:
         """
@@ -104,6 +106,7 @@ class Profile:
             entityId : OPTIONAL : identity ID
             entityIdNS : OPTIONAL : Identity Namespace code. Required if entityId is used (except for native identity)
             mergePoliciyId : OPTIONAL : Id of the merge policy.
+            n_events : OPTIONAL : Maximum number of event returned
         Possible kwargs:
             fields : path of the elements to be retrieved, separated by comma. Ex : "person.name.firstName,person.name.lastName"
             relatedSchema_name : If schema.name is "_xdm.context.experienceevent", this value must specify the schema for the profile entity that the time series events are related to.
@@ -128,14 +131,35 @@ class Profile:
                 "relatedSchema_name", "_xdm.context.profile"
             )
             params["relatedEntityId"] = kwargs.get("relatedEntityId", entityId)
-            params["relatedEntityIdNS"] = kwargs.get("relatedEntityIdNS", None)
+            params["relatedEntityIdNS"] = kwargs.get("relatedEntityIdNS", entityIdNS)
             params["limit"] = kwargs.get("limit", 1000)
             params["startTime"] = kwargs.get("startTime", None)
             params["endTime"] = kwargs.get("endTime", None)
+            del params["entityId"]
+            del params["entityIdNS"]
         params["fields"] = kwargs.get("fields", None)
         res = self.connector.getData(
             self.endpoint + path, params=params, headers=self.header
         )
+        if schema_name == "_xdm.context.experienceevent":
+            children = res.get('children',[])
+            nextPage = res.get('_links',{}).get('next',{}).get('href','')
+            if len(children)>= n_events:
+                nextPage = ""
+            while nextPage != "":
+                parsedNext = parse.urlparse(nextPage)
+                queries = parse.parse_qs(parsedNext.query)
+                offsets = queries.get('offsets',[''])[0]
+                params['offsets'] = offsets
+                res = self.connector.getData(
+                    self.endpoint + path, params=params, headers=self.header
+                )
+                children += res.get('children',[])
+                nextPage = res.get('_links',{}).get('next',{}).get('href','')
+                if len(children)>= n_events:
+                    nextPage = ""
+            return children
+                
         return res
 
     def getEntities(self, request_data: dict = None) -> dict:

@@ -233,7 +233,7 @@ class Schema:
     def getSchemas(
             self, 
             classFilter: str = None,
-            excludeAdhoc: bool = False,
+            excludeAdhoc: bool = True,
             output: str = 'raw',
             **kwargs
     ) -> list:
@@ -254,8 +254,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getSchemas")
         path = f"/{self.container}/schemas/"
-        start = kwargs.get("start", 0)
-        params = {"start": start}
+        params = {}
         if classFilter is not None:
             params["property"] = f"meta:intendedToExtend=={classFilter}"
         if excludeAdhoc:
@@ -691,7 +690,7 @@ class Schema:
                         "meta:xdmType": fieldGroupIds[mixin],
                     }
                     allOf.append(subObj)
-        res = self.putSchema(schemaDef)
+        res = self.putSchema(schemaId,schemaDef)
         return res        
 
     def getClasses(self, 
@@ -961,8 +960,8 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getFieldGroups")
         path = f"/{self.container}/fieldgroups/"
-        start = kwargs.get("start", 0)
-        params = {"start": start}
+        page = kwargs.get("page", 0)
+        params = {"page": page}
         verbose = kwargs.get("debug", False)
         privateHeader = deepcopy(self.header)
         privateHeader["Accept"] = f"application/vnd.adobe.{format}+json"
@@ -1870,7 +1869,7 @@ class Schema:
         res: list = self.connector.postData(self.endpoint + path, data=dataResource)
         return res
 
-    def extendFieldGroup(self,fieldGroupId:str=None,values:list=None)->dict:
+    def extendFieldGroup(self,fieldGroupId:str=None,values:list=None,tenant:str='tenant')->dict:
         """
         Patch a Field Group to extend its compatibility with ExperienceEvents, IndividualProfile and Record.
         Arguments:
@@ -1880,19 +1879,23 @@ class Schema:
                       "https://ns.adobe.com/xdm/context/experienceevent",
                     ]
                 by default profile and experienceEvent will be added to the FieldGroup.
+            tenant : OPTIONAL : default "tenant", possible value 'global'
         """
         if fieldGroupId is None:
             raise Exception("Require a field Group ID")
         if self.loggingEnabled:
             self.logger.debug(f"Starting extendFieldGroup")
-        path = f"/{self.container}/fieldgroups/{fieldGroupId}"
+        path = f"/{tenant}/fieldgroups/{fieldGroupId}"
+        if values is not None:
+            list_fgs = values
+        else:
+            list_fgs = ["https://ns.adobe.com/xdm/context/profile",
+                      "https://ns.adobe.com/xdm/context/experienceevent"]
         operation = [
            { 
             "op": "replace",
             "path": "/meta:intendedToExtend",
-            "value": ["https://ns.adobe.com/xdm/context/profile",
-                      "https://ns.adobe.com/xdm/context/experienceevent",
-                    ]
+            "value": list_fgs
             }
         ]
         res = self.connector.patchData(self.endpoint + path,data=operation)
@@ -1926,10 +1929,9 @@ class Schema:
              fieldGroup : OPTIONAL : the field group definition as dictionary OR the ID to access it OR nothing if you want to start from scratch
              title : OPTIONAL : If you wish to change the tile of the field group.
          """
-         tenantId = self.getTenantId()
-         return FieldGroupManager(tenantId=tenantId,fieldGroup=fieldGroup,title=title,fg_class=fg_class,schemaAPI=self)
+         return FieldGroupManager(fieldGroup=fieldGroup,title=title,fg_class=fg_class,schemaAPI=self)
     
-    def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None,fgManager:bool=False) -> 'FieldGroupManager':
+    def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None) -> 'FieldGroupManager':
          """
          Generate a Schema Manager instance using the information provided by the schema instance.
          Arguments:
@@ -1937,7 +1939,66 @@ class Schema:
             fieldGroups : OPTIONAL : If you wish to add a list of fieldgroups.
             fgManager : OPTIONAL : If you wish to handle the different field group passed into a Field Group Manager instance and have additional methods available.
          """
-         return SchemaManager(schema=schema,fieldGroups=fieldGroups,schemaAPI=self,fgManager=fgManager)
+         return SchemaManager(schema=schema,fieldGroups=fieldGroups,schemaAPI=self)
+
+    def compareDFschemas(self,df1,df2,**kwargs)->dict:
+        """
+        Compare 2 schema dataframe returned by the SchemaManager `to_dataframe` method.
+        Arguments:
+            df1 : REQUIRED : the first schema dataframe to compare
+            df2 : REQUIRED : the second schema dataframe to compare
+        possible keywords:
+            title1 : title of the schema used in the dataframe 1 (default df1)
+            title2 : title of the schema used in the dataframe 2 (default df2)
+        The title1 and title2 will be used instead of df1 or df2 in the results keys presented below.
+
+        Results: 
+            Results are stored in a dictionary with these keys:
+            - df1 (or title1) : copy of the dataframe 1 passed
+            - df2 (or title2) : copy of the dataframe 2 passed
+            - fielgroups: dictionary containing
+                - aligned : boolean to define if the schema dataframes contain the same field groups
+                - df1_missingFieldGroups : tuple of field groups missing on df1 compare to df2
+                - df2_missingFieldGroups : tuple of field groups missing on df2 compare to df1
+            - paths: dictionary containing
+                - aligned : boolean to define if the schema dataframes contain the same fields.
+                - df1_missing : tuple of the paths missing in df1 compare to df2
+                - df2_missing : tuple of the paths missing in df2 compare to df1
+            - type_issues: list of all the paths that are not of the same type in both schemas.
+        """
+        if type(df1) != pd.DataFrame or type(df2) != pd.DataFrame:
+            raise TypeError('Require dataframes to be passed')
+        if 'path' not in df1.columns or 'type' not in df1.columns or 'fieldGroup' not in df1.columns:
+            raise AttributeError('Your data frame 1 is incomplete, it does not contain one of the following columns : path, type, fieldGroup')
+        if 'path' not in df2.columns or 'type' not in df2.columns or 'fieldGroup' not in df2.columns:
+            raise AttributeError('Your data frame 2 is incomplete, it does not contain one of the following columns : path, type, fieldGroup')
+        name1 = kwargs.get('title1','df1')
+        name2 = kwargs.get('title2','df2')
+        dict_result = {f'{name1}':df1.copy(),f'{name2}':df2.copy()}
+        fieldGroups1 = tuple(sorted(df1.fieldGroup.unique()))
+        fieldGroups2 = tuple(sorted(df2.fieldGroup.unique()))
+        if fieldGroups1 == fieldGroups2:
+            dict_result['fieldGroups'] = {'aligned':True}
+        else:
+            dict_result['fieldGroups'] = {'aligned':False}
+            dict_result['fieldGroups'][f'{name1}_missingFieldGroups'] = tuple(set(fieldGroups2).difference(set(fieldGroups1)))
+            dict_result['fieldGroups'][f'{name2}_missingFieldGroups'] = tuple(set(fieldGroups1).difference(set(fieldGroups2)))
+        path_df1 = tuple(sorted(df1.path.unique()))
+        path_df2 = tuple(sorted(df2.path.unique()))
+        if path_df1 == path_df2:
+            dict_result['paths'] = {'aligned':True}
+        else:
+            dict_result['paths'] = {'aligned':False}
+            list_path_missing_from_df2 = list(set(path_df2).difference(set(path_df1)))
+            list_path_missing_from_df1 = tuple(set(path_df1).difference(set(path_df2)))
+            dict_result['paths'][f'{name1}_missing'] = df2[df2["path"].isin(list_path_missing_from_df2)]
+            dict_result['paths'][f'{name2}_missing'] = df1[df1["path"].isin(list_path_missing_from_df1)]
+        common_paths = tuple(set(path_df2).intersection(set(path_df1)))
+        dict_result['type_issues'] = [] 
+        for path in common_paths:
+            if df1[df1['path'] == path]['type'].values[0] != df2[df2['path'] == path]['type'].values[0]:
+                dict_result['type_issues'].append(path)
+        return dict_result
 
 
 
@@ -1966,7 +2027,7 @@ class FieldGroupManager:
         """
         self.EDITABLE = False
         self.fieldGroup = {}
-        if schemaAPI is not None and type(schemaAPI) == 'Schema':
+        if schemaAPI is not None and type(schemaAPI) == Schema:
             self.schemaAPI = schemaAPI
         else:
             self.schemaAPI = Schema(config=config)
@@ -1976,8 +2037,11 @@ class FieldGroupManager:
                 if fieldGroup.get("meta:resourceType",None) == "mixins":
                     if fieldGroup.get('definitions',None) is not None:
                         if 'mixins' in fieldGroup.get('$id'):
-                            self.EDITABLE = True
                             self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
+                            if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group 
+                                self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
+                            else:
+                                self.EDITABLE = True
                         else:
                             tmp_def = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True) ## handling default mixins
                             tmp_def['definitions'] = tmp_def['properties']
@@ -1988,8 +2052,11 @@ class FieldGroupManager:
                 if self.schemaAPI is None:
                     raise Exception("You try to retrieve the fieldGroup definition from the id, but no API has been passed in the schemaAPI parameter.")
                 if 'mixins' in fieldGroup:
-                    self.EDITABLE = True
                     self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
+                    if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group 
+                        self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
+                    else:
+                        self.EDITABLE = True
                 else: ## handling default mixins
                     tmp_def = self.schemaAPI.getFieldGroup(fieldGroup,full=True) ## handling default mixins
                     tmp_def['definitions'] = tmp_def['properties']
@@ -2564,7 +2631,7 @@ class FieldGroupManager:
         return list(result_combi)
 
         
-    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,**kwargs)->None:
+    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,**kwargs)->None:
         """
         Return the operation to be used on the field group with the Patch method (patchFieldGroup), based on the element passed in argument.
         Arguments:
@@ -2578,9 +2645,12 @@ class FieldGroupManager:
                 Example : {'field1':'string','field2':'double'}
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
+            enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
         """
+        if self.EDITABLE == False:
+            raise Exception("The Field Group is not Editable via Field Group Manager")
         typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
         if dataType not in typeTyped:
             raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object"')
@@ -2621,14 +2691,16 @@ class FieldGroupManager:
         operation[0]['value']['title'] = title
         if enumValues is not None and type(enumValues) == dict:
             if array == False:
-                operation[0]['value']['enum'] = [enumValues.keys()]
                 operation[0]['value']['meta:enum'] = enumValues
+                if enumType:
+                    operation[0]['value']['enum'] = list(enumValues.keys())
             else:
-                operation[0]['value']['items']['enum'] = [enumValues.keys()]
                 operation[0]['value']['items']['meta:enum'] = enumValues
+                if enumType:
+                    operation[0]['value']['items']['enum'] = list(enumValues.keys())
         return operation
 
-    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,**kwargs)->dict:
+    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,**kwargs)->dict:
         """
         Add the field to the existing fieldgroup definition.
         Returns False when the field could not be inserted.
@@ -2642,9 +2714,12 @@ class FieldGroupManager:
                 Example : {'field1:'string','field2':'double'}
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
+            enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
         """
+        if self.EDITABLE == False:
+            raise Exception("The Field Group is not Editable via Field Group Manager")
         if path is None:
             raise ValueError("path must provided")
         typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
@@ -2680,11 +2755,13 @@ class FieldGroupManager:
                 obj['items'] = self.__transformFieldType__(dataType)
         if enumValues is not None and type(enumValues) == dict:
             if array == False:
-                obj['enum'] = [enumValues.keys()]
                 obj['meta:enum'] = enumValues
+                if enumType:
+                    obj['enum'] = list(enumValues.keys())
             else:
-                obj['items']['enum'] = [enumValues.keys()]
                 obj['items']['meta:enum'] = enumValues
+                if enumType:
+                    obj['items']['enum'] = list(enumValues.keys())
         completePath:list[str] = [kwargs.get('defaultPath','property')] + pathSplit
         customFields,foundFlag = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
         if foundFlag == False:
@@ -2700,6 +2777,8 @@ class FieldGroupManager:
         Argument:
             path : REQUIRED : The path to be removed from the definition.
         """
+        if self.EDITABLE == False:
+            raise Exception("The Field Group is not Editable via Field Group Manager")
         if path is None:
             raise ValueError('Require a path to remove it')
         pathSplit = self.__cleanPath__(path).split('.')
@@ -2758,6 +2837,8 @@ class FieldGroupManager:
         Arguments:
             operation : REQUIRED : The list of operation to realise
         """
+        if self.EDITABLE == False:
+            raise Exception("The Field Group is not Editable via Field Group Manager")
         if operations is None or type(operations) != list:
             raise ValueError('Require a list of operations')
         if self.schemaAPI is None:
@@ -2777,6 +2858,8 @@ class FieldGroupManager:
         """
         Use the PUT method to push the current field group representation to AEP via API request.
         """
+        if self.EDITABLE == False:
+            raise Exception("The Field Group is not Editable via Field Group Manager")
         if self.schemaAPI is None:
             Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.putFieldGroup(self.id,self.to_xdm())
@@ -2815,7 +2898,7 @@ class SchemaManager:
     DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"]
 
     def __init__(self,schema:Union[str,dict],
-                fieldGroupIds:list=None,
+                fieldGroups:list=None,
                 schemaAPI:'Schema'=None,
                 schemaClass:str=None,
                 config: Union[dict,ConnectObject] = aepp.config.config_object,
@@ -2825,7 +2908,7 @@ class SchemaManager:
         Arguments:
             schemaId : OPTIONAL : Either a schemaId ($id or altId) or the schema dictionary itself.
                 If schemaId is passed, you need to provide the schemaAPI connection as well.
-            fieldGroupIds : OPTIONAL : Possible to specify a list of fieldGroup. 
+            fieldGroups : OPTIONAL : Possible to specify a list of fieldGroup. 
                 Either a list of fieldGroupIds (schemaAPI should be provided as well) or list of dictionary definition 
             schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
             schemaClass : OPTIONAL : If you want to set the class to be a specific class.
@@ -2859,7 +2942,7 @@ class SchemaManager:
                     else:
                         definition = self.schemaAPI.getFieldGroup(ref,full=True)
                         definition['definitions'] = definition['properties']
-                    self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition))
+                    self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI))
         elif type(schema) == str:
             if self.schemaAPI is None:
                 Warning("No schema instance has been passed or config file imported.\n Aborting the retrieveal of the Schema Definition")
@@ -2867,17 +2950,20 @@ class SchemaManager:
                 self.schema = self.schemaAPI.getSchema(schema,full=False)
                 self.__setAttributes__(self.schema)
                 allOf = self.schema.get("allOf",[])
-                self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and obj['$ref'] != self.classId]
+                self.fieldGroupIds = [obj.get('$ref','') for obj in allOf if ('/mixins/' in obj.get('$ref','') or '/experience/' in obj.get('$ref','') or '/context/' in obj.get('$ref','')) and obj.get('$ref','') != self.classId]
                 if self.schemaAPI is None:
                     Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                 else:
                     for ref in self.fieldGroupIds:
                         if '/mixins/' in ref:
                             definition = self.schemaAPI.getFieldGroup(ref,full=False)
+                        elif ref == '':
+                            pass
                         else:
+                            ## if the fieldGroup is an OOTB one
                             definition = self.schemaAPI.getFieldGroup(ref,full=True)
                             definition['definitions'] = definition['properties']
-                        self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition))
+                        self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI))
         elif schema is None:
             self.schema = {
                     "title": None,
@@ -2890,19 +2976,19 @@ class SchemaManager:
                     }
         if schemaClass is not None:
             self.schema['allOf'][0]['$ref'] = schemaClass
-        if fieldGroupIds is not None and type(fieldGroupIds) == list:
-            if fieldGroupIds[0] == str:
-                for fgId in fieldGroupIds:
+        if fieldGroups is not None and type(fieldGroups) == list:
+            if fieldGroups[0] == str:
+                for fgId in fieldGroups:
                     self.fieldGroupIds.append(fgId)
                     if self.schemaAPI is None:
                         Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                     else:
                         definition = self.schemaAPI.getFieldGroup(ref)
-                        self.fieldGroupsManagers.append(FieldGroupManager(definition))
-            elif fieldGroupIds[0] == dict:
-                for fg in fieldGroupIds:
+                        self.fieldGroupsManagers.append(FieldGroupManager(definition,schemaAPI=self.schemaAPI))
+            elif fieldGroups[0] == dict:
+                for fg in fieldGroups:
                     self.fieldGroupIds.append(fg.get('$id'))
-                    self.fieldGroupsManagers.append(FieldGroupManager(fg))
+                    self.fieldGroupsManagers.append(FieldGroupManager(fg,schemaAPI=self.schemaAPI))
         self.fieldGroupTitles= tuple(fg.title for fg in self.fieldGroupsManagers)
         self.fieldGroups = {fg.id:fg.title for fg in self.fieldGroupsManagers}
     
@@ -3052,7 +3138,7 @@ class SchemaManager:
         for fgmanager in self.fieldGroupsManagers:
             tmp_df = fgmanager.to_dataframe(queryPath=queryPath,description=description)
             tmp_df['fieldGroup'] = fgmanager.title
-            df = df.append(tmp_df,ignore_index=True)
+            df = pd.concat([df,tmp_df],ignore_index=True)
         if save:
             title = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}.csv')
             df.to_csv(f"{title}.csv",index=False)

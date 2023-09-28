@@ -348,7 +348,7 @@ class Segmentation:
             res = self.connector.getData(
                 self.endpoint + path, params=params, headers=self.header
             )
-            data += res["records"]
+            data += res.get("records",[])
             nextPage = res.get("link", {}).get("next", "")
             if nextPage == "":
                 lastPage = True

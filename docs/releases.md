@@ -2,6 +2,39 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## Version 0.3.1
+
+* adding methods for Policy module.
+  * `evaluateMarketingActionUsageLabel`
+  * `evaluateMarketingActionDataset`
+  * `createOrupdateCustomMarketingAction`
+  * `getCustomMarketingAction`
+* Fixing issue on Schema Manager when multiple sandboxes are used.
+* adding `compareDFschemas` method in schema module and `Schema` class.
+* removing & renaming parameters for `SchemaManager` methods in `Schema` class.
+* Fixing `schemaAPI` reference in `FieldGroupManager` instantiation
+* adding exportDatasetToDataLandingZone module.
+  * `createDataFlowIfNotExists`
+  * `createDataFlow`
+  * `createBaseConnection`
+  * `createSourceConnection`
+  * `createSourceConnection`
+  * `createTargetConnection`
+  * `createFlow`
+  * `createFlowRun`
+  * `checkIfRetry`
+* Fixing addFieldGroupToSchema\
+Patches: 
+* Changing return type of `compareDFschemas` method to dataFrame
+* Fixing `FieldGroupManager` discovery of custom data type
+* More robust `getFailedBatchDF` method
+* Supporting pandas > 2.0 by replacing `append` with `concat`
+* Fixing support to `getEntity` method in `customerProfile` for experienceEvents data.
+* Fixing `start` parameter that is not supported for `getSchemas` anymore.
+* default the getSchemas to not get the adhoc schema.
+* Fixing the FieldGroupManager intantiation.
+* adding documentation on the Catalog
+
 ## version 0.3.0
 
 * Supporting Oauth V2 token for authentication in the config file and configure methods.See [getting-started](./getting-started.md).

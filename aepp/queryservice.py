@@ -234,19 +234,18 @@ class QueryService:
         res:dict = self.connector.getData(self.endpoint + path, params=arguments)
         data:list = res.get("queries",[])
         nextPage = res.get("_links",{}).get("next", {}).get("href", "")
-        while nextPage != "":
-            hrefParams = nextPage.split("?")[1]
-            orderBy = re.search("orderby=(.+?)(&|$)", hrefParams)
-            start = re.search("start=(.+?)(&|$)", hrefParams)
-            arguments["start"] = start.group(1)
-            arguments["orderby"] = orderBy.group(1)
-            res = self.connector.getData(self.endpoint + path, params=arguments)
-            data += res.get("queries", [])
-            nextPage = res.get("_links", {}).get("next", {}).get("href", "")
-            if n_results < float(
-                len(data)
-            ):  ## forcing exit when reaching number of results asked
-                nextPage = ""
+        if float(n_results) > float(len(data)):
+            while nextPage != "" :
+                hrefParams = nextPage.split("?")[1]
+                orderBy = re.search("orderby=(.+?)(&|$)", hrefParams)
+                start = re.search("start=(.+?)(&|$)", hrefParams)
+                arguments["start"] = start.group(1)
+                arguments["orderby"] = orderBy.group(1)
+                res = self.connector.getData(self.endpoint + path, params=arguments)
+                data += res.get("queries", [])
+                nextPage = res.get("_links", {}).get("next", {}).get("href", "")
+                if float(n_results) <= float(len(data)):  ## forcing exit when reaching number of results asked
+                    nextPage = ""
         return data
 
     def postQueries(
