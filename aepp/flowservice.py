@@ -394,8 +394,8 @@ class FlowService:
         filterMappingSetIds: list = None,
         filterSourceIds: list = None,
         filterTargetIds: list = None,
-        onlyDestination: bool = False,
-        onlySource:bool = False,
+        onlyDestinations: bool = False,
+        onlySources:bool = False,
         **kwargs,
     ) -> list:
         """
@@ -409,6 +409,8 @@ class FlowService:
             filterMappingSetId : OPTIONAL : returns only the flow that possess the mappingSetId passed in a list.
             filterSourceIds : OPTIONAL : returns only the flow that possess the sourceConnectionIds passed in a list.
             filterTargetIds : OPTIONAL : returns only the flow that possess the targetConnectionIds passed in a list.
+            onlyDestinations : OPTIONAL : Filter to only destinations flows (max 100)
+            onlySources : OPTIONAL : Filter to only source flows (max 100)
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getFlows")
@@ -418,9 +420,9 @@ class FlowService:
         if kwargs.get("continuationToken", False) != False:
             params["continuationToken"] = kwargs.get("continuationToken")
         path: str = "/flows"
-        if onlyDestination:
+        if onlyDestinations:
             params['property'] = "inheritedAttributes.properties.isDestinationFlow==true"
-        elif onlySource:
+        if onlySources:
             params['property'] = "inheritedAttributes.properties.isSourceFlow==true"
         res: dict = self.connector.getData(self.endpoint + path, params=params)
         token: str = res.get("_links", {}).get("next", {}).get("href", "")

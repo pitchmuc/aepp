@@ -415,9 +415,9 @@ class Catalog:
                 "tags" : {}
             }
             if profileEnabled:
-                data['tags']["unifiedProfile"] = ["enabled: true"]
+                data['tags']["unifiedProfile"] = ["enabled:true"]
             if identityEnabled:
-                data['tags']["unifiedIdentity"] = ["enabled: true"]
+                data['tags']["unifiedIdentity"] = ["enabled:true"]
             if upsert:
                 data['tags']['unifiedProfile'] = ["enabled: true","isUpsert: true"]
             if tags is not None and type(tags) == dict:
