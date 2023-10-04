@@ -388,12 +388,14 @@ class FlowService:
 
     def getFlows(
         self,
-        limit: int = 10,
+        limit: int = 100,
         n_results: int = 100,
         prop: str = None,
         filterMappingSetIds: list = None,
         filterSourceIds: list = None,
         filterTargetIds: list = None,
+        onlyDestination: bool = False,
+        onlySource:bool = False,
         **kwargs,
     ) -> list:
         """
@@ -416,9 +418,13 @@ class FlowService:
         if kwargs.get("continuationToken", False) != False:
             params["continuationToken"] = kwargs.get("continuationToken")
         path: str = "/flows"
+        if onlyDestination:
+            params['property'] = "inheritedAttributes.properties.isDestinationFlow==true"
+        elif onlySource:
+            params['property'] = "inheritedAttributes.properties.isSourceFlow==true"
         res: dict = self.connector.getData(self.endpoint + path, params=params)
         token: str = res.get("_links", {}).get("next", {}).get("href", "")
-        items = res["items"]
+        items = res.get("items",[])
         while token != "" and len(items) < float(n_results):
             continuationToken = token.split("=")[1]
             params["continuationToken"] = continuationToken
