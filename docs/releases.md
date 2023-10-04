@@ -34,6 +34,7 @@ Patches:
 * default the getSchemas to not get the adhoc schema.
 * Fixing the FieldGroupManager intantiation.
 * adding documentation on the Catalog
+* adding 
 
 ## version 0.3.0
 
