@@ -168,12 +168,11 @@ class Segmentation:
         path = "/segment/definitions"
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         if "segments" in res.keys():
-            data = res["segments"]
+            data = res.get("segments",[])
         else:
             data = []
-        total_pages = res["page"]["totalPages"]
+        total_pages = res.get("page",{}).get("totalPages",0)
         if total_pages > 1:
-            nb_request = total_pages
             max_workers = min((total_pages, 5))
             list_parameters = [
                 {"page": str(x), **params} for x in range(1, total_pages + 1)
@@ -187,7 +186,7 @@ class Segmentation:
                 )
             res = list(res)
             append_data = [
-                val for sublist in [data["segments"] for data in res] for val in sublist
+                val for sublist in [data.get("segments",[]) for data in res] for val in sublist
             ]  # flatten list of list
             data = data + append_data
         return data

@@ -1,0 +1,8 @@
+{
+    "org_id": "<orgID>",
+    "client_id": "<client_id>",
+    "secret": "<YourSecret>",
+    "sandbox-name": "prod",
+    "environment": "prod",
+    "scopes": "<scopes>"
+}
