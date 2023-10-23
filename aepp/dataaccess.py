@@ -15,6 +15,7 @@ import time
 import io
 from typing import Union
 from .configs import ConnectObject
+import json
 
 class DataAccess:
     """
@@ -82,6 +83,12 @@ class DataAccess:
         self.endpoint = (
             aepp.config.endpoints["global"] + aepp.config.endpoints["dataaccess"]
         )
+
+    def __str__(self):
+        return json.dumps({'class':'DataAccess','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'DataAccess','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
 
     def getBatchFiles(
         self, batchId: str = None, verbose: bool = False, **kwargs

@@ -17,7 +17,7 @@ import logging
 from typing import Union
 from copy import deepcopy
 from .configs import ConnectObject
-
+import json
 
 class Segmentation:
     """
@@ -130,6 +130,12 @@ class Segmentation:
             "state": "inactive",
         }
 
+    def __str__(self):
+        return json.dumps({'class':'Segmentation','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'Segmentation','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+
     def getResource(self,endpoint:str=None, params:dict=None, **kwargs)->dict:
         """
         Abstract GET requests with header from the the connection.
@@ -150,7 +156,6 @@ class Segmentation:
                 myPrivateHeader[key] = kwargs[key]
         res = self.connector.getData(endpoint, headers=myPrivateHeader,params=parameters)
         return res
-
 
     def getSegments(self, onlyRealTime: bool = False, **kwargs) -> list:
         """

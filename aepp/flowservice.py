@@ -103,6 +103,12 @@ class FlowService:
         self.endpoint_gloal = aepp.config.endpoints["global"]
         self.data = _Data()
 
+    def __str__(self):
+        return json.dumps({'class':'FlowService','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'FlowService','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+
     def getResource(
         self,
         endpoint: str = None,

@@ -13,6 +13,7 @@ from aepp import connector
 import logging
 from typing import Union
 from .configs import ConnectObject
+import json
 
 
 class Sandboxes:
@@ -82,6 +83,12 @@ class Sandboxes:
         self.endpoint = (
             aepp.config.endpoints["global"] + aepp.config.endpoints["sandboxes"]
         )
+
+    def __str__(self):
+        return json.dumps({'class':'Sandboxes','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'Sandboxes','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
 
     def getSandboxes(self) -> list:
         """

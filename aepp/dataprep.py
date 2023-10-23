@@ -10,12 +10,11 @@
 
 import aepp
 from aepp import connector
-from copy import deepcopy
-import pandas as pd
 from typing import Union
 import re
 import logging
 from .configs import ConnectObject
+import json
 
 
 class DataPrep:
@@ -89,6 +88,12 @@ class DataPrep:
             aepp.config.endpoints["global"] + aepp.config.endpoints["mapping"]
         )
         self.REFERENCE_MAPPING = {"sourceType": "", "source": "", "destination": ""}
+
+    def __str__(self):
+        return json.dumps({'class':'DataPrep','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'DataPrep','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
 
     def getXDMBatchConversions(
         self,

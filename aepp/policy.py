@@ -13,6 +13,7 @@ import typing
 from aepp import connector
 import logging
 from .configs import ConnectObject
+import json
 
 class Policy:
     """
@@ -79,6 +80,12 @@ class Policy:
         self.endpoint = (
             aepp.config.endpoints["global"] + aepp.config.endpoints["policy"]
         )
+
+    def __str__(self):
+        return json.dumps({'class':'Policy','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'Policy','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
 
     def getEnabledCorePolicies(self) -> dict:
         """
