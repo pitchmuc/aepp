@@ -31,9 +31,9 @@ class SandboxAnalyzer:
 
     def __init__(
         self,
+        config: Union[dict,ConnectObject] = aepp.config.config_object,
         sandbox:str=None,
         region:str='nld2',
-        config: Union[dict,ConnectObject] = aepp.config.config_object,
         header: dict = aepp.config.header,
         loggingObject: dict = None,
         **kwargs,
