@@ -10,7 +10,7 @@
 
 import aepp
 from aepp import connector
-import logging
+import logging, json
 from .configs import ConnectObject
 from typing import Union
 
@@ -82,6 +82,12 @@ class AccessControl:
         self.endpoint = (
             aepp.config.endpoints["global"] + aepp.config.endpoints["access"]
         )
+
+    def __str__(self):
+        return json.dumps({'class':'AccessControl','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
+    
+    def __repr__(self):
+        return json.dumps({'class':'AccessControl','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
 
     def getReferences(self) -> dict:
         """

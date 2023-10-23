@@ -127,6 +127,12 @@ class AdobeRequest:
         else:
             return None
 
+    def __str__(self):
+        return json.dumps({'class':'Connector','sandbox':self.sandbox, 'token':self.token,'clientId':self.client_id,'orgId':self.org_id},indent=2)
+    
+    def __repr__(self):
+        return json.dumps({'class':'Connector','sandbox':self.sandbox, 'token':self.token,'clientId':self.client_id,'orgId':self.org_id},indent=2)
+
     def get_oauth_token_and_expiry_for_config(
         self,
         config: Union[dict,configs.ConnectObject],

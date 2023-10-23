@@ -195,11 +195,10 @@ class Observability:
             self.REFERENCE_REALTIME = None
 
     def __str__(self):
-        return json.dumps({'class':'Observability','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+        return json.dumps({'class':'Observability','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
     
     def __repr__(self):
-        return json.dumps({'class':'Observability','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
-
+        return json.dumps({'class':'Observability','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
 
     def createMetricsReport(self, data: dict = None) -> dict:
         """
