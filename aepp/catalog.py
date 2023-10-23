@@ -184,7 +184,7 @@ class Catalog:
         Retrieve a list of batches.
         Arguments:
             limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
-            n_results : OPTIONAL :  number of result you want to get in total. (will loop)
+            n_results : OPTIONAL :  number of result you want to get in total. (will loop - "inf" to get as many as possible)
             output : OPTIONAL : Can be "raw" response (dict) or "dataframe".
         Possible kwargs:
             created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
@@ -217,7 +217,7 @@ class Catalog:
             res = self.connector.getData(self.endpoint+path,
                             headers=self.header, params=params)
             list_return.update(**res)
-            while len(list_return) < n_results and len(res) != 0:
+            while float(len(list_return)) < float(n_results) and len(res) != 0:
                 params['start'] += limit
                 res = self.connector.getData(self.endpoint+path,
                             headers=self.header, params=params)
