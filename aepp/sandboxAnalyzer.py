@@ -16,7 +16,7 @@ from .configs import ConnectObject
 import pandas as pd
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
-import datetime
+import datetime, json
 
 class SandboxAnalyzer:
     """
@@ -48,8 +48,6 @@ class SandboxAnalyzer:
             loggingObject : OPTIONAL : logging object to log messages.
         Additional kwargs will update the header.
         """
-        if sandbox is None:
-            raise ValueError("Require a sandbox")
         self.overview = None
         self.overviewSchemas = None
         self.overviewFieldGroups = None
@@ -75,10 +73,16 @@ class SandboxAnalyzer:
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
         if type(config) == dict: ## Supporting either default setup or passing a ConnectObject
-            config['sandbox'] = sandbox
+            if kwargs.get('sandbox',None) is not None:
+                config['sandbox'] = sandbox
+            else:
+                sandbox = config['sandbox']
             config = config
         elif type(config) == ConnectObject:
-            config.setSandbox(sandbox)
+            if kwargs.get('sandbox',None) is not None:
+                config.setSandbox(sandbox)
+            else:
+                sandbox = config.sandbox
             header = config.getConfigHeader()
             config = config.getConfigObject()
         self.connector = connector.AdobeRequest(
@@ -87,6 +91,7 @@ class SandboxAnalyzer:
             loggingEnabled=self.loggingEnabled,
             loggingObject=self.logger,
         )
+        self.sandbox = sandbox
         self.header = self.connector.header
         self.header.update(**kwargs)
         if kwargs.get('sandbox',None) is not None: ## supporting sandbox setup on class instanciation
@@ -168,6 +173,12 @@ class SandboxAnalyzer:
         with ThreadPoolExecutor(max_workers=max_workers,thread_name_prefix = 'Thread') as thread_pool:
             results = thread_pool.map(schema.SchemaManager, listSchemaIds)
         return list(results)
+
+    def __str__(self):
+        return json.dumps({'class':'SandboxAnalyzer','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
+    
+    def __repr__(self):
+        return json.dumps({'class':'SandboxAnalyzer','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
 
     def schemaAnalyzer(self,save:bool=False,cache:bool=True,max_workers:int=5)->pd.DataFrame:
         """
