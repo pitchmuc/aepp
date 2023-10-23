@@ -338,10 +338,10 @@ class ConnectObject:
         }
     
     def __str__(self):
-        return json.dumps({'sandbox':self.sandbox, 'token':self.token,'clientId':self.client_id,'orgId':self.org_id})
+        return json.dumps({'class':'ConnectObject','sandbox':self.sandbox, 'token':self.token,'clientId':self.client_id,'orgId':self.org_id},indent=2)
     
     def __repr__(self):
-        return json.dumps({'class':'ConnectObject','sandbox':self.sandbox, 'token':self.token,'clientId':self.client_id,'orgId':self.org_id})
+        return json.dumps({'class':'ConnectObject','sandbox':self.sandbox, 'token':self.token,'clientId':self.client_id,'orgId':self.org_id},indent=2)
 
     def connect(self)->None:
         """

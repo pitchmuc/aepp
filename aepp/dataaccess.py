@@ -85,10 +85,10 @@ class DataAccess:
         )
 
     def __str__(self):
-        return json.dumps({'class':'DataAccess','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+        return json.dumps({'class':'DataAccess','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
     
     def __repr__(self):
-        return json.dumps({'class':'DataAccess','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+        return json.dumps({'class':'DataAccess','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
 
     def getBatchFiles(
         self, batchId: str = None, verbose: bool = False, **kwargs
