@@ -14,6 +14,7 @@ import pandas as pd
 import logging
 from typing import Union
 from .configs import ConnectObject
+import json
 
 class Observability:
     """
@@ -192,6 +193,13 @@ class Observability:
             self.REFERENCE_QUERYSERVICE = None
             self.REFERENCE_GDPR = None
             self.REFERENCE_REALTIME = None
+
+    def __str__(self):
+        return json.dumps({'class':'Observability','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'Observability','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+
 
     def createMetricsReport(self, data: dict = None) -> dict:
         """

@@ -12,11 +12,10 @@
 import aepp
 from aepp import connector
 from aepp import config
-from copy import deepcopy
 from typing import Union
-import time
 import logging
 from .configs import ConnectObject
+import json
 
 class Authoring:
     """
@@ -79,6 +78,13 @@ class Authoring:
         else:
             self.sandbox = self.connector.config["sandbox"]
         self.endpoint = config.endpoints["global"] + config.endpoints["destinationAuthoring"]
+
+    def __str__(self):
+        return json.dumps({'class':'Authoring','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'Authoring','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+
     
     def getDestinations(self)->list:
         """

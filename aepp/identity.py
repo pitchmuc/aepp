@@ -14,6 +14,7 @@ from copy import deepcopy
 import logging
 from typing import Union
 from .configs import ConnectObject
+import json
 
 class Identity:
     """
@@ -86,6 +87,12 @@ class Identity:
         self.endpoint = (
             f"https://platform-{region}.adobe.io" + aepp.config.endpoints["identity"]
         )
+
+    def __str__(self):
+        return json.dumps({'class':'Identity','region':self.region,'sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'Identity','region':self.region,'sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
 
     def getIdentity(
         self, id_str: str = None, nsid: str = None, namespace: str = None

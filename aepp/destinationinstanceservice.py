@@ -14,6 +14,7 @@ from aepp import connector
 from typing import Union
 import logging
 from .configs import ConnectObject
+import json
 
 class DestinationInstanceService:
     loggingEnabled = False
@@ -75,7 +76,12 @@ class DestinationInstanceService:
         else:
             self.sandbox = self.connector.config["sandbox"]
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["destinationInstance"]
-        
+
+    def __str__(self):
+        return json.dumps({'class':'DestinationInstanceService','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'DestinationInstanceService','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
         
     def createAdHocDatasetExport(self, flowIdToDatasetIds: dict = None)->dict:
         """

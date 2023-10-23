@@ -89,6 +89,13 @@ class Catalog:
         self.endpoint = aepp.config.endpoints['global']+aepp.config.endpoints["catalog"]
         self.data = _Data()
 
+    def __str__(self):
+        return json.dumps({'class':'Catalog','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'Catalog','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+
+
     def getResource(self,endpoint:str=None,params:dict=None,format:str='json',save:bool=False,**kwargs)->dict:
         """
         Template for requesting data with a GET method.

@@ -12,7 +12,7 @@
 from aepp import connector
 import pandas as pd
 from typing import Union
-import re
+import re,json
 import aepp
 import time
 import logging
@@ -125,6 +125,12 @@ class QueryService:
         else:
             self.sandbox = self.connector.config["sandbox"]
         self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["query"]
+
+    def __str__(self):
+        return json.dumps({'class':'QueryService','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'QueryService','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
 
     def getResource(
         self,

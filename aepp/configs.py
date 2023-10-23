@@ -337,6 +337,12 @@ class ConnectObject:
             "scopes": self.scopes
         }
     
+    def __str__(self):
+        return json.dumps({'sandbox':self.sandbox, 'token':self.token,'clientId':self.client_id,'orgId':self.org_id})
+    
+    def __repr__(self):
+        return json.dumps({'class':'ConnectObject','sandbox':self.sandbox, 'token':self.token,'clientId':self.client_id,'orgId':self.org_id})
+
     def connect(self)->None:
         """
         Generate a token and provide a connector instance in that class.

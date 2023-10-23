@@ -130,6 +130,12 @@ class Schema:
         self.container = containerId
         self.data = _Data()
 
+    def __str__(self):
+        return json.dumps({'class':'Schema','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+    
+    def __repr__(self):
+        return json.dumps({'class':'Schema','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")})
+
     def getResource(
         self,
         endpoint: str = None,
@@ -1026,46 +1032,6 @@ class Schema:
             df = pd.DataFrame(data)
             return df
         return data
-
-    # def getMixin(
-    #     self,
-    #     mixinId: str = None,
-    #     version: int = 1,
-    #     full: bool = True,
-    #     save: bool = False,
-    # ):
-    #     """
-    #     Returns a specific mixin / field group.
-    #     Arguments:
-    #         mixinId : REQUIRED : meta:altId or $id
-    #         version : OPTIONAL : version of the mixin
-    #         full : OPTIONAL : True (default) will return the full schema.False just the relationships.
-    #     """
-    #     if mixinId.startswith("https://"):
-    #         from urllib import parse
-
-    #         mixinId = parse.quote_plus(mixinId)
-    #     if self.loggingEnabled:
-    #         self.logger.debug(f"Starting getMixin")
-    #     privateHeader = deepcopy(self.header)
-    #     privateHeader["Accept-Encoding"] = "identity"
-    #     if full:
-    #         accept_full = "-full"
-    #     else:
-    #         accept_full = ""
-    #     update_accept = (
-    #         f"application/vnd.adobe.xed{accept_full}+json; version={version}"
-    #     )
-    #     privateHeader.update({"Accept": update_accept})
-    #     path = f"/{self.container}/mixins/{mixinId}"
-    #     res = self.connector.getData(self.endpoint + path, headers=privateHeader)
-    #     if save:
-    #         aepp.saveFile(
-    #             module="schema", file=res, filename=res["title"], type_file="json"
-    #         )
-    #     if "title" in res.keys():
-    #         self.data.mixins[res["title"]] = res
-    #     return res
 
     def getFieldGroup(
         self,
