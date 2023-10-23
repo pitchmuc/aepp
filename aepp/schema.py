@@ -966,8 +966,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getFieldGroups")
         path = f"/{self.container}/fieldgroups/"
-        page = kwargs.get("page", 0)
-        params = {"page": page}
+        params = {}
         verbose = kwargs.get("debug", False)
         privateHeader = deepcopy(self.header)
         privateHeader["Accept"] = f"application/vnd.adobe.{format}+json"
@@ -977,7 +976,7 @@ class Schema:
         if kwargs.get("verbose", False):
             if "results" not in res.keys():
                 print(res)
-        data = res["results"]
+        data = res.get("results",[])
         page = res.get("_page",{})
         nextPage = page.get('next',None)
         while nextPage is not None:
