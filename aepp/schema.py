@@ -1616,7 +1616,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getDescriptors")
         path = f"/{self.container}/descriptors/"
-        params = {"start": kwargs.get("start", 0)}
+        params = {}
         if type_desc is not None:
             params["property"] = f"@type=={type_desc}"
         if id_desc:
@@ -1634,8 +1634,8 @@ class Schema:
         res = self.connector.getData(
             self.endpoint + path, params=params, headers=privateHeader
         )
-        data = res["results"]
-        page = res["_page"]
+        data = res.get("results",[])
+        page = res.get("_page",None)
         while page["next"] is not None:
             data += self.getDescriptors(start=page["next"])
         if save:
