@@ -34,7 +34,8 @@ Patches:
 * default the getSchemas to not get the adhoc schema.
 * Fixing the FieldGroupManager intantiation.
 * adding documentation on the Catalog
-* adding 
+* Adding `onlyDestinations` and `onlySources` as parameter for the `getFlows` method.
+* Fixing the `createDataset` method when wanting to have a dataset enabled for Profile and Identity Service. 
 
 ## version 0.3.0
 
