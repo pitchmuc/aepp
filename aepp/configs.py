@@ -350,6 +350,11 @@ class ConnectObject:
         self.connector = connector.AdobeRequest(self.__configObject__,self.header)
         self.token = self.connector.token
         self.header['Authorization'] = 'bearer '+self.token
+        self.getData = self.connector.getData
+        self.postData = self.connector.postData
+        self.putData = self.connector.putData
+        self.deleteData = self.connector.deleteData
+        self.patchData = self.connector.patchData
     
     def getConfigObject(self)->dict:
         """
