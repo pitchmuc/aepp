@@ -1874,6 +1874,9 @@ class Schema:
         """
         if schemaId is None:
             raise Exception("Require a schema ID")
+        if schemaId.startswith("https://"):
+            from urllib import parse
+            schemaId = parse.quote_plus(schemaId)
         if self.loggingEnabled:
             self.logger.debug(f"Starting enableSchemaForRealTime")
         path = f"/{self.container}/schemas/{schemaId}/"

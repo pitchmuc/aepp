@@ -323,8 +323,16 @@ class AdobeRequest:
         **kwargs,
     ):
         """
-        Abstraction for getting data
+        Abstraction for getting data.
+        Arguments:
+            endpoint : REQUIRED : The endpoint you want to use
+            params : OPTIONAL : A dictionary of your query parameters
+            data : OPTIONAL : If data needs to passed to that method
+            headers : OPTIONAL: a dictionary to override the predefined header.
+        Possible kwrags
+            verify : boolean to set the SSL Setup
         """
+        verify = kwargs.get('verify', False)
         self._checkingDate()
         if headers is None:
             headers = self.header
@@ -333,20 +341,20 @@ class AdobeRequest:
                 f"Start GET request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None and data is None:
-            res = requests.get(endpoint, headers=headers, verify=False)
+            res = requests.get(endpoint, headers=headers, verify=verify)
         elif params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.get(endpoint, headers=headers, params=params, verify=False)
+            res = requests.get(endpoint, headers=headers, params=params, verify=verify)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.get(endpoint, headers=headers, data=data, verify=False)
+            res = requests.get(endpoint, headers=headers, data=data, verify=verify)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.get(endpoint, headers=headers, params=params, data=data, verify=False)
+            res = requests.get(endpoint, headers=headers, params=params, data=data, verify=verify)
         if self.loggingEnabled:
             self.logger.debug(f"endpoint used: {res.request.url}")
             self.logger.debug(f"params used: {params}")
@@ -397,8 +405,17 @@ class AdobeRequest:
     ):
         """
         Abstraction for the head method.
+        Arguments:
+            endpoint : REQUIRED : The endpoint you want to use
+            params : OPTIONAL : A dictionary of your query parameters
+            data : OPTIONAL : If data needs to passed to that method
+            headers : OPTIONAL: a dictionary to override the predefined header.
+        Possible kwargs:
+            verify : boolean to set SSL or not
+            verbose : if you want to display some messages
         """
         self._checkingDate()
+        verify = kwargs.get('verify',False)
         if headers is None:
             headers = self.header
         if self.loggingEnabled:
@@ -406,9 +423,9 @@ class AdobeRequest:
                 f"Start GET request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None:
-            res = requests.head(endpoint, headers=headers, verify=False)
+            res = requests.head(endpoint, headers=headers, verify=verify)
         if params is not None:
-            res = requests.head(endpoint, headers=headers, params=params, verify=False)
+            res = requests.head(endpoint, headers=headers, params=params, verify=verify)
         try:
             res_header = res.headers()
         except:
@@ -434,8 +451,18 @@ class AdobeRequest:
     ):
         """
         Abstraction for posting data
+        Arguments:
+            endpoint : REQUIRED : The endpoint you want to use
+            params : OPTIONAL : A dictionary of your query parameters
+            data : OPTIONAL : If data needs to passed to that method (dictionary or list)
+            bytesData : OPTIONAL : If you want to send bytes instead of dictionary
+            headers : OPTIONAL: a dictionary to override the predefined header.
+        Possible kwrags
+            verify : boolean to set the SSL Setup
+            verbose : if you want to display some messages
         """
         self._checkingDate()
+        verify = kwargs.get('verify',False)
         if headers is None:
             headers = self.header
         if self.loggingEnabled:
@@ -443,27 +470,27 @@ class AdobeRequest:
                 f"Start POST request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None and data is None:
-            res = requests.post(endpoint, headers=headers, verify=False)
+            res = requests.post(endpoint, headers=headers, verify=verify)
         elif params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.post(endpoint, headers=headers, params=params, verify=False)
+            res = requests.post(endpoint, headers=headers, params=params, verify=verify)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.post(endpoint, headers=headers, data=json.dumps(data), verify=False)
+            res = requests.post(endpoint, headers=headers, data=json.dumps(data), verify=verify)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.post(
-                endpoint, headers=headers, params=params, data=json.dumps(data), verify=False
+                endpoint, headers=headers, params=params, data=json.dumps(data), verify=verify
             )
         elif bytesData is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"bytes data used")
             res = requests.post(
-                endpoint, headers=headers, params=params, data=bytesData, verify=False
+                endpoint, headers=headers, params=params, data=bytesData, verify=verify
             )
         try:
             formatUse = kwargs.get("format", "json")
@@ -507,8 +534,17 @@ class AdobeRequest:
     ):
         """
         Abstraction for deleting data
+        Arguments:
+            endpoint : REQUIRED : The endpoint you want to use
+            params : OPTIONAL : A dictionary of your query parameters
+            data : OPTIONAL : If data needs to passed to that method (dictionary or list)
+            headers : OPTIONAL: a dictionary to override the predefined header.
+        Possible kwrags
+            verify : boolean to set the SSL Setup
+            verbose : if you want to display some messages
         """
         self._checkingDate()
+        verify = kwargs.get('verify',False)
         if headers is None:
             headers = self.header
         if self.loggingEnabled:
@@ -518,17 +554,17 @@ class AdobeRequest:
         if params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.patch(endpoint, headers=headers, params=params, verify=False)
+            res = requests.patch(endpoint, headers=headers, params=params, verify=verify)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.patch(endpoint, headers=headers, data=json.dumps(data), verify=False)
+            res = requests.patch(endpoint, headers=headers, data=json.dumps(data), verify=verify)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.patch(
-                endpoint, headers=headers, params=params, data=json.dumps(data), verify=False
+                endpoint, headers=headers, params=params, data=json.dumps(data), verify=verify
             )
         try:
             res_json = res.json()
@@ -561,8 +597,17 @@ class AdobeRequest:
     ):
         """
         Abstraction for deleting data
+        Arguments:
+            endpoint : REQUIRED : The endpoint you want to use
+            params : OPTIONAL : A dictionary of your query parameters
+            data : OPTIONAL : If data needs to passed to that method (dictionary or list)
+            headers : OPTIONAL: a dictionary to override the predefined header.
+        Possible kwrags
+            verify : boolean to set the SSL Setup
+            verbose : if you want to display some messages
         """
         self._checkingDate()
+        verify = kwargs.get('verify',False)
         if headers is None:
             headers = self.header
         if self.loggingEnabled:
@@ -572,17 +617,17 @@ class AdobeRequest:
         if params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.put(endpoint, headers=headers, params=params, verify=False)
+            res = requests.put(endpoint, headers=headers, params=params, verify=verify)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.put(endpoint, headers=headers, data=json.dumps(data), verify=False)
+            res = requests.put(endpoint, headers=headers, data=json.dumps(data), verify=verify)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
             res = requests.put(
-                endpoint, headers=headers, params=params, data=json.dumps(data), verify=False
+                endpoint, headers=headers, params=params, data=json.dumps(data), verify=verify
             )
         try:
             res_json = res.json()
@@ -606,8 +651,16 @@ class AdobeRequest:
     ):
         """
         Abstraction for deleting data
+        Arguments:
+            endpoint : REQUIRED : The endpoint you want to use
+            params : OPTIONAL : A dictionary of your query parameters
+            headers : OPTIONAL: a dictionary to override the predefined header.
+        Possible kwrags
+            verify : boolean to set the SSL Setup
+            verbose : if you want to display some messages
         """
         self._checkingDate()
+        verify = kwargs.get('verify',False)
         if headers is None:
             headers = self.header
         if self.loggingEnabled:
@@ -615,9 +668,9 @@ class AdobeRequest:
                 f"Start PUT request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None:
-            res = requests.delete(endpoint, headers=headers, verify=False)
+            res = requests.delete(endpoint, headers=headers, verify=verify)
         elif params is not None:
-            res = requests.delete(endpoint, headers=headers, params=params, verify=False)
+            res = requests.delete(endpoint, headers=headers, params=params, verify=verify)
         try:
             status_code = res.status_code
             if status_code >= 400:

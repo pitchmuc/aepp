@@ -2,6 +2,14 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## Version 0.3.2
+
+* fix `getSchemas` and `getFieldGroups` because of Adobe AEP API change.
+* adding a __str__ and __repr__ method to all Classes. 
+* `enableSchemaForRealTime` now also supports the schema `$id`
+* abstracting HTTP methods for the `ConnectObject`
+* providing a parameter to setup SSL verify in HTTP methods.
+
 ## Version 0.3.1
 
 * adding methods for Policy module.
