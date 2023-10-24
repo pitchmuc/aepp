@@ -172,16 +172,23 @@ class Catalog:
                 self.logger.info(f"Issue creating a stream of messages")
             return None
 
-    def getLastBatches(self,dataSetId:str=None)->list:
+    def getLastBatches(self,dataSetId:str=None,limit:int=20,**kwargs)->list:
         """
         Returns the last batch from a specific datasetId.
         Arguments:
             dataSetId : OPTIONAL : the datasetId to be retrieved the batch about
+            limit : OPTIONAL : number of batch per request
+        Possible kwargs:
+            created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
+            lastBatchStatus : Filter by the status of the last related batch of the dataset [success, inactive, replay]
+            properties : A comma separated allowlist of top-level object properties to be returned in the response. Used to cut down the number of properties and amount of data returned in the response bodies.
         """
         path = "/lastBatches"
-        params = {}
+        params = {"limit":limit}
         if dataSetId is not None:
             params['dataSetId'] = dataSetId
+        if kwargs.get('created', None) is not None:
+            params = {'created',kwargs.get('created')}
         res = self.connector.getData(self.endpoint+path,params=params)
         return res
         

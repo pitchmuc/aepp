@@ -285,7 +285,7 @@ class SandboxAnalyzer:
             self.overviewIdentities.to_csv(f'overview_identities_{self.sandbox}.csv',index=False)
         return self.overviewIdentities
     
-    def segementsAnalyzer(self,save:bool,cache:bool=True)->pd.DataFrame:
+    def segementsAnalyzer(self,save:bool=False,cache:bool=True)->pd.DataFrame:
         """
         Returns a dataframe with the segment information in that sandbox.
         Update and create also the merge policies overview.
@@ -331,11 +331,11 @@ class SandboxAnalyzer:
                 if save:
                     self.overviewDatasets.to_csv(f"overview_dataset_{self.sandbox}.csv")
                 return self.overviewDatasets
-        dict_schemaId_SchemaName = {sc['id']:sc['title'] for sc in self.schemas}
+        dict_schemaId_SchemaName = {sc['$id']:sc['title'] for sc in self.schemas}
         overviewDatasets = {myId:{
             "name":name,
             'flows':0,
-            'schemaRef':dict_schemaId_SchemaName[schemaId],
+            'schemaRef':dict_schemaId_SchemaName.get(schemaId,self.schemaAPI.getSchema(schemaId)['title']),
             'enabledProfile':False,
             'identities':0, 
             'errorLast7days':0,
