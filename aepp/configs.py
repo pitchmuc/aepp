@@ -211,7 +211,7 @@ def configure(
     endpoints["streaming"]["inlet"] = f"{endpoints['global']}/data/core/edge"
     config_object["jwtTokenEndpoint"] = f"{config_object['imsEndpoint']}/ims/exchange/jwt"
     config_object["oauthTokenEndpointV1"] = f"{config_object['imsEndpoint']}/ims/token/v1"
-    config_object["oauthTokenEndpointV2"] = f"{config_object['imsEndpoint']}/ims/token/v2"
+    config_object["oauthTokenEndpointV2"] = f"{config_object['imsEndpoint']}/ims/token/v3"
     # ensure the reset of the state by overwriting possible values from previous import.
     config_object["date_limit"] = 0
     config_object["token"] = ""
@@ -310,7 +310,7 @@ class ConnectObject:
         self.streamInletEndpoint = f"{self.globalEndpoint}/data/core/edge"
         self.jwtEndpoint = f"{self.imsEndpoint}/ims/exchange/jwt"
         self.oauthEndpointV1 = f"{self.imsEndpoint}/ims/token/v1"
-        self.oauthEndpointV2 = f"{self.imsEndpoint}/ims/token/v2"
+        self.oauthEndpointV2 = f"{self.imsEndpoint}/ims/token/v3"
         self.org_id = org_id
         self.tech_id = tech_id
         self.client_id = client_id
