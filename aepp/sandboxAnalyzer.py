@@ -16,7 +16,8 @@ from .configs import ConnectObject
 import pandas as pd
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
-import datetime, json
+import json
+from datetime import datetime,timedelta
 
 class SandboxAnalyzer:
     """
@@ -54,6 +55,7 @@ class SandboxAnalyzer:
         self.overviewIdentities = None
         self.overviewSegments = None
         self.overviewDatasets = None
+        self.overviewFlows = None
         if loggingObject is not None and sorted(
             ["level", "stream", "format", "filename", "file"]
         ) == sorted(list(loggingObject.keys())):
@@ -110,6 +112,7 @@ class SandboxAnalyzer:
         self.overview = self.overviewAnalysis()
         self.list_schemaManagers = []
         self.listFieldGroupManagers = []
+        self.overviewAnalysis()
 
     def overviewAnalysis(self,save:bool=False,cache:bool=True)->pd.DataFrame:
         """
@@ -129,11 +132,14 @@ class SandboxAnalyzer:
                 if save:
                     self.overview.to_csv(f'overview_{self.sandbox}.csv',index=False)
                 return self.overview
-        overview = {'Schemas':[],'Datasets':[],'Segments':[],'DataSources':[],'Destinations':[]}
+        overview = {'Schemas':[],'Datasets':[],'Segments':[],'DataSources Flows':[],'Destinations Flows':[]}
+        ## Schemas
         self.schemas:list = self.schemaAPI.getSchemas(excludeAdhoc=True)
         overview['Schemas'].append(len(self.schemas))
+        ## Segmentation
         self.segments:list = self.segmentationAPI.getSegments()
         overview['Segments'].append(len(self.segments))
+        ## Catalog
         self.datasets:list = self.catalogAPI.getDataSets()
         self.dict_dataset_schema = deepcopy(self.catalogAPI.data.schema_ref)
         self.realDatasetNames = []
@@ -146,18 +152,13 @@ class SandboxAnalyzer:
         self.dict_realDatasetIds_Name:dict = {self.catalogAPI.data.ids[dataset]: dataset for dataset in self.realDatasetNames}
         self.datasetId_schemaId:dict = {self.catalogAPI.data.ids[dataset]: self.catalogAPI.data.schema_ref[dataset]['id'] for dataset in self.realDatasetNames}
         overview['Datasets'].append(len(self.realDatasetNames))
+        ## Flows
+        self.sourceFlows:list = self.flowAPI.getFlows(onlySources=True)
+        self.destinationFlows:list = self.flowAPI.getFlows(onlyDestinations=True)
         self.connections = self.flowAPI.getConnections()
-        self.datasourcesConnections = []
-        self.destinationsConnections = []
-        for con in self.connections:
-            spec = self.flowAPI.getConnectionSpec(con['connectionSpec']['id'])
-            if 'attributes' in spec.keys():
-                if spec['attributes'].get('isSource'):
-                    self.datasourcesConnections.append(con)
-                elif spec['attributes'].get('isDestination'):
-                    self.destinationsConnections.append(con)
-        overview['DataSources'].append(len(self.datasourcesConnections))
-        overview['Destinations'].append(len(self.destinationsConnections))
+        overview['DataSources Flows'].append(len(self.sourceFlows))
+        overview['Destinations Flows'].append(len(self.destinationFlows))
+        ## profile
         preview = self.profileAPI.getPreviewStatus()
         overview['Profiles'] = [preview.get('totalRows')]
         df_overview = pd.DataFrame(overview)
@@ -180,7 +181,7 @@ class SandboxAnalyzer:
     def __repr__(self):
         return json.dumps({'class':'SandboxAnalyzer','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
 
-    def schemaAnalyzer(self,save:bool=False,cache:bool=True,max_workers:int=5)->pd.DataFrame:
+    def schemasAnalyzer(self,save:bool=False,cache:bool=True,max_workers:int=5)->pd.DataFrame:
         """
         This method will run a schema review of your sandbox.
         It returns a dataframe with the following information:
@@ -231,7 +232,7 @@ class SandboxAnalyzer:
             df_schema.to_csv(f'overview_schema_{self.sandbox}.csv',index=False)
         return df_schema
 
-    def fieldGroupAnalyzer(self,save:bool=False,cache:bool=True,max_workers:int=5)->pd.DataFrame:
+    def fieldGroupsAnalyzer(self,save:bool=False,cache:bool=True,max_workers:int=5)->pd.DataFrame:
         """
         This method will run a field group review of your sandbox.
         It only analyses the custom field groups created in your sandbox.
@@ -312,8 +313,9 @@ class SandboxAnalyzer:
             segments = self.segmentationAPI.getSegments()
         overview_segments = {seg['name']:{
             'description':seg.get('description'),
-            'evaluationType':evaluationType(seg['evaluationInfo']),
-            'mergePolicies':mergePoliciesIdName[seg['mergePolicyId']]}
+            'evaluationType':evaluationType(seg.get('evaluationInfo')),
+            'mergePolicies':mergePoliciesIdName[seg.get('mergePolicyId')],
+            'totalProfiles':seg.get('metrics',{}).get('data',{}).get('totalProfiles',0)}
                 for seg in segments
                 }
         for seg in segments:
@@ -322,7 +324,7 @@ class SandboxAnalyzer:
         self.overviewSegments = pd.DataFrame(overview_segments).T
         return self.overviewSegments
     
-    def datasetAnalyzer(self,save:bool=False,cache:bool=True)->pd.DataFrame:
+    def datasetsAnalyzer(self,save:bool=False,cache:bool=True)->pd.DataFrame:
         """
         Returns a dataframe with the dataset analysis
         """
@@ -347,8 +349,8 @@ class SandboxAnalyzer:
         for dataset in datasetProfileDistribution:
             overviewDatasets[dataset['value']]['identities'] = dataset['fullIDsCount']
         ### Batch errors & Profile enabled
-        week_ago = datetime.datetime.now() - datetime.timedelta(days=7)
-        week_ago_ts = datetime.datetime.timestamp(week_ago)*1000
+        week_ago = datetime.now() - timedelta(days=7)
+        week_ago_ts = datetime.timestamp(week_ago)*1000
         for datasetId in tuple(overviewDatasets.keys()):
             tmp_dataset = self.catalogAPI.getDataSet(datasetId)
             tmp_dataset = tmp_dataset[list(tmp_dataset.keys())[0]]
@@ -361,8 +363,69 @@ class SandboxAnalyzer:
         lastBatches = self.catalogAPI.getLastBatches(limit=100)
         for key in lastBatches.keys():
             if key in overviewDatasets.keys():
-                overviewDatasets[key]['lastBatchIngestion'] = time.ctime(lastBatches[key]['updated']/1000)
+                overviewDatasets[key]['lastBatchIngestion'] = datetime.fromtimestamp(lastBatches[key].get('updated',1000)/1000).isoformat(sep='T', timespec='minutes')
         self.overviewDatasets = pd.DataFrame(overviewDatasets).T
         if save:
             self.overviewDatasets.to_csv(f"overview_dataset_{self.sandbox}.csv")
         return self.overviewDatasets
+
+    def flowsAnalyzer(self,save:bool=False,cache:bool=True)->pd.DataFrame:
+        """
+        Returns a dataframe with the flow analysis
+        """
+        if cache:
+            if self.overviewFlows is not None:
+                if save:
+                    self.overviewFlows.to_csv(f"overview_flows_{self.sandbox}.csv")
+                return self.overviewFlows
+        self.flows:list = self.sourceFlows + self.destinationFlows
+        flowDict = {
+            fl['id']:{
+                "name" : fl.get("name"),
+                "description" : fl.get("description"),
+                "created" : datetime.fromtimestamp(fl.get("createdAt",1000)/1000).isoformat(sep='T', timespec='minutes'),
+                "lastOperation":datetime.fromtimestamp(fl.get("lastOperation",{}).get("started",1000)/1000).isoformat(sep='T', timespec='minutes'),
+                "lastRunState" : fl.get("lastRunDetails",{}).get("state","unknown"),
+                "state" : fl.get("state","draft"),
+                "datasetId" : "",
+                "datasetName" : "",
+                "type":"",
+                "segments":0
+            }
+            for fl in self.flows
+        }
+        for fl in flowDict:
+            if fl in [f['id'] for f in self.sourceFlows]:
+                flowDict[fl]['type'] = "source"
+                tmpFlow = [tf for tf in self.sourceFlows if tf["id"] ==fl][0]
+                targetConnection = self.flowAPI.getTargetConnection(tmpFlow["targetConnectionIds"][0])
+                flowDict[fl]['datasetId'] = targetConnection.get('params',{}).get('dataSetId',targetConnection.get('params',{}).get('datasetId'))
+                flowDict[fl]['datasetName'] = self.dict_realDatasetIds_Name.get(flowDict[fl]['datasetId'],'unknown')
+            elif fl in [f['id'] for f in self.destinationFlows]:
+                flowDict[fl]['type'] = "destinations"
+                tmpFlow = [tf for tf in self.destinationFlows if tf["id"] ==fl][0]
+                flowDict[fl]['segments'] = len(tmpFlow['transformations'][0].get('params',{}).get('segmentSelectors',{}).get('selectors',[]))
+        self.overviewFlows = pd.DataFrame(flowDict).T
+        if save:
+            self.overviewFlows.to_csv(f"overview_flows_{self.sandbox}.csv")
+        return self.overviewFlows
+
+    def sandboxAnalyer(self,save:bool=False):
+        """
+        Run a complete analysis of your sandbox
+        """
+        schema = self.schemasAnalyzer(save)
+        fieldgroups = self.fieldGroupsAnalyzer(save)
+        catalog = self.datasetsAnalyzer(save)
+        identities = self.identitiesAnalyzer(save)
+        segments = self.segementsAnalyzer(save)
+        flows = self.flowsAnalyzer(save)
+        return {
+            "overview" : self.overview,
+            "schema" : schema,
+            "fieldgroups" : fieldgroups,
+            "datasets" : catalog,
+            "identities" : identities,
+            "segments" : segments,
+            "flows":flows
+        }
