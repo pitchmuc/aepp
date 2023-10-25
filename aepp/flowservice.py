@@ -1353,14 +1353,17 @@ class FlowService:
         """
         return self.getLandingZoneCredential(dlz_type=dlz_type)["storageAccountName"]
 
-    def exploreLandingZone(self,fileType:str='delimited')->list:
+    def exploreLandingZone(self,objectType:str='root',fileType:str=None)->list:
         """
         Return the structure of your landing zones
         Arguments:
-            fileType : OPTIONAL : The type of the file to see.
+            objectType : OPTIONAL : The type of the object you want to access.(root (default), file)
+            fileType : OPTIONAL : The type of the file to see. (delimited, json, parquet )
         """
         path ="/connectionSpecs/26f526f2-58f4-4712-961d-e41bf1ccc0e8/explore"
         params = {"objectType":"root"}
+        if fileType is not None:
+            params['fileType'] = fileType
         res = self.connector.getData(self.endpoint + path,params=params)
         return res
 
