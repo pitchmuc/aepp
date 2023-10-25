@@ -384,8 +384,9 @@ class SandboxAnalyzer:
                 "name" : fl.get("name"),
                 "description" : fl.get("description"),
                 "created" : datetime.fromtimestamp(fl.get("createdAt",1000)/1000).isoformat(sep='T', timespec='minutes'),
-                "lastOperation":datetime.fromtimestamp(fl.get("lastOperation",{}).get("started",1000)/1000).isoformat(sep='T', timespec='minutes'),
+                "lastRunStartTime":datetime.fromtimestamp(fl.get("lastRunDetails",{}).get("startedAtUTC",1000)/1000).isoformat(sep='T', timespec='minutes'),
                 "lastRunState" : fl.get("lastRunDetails",{}).get("state","unknown"),
+                "account" : "",
                 "state" : fl.get("state","draft"),
                 "datasetId" : "",
                 "datasetName" : "",
@@ -401,10 +402,12 @@ class SandboxAnalyzer:
                 targetConnection = self.flowAPI.getTargetConnection(tmpFlow["targetConnectionIds"][0])
                 flowDict[fl]['datasetId'] = targetConnection.get('params',{}).get('dataSetId',targetConnection.get('params',{}).get('datasetId'))
                 flowDict[fl]['datasetName'] = self.dict_realDatasetIds_Name.get(flowDict[fl]['datasetId'],'unknown')
+                flowDict[fl]['account'] = self.flowAPI.getConnection(tmpFlow.get('inheritedAttributes',{}).get('sourceConnections',[{}])[0].get('baseConnection',{}).get("id")).get('name','unknown')
             elif fl in [f['id'] for f in self.destinationFlows]:
                 flowDict[fl]['type'] = "destinations"
                 tmpFlow = [tf for tf in self.destinationFlows if tf["id"] ==fl][0]
                 flowDict[fl]['segments'] = len(tmpFlow['transformations'][0].get('params',{}).get('segmentSelectors',{}).get('selectors',[]))
+                flowDict[fl]['account'] = self.flowAPI.getConnection(tmpFlow.get('inheritedAttributes',{}).get('targetConnections',[{}])[0].get('baseConnection',{}).get("id")).get('name','unknown')
         self.overviewFlows = pd.DataFrame(flowDict).T
         if save:
             self.overviewFlows.to_csv(f"overview_flows_{self.sandbox}.csv")
