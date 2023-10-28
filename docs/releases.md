@@ -15,6 +15,11 @@ This page list all of the changes that came during the different release of the 
   * deletePackage
   * createPackage
   * updatePackage
+  * importPackageCheck
+  * importPackage
+  * getImportExportJobs
+  * getPackageDependencies
+  * checkPermissions
 
 ## Version 0.3.1
 
