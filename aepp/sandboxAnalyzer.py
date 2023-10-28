@@ -423,6 +423,15 @@ class SandboxAnalyzer:
         identities = self.identitiesAnalyzer(save)
         segments = self.segementsAnalyzer(save)
         flows = self.flowsAnalyzer(save)
+        if save:
+            with pd.ExcelWriter(f'{self.sandbox}_analysis.xlsx') as writer:
+                self.overview.to_excel(writer, sheet_name='Overview')
+                self.overviewSchemas.to_excel(writer, sheet_name='Schemas')
+                self.overviewFieldGroups.to_excel(writer,sheet_name="FieldGroups")
+                self.overviewDatasets.to_excel(writer,sheet_name='Datasets')
+                self.overviewIdentities.to_excel(writer,sheet_name='Identities')
+                self.overviewSegments.to_excel(writer,sheet_name='Segments')
+                self.overviewFlows.to_excel(writer,sheet_name='Flows')
         return {
             "overview" : self.overview,
             "schema" : schema,
