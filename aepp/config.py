@@ -47,6 +47,7 @@ endpoints = {
     "export": "/data/foundation/export",
     "identity": "/data/core/",
     "sandboxes": "/data/foundation/sandbox-management",
+    "sandboxTooling" : "/data/foundation/exim",
     "sensei": "/data/sensei",
     "access": "/data/foundation/access-control",
     "flow": "/data/foundation/flowservice",
