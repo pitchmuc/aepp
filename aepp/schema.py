@@ -2549,13 +2549,16 @@ class FieldGroupManager:
         """
         return string.replace('[','').replace(']','').replace("{",'').replace('}','')
     
-    def setTitle(self,name:str=None)->None:
+    def setTitle(self,title:str=None)->None:
         """
         Set a name for the schema.
         Arguments:
-            name : REQUIRED : a string to be used for the title of the FieldGroup
+            title : REQUIRED : a string to be used for the title of the FieldGroup
         """
-        self.fieldGroup['title'] = name
+        if title is None:
+            raise ValueError('title must be provided')
+        self.fieldGroup['title'] = title
+        self.title = title
         return None
 
     def getField(self,path:str)->dict:
@@ -3030,6 +3033,18 @@ class SchemaManager:
                     else:
                         base[key] = append[key]
         return base
+
+    def setTitle(self,title:str=None)->None:
+        """
+        Set a name for the schema.
+        Arguments:
+            title : REQUIRED : a string to be used for the title of the FieldGroup
+        """
+        if title is None:
+            raise ValueError('title must be provided')
+        self.schema['title'] = title
+        self.title = title
+        return None
 
     def searchField(self,string:str=None,partialMatch:bool=True,caseSensitive:bool=True)->list:
         """
@@ -3799,6 +3814,7 @@ class DataTypeManager:
         if title is None:
             raise ValueError("Require a title")
         self.dataType['title'] = title
+        self.title = title
     
     def getField(self,path:str)->dict:
         """
