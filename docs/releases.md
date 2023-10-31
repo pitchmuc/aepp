@@ -9,6 +9,19 @@ This page list all of the changes that came during the different release of the 
 * `enableSchemaForRealTime` now also supports the schema `$id`
 * abstracting HTTP methods for the `ConnectObject`
 * providing a parameter to setup SSL verify in HTTP methods.
+* providing `title` column on `to_dataframe` method for `SchemaManager` instances.
+* adding the different methods available for sandbox tooling in the `sandboxes` module:
+  * getPackages
+  * getPackage
+  * deletePackage
+  * createPackage
+  * updatePackage
+  * importPackageCheck
+  * importPackage
+  * getImportExportJobs
+  * getPackageDependencies
+  * checkPermissions
+* providing `DataTypeManager` class in the schema module
 
 ## Version 0.3.1
 
