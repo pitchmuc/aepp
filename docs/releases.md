@@ -21,6 +21,7 @@ This page list all of the changes that came during the different release of the 
   * getImportExportJobs
   * getPackageDependencies
   * checkPermissions
+* providing `DataTypeManager` class in the schema module
 
 ## Version 0.3.1
 
