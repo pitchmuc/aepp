@@ -297,7 +297,7 @@ class SandboxAnalyzer:
                     self.overviewSegments.to_csv('',index=False)
                 return self.overviewSegments
         self.mergePolicies = self.profileAPI.getMergePolicies()
-        self.destinations= self.flowAPI.getFlows(onlyDestinations=True)
+        self.destinations = self.flowAPI.getFlows(onlyDestinations=True)
         segments_shared = []
         for tmpFlow in self.destinations:
             segments_shared += tmpFlow['transformations'][0].get('params',{}).get('segmentSelectors',{}).get('selectors',[])
@@ -368,6 +368,13 @@ class SandboxAnalyzer:
         datasetProfileDistribution = self.profileAPI.getPreviewDataSet().get('data',{})
         for dataset in datasetProfileDistribution:
             overviewDatasets[dataset['value']]['identities'] = dataset['fullIDsCount']
+        ### Flows
+        self.sources = self.flowAPI.getFlows(onlySources=True)
+        for fl in self.sources:
+            targetConnection = self.flowAPI.getTargetConnection(fl["targetConnectionIds"][0])
+            datasetId = targetConnection.get('params',{}).get('dataSetId',targetConnection.get('params',{}).get('datasetId'))
+            if datasetId in overviewDatasets.keys():
+                overviewDatasets[datasetId]["flows"] +=1
         ### Batch errors & Profile enabled
         week_ago = datetime.now() - timedelta(days=7)
         week_ago_ts = datetime.timestamp(week_ago)*1000
@@ -411,7 +418,7 @@ class SandboxAnalyzer:
                 "created" : datetime.fromtimestamp(fl.get("createdAt",1000)/1000).isoformat(sep='T', timespec='minutes'),
                 "lastRunStartTime":datetime.fromtimestamp(fl.get("lastRunDetails",{}).get("startedAtUTC",1000)/1000).isoformat(sep='T', timespec='minutes'),
                 "lastRunState" : fl.get("lastRunDetails",{}).get("state","unknown"),
-                "account" : "",
+                "account" : "unknown",
                 "state" : fl.get("state","draft"),
                 "datasetId" : "",
                 "datasetName" : "",
@@ -427,7 +434,9 @@ class SandboxAnalyzer:
                 targetConnection = self.flowAPI.getTargetConnection(tmpFlow["targetConnectionIds"][0])
                 flowDict[fl]['datasetId'] = targetConnection.get('params',{}).get('dataSetId',targetConnection.get('params',{}).get('datasetId'))
                 flowDict[fl]['datasetName'] = self.dict_realDatasetIds_Name.get(flowDict[fl]['datasetId'],'unknown')
-                flowDict[fl]['account'] = self.flowAPI.getConnection(tmpFlow.get('inheritedAttributes',{}).get('sourceConnections',[{}])[0].get('baseConnection',{}).get("id")).get('name','unknown')
+                connectionId = tmpFlow.get('inheritedAttributes',{}).get('sourceConnections',[{}])[0].get('baseConnection',{}).get("id")
+                if connectionId is not None:
+                    flowDict[fl]['account'] = self.flowAPI.getConnection(connectionId)['items'][0].get('name','unknown')
             elif fl in [f['id'] for f in self.destinationFlows]:
                 flowDict[fl]['type'] = "destinations"
                 tmpFlow = [tf for tf in self.destinationFlows if tf["id"] ==fl][0]
