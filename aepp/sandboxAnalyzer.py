@@ -297,6 +297,14 @@ class SandboxAnalyzer:
                     self.overviewSegments.to_csv('',index=False)
                 return self.overviewSegments
         self.mergePolicies = self.profileAPI.getMergePolicies()
+        self.destinations= self.flowAPI.getFlows(onlyDestinations=True)
+        segments_shared = []
+        for tmpFlow in self.destinations:
+            segments_shared += tmpFlow['transformations'][0].get('params',{}).get('segmentSelectors',{}).get('selectors',[])
+        segment_shared_dict = {seg.get('value',{}).get('id'):{
+            "exportMode" : seg.get('value',{}).get('exportMode'),
+            "scheduleFrequency": seg.get('value',{}).get("schedule",{}).get('frequency',''),
+        } for seg in segments_shared}
         mergePoliciesIdName = {merg['id']:merg['name'] for merg in self.mergePolicies}
         overview_mergePolicies = {merg['id']:{'name' : merg['name'], 'segments':0} for merg in self.mergePolicies}
         def evaluationType(evaluationInfo:dict):
@@ -311,15 +319,24 @@ class SandboxAnalyzer:
             segments = self.segments
         else:
             segments = self.segmentationAPI.getSegments()
-        overview_segments = {seg['name']:{
+        overview_segments = {seg['id']:{
+            'name' : seg['name'],
             'description':seg.get('description'),
             'evaluationType':evaluationType(seg.get('evaluationInfo')),
             'mergePolicies':mergePoliciesIdName[seg.get('mergePolicyId')],
-            'totalProfiles':seg.get('metrics',{}).get('data',{}).get('totalProfiles',0)}
+            'totalProfiles':seg.get('metrics',{}).get('data',{}).get('totalProfiles',0),
+            'creationTime':datetime.fromtimestamp(seg.get('creationTime')/1000).isoformat(timespec='minutes'),
+            'UsedInFlow':False,
+            'exportMode' : '',
+            'scheduleFrequency':''}
                 for seg in segments
                 }
         for seg in segments:
             overview_mergePolicies[seg['mergePolicyId']]['segments'] +=1
+            if seg.get('id') in segment_shared_dict:
+                overview_segments[seg.get('id')]['UsedInFlow'] = True
+                overview_segments[seg.get('id')]['exportMode'] = segment_shared_dict[seg.get('id')]["exportMode"]
+                overview_segments[seg.get('id')]['scheduleFrequency'] = segment_shared_dict[seg.get('id')]["scheduleFrequency"]
         self.mergePoliciesOverview = pd.DataFrame(overview_mergePolicies).T
         self.overviewSegments = pd.DataFrame(overview_segments).T
         return self.overviewSegments
@@ -336,9 +353,12 @@ class SandboxAnalyzer:
         dict_schemaId_SchemaName = {sc['$id']:sc['title'] for sc in self.schemas}
         overviewDatasets = {myId:{
             "name":name,
+            "created":"",
             'flows':0,
             'schemaRef':dict_schemaId_SchemaName.get(schemaId,self.schemaAPI.getSchema(schemaId)['title']),
             'enabledProfile':False,
+            'enabledIdentity':False,
+            'enabledUpsert':False,
             'identities':0, 
             'errorLast7days':0,
             'lastBatchIngestion':None}
@@ -356,6 +376,11 @@ class SandboxAnalyzer:
             tmp_dataset = tmp_dataset[list(tmp_dataset.keys())[0]]
             if 'enabled:true' in tmp_dataset.get('tags',{}).get('unifiedProfile',[]):
                 overviewDatasets[datasetId]['enabledProfile'] = True
+            if 'enabled:true' in tmp_dataset.get('tags',{}).get('unifiedIdentity',[]):
+                overviewDatasets[datasetId]['enabledIdentity'] = True
+            if "isUpsert: true" in tmp_dataset.get('tags',{}).get('unifiedProfile',[]):
+                overviewDatasets[datasetId]['enabledUpsert'] = True
+            overviewDatasets[datasetId]['created'] = datetime.fromtimestamp(tmp_dataset['created']/1000).isoformat()
             tmp_failedBatches = self.catalogAPI.getFailedBatchesDF(dataSet=datasetId,limit=100)
             if len(tmp_failedBatches)>0:
                 overviewDatasets[datasetId]['errorLast7days'] = len(tmp_failedBatches[tmp_failedBatches['timestamp']>week_ago_ts])
