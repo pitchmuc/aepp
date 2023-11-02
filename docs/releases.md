@@ -21,7 +21,9 @@ This page list all of the changes that came during the different release of the 
   * getImportExportJobs
   * getPackageDependencies
   * checkPermissions
-* providing `DataTypeManager` class in the schema module
+* providing `DataTypeManager` class in the schema module\
+Patch:
+* fixing `title` for array and array of objects in `to_dataframe()` methods for SchemaManager and FieldGroupManager.
 
 ## Version 0.3.1
 

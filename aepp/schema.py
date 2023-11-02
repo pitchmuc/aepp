@@ -2404,30 +2404,30 @@ class FieldGroupManager:
                         self.__transformationDF__(properties,dictionary,tmp_path,queryPath,description,xdmType)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
-                    if levelProperties is not None:
+                    if levelProperties is not None: ## array of objects
                         if path is None:
                             tmp_path = key
                         else :
                             tmp_path = f"{path}.{key}[]{{}}"
                         dictionary["path"].append(tmp_path)
-                        dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
-                        dictionary["title"].append(f"[{mydict[key]['items'].get('title')}]")
+                        dictionary["type"].append(f"{mydict[key].get('type')}")
+                        dictionary["title"].append(f"{mydict[key].get('title')}")
                         if queryPath and tmp_path is not None:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         if description and tmp_path is not None:
-                            dictionary["description"].append(mydict[key]['items'].get('description',''))
+                            dictionary["description"].append(mydict[key].get('description',''))
                         if xdmType:
-                            dictionary["xdmType"].append(f"[{mydict[key]['items'].get('meta:xdmType')}]")
+                            dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
                         self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,description,xdmType)
-                    else:
+                    else: ## simple arrays
                         finalpath = f"{path}.{key}[]"
                         dictionary["path"].append(finalpath)
                         dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
-                        dictionary["title"].append(f"{mydict[key]['items'].get('title')}")
+                        dictionary["title"].append(f"{mydict[key].get('title')}")
                         if queryPath and finalpath is not None:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
                         if description and finalpath is not None:
-                            dictionary["description"].append(mydict[key]['items'].get('description',''))
+                            dictionary["description"].append(mydict[key].get('description',''))
                         if xdmType:
                             dictionary["xdmType"].append(mydict[key]['items'].get('meta:xdmType',''))
                 else:
@@ -3156,7 +3156,7 @@ class SchemaManager:
         if save:
             title = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}.csv')
             df.to_csv(f"{title}.csv",index=False)
-        df = df[~df.duplicated('path')].reset_index(drop=True)
+        df = df[~df.duplicated(subset=['path','fieldGroup'])].reset_index(drop=True)
         return df
     
     def to_dict(self)->dict:
@@ -3666,26 +3666,26 @@ class DataTypeManager:
                         self.__transformationDF__(properties,dictionary,tmp_path,description,xdmType)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
-                    if levelProperties is not None:
+                    if levelProperties is not None: ## array of objects
                         if path is None:
                             tmp_path = key
                         else :
                             tmp_path = f"{path}.{key}[]{{}}"
                         dictionary["path"].append(tmp_path)
-                        dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
-                        dictionary["title"].append(f"[{mydict[key]['items'].get('title')}]")
+                        dictionary["type"].append(f"{mydict[key].get('type')}")
+                        dictionary["title"].append(f"{mydict[key].get('title')}")
                         if description and tmp_path is not None:
-                            dictionary["description"].append(mydict[key]['items'].get('description',''))
+                            dictionary["description"].append(mydict[key].get('description',''))
                         if xdmType:
-                            dictionary["xdmType"].append(f"[{mydict[key]['items'].get('meta:xdmType')}]")
+                            dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
                         self.__transformationDF__(levelProperties,dictionary,tmp_path,description,xdmType)
-                    else:
+                    else: ## simple arrays
                         finalpath = f"{path}.{key}[]"
                         dictionary["path"].append(finalpath)
                         dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
-                        dictionary["title"].append(f"{mydict[key]['items'].get('title')}")
+                        dictionary["title"].append(f"{mydict[key].get('title')}")
                         if description and finalpath is not None:
-                            dictionary["description"].append(mydict[key]['items'].get('description',''))
+                            dictionary["description"].append(mydict[key].get('description',''))
                         if xdmType:
                             dictionary["xdmType"].append(mydict[key]['items'].get('meta:xdmType',''))
                 else:
