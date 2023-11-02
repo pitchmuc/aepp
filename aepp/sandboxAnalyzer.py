@@ -153,8 +153,8 @@ class SandboxAnalyzer:
         self.datasetId_schemaId:dict = {self.catalogAPI.data.ids[dataset]: self.catalogAPI.data.schema_ref[dataset]['id'] for dataset in self.realDatasetNames}
         overview['Datasets'].append(len(self.realDatasetNames))
         ## Flows
-        self.sourceFlows:list = self.flowAPI.getFlows(onlySources=True)
-        self.destinationFlows:list = self.flowAPI.getFlows(onlyDestinations=True)
+        self.sourceFlows:list = self.flowAPI.getFlows(onlySources=True,n_results='inf')
+        self.destinationFlows:list = self.flowAPI.getFlows(onlyDestinations=True,n_results='inf')
         self.connections = self.flowAPI.getConnections()
         overview['DataSources Flows'].append(len(self.sourceFlows))
         overview['Destinations Flows'].append(len(self.destinationFlows))
@@ -171,6 +171,8 @@ class SandboxAnalyzer:
             Returns the list of schemaManagers built
         """
         listSchemaIds = [s['$id'] for s in self.schemas]
+        if len(listSchemaIds) <10 :
+            max_workers = 1
         with ThreadPoolExecutor(max_workers=max_workers,thread_name_prefix = 'Thread') as thread_pool:
             results = thread_pool.map(schema.SchemaManager, listSchemaIds)
         return list(results)
