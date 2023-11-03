@@ -42,6 +42,8 @@ class _Data:
         self.fieldGroups_id = {}
         self.fieldGroups_altId = {}
         self.fieldGroups = {}
+        self.fieldGroupsGlobal_id = {}
+        self.fieldGroupsGlobal_altId = {}
 
 
 class Schema:
@@ -1003,8 +1005,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getFieldGroups")
         path = f"/global/fieldgroups/"
-        start = kwargs.get("start", 0)
-        params = {"start": start}
+        params = {}
         verbose = kwargs.get("debug", False)
         privateHeader = deepcopy(self.header)
         privateHeader["Accept"] = f"application/vnd.adobe.{format}+json"
@@ -1025,8 +1026,8 @@ class Schema:
             data += res.get("results")
             page = res.get("_page",{})
             nextPage = page.get('next',None)
-        self.data.fieldGroups_id = {mix["title"]: mix["$id"] for mix in data}
-        self.data.fieldGroups_altId = {mix["title"]: mix["meta:altId"] for mix in data}
+        self.data.fieldGroupsGlobal_id = {mix["title"]: mix["$id"] for mix in data}
+        self.data.fieldGroupsGlobal_altId = {mix["title"]: mix["meta:altId"] for mix in data}
         if output == 'df':
             df = pd.DataFrame(data)
             return df
@@ -2007,6 +2008,7 @@ class FieldGroupManager:
             config : OPTIONAL : The config object in case you want to override the configuration.
         """
         self.EDITABLE = False
+        self.STATE = "EXISTING"
         self.fieldGroup = {}
         if schemaAPI is not None and type(schemaAPI) == Schema:
             self.schemaAPI = schemaAPI
@@ -2046,6 +2048,7 @@ class FieldGroupManager:
                 raise ValueError("the element pass is not a field group definition")
         else:
             self.EDITABLE = True
+            self.STATE = "NEW"
             self.fieldGroup = {
                 "title" : "",
                 "meta:resourceType":"mixins",
@@ -2457,7 +2460,7 @@ class FieldGroupManager:
             obj : the object associated with the new field
         """
         foundFlag = False ## Flag to set if the operation has been realized or not
-        lastField = completePathList[-1]
+        lastField = completePathList[-1] ## last field where to put the new object.
         fieldGroup = deepcopy(fieldGroup)
         for key in fieldGroup:
             level = fieldGroup.get(key,None)
@@ -2467,7 +2470,11 @@ class FieldGroupManager:
                         res,foundFlag = self.__setField__(completePathList,fieldGroup[key]['properties'],newField,obj)
                         fieldGroup[key]['properties'] = res
                     else:
-                        fieldGroup[key]['properties'][newField] = obj
+                        if newField in fieldGroup[key]['properties'].keys():
+                            fieldGroup[key]['properties'][newField]['title'] = obj["title"]
+                            fieldGroup[key]['properties'][newField]['description'] = obj["description"]
+                        else:
+                            fieldGroup[key]['properties'][newField] = obj
                         foundFlag = True
                         return fieldGroup,foundFlag
                 elif 'items' in level.keys():
@@ -2476,7 +2483,11 @@ class FieldGroupManager:
                             res, foundFlag = self.__setField__(completePathList,fieldGroup[key]['items']['properties'],newField,obj)
                             fieldGroup[key]['items']['properties'] = res
                         else:
-                            fieldGroup[key]['items']['properties'][newField] = obj
+                            if newField in fieldGroup[key]['items']['properties'].keys():
+                                fieldGroup[key]['items']['properties'][newField]['title'] = obj['title']
+                                fieldGroup[key]['items']['properties'][newField]['description'] = obj['description']
+                            else:
+                                fieldGroup[key]['items']['properties'][newField] = obj
                             foundFlag = True
                             return fieldGroup,foundFlag
         return fieldGroup,foundFlag
@@ -2547,7 +2558,7 @@ class FieldGroupManager:
         Arguments:
             string : REQUIRED : a string 
         """
-        return string.replace('[','').replace(']','').replace("{",'').replace('}','')
+        return deepcopy(string.replace('[','').replace(']','').replace("{",'').replace('}',''))
     
     def setTitle(self,title:str=None)->None:
         """
@@ -2636,7 +2647,7 @@ class FieldGroupManager:
             path : REQUIRED : path with dot notation where you want to create that new field.
                 In case of array of objects, use the "[]{}" notation
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
+                A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -2649,7 +2660,8 @@ class FieldGroupManager:
         """
         if self.EDITABLE == False:
             raise Exception("The Field Group is not Editable via Field Group Manager")
-        typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
+        typeTyped = ["string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object",'array']
+        dataType = dataType.replace('[]','')
         if dataType not in typeTyped:
             raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object"')
         if dataType == 'object' and objectComponents is None:
@@ -2705,7 +2717,7 @@ class FieldGroupManager:
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
+                A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -2715,16 +2727,16 @@ class FieldGroupManager:
             enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
+            description : if you want to add a description on your field
         """
         if self.EDITABLE == False:
             raise Exception("The Field Group is not Editable via Field Group Manager")
         if path is None:
             raise ValueError("path must provided")
-        typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
+        dataType = dataType.replace('[]','')
+        typeTyped = ["string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object",'array']
         if dataType not in typeTyped:
             raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","bytes"')
-        if dataType == 'object' and objectComponents is None:
-            raise AttributeError('Require a dictionary providing the object component')
         if title is None:
             title = self.__cleanPath__(path.split('.').pop())
         if title == 'items' or title == 'properties':
@@ -2733,21 +2745,38 @@ class FieldGroupManager:
         if pathSplit[0] == '':
             del pathSplit[0]
         newField = pathSplit.pop()
+        description = kwargs.get("description","")
         obj = {}
         if dataType == 'object':
-            obj = { 'type':'object', 'title':title,
-                'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
-            }
-        elif dataType == 'array':
-            obj = { 'type':'array', 'title':title,
-                "items":{
-                    'type':'object',
+            if objectComponents is not None:
+                obj = { 'type':'object', 'title':title, "description":description,
                     'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
                 }
-            }
+            else:
+                obj = { 'type':'object', 'title':title, "description":description,
+                    'properties':{}
+                }
+        elif dataType == 'array':
+            if objectComponents is not None:
+                obj = { 'type':'array', 'title':title,"description":description,
+                    "items":{
+                        'type':'object',
+                        'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
+                    }
+                }
+            else:
+                obj = { 'type':'array', 'title':title,"description":description,
+                    "items":{
+                        'type':'object',
+                        'properties':{}
+                    }
+                }
         else:
             obj = self.__transformFieldType__(dataType)
-            obj['title']= title
+            obj['title'] = title
+            obj["description"] = description,
+            if type(obj["description"]) == tuple:
+                obj["description"] = obj["description"][0]
             if array:
                 obj['type'] = "array"
                 obj['items'] = self.__transformFieldType__(dataType)
@@ -2819,6 +2848,8 @@ class FieldGroupManager:
         definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
         data = self.__transformationDF__(definition,queryPath=queryPath,description=description,xdmType=xdmType)
         df = pd.DataFrame(data)
+        df = df[~df.path.duplicated()].copy() ## dedup the paths
+        df = df[~(df['path']==self.tenantId)].copy()## remove the root
         if save:
             title = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
             df.to_csv(f"{title}.csv",index=False)
@@ -2859,6 +2890,8 @@ class FieldGroupManager:
         """
         if self.EDITABLE == False:
             raise Exception("The Field Group is not Editable via Field Group Manager")
+        if self.STATE == "NEW":
+            raise Exception("The Field Group does not exist yet and therefore cannot be updated")
         if self.schemaAPI is None:
             Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.putFieldGroup(self.id,self.to_xdm())
@@ -2876,8 +2909,10 @@ class FieldGroupManager:
         """
         Use the POST method to create the field group in the organization.
         """
+        if self.STATE != "NEW":
+            raise Exception("The Field Group already exists and cannot be created again")
         if self.schemaAPI is None:
-            Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
+            raise Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.createFieldGroup(self.to_xdm())
         if 'status' in res.keys():
             if res['status'] >= 400:
@@ -2887,7 +2922,54 @@ class FieldGroupManager:
                 return res
         self.fieldGroup = res
         self.__setAttributes__(self.fieldGroup)
+        self.STATE = "EXISTING"
         return res
+
+    def importFieldGroupDefinition(self,fieldgroup:Union[pd.DataFrame,str],sep=',')->None:
+        """
+        Importing the flat representation of the field group. It could be a dataframe or a CSV file containing the field group element.
+        The field group needs to be editable to be updated.
+        Argument:
+            fieldGroup : REQUIRED : The dataframe or csv of the field
+                It needs to contains the following columns : "path", "type", "fieldGroup"
+            sep : OPTIONAL : In case your CSV is separated by something else than comma. Default (',')
+        """
+        if self.EDITABLE != True: ## to be confirmed
+            raise Warning(f'The field group {self.title} cannot be edited (EDITABLE == False)')
+        if type(fieldgroup) == str:
+            df_import = pd.read_csv(fieldgroup,sep=sep)
+        elif type(fieldgroup) == pd.DataFrame:
+            df_import = fieldgroup
+        if 'path' not in df_import.columns or 'type' not in df_import.columns or 'fieldGroup' not in df_import.columns:
+            raise AttributeError("missing a column [type, path, or type] in your fieldgroup")
+        df_import = df_import[~(df_import.duplicated('path'))].copy() ## removing duplicated paths
+        df_import = df_import[~(df_import['path']==self.tenantId)].copy() ## removing tenant field
+        df_import = df_import.fillna('')
+        underscoreDF = df_import[df_import.path.str.contains('\._')].copy() ## special fields not supported
+        if len(underscoreDF)>0:
+            list_paths = underscoreDF['path'].to_list()
+            objectRoots = set([p.split('.')[-2] for p in list_paths]) ## removing all objects using these fields
+            print(f"{objectRoots} objects will not be supported in the field group manager setup. Handle them manually")
+            for tobject in objectRoots: ## excluding the 
+                df_import = df_import[~df_import.path.str.contains(tobject)].copy()
+        if 'title' not in df_import.columns:
+            df_import['title'] = df_import['path'].apply(lambda x : x.split('.')[-1])
+        if 'description' not in df_import.columns:
+            df_import['description'] = ""
+        df_import['pathDot'] = df_import.path.str.count('\.')
+        df_import = df_import.sort_values(['pathDot'])##sorting creation of objects
+        for index, row in df_import.iterrows():
+            #if 'error' in res.keys():
+            path = row['path']
+            clean_path = self.__cleanPath__(row['path'])
+            typeElement = row['type']
+            if path.endswith("[]"):
+                self.addField(clean_path,typeElement,title=row['title'],description=row['description'],array=True)
+            elif path.endswith("[]{}"):
+                self.addField(clean_path,'array',title=row['title'],description=row['description'])
+            else:
+                self.addField(clean_path,typeElement,title=row['title'],description=row['description'])
+        self.setTitle(df_import['fieldGroup'].mode()[0])
 
 
 class SchemaManager:
@@ -2896,8 +2978,10 @@ class SchemaManager:
     """
     DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"]
 
-    def __init__(self,schema:Union[str,dict],
+    def __init__(self,
+                schema:Union[str,dict]=None,
                 fieldGroups:list=None,
+                title: str=None,
                 schemaAPI:'Schema'=None,
                 schemaClass:str=None,
                 config: Union[dict,ConnectObject] = aepp.config.config_object,
@@ -2909,6 +2993,7 @@ class SchemaManager:
                 If schemaId is passed, you need to provide the schemaAPI connection as well.
             fieldGroups : OPTIONAL : Possible to specify a list of fieldGroup. 
                 Either a list of fieldGroupIds (schemaAPI should be provided as well) or list of dictionary definition 
+            title : OPTIONAL : If you wish to set up the title of your schema
             schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
             schemaClass : OPTIONAL : If you want to set the class to be a specific class.
                 Default value is profile: "https://ns.adobe.com/xdm/context/profile", can be replaced with any class definition.
@@ -2917,7 +3002,7 @@ class SchemaManager:
         """
         self.fieldGroupIds=[]
         self.fieldGroupsManagers = []
-        self.title = None
+        self.title = title
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
         else:
@@ -2965,7 +3050,7 @@ class SchemaManager:
                         self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI))
         elif schema is None:
             self.schema = {
-                    "title": None,
+                    "title": self.title,
                     "description": "power by aepp",
                     "allOf": [
                             {
@@ -3085,7 +3170,7 @@ class SchemaManager:
             myResults += res
         return myResults
     
-    def addFieldGroup(self,fieldGroup:Union[str,dict]=None)->Union[None,'FieldGroupManager']:
+    def addFieldGroup(self,fieldGroup:Union[str,dict,FieldGroupManager]=None)->Union[None,'FieldGroupManager']:
         """
         Add a field groups to field Group object and the schema. 
         return the specific FieldGroup Manager instance.
@@ -3095,20 +3180,20 @@ class SchemaManager:
         """
         if type(fieldGroup) == dict:
             if fieldGroup.get('$id') not in [fg for fg in self.fieldGroupIds]:
-                self.fieldGroupIds.append(fieldGroup['$id'])
                 self.schema['allOf'].append({'$ref':fieldGroup['$id'],"type": "object"})
-                
         elif type(fieldGroup) == str:
-            if fieldGroup not in [fg for fg in self.fieldGroupIds]:
-                self.fieldGroupIds.append(fieldGroup)
-                self.schema['allOf'].append({'$ref':fieldGroup,"type": "object"})
-                if self.schemaAPI is None:
-                    raise AttributeError('Missing the schema API attribute. Please use the addSchemaAPI method to add it.')
-                else:
-                    fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup)
-        fbManager = FieldGroupManager(fieldGroup=fieldGroup)
+            fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
+            if fieldGroup['$id'] not in self.fieldGroupIds:
+                self.schema['allOf'].append({'$ref':fieldGroup['$id'],"type": "object"})
+        if type(fieldGroup) == FieldGroupManager:
+            fbManager = fieldGroup
+            if fbManager.id not in self.fieldGroupIds:
+                self.schema['allOf'].append({'$ref':fbManager.id,"type": "object"})
+        else:
+            fbManager = FieldGroupManager(fieldGroup=fieldGroup,schemaAPI=self.schemaAPI)
         self.fieldGroupsManagers.append(fbManager)
         self.fieldGroupTitles = tuple(fgm.title for fgm in self.fieldGroupsManagers)
+        self.fieldGroupIds = (fgm.id for fgm in self.fieldGroupsManagers)
         self.fieldGroups = {fgm.id:fgm.title for fgm in self.fieldGroupsManagers}
         return fbManager
     
@@ -3307,6 +3392,72 @@ class SchemaManager:
         df_merge['availability'] = df_merge['availability'].str.replace('left_only','schema_only')
         df_merge['availability'] = df_merge['availability'].str.replace('both','schema_dataset')
         return df_merge
+    
+    def importSchemaDefinition(self,schema:Union[str,pd.DataFrame]=None,sep:str=',')->dict:
+        """
+        Import the definition of all the fields defined in csv or dataframe.
+        Update all the corresponding field groups based on that.
+        Argument:
+            schema : REQUIRED : The schema defined in the CSV.
+                It needs to contains the following columns : "path", "type", "fieldGroup","title"
+            sep : OPTIONAL : If your CSV is separated by other character  than comma (,)
+        """
+        if schema is None:
+            raise ValueError("Require a dataframe or a CSV")
+        if type(schema) == str:
+            df_import = pd.read_csv(schema,sep=sep)
+        elif type(schema) == pd.DataFrame:
+            df_import = schema
+        if 'path' not in df_import.columns or 'type' not in df_import.columns or 'fieldGroup' not in df_import.columns:
+            raise AttributeError("missing a column [type, path, or type] in your fieldgroup")
+        fieldGroupsImportList = list(df_import['fieldGroup'].unique())
+        allFieldGroups = self.schemaAPI.getFieldGroups() ## generate the dictionary in data attribute
+        ootbFGS = self.schemaAPI.getFieldGroupsGlobal()
+        dictionaryFGs = {fg:None for fg in fieldGroupsImportList}
+        for fg in fieldGroupsImportList:
+            subDF = df_import[df_import['fieldGroup'] == fg].copy()
+            if fg in self.fieldGroups.values():
+                myFg = self.getFieldGroupManager(fg)
+                myFg.importFieldGroupDefinition(subDF)
+                dictionaryFGs[fg] = myFg
+            elif fg in self.schemaAPI.data.fieldGroups_altId.keys():
+                myFg = FieldGroupManager(self.schemaAPI.data.fieldGroups_id[fg],schemaAPI=self.schemaAPI)
+                myFg.importFieldGroupDefinition(subDF)
+                dictionaryFGs[fg] = myFg
+            elif fg in  self.schemaAPI.data.fieldGroupsGlobal_altId.keys():
+                offFGId = [ofg['$id'] for ofg in ootbFGS if ofg['title'] == fg][0] ## official field group
+                myFg = FieldGroupManager(offFGId,schemaAPI=self.schemaAPI)
+                dictionaryFGs[fg] = myFg
+            else:
+                myFg = FieldGroupManager(schemaAPI=self.schemaAPI,title=fg)
+                myFg.importFieldGroupDefinition(subDF)
+                dictionaryFGs[fg] = myFg
+        self.dictFieldGroupWork = dictionaryFGs
+        return self.dictFieldGroupWork
+
+
+    def applyFieldGroupChanges(self)->dict:
+        """
+        Apply the changes that you have imported to the field groups via the importSchemaDefinition
+        It also update the references to the schema and add new field groups to the schema definition.
+        NOTE: You will need to update the Schema in case of new field groups have been added. 
+        Returns a dictionary such as {'fieldGroupName':'{object returned by the action}'}
+        """
+        dict_result = {}
+        for key in self.dictFieldGroupWork.keys():
+            myFG:FieldGroupManager = self.dictFieldGroupWork[key]
+            if myFG.STATE == 'NEW':
+                myFG.createFieldGroup()
+                res = self.addFieldGroup(myFG)
+                dict_result[key] = res
+            elif myFG.STATE == 'EXISTING':
+                if myFG.EDITABLE:
+                    res = myFG.updateFieldGroup()
+                else:
+                    res = myFG.fieldGroup
+                self.addFieldGroup(myFG)
+                dict_result[key] = res
+        return dict_result
 
 
 class DataTypeManager:
