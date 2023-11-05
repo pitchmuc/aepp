@@ -3079,7 +3079,7 @@ class SchemaManager:
                     self.fieldGroupsManagers[fgM.title] = fgM
         self.fieldGroupTitles= tuple(fg.title for fg in list(self.fieldGroupsManagers.values()))
         self.fieldGroups = {fg.id:fg.title for fg in list(self.fieldGroupsManagers.values())}
-        self.fieldGroupIdstuple(fg.id for fg in list(self.fieldGroupsManagers.values()))
+        self.fieldGroupIds = tuple(fg.id for fg in list(self.fieldGroupsManagers.values()))
     
     def __setAttributes__(self,schemaDef:dict)->None:
         """
