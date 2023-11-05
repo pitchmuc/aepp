@@ -3001,7 +3001,7 @@ class SchemaManager:
             config : OPTIONAL : The config object in case you want to override the configuration.
         """
         self.fieldGroupIds=[]
-        self.fieldGroupsManagers = []
+        self.fieldGroupsManagers = {}
         self.title = title
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
@@ -3023,10 +3023,12 @@ class SchemaManager:
                 for ref in self.fieldGroupIds:
                     if '/mixins/' in ref:
                         definition = self.schemaAPI.getFieldGroup(ref,full=False)
+                        fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI)
                     else:
                         definition = self.schemaAPI.getFieldGroup(ref,full=True)
                         definition['definitions'] = definition['properties']
-                    self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI))
+                        fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI)
+                    self.fieldGroupsManagers[fgM.title] = fgM
         elif type(schema) == str:
             if self.schemaAPI is None:
                 Warning("No schema instance has been passed or config file imported.\n Aborting the retrieveal of the Schema Definition")
@@ -3047,7 +3049,8 @@ class SchemaManager:
                             ## if the fieldGroup is an OOTB one
                             definition = self.schemaAPI.getFieldGroup(ref,full=True)
                             definition['definitions'] = definition['properties']
-                        self.fieldGroupsManagers.append(FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI))
+                        fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI)
+                        self.fieldGroupsManagers[fgM.title] = fgM
         elif schema is None:
             self.schema = {
                     "title": self.title,
@@ -3063,18 +3066,20 @@ class SchemaManager:
         if fieldGroups is not None and type(fieldGroups) == list:
             if fieldGroups[0] == str:
                 for fgId in fieldGroups:
-                    self.fieldGroupIds.append(fgId)
                     if self.schemaAPI is None:
                         Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                     else:
-                        definition = self.schemaAPI.getFieldGroup(ref)
-                        self.fieldGroupsManagers.append(FieldGroupManager(definition,schemaAPI=self.schemaAPI))
+                        definition = self.schemaAPI.getFieldGroup(fgId,full=False)
+                        fgM = FieldGroupManager(definition,schemaAPI=self.schemaAPI)
+                        self.fieldGroupsManagers[fgM.title] = fgM
             elif fieldGroups[0] == dict:
                 for fg in fieldGroups:
                     self.fieldGroupIds.append(fg.get('$id'))
-                    self.fieldGroupsManagers.append(FieldGroupManager(fg,schemaAPI=self.schemaAPI))
-        self.fieldGroupTitles= tuple(fg.title for fg in self.fieldGroupsManagers)
-        self.fieldGroups = {fg.id:fg.title for fg in self.fieldGroupsManagers}
+                    fgM = FieldGroupManager(fg,schemaAPI=self.schemaAPI)
+                    self.fieldGroupsManagers[fgM.title] = fgM
+        self.fieldGroupTitles= tuple(fg.title for fg in list(self.fieldGroupsManagers.values()))
+        self.fieldGroups = {fg.id:fg.title for fg in list(self.fieldGroupsManagers.values())}
+        self.fieldGroupIdstuple(fg.id for fg in list(self.fieldGroupsManagers.values()))
     
     def __setAttributes__(self,schemaDef:dict)->None:
         """
@@ -3141,7 +3146,7 @@ class SchemaManager:
             caseSensitive : OPTIONAL : If you want to remove the case sensitivity.
         """
         myResults = []
-        for fgmanager in self.fieldGroupsManagers:
+        for fgmanager in list(self.fieldGroupsManagers.values()):
             res = fgmanager.searchField(string,partialMatch,caseSensitive)
             for r in res:
                 r['fieldGroup'] = fgmanager.title
@@ -3162,7 +3167,7 @@ class SchemaManager:
                 inner : provide the fields if all the key value pair matched.
         """
         myResults = []
-        for fgmanager in self.fieldGroupsManagers:
+        for fgmanager in list(self.fieldGroupsManagers.values()):
             res = fgmanager.searchAttribute(attr=attr,regex=regex,extendedResults=extendedResults,joinType=joinType)
             if extendedResults:
                 for r in res:
@@ -3191,10 +3196,10 @@ class SchemaManager:
                 self.schema['allOf'].append({'$ref':fbManager.id,"type": "object"})
         else:
             fbManager = FieldGroupManager(fieldGroup=fieldGroup,schemaAPI=self.schemaAPI)
-        self.fieldGroupsManagers.append(fbManager)
-        self.fieldGroupTitles = tuple(fgm.title for fgm in self.fieldGroupsManagers)
-        self.fieldGroupIds = (fgm.id for fgm in self.fieldGroupsManagers)
-        self.fieldGroups = {fgm.id:fgm.title for fgm in self.fieldGroupsManagers}
+        self.fieldGroupsManagers[fbManager.title] = fbManager
+        self.fieldGroupTitles = tuple(fgm.title for fgm in list(self.fieldGroupsManagers.values()))
+        self.fieldGroupIds = tuple(fgm.id for fgm in list(self.fieldGroupsManagers.values()))
+        self.fieldGroups = {fgm.id:fgm.title for fgm in list(self.fieldGroupsManagers.values())}
         return fbManager
     
     def getFieldGroupManager(self,fieldgroup:str=None)->'FieldGroupManager':
@@ -3206,9 +3211,9 @@ class SchemaManager:
         """
         if self.getFieldGroupManager is not None:
             if "ns.adobe.com" in fieldgroup: ## id
-                return [fg for fg in self.fieldGroupsManagers if fg.id == fieldgroup][0]
+                return [fg for fg in list(self.fieldGroupsManagers.values()) if fg.id == fieldgroup][0]
             else:
-                return [fg for fg in self.fieldGroupsManagers if fg.title == fieldgroup][0]
+                return [fg for fg in list(self.fieldGroupsManagers.values()) if fg.title == fieldgroup][0]
         else:
             raise Exception("The field group manager was not set to True during instanciation. No Field Group Manager to return")
 
@@ -3234,7 +3239,7 @@ class SchemaManager:
             xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
         """
         df = pd.DataFrame({'path':[],'type':[],'fieldGroup':[]})
-        for fgmanager in self.fieldGroupsManagers:
+        for fgmanager in list(self.fieldGroupsManagers.values()):
             tmp_df = fgmanager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType)
             tmp_df['fieldGroup'] = fgmanager.title
             df = pd.concat([df,tmp_df],ignore_index=True)
@@ -3248,7 +3253,7 @@ class SchemaManager:
         """
         Return a dictionary of the whole schema. You need to have instanciated the Field Group Manager
         """
-        list_dict = [fbm.to_dict() for fbm in self.fieldGroupsManagers]
+        list_dict = [fbm.to_dict() for fbm in list(self.fieldGroupsManagers.values())]
         result = {}
         for mydict in list_dict:
             result = self.__simpleDeepMerge__(result,mydict)
