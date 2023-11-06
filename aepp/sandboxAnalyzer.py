@@ -280,10 +280,13 @@ class SandboxAnalyzer:
                 return self.overviewIdentities
         identities = self.identityAPI.getIdentities()
         self.overviewIdentities = pd.DataFrame(identities)
-        identities_namespaces = self.profileAPI.getPreviewNamespace()
-        df_identities_namespace = pd.DataFrame(identities_namespaces['data'])
-        df_IDNS_limit = df_identities_namespace[['code','fullIDsCount','fullIDsFragmentCount']]
-        self.overviewIdentities = pd.merge(self.overviewIdentities,df_IDNS_limit,left_on='code',right_on='code')
+        try:
+            identities_namespaces = self.profileAPI.getPreviewNamespace()
+            df_identities_namespace = pd.DataFrame(identities_namespaces.get('data'))
+            df_IDNS_limit = df_identities_namespace[['code','fullIDsCount','fullIDsFragmentCount']]
+            self.overviewIdentities = pd.merge(self.overviewIdentities,df_IDNS_limit,left_on='code',right_on='code')
+        except:
+            print("could not run the identity namespace count")
         if save:
             self.overviewIdentities.to_csv(f'overview_identities_{self.sandbox}.csv',index=False)
         return self.overviewIdentities
@@ -296,7 +299,7 @@ class SandboxAnalyzer:
         if cache:
             if self.overviewSegments is not None:
                 if save:
-                    self.overviewSegments.to_csv('',index=False)
+                    self.overviewSegments.to_csv(f'overview_segments_{self.sandbox}.csv.csv',index=False)
                 return self.overviewSegments
         self.mergePolicies = self.profileAPI.getMergePolicies()
         self.destinations = self.flowAPI.getFlows(onlyDestinations=True)
@@ -341,6 +344,8 @@ class SandboxAnalyzer:
                 overview_segments[seg.get('id')]['scheduleFrequency'] = segment_shared_dict[seg.get('id')]["scheduleFrequency"]
         self.mergePoliciesOverview = pd.DataFrame(overview_mergePolicies).T
         self.overviewSegments = pd.DataFrame(overview_segments).T
+        if save:
+            self.overviewSegments.to_csv(f'overview_segments_{self.sandbox}.csv.csv',index=False)
         return self.overviewSegments
     
     def datasetsAnalyzer(self,save:bool=False,cache:bool=True)->pd.DataFrame:
@@ -400,7 +405,7 @@ class SandboxAnalyzer:
                 overviewDatasets[key]['lastBatchIngestion'] = datetime.fromtimestamp(lastBatches[key].get('updated',1000)/1000).isoformat(sep='T', timespec='minutes')
         self.overviewDatasets = pd.DataFrame(overviewDatasets).T
         if save:
-            self.overviewDatasets.to_csv(f"overview_dataset_{self.sandbox}.csv")
+            self.overviewDatasets.to_csv(f"overview_datasets_{self.sandbox}.csv")
         return self.overviewDatasets
 
     def flowsAnalyzer(self,save:bool=False,cache:bool=True)->pd.DataFrame:
