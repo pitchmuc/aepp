@@ -305,10 +305,14 @@ class SandboxAnalyzer:
         self.destinations = self.flowAPI.getFlows(onlyDestinations=True)
         segments_shared = []
         for tmpFlow in self.destinations:
-            segments_shared += tmpFlow['transformations'][0].get('params',{}).get('segmentSelectors',{}).get('selectors',[])
+            tmpSegmentShared = tmpFlow['transformations'][0].get('params',{}).get('segmentSelectors',{}).get('selectors',[])
+            for s in tmpSegmentShared:
+                s['flowId'] = tmpFlow['id']
+            segments_shared += tmpSegmentShared
         segment_shared_dict = {seg.get('value',{}).get('id'):{
             "exportMode" : seg.get('value',{}).get('exportMode'),
             "scheduleFrequency": seg.get('value',{}).get("schedule",{}).get('frequency',''),
+            "flowId" : seg["flowId"]
         } for seg in segments_shared}
         mergePoliciesIdName = {merg['id']:merg['name'] for merg in self.mergePolicies}
         overview_mergePolicies = {merg['id']:{'name' : merg['name'], 'segments':0} for merg in self.mergePolicies}
@@ -331,17 +335,20 @@ class SandboxAnalyzer:
             'mergePolicies':mergePoliciesIdName[seg.get('mergePolicyId')],
             'totalProfiles':seg.get('metrics',{}).get('data',{}).get('totalProfiles',0),
             'creationTime':datetime.fromtimestamp(seg.get('creationTime')/1000).isoformat(timespec='minutes'),
+            'createdUser':seg.get('createdBy','unknown'),
             'UsedInFlow':False,
-            'exportMode' : '',
-            'scheduleFrequency':''}
+            'flowIds':[],
+            'exportMode' : [],
+            'scheduleFrequency':[]}
                 for seg in segments
                 }
         for seg in segments:
             overview_mergePolicies[seg['mergePolicyId']]['segments'] +=1
             if seg.get('id') in segment_shared_dict:
                 overview_segments[seg.get('id')]['UsedInFlow'] = True
-                overview_segments[seg.get('id')]['exportMode'] = segment_shared_dict[seg.get('id')]["exportMode"]
-                overview_segments[seg.get('id')]['scheduleFrequency'] = segment_shared_dict[seg.get('id')]["scheduleFrequency"]
+                overview_segments[seg.get('id')]['flowIds'].append(segment_shared_dict[seg.get('id')]['flowId'])
+                overview_segments[seg.get('id')]['exportMode'].append(segment_shared_dict[seg.get('id')]["exportMode"])
+                overview_segments[seg.get('id')]['scheduleFrequency'].append(segment_shared_dict[seg.get('id')]["scheduleFrequency"])
         self.mergePoliciesOverview = pd.DataFrame(overview_mergePolicies).T
         self.overviewSegments = pd.DataFrame(overview_segments).T
         if save:
