@@ -3423,11 +3423,13 @@ class SchemaManager:
             subDF = df_import[df_import['fieldGroup'] == fg].copy()
             if fg in self.fieldGroups.values():
                 myFg = self.getFieldGroupManager(fg)
-                myFg.importFieldGroupDefinition(subDF)
+                if myFg.EDITABLE:
+                    myFg.importFieldGroupDefinition(subDF)
                 dictionaryFGs[fg] = myFg
             elif fg in self.schemaAPI.data.fieldGroups_altId.keys():
                 myFg = FieldGroupManager(self.schemaAPI.data.fieldGroups_id[fg],schemaAPI=self.schemaAPI)
-                myFg.importFieldGroupDefinition(subDF)
+                if myFg.EDITABLE:
+                    myFg.importFieldGroupDefinition(subDF)
                 dictionaryFGs[fg] = myFg
             elif fg in  self.schemaAPI.data.fieldGroupsGlobal_altId.keys():
                 offFGId = [ofg['$id'] for ofg in ootbFGS if ofg['title'] == fg][0] ## official field group
@@ -3435,7 +3437,8 @@ class SchemaManager:
                 dictionaryFGs[fg] = myFg
             else:
                 myFg = FieldGroupManager(schemaAPI=self.schemaAPI,title=fg)
-                myFg.importFieldGroupDefinition(subDF)
+                if myFg.EDITABLE:
+                    myFg.importFieldGroupDefinition(subDF)
                 dictionaryFGs[fg] = myFg
         self.dictFieldGroupWork = dictionaryFGs
         return self.dictFieldGroupWork
