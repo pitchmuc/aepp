@@ -1,0 +1,7 @@
+{
+    "org_id": "CA590B1B5D783C2A0A495E47@AdobeOrg",
+    "client_id": "24df2e9ae8274333b81e250aa0ea62e4",
+    "secret": "p8e-xQIm5-hwSq9K1TJmHkYiQVqCcOV-WoYs",
+    "sandbox-name": "prod",
+    "scopes": "openid, AdobeID, read_pc.acp, read_pc, read_pc.dma_tartan, additional_info, read_organizations, additional_info.projectedProductContext, session"
+}
