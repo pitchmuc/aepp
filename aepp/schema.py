@@ -1625,6 +1625,8 @@ class Schema:
             id_desc : OPTIONAL : if you want to return only the id.
             link_desc : OPTIONAL : if you want to return only the paths.
             save : OPTIONAL : Boolean that would save your descriptors in the schema folder. (default False)
+        possible kwargs:
+            prop : additional property that you want to filter with, such as "prop=f"xdm:sourceSchema==schema$Id"
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getDescriptors")
@@ -1640,6 +1642,9 @@ class Schema:
             update_link = "-link"
         else:
             update_link = ""
+        if kwargs.get('prop',None) is not None:
+            if 'property' in params.keys():
+                params["property"] += f",{kwargs.get('prop')}"
         privateHeader = deepcopy(self.header)
         privateHeader[
             "Accept"
@@ -1750,12 +1755,6 @@ class Schema:
         self,
         descriptorId: str = None,
         descriptorObj:dict = None,
-        desc_type: str = "xdm:descriptorIdentity",
-        sourceSchema: str = None,
-        sourceProperty: str = None,
-        namespace: str = None,
-        xdmProperty: str = "xdm:code",
-        primary: bool = False,
         **kwargs
     ) -> dict:
         """
@@ -1763,35 +1762,16 @@ class Schema:
         Arguments:
             descriptorId : REQUIRED : the descriptor id to replace
             descriptorObj : REQUIRED : The full descriptor object if you want to pass it directly.
-            desc_type : REQUIRED : the type of descriptor to create.(default Identity)
-            sourceSchema : REQUIRED : the schema attached to your identity ()
-            sourceProperty : REQUIRED : the path to the field
-            namespace : REQUIRED : the namespace used for the identity
-            xdmProperty : OPTIONAL : xdm code for the descriptor (default : xdm:code)
-            primary : OPTIONAL : Boolean to define if it is a primary identity or not (default False).
         """
         if descriptorId is None:
             raise Exception("Require a descriptor id")
         if self.loggingEnabled:
             self.logger.debug(f"Starting putDescriptor")
         path = f"/{self.container}/descriptors/{descriptorId}"
-        if sourceSchema is None or sourceProperty is None or namespace is None:
-            raise Exception("Missing required arguments.")
         if descriptorObj is not None and type(descriptorObj) == dict:
             obj = descriptorObj
         else:
-            obj = {
-            "@type": desc_type,
-            "xdm:sourceSchema": sourceSchema,
-            "xdm:sourceVersion": 1,
-            "xdm:sourceProperty": sourceProperty,
-            "xdm:namespace": namespace,
-            "xdm:property": xdmProperty,
-            "xdm:isPrimary": primary,
-            }
-            for key in kwargs:
-                if 'xdm:' in key:
-                    obj[key] = kwargs.get(key)
+            raise ValueError("Require a dictionary representing the descriptor")
         res = self.connector.putData(
             self.endpoint + path, data=obj)
         return res
@@ -1906,7 +1886,7 @@ class Schema:
     
     def FieldGroupManager(self,fieldGroup:Union[dict,str,None],title:str=None,fg_class:list=["experienceevent","profile"]) -> 'FieldGroupManager':
          """
-         Generate a field group Manager instance using the information provided by the schema instance.
+         Generates a field group Manager instance using the information provided by the schema instance.
          Arguments:
              fieldGroup : OPTIONAL : the field group definition as dictionary OR the ID to access it OR nothing if you want to start from scratch
              title : OPTIONAL : If you wish to change the tile of the field group.
@@ -1915,13 +1895,21 @@ class Schema:
     
     def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None) -> 'FieldGroupManager':
          """
-         Generate a Schema Manager instance using the information provided by the schema instance.
+         Generates a Schema Manager instance using the information provided by the schema instance.
          Arguments:
             schema : OPTIONAL : the schema definition as dictionary OR the ID to access it OR Nothing if you want to start from scratch
             fieldGroups : OPTIONAL : If you wish to add a list of fieldgroups.
             fgManager : OPTIONAL : If you wish to handle the different field group passed into a Field Group Manager instance and have additional methods available.
          """
          return SchemaManager(schema=schema,fieldGroups=fieldGroups,schemaAPI=self)
+
+    def DataTypeManager(self,dataType:Union[dict,str])->'DataTypeManager':
+        """
+        Generates a Data Type Manager instance using the information provided by the schema instance.
+        Arguments:
+            dataType : OPTIONAL : The data Type definition, the reference Id or nothing if you want to start from scratch.
+        """
+        return DataTypeManager(dataType=dataType)
 
     def compareDFschemas(self,df1,df2,**kwargs)->dict:
         """
@@ -2010,6 +1998,7 @@ class FieldGroupManager:
         self.EDITABLE = False
         self.STATE = "EXISTING"
         self.fieldGroup = {}
+        self.dataTypes = {}
         if schemaAPI is not None and type(schemaAPI) == Schema:
             self.schemaAPI = schemaAPI
         else:
@@ -2021,7 +2010,12 @@ class FieldGroupManager:
                     if fieldGroup.get('definitions',None) is not None:
                         if 'mixins' in fieldGroup.get('$id'):
                             self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
-                            if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group 
+                            if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group
+                                dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
+                                dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
+                                for dt in dataTypes:
+                                    dt_manager = self.schemaAPI.DataTypeManager(dt)
+                                    self.dataTypes[dt_manager.title] = dt_manager
                                 self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
                             else:
                                 self.EDITABLE = True
@@ -2835,7 +2829,7 @@ class FieldGroupManager:
             aepp.saveFile(module='schema',file=data,filename=f"{filename}.json",type_file='json')
         return data
 
-    def to_dataframe(self,save:bool=False,queryPath:bool=False,description:bool=False,xdmType:bool=False)->pd.DataFrame:
+    def to_dataframe(self,save:bool=False,queryPath:bool=False,description:bool=False,xdmType:bool=False,editable:bool=False)->pd.DataFrame:
         """
         Generate a dataframe with the row representing each possible path.
         Arguments:
@@ -2844,12 +2838,15 @@ class FieldGroupManager:
             queryPath : OPTIONAL : If you want to have the query path to be used.
             description : OPTIONAL : If you want to have the description used (default False)
             xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
+            editable : OPTIONAL : If you can manipulate the structure of the field groups (default False)
         """
         definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
         data = self.__transformationDF__(definition,queryPath=queryPath,description=description,xdmType=xdmType)
         df = pd.DataFrame(data)
         df = df[~df.path.duplicated()].copy() ## dedup the paths
         df = df[~(df['path']==self.tenantId)].copy()## remove the root
+        if editable:
+            df['editable'] = self.EDITABLE
         if save:
             title = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
             df.to_csv(f"{title}.csv",index=False)
@@ -2860,6 +2857,19 @@ class FieldGroupManager:
         Return the fieldgroup definition as XDM
         """
         return self.fieldGroup
+    
+    def getDataType(self,dataType:str=None)->'DataTypeManager':
+        """
+        Retrieve the Data Type Manager instance of custom data type
+        Argument:
+            dataType : REQUIRED : id or name of the data type.
+        """
+        if dataType is None:
+            raise ValueError("Require a data type $id or name")
+        if dataType in self.dataTypes.keys():
+            return self.dataTypes[dataType]
+        if dataType in self.dataTypes.values():
+            return self.dataTypes[list(self.dataTypes.keys())[list(self.dataTypes.values()).index(dataType)]]
 
     def patchFieldGroup(self,operations:list=None)->dict:
         """
@@ -2934,8 +2944,8 @@ class FieldGroupManager:
                 It needs to contains the following columns : "path", "type", "fieldGroup"
             sep : OPTIONAL : In case your CSV is separated by something else than comma. Default (',')
         """
-        if self.EDITABLE != True: ## to be confirmed
-            raise Warning(f'The field group {self.title} cannot be edited (EDITABLE == False)')
+        if self.EDITABLE != True:
+            print(f'The field group {self.title} cannot be edited (EDITABLE == False). Only Title and Description can be changed via descriptors.')
         if type(fieldgroup) == str:
             df_import = pd.read_csv(fieldgroup,sep=sep)
         elif type(fieldgroup) == pd.DataFrame:
@@ -3007,6 +3017,7 @@ class SchemaManager:
             self.schemaAPI = schemaAPI
         else:
             self.schemaAPI = Schema(config=config)
+        self.tenantId = f"_{self.schemaAPI.getTenantId()}"
         if type(schema) == dict:
             self.schema = schema
             self.__setAttributes__(self.schema)
@@ -3227,7 +3238,7 @@ class SchemaManager:
         self.title = name
         return None
 
-    def to_dataframe(self,save:bool=False,queryPath: bool = False,description:bool = False,xdmType:bool=False)->pd.DataFrame:
+    def to_dataframe(self,save:bool=False,queryPath: bool = False,description:bool = False,xdmType:bool=False,editable:bool=False)->pd.DataFrame:
         """
         Extract the information from the Field Groups to a DataFrame. 
         You need to have instanciated the Field Group manager.
@@ -3237,10 +3248,11 @@ class SchemaManager:
             queryPath : OPTIONAL : If you want to have the query path to be used.
             description : OPTIONAL : If you want to have the description added to your dataframe. (default False)
             xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
+            editable : OPTIONAL : If you can manipulate the structure of the field groups
         """
         df = pd.DataFrame({'path':[],'type':[],'fieldGroup':[]})
         for fgmanager in list(self.fieldGroupsManagers.values()):
-            tmp_df = fgmanager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType)
+            tmp_df = fgmanager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,editable=editable)
             tmp_df['fieldGroup'] = fgmanager.title
             df = pd.concat([df,tmp_df],ignore_index=True)
         if save:
@@ -3292,7 +3304,7 @@ class SchemaManager:
                                 completePath:str=None,
                                 identityNSCode:str=None,
                                 identityPrimary:bool=False,
-                                alternateTitle:str=None,
+                                alternateTitle:str="",
                                 alternateDescription:str=None,
                                 lookupSchema:str=None,
                                 targetCompletePath:str=None,
@@ -3312,6 +3324,7 @@ class SchemaManager:
             alternateDescription : OPTIONAL if you wish to add a new description.
             lookupSchema : OPTIONAL : The schema ID for the lookup if the descriptor is for lookup setup
             targetCompletePath : OPTIONAL : if you have the complete path for the field in the target lookup schema.
+            idField : OPTIONAL : If it touches a specific Field ID 
         """
         if descType not in self.DESCRIPTOR_TYPES:
             raise Exception(f"The value provided ({descType}) is not supported by this method")
@@ -3381,6 +3394,20 @@ class SchemaManager:
             raise ValueError('Require an operation to be used')
         res = self.schemaAPI.createDescriptor(descriptor)
         return res
+    
+    def updateDescriptor(self,descriptorId:str=None,descriptorObj:dict=None)->dict:
+        """
+        Update a descriptor with the put method. Wrap the putDescriptor method of the Schema class.
+        Arguments:
+            descriptorId : REQUIRED : The descriptor ID to be updated
+            descriptorObj : REQUIRED : The new definition of the descriptor as a dictionary.
+        """
+        if descriptorId is None:
+            raise ValueError("Require a Descriptor ID")
+        if descriptorObj is None or type(descriptorObj) != dict:
+            raise ValueError("Require a dictionary for the new definition")
+        res = self.schemaAPI.putDescriptor(descriptorId, descriptorObj)
+        return res
 
     def compareObservableSchema(self,observableSchemaManager:'ObservableSchemaManager'=None)->pd.DataFrame:
         """
@@ -3398,6 +3425,39 @@ class SchemaManager:
         df_merge['availability'] = df_merge['availability'].str.replace('both','schema_dataset')
         return df_merge
     
+    def __prepareDescriptors__(self,subDF:pd.DataFrame,dict_SourcePropery_Descriptor:dict,fg:str)->dict:
+        """
+        Handling the preparation of descriptors for non editable field groups
+        """
+        operations_create = []
+        operations_update = []
+        subDF = subDF.fillna('')
+        for i, row in subDF.iterrows():
+            completePath = '/' + row['path'].replace('.','/')
+            if completePath in dict_SourcePropery_Descriptor.keys():
+                desc = deepcopy(dict_SourcePropery_Descriptor[completePath])
+                if 'title' in row.keys():
+                    desc['xdm:title'] = {'en_us': row['title']}
+                if 'description' in row.keys():
+                    desc["xdm:description"] = {'en_us':row['description']}
+                operations_update.append(desc)
+            else:
+                if 'title' in row.keys():
+                    alternateTitle = row['title']
+                else:
+                    alternateTitle = ""
+                if 'description' in row.keys():
+                    alternateDescription = row['description']
+                else:
+                    alternateDescription = ""
+                operations_create.append(self.createDescriptorOperation("xdm:alternateDisplayInfo",
+                                                                completePath=completePath,
+                                                                alternateTitle=alternateTitle,
+                                                                alternateDescription=alternateDescription))
+        dict_operations = {'create':operations_create,'update':operations_update}
+        return dict_operations
+
+
     def importSchemaDefinition(self,schema:Union[str,pd.DataFrame]=None,sep:str=',')->dict:
         """
         Import the definition of all the fields defined in csv or dataframe.
@@ -3419,27 +3479,32 @@ class SchemaManager:
         allFieldGroups = self.schemaAPI.getFieldGroups() ## generate the dictionary in data attribute
         ootbFGS = self.schemaAPI.getFieldGroupsGlobal()
         dictionaryFGs = {fg:None for fg in fieldGroupsImportList}
+        mydescriptors = self.schemaAPI.getDescriptors(type_desc="xdm:alternateDisplayInfo",prop=f"xdm:sourceSchema=={self.id}")
+        dict_SourcePropery_Descriptor = {ex['xdm:sourceProperty']:ex for ex in mydescriptors}
         for fg in fieldGroupsImportList:
-            subDF = df_import[df_import['fieldGroup'] == fg].copy()
+            subDF:pd.DataFrame = df_import[df_import['fieldGroup'] == fg].copy()
             if fg in self.fieldGroups.values():
                 myFg = self.getFieldGroupManager(fg)
                 if myFg.EDITABLE:
-                    myFg.importFieldGroupDefinition(subDF)
-                dictionaryFGs[fg] = myFg
+                    res = myFg.importFieldGroupDefinition(subDF)
+                else:
+                    res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
+                dictionaryFGs[fg] = res
             elif fg in self.schemaAPI.data.fieldGroups_altId.keys():
                 myFg = FieldGroupManager(self.schemaAPI.data.fieldGroups_id[fg],schemaAPI=self.schemaAPI)
                 if myFg.EDITABLE:
-                    myFg.importFieldGroupDefinition(subDF)
+                    res = myFg.importFieldGroupDefinition(subDF)
+                else:
+                    res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
                 dictionaryFGs[fg] = myFg
             elif fg in  self.schemaAPI.data.fieldGroupsGlobal_altId.keys():
-                offFGId = [ofg['$id'] for ofg in ootbFGS if ofg['title'] == fg][0] ## official field group
-                myFg = FieldGroupManager(offFGId,schemaAPI=self.schemaAPI)
-                dictionaryFGs[fg] = myFg
-            else:
+                res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
+                dictionaryFGs[fg] = res
+            else: # does not exist
                 myFg = FieldGroupManager(schemaAPI=self.schemaAPI,title=fg)
                 if myFg.EDITABLE:
                     myFg.importFieldGroupDefinition(subDF)
-                dictionaryFGs[fg] = myFg
+                    dictionaryFGs[fg] = myFg
         self.dictFieldGroupWork = dictionaryFGs
         return self.dictFieldGroupWork
 
@@ -3453,18 +3518,23 @@ class SchemaManager:
         """
         dict_result = {}
         for key in self.dictFieldGroupWork.keys():
-            myFG:FieldGroupManager = self.dictFieldGroupWork[key]
-            if myFG.STATE == 'NEW':
-                myFG.createFieldGroup()
-                res = self.addFieldGroup(myFG)
-                dict_result[key] = res
-            elif myFG.STATE == 'EXISTING':
-                if myFG.EDITABLE:
-                    res = myFG.updateFieldGroup()
-                else:
-                    res = myFG.fieldGroup
-                self.addFieldGroup(myFG)
-                dict_result[key] = res
+            myFG:Union[FieldGroupManager,list] = self.dictFieldGroupWork[key]
+            if type(myFG) == FieldGroupManager:
+                if myFG.STATE == 'NEW':
+                    myFG.createFieldGroup()
+                    res = self.addFieldGroup(myFG)
+                    dict_result[key] = res
+                elif myFG.STATE == 'EXISTING':
+                    if myFG.EDITABLE:
+                        res = myFG.updateFieldGroup()
+                        self.addFieldGroup(myFG)
+            else:
+                res:list = []
+                for create in myFG['create']:
+                    res.append(self.createDescriptor(create))
+                for update in myFG['update']:
+                    res.append(self.schemaAPI.putDescriptor(update['@id'],update))
+            dict_result[key] = res
         return dict_result
 
 
@@ -3474,7 +3544,7 @@ class DataTypeManager:
     """
 
     def __init__(self,
-                dataType:Union[str,dict],
+                dataType:Union[str,dict]=None,
                 title:str=None,
                 schemaAPI:'Schema'=None,
                 config: Union[dict,ConnectObject] = aepp.config.config_object,
