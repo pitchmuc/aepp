@@ -2945,7 +2945,7 @@ class FieldGroupManager:
             sep : OPTIONAL : In case your CSV is separated by something else than comma. Default (',')
         """
         if self.EDITABLE != True:
-            print(f'The field group {self.title} cannot be edited (EDITABLE == False). Only Title and Description can be changed via descriptors.')
+            raise Exception(f'The field group {self.title} cannot be edited (EDITABLE == False). Only Title and Description can be changed via descriptors on the schemas')
         if type(fieldgroup) == str:
             df_import = pd.read_csv(fieldgroup,sep=sep)
         elif type(fieldgroup) == pd.DataFrame:
