@@ -2734,13 +2734,12 @@ class FieldGroupManager:
         if title is None:
             title = self.__cleanPath__(path.split('.').pop())
         if title == 'items' or title == 'properties':
-            raise Exception('"item" and "properties" are 2 reserved keywords')
+            raise Exception('"items" and "properties" are 2 reserved keywords')
         pathSplit = self.__cleanPath__(path).split('.')
         if pathSplit[0] == '':
             del pathSplit[0]
         newField = pathSplit.pop()
-        description = kwargs.get("description","")
-        obj = {}
+        description = kwargs.get("description",'')
         if dataType == 'object':
             if objectComponents is not None:
                 obj = { 'type':'object', 'title':title, "description":description,
@@ -2784,11 +2783,26 @@ class FieldGroupManager:
                 if enumType:
                     obj['items']['enum'] = list(enumValues.keys())
         completePath:list[str] = [kwargs.get('defaultPath','property')] + pathSplit
-        customFields,foundFlag = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
-        if foundFlag == False:
-            return False
+        if 'definitions' not in self.fieldGroup.keys():
+            if 'properties' in self.fieldGroup.keys():
+                definition,foundFlag = self.__setField__(pathSplit, self.fieldGroup['properties'],newField,obj)
+                if foundFlag == False:
+                    return False
+                else:
+                    self.fieldGroup['properties'] = definition
+                    return self.fieldGroup
         else:
-            self.fieldGroup['definitions'] = customFields
+            definition,foundFlag = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
+        if foundFlag == False:
+            completePath:list[str] = ['customFields'] + pathSplit ## trying via customFields path
+            definition,foundFlag = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
+            if foundFlag == False:
+                return False
+            else:
+                self.fieldGroup['definitions'] = definition
+                return self.fieldGroup
+        else:
+            self.fieldGroup['definitions'] = definition
             return self.fieldGroup
         
     def removeField(self,path:str)->dict:
@@ -2846,7 +2860,7 @@ class FieldGroupManager:
         df = df[~df.path.duplicated()].copy() ## dedup the paths
         df = df[~(df['path']==self.tenantId)].copy()## remove the root
         if editable:
-            df['editable'] = self.EDITABLE
+            df['editableFieldGroup'] = self.EDITABLE
         if save:
             title = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
             df.to_csv(f"{title}.csv",index=False)
@@ -2980,6 +2994,7 @@ class FieldGroupManager:
             else:
                 self.addField(clean_path,typeElement,title=row['title'],description=row['description'])
         self.setTitle(df_import['fieldGroup'].mode()[0])
+        return self
 
 
 class SchemaManager:
@@ -3436,21 +3451,27 @@ class SchemaManager:
             completePath = '/' + row['path'].replace('.','/')
             if completePath in dict_SourcePropery_Descriptor.keys():
                 desc = deepcopy(dict_SourcePropery_Descriptor[completePath])
-                if 'title' in row.keys():
-                    desc['xdm:title'] = {'en_us': row['title']}
+                if 'title':
+                    if row['title'] != "":
+                        desc['xdm:title'] = {'en_us': row['title']}
                 if 'description' in row.keys():
-                    desc["xdm:description"] = {'en_us':row['description']}
-                operations_update.append(desc)
+                    if row['description'] != "":
+                        desc["xdm:description"] = {'en_us':row['description']}
+                if row.get('description','') != "" or row.get('description','') != "":
+                    operations_update.append(desc)
             else:
                 if 'title' in row.keys():
-                    alternateTitle = row['title']
+                    if row['title'] != "":
+                        alternateTitle = row['title']
                 else:
                     alternateTitle = ""
                 if 'description' in row.keys():
-                    alternateDescription = row['description']
+                    if row['description'] != "":
+                        alternateDescription = row['description']
                 else:
                     alternateDescription = ""
-                operations_create.append(self.createDescriptorOperation("xdm:alternateDisplayInfo",
+                if row.get('description','') != "" or row.get('description','') != "":
+                    operations_create.append(self.createDescriptorOperation("xdm:alternateDisplayInfo",
                                                                 completePath=completePath,
                                                                 alternateTitle=alternateTitle,
                                                                 alternateDescription=alternateDescription))
@@ -3479,8 +3500,10 @@ class SchemaManager:
         allFieldGroups = self.schemaAPI.getFieldGroups() ## generate the dictionary in data attribute
         ootbFGS = self.schemaAPI.getFieldGroupsGlobal()
         dictionaryFGs = {fg:None for fg in fieldGroupsImportList}
-        mydescriptors = self.schemaAPI.getDescriptors(type_desc="xdm:alternateDisplayInfo",prop=f"xdm:sourceSchema=={self.id}")
-        dict_SourcePropery_Descriptor = {ex['xdm:sourceProperty']:ex for ex in mydescriptors}
+        dict_SourcePropery_Descriptor = {} ## default descriptors list empty
+        if hasattr(self,'id'):
+            mydescriptors = self.schemaAPI.getDescriptors(type_desc="xdm:alternateDisplayInfo",prop=f"xdm:sourceSchema=={self.id}")
+            dict_SourcePropery_Descriptor = {ex['xdm:sourceProperty']:ex for ex in mydescriptors}
         for fg in fieldGroupsImportList:
             subDF:pd.DataFrame = df_import[df_import['fieldGroup'] == fg].copy()
             if fg in self.fieldGroups.values():
@@ -3495,10 +3518,16 @@ class SchemaManager:
                 if myFg.EDITABLE:
                     res = myFg.importFieldGroupDefinition(subDF)
                 else:
-                    res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
+                    if hasattr(self,'id'):
+                        res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
+                    else:
+                        res = {'error':'not descriptors can be added to this schema because it has no $id attached. Create the schema before trying to attach descriptors.'}
                 dictionaryFGs[fg] = myFg
             elif fg in  self.schemaAPI.data.fieldGroupsGlobal_altId.keys():
-                res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
+                if hasattr(self,'id'):
+                    res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
+                else:
+                    res = {'error':'not descriptors can be added to this schema because it has no $id attached. Create the schema before trying to attach descriptors.'}
                 dictionaryFGs[fg] = res
             else: # does not exist
                 myFg = FieldGroupManager(schemaAPI=self.schemaAPI,title=fg)
@@ -3530,10 +3559,11 @@ class SchemaManager:
                         self.addFieldGroup(myFG)
             else:
                 res:list = []
-                for create in myFG['create']:
-                    res.append(self.createDescriptor(create))
-                for update in myFG['update']:
-                    res.append(self.schemaAPI.putDescriptor(update['@id'],update))
+                if 'error' not in res.keys():
+                    for create in myFG['create']:
+                        res.append(self.createDescriptor(create))
+                    for update in myFG['update']:
+                        res.append(self.schemaAPI.putDescriptor(update['@id'],update))
             dict_result[key] = res
         return dict_result
 
@@ -4245,11 +4275,17 @@ class DataTypeManager:
                 if enumType:
                     obj['items']['enum'] = list(enumValues.keys())
         completePath:list[str] = [kwargs.get('defaultPath','property')] + pathSplit
-        customFields,foundFlag = self.__setField__(completePath, self.dataType['definitions'],newField,obj)
+        definitions,foundFlag = self.__setField__(completePath, self.dataType['definitions'],newField,obj)
         if foundFlag == False:
-            return False
+            completePath:list[str] = ['customFields'] + pathSplit
+            definitions,foundFlag = self.__setField__(completePath, self.dataType['definitions'],newField,obj)
+            if foundFlag == False:
+                return False
+            else:
+                self.dataType['definitions'] = definitions
+                return self.dataType
         else:
-            self.dataType['definitions'] = customFields
+            self.dataType['definitions'] = definitions
             return self.dataType
         
     def removeField(self,path:str)->dict:
