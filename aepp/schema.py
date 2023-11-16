@@ -1893,7 +1893,7 @@ class Schema:
          """
          return FieldGroupManager(fieldGroup=fieldGroup,title=title,fg_class=fg_class,schemaAPI=self)
     
-    def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None) -> 'FieldGroupManager':
+    def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None) -> 'SchemaManager':
          """
          Generates a Schema Manager instance using the information provided by the schema instance.
          Arguments:
