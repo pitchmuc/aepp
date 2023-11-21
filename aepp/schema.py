@@ -2872,7 +2872,7 @@ class FieldGroupManager:
         """
         return self.fieldGroup
     
-    def getDataType(self,dataType:str=None)->'DataTypeManager':
+    def getDataTypeManager(self,dataType:str=None)->'DataTypeManager':
         """
         Retrieve the Data Type Manager instance of custom data type
         Argument:
@@ -3538,9 +3538,9 @@ class SchemaManager:
         return self.dictFieldGroupWork
 
 
-    def applyFieldGroupChanges(self)->dict:
+    def applyFieldsChanges(self)->dict:
         """
-        Apply the changes that you have imported to the field groups via the importSchemaDefinition
+        Apply the changes that you have imported to the field groups and possible descriptors via the importSchemaDefinition
         It also update the references to the schema and add new field groups to the schema definition.
         NOTE: You will need to update the Schema in case of new field groups have been added. 
         Returns a dictionary such as {'fieldGroupName':'{object returned by the action}'}
