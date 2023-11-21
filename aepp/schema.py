@@ -3559,7 +3559,7 @@ class SchemaManager:
                         self.addFieldGroup(myFG)
             else:
                 res:list = []
-                if 'error' not in res.keys():
+                if 'error' not in myFG.keys():
                     for create in myFG['create']:
                         res.append(self.createDescriptor(create))
                     for update in myFG['update']:
