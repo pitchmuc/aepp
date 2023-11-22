@@ -763,7 +763,6 @@ class Segmentation:
 
     def getAudiences(self,
         limit:int=100,
-        metrics:bool=True,
         name:str=None,
         sort:str=None,
         prop:str=None,
@@ -778,11 +777,10 @@ class Segmentation:
             prop : If you want to test a specific property of the result to filter the data.
                     Ex: "audienceId==mytestAudienceId"
             description : OPTIONAL : Filter audiences that contains that string in the description, case unsensitive.
-            with metrics : OPTIONAL : If metrics should be returned as well. Default true.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getAudiences")
-        params = {"limit":limit,"withMetrics":metrics}
+        params = {"limit":limit,"withMetrics":"true"}
         path = "/audiences"
         if name is not None:
             params['name'] = name
@@ -796,12 +794,12 @@ class Segmentation:
             params['start'] = kwargs.get('start')
         res = self.connector.getData(self.endpoint+path, params=params)
         data = res.get('children',[])
-        nextStart = res.get('_pages',{}).get('next',0)
+        nextStart = res.get('_page',{}).get('next',0)
         while nextStart != 0:
             params['start'] = nextStart
             res = self.connector.getData(self.endpoint+path, params=params)
             data += res.get('children',[])
-            nextStart = res.get('_pages',{}).get('next',0)
+            nextStart = res.get('_page',{}).get('next',0)
         return data
     
     def getAudience(self,audienceId:str=None)->dict:
