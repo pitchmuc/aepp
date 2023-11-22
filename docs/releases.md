@@ -28,7 +28,8 @@ Patch:
 * adding the new methods `importSchemaDefinition` and `importFieldGroupDefinition` in the Schema and Field Group Manager.
 * adding support for Data Type Manager in the Field Group Manager instance (`getDataTypeManager()` method and `dataTypes` attribute)
 * adding the `DataTypeManager` class instantiation from `Schema` instance
-* Fixing `getAudiences` method in Segmentation
+* fixing `getAudiences` method in Segmentation
+* extending flowManager
 
 ## Version 0.3.1
 
