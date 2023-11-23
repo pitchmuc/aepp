@@ -1435,6 +1435,8 @@ class FlowManager:
         self.flowTargetConnection = {'id' : self.flowData.get('targetConnectionIds',[None])[0]}
         sourceConnections:list = self.flowData.get('inheritedAttributes',{}).get('sourceConnections',[{}])
         self.connectionInfo = {}
+        if 'scheduleParams' in self.flowData.keys():
+            self.frequency = self.flowData.get('scheduleParams',{}).get('frequency')
         for element in sourceConnections:
             if 'typeInfo' in element.keys():
                 self.connectionInfo = {'id':element.get('id'),'name':element.get('typeInfo',{}).get('id')}
@@ -1463,7 +1465,9 @@ class FlowManager:
                 self.connectionType = 'source'
             elif  connSpec.get('attributes',{}).get('isDestination',False):
                 self.connectionType = 'destination'
-            self.frequency = connSpec.get('sourceSpec',{}).get('attributes',{}).get('uiAttributes',{}).get('frequency',{}).get('key','unknown')
+            frequency = connSpec.get('sourceSpec',{}).get('attributes',{}).get('uiAttributes',{}).get('frequency',{}).get('key')
+            if frequency is not None:
+                self.frequency = frequency
         ## Target Connection part
         if self.flowTargetConnection['id'] is not None:
             targetConnData = self.flowAPI.getTargetConnection(self.flowTargetConnection['id'])
@@ -1485,6 +1489,7 @@ class FlowManager:
                     self.flowTargetConnection['params']['datasetName'] = 'DELETED'
             else:
                 self.flowTargetConnection['params']['datasetName'] = datasetInfo[list(datasetInfo.keys())[0]].get('name')
+                self.datasetId = self.flowTargetConnection['params']['dataSetId']
         ## Schema part
         if 'schema' in self.flowTargetConnection.get('data',{}).keys():
             if self.flowTargetConnection.get('data',{}).get('schema',None) is not None:
