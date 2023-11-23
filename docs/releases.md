@@ -24,6 +24,12 @@ This page list all of the changes that came during the different release of the 
 * providing `DataTypeManager` class in the schema module\
 Patch:
 * fixing `title` for array and array of objects in `to_dataframe()` methods for SchemaManager and FieldGroupManager.
+* dropping reference to `pathlib` as required module in `requirements.txt` and `setup.py` file
+* adding the new methods `importSchemaDefinition` and `importFieldGroupDefinition` in the Schema and Field Group Manager.
+* adding support for Data Type Manager in the Field Group Manager instance (`getDataTypeManager()` method and `dataTypes` attribute)
+* adding the `DataTypeManager` class instantiation from `Schema` instance
+* fixing `getAudiences` method in Segmentation
+* extending flowManager
 
 ## Version 0.3.1
 

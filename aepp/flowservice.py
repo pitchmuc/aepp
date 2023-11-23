@@ -756,7 +756,7 @@ class FlowService:
         return res.get('items',[{}])[0]
 
     def getRuns(
-        self, limit: int = 10, n_results: int = 100, prop: str = None, **kwargs
+        self, limit: int = 10, n_results: int = 100, prop: Union[str,list] = None, **kwargs
     ) -> list:
         """
         Returns the list of runs. Runs are instances of a flow execution.
@@ -772,19 +772,22 @@ class FlowService:
         path = "/runs"
         params = {"limit": limit, "count": kwargs.get("count", False)}
         if prop is not None:
-            params["property"] = prop
+            if type(prop) == str:
+                params["property"] = prop
+            elif type(prop) == list:
+                params["property"] = prop
         if kwargs.get("continuationToken", False):
             params["continuationToken"] = kwargs.get("continuationToken")
         res: dict = self.connector.getData(self.endpoint + path, params=params)
         items: list = res.get("items",[])
-        nextPage = res["_links"].get("next", {}).get("href", "")
+        nextPage = res.get("_links",{}).get("next", {}).get("href", "")
         while nextPage != "" and len(items) < float(n_results):
             token: str = res["_links"]["next"].get("href", "")
             continuationToken: str = token.split("=")[1]
             params["continuationToken"] = continuationToken
             res = self.connector.getData(self.endpoint + path, params=params)
             items += res.get('items')
-            nextPage = res["_links"].get("next", {}).get("href", "")
+            nextPage = res.get("_links").get("next", {}).get("href", "")
         return items
 
     def createRun(self, flowId: str = None, status: str = "active") -> dict:
@@ -1410,7 +1413,7 @@ class FlowManager:
 
     def __init__(self,
                 flowId:str=None,
-                config: dict = aepp.config.config_object,
+                config: Union[dict,aepp.ConnectObject] = aepp.config.config_object,
                 header=aepp.config.header)->None:
         """
         Instantiate a Flow Manager Instance based on the flow ID.
@@ -1425,12 +1428,15 @@ class FlowManager:
         self.flowData = self.flowAPI.getFlow(flowId)
         self.__setAttributes__(self.flowData)
         self.flowMapping = None
+        self.frequency = None
         self.datasetId = None
         self.flowSpec = {'id' : self.flowData.get('flowSpec',{}).get('id')}
         self.flowSourceConnection = {'id' : self.flowData.get('sourceConnectionIds',[None])[0]}
         self.flowTargetConnection = {'id' : self.flowData.get('targetConnectionIds',[None])[0]}
         sourceConnections:list = self.flowData.get('inheritedAttributes',{}).get('sourceConnections',[{}])
         self.connectionInfo = {}
+        if 'scheduleParams' in self.flowData.keys():
+            self.frequency = self.flowData.get('scheduleParams',{}).get('frequency')
         for element in sourceConnections:
             if 'typeInfo' in element.keys():
                 self.connectionInfo = {'id':element.get('id'),'name':element.get('typeInfo',{}).get('id')}
@@ -1459,7 +1465,9 @@ class FlowManager:
                 self.connectionType = 'source'
             elif  connSpec.get('attributes',{}).get('isDestination',False):
                 self.connectionType = 'destination'
-            self.frequency = connSpec.get('sourceSpec',{}).get('attributes',{}).get('uiAttributes',{}).get('frequency',{}).get('key','unknown')
+            frequency = connSpec.get('sourceSpec',{}).get('attributes',{}).get('uiAttributes',{}).get('frequency',{}).get('key')
+            if frequency is not None:
+                self.frequency = frequency
         ## Target Connection part
         if self.flowTargetConnection['id'] is not None:
             targetConnData = self.flowAPI.getTargetConnection(self.flowTargetConnection['id'])
@@ -1474,13 +1482,14 @@ class FlowManager:
                 connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
                 self.flowTargetConnection['connectionSpec']['name'] = connSpec.get('name')
         ## Catalog part
-        if 'dataSetId' in self.flowTargetConnection['params'].keys():
+        if 'dataSetId' in self.flowTargetConnection.get('params',{}).keys():
             datasetInfo = self.catalogAPI.getDataSet(self.flowTargetConnection['params']['dataSetId'])
             if 'status' in datasetInfo.keys():
                 if datasetInfo['status'] == 404:
                     self.flowTargetConnection['params']['datasetName'] = 'DELETED'
             else:
                 self.flowTargetConnection['params']['datasetName'] = datasetInfo[list(datasetInfo.keys())[0]].get('name')
+                self.datasetId = self.flowTargetConnection['params']['dataSetId']
         ## Schema part
         if 'schema' in self.flowTargetConnection.get('data',{}).keys():
             if self.flowTargetConnection.get('data',{}).get('schema',None) is not None:
@@ -1511,7 +1520,8 @@ class FlowManager:
         self.name = flowData.get('name')
         self.version = flowData.get('version')
         self.state = flowData.get('state')
-
+        self.createdAt = flowData.get('createdAt')
+        self.lastRunStartedUTC = flowData.get('lastRunDetails',{}).get('startedAtUTC')
 
     def __repr__(self)->str:
         data = {
@@ -1598,14 +1608,18 @@ class FlowManager:
             connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
             return connSpec
     
-    def getRuns(self,limit:int=10,n_results=100)->list:
+    def getRuns(self,limit:int=10,n_results=100,prop:str=None)->list:
         """
         Returns the last run of the flow.
         Arguments:
             limit : OPTIONAL : Amount of item per requests
             n_results : OPTIONAL : Total amount of item to return
+            prop : OPTIONAL : Property to filter the flow
         """
-        runs = self.flowAPI.getRuns(limit,n_results,prop=f"flowId=={self.id}")
+        props = [f"flowId=={self.id}"]
+        if prop is not None:
+            props.append(prop)
+        runs = self.flowAPI.getRuns(limit,n_results,prop=props)
         return runs
     
     def updateFlow(self, operations:list=None)->dict:

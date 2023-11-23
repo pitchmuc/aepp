@@ -1,6 +1,5 @@
 pytest
 requests
-pathlib
 pandas
 PyJWT[crypto]>=1.7.1
 PyJWT>=1.7.1
