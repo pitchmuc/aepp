@@ -1433,17 +1433,7 @@ class FlowManager:
         self.flowSpec = {'id' : self.flowData.get('flowSpec',{}).get('id')}
         self.flowSourceConnection = {'id' : self.flowData.get('sourceConnectionIds',[None])[0]}
         self.flowTargetConnection = {'id' : self.flowData.get('targetConnectionIds',[None])[0]}
-        sourceConnections:list = self.flowData.get('inheritedAttributes',{}).get('sourceConnections',[{}])
-        self.connectionInfo = {}
-        if 'scheduleParams' in self.flowData.keys():
-            self.frequency = self.flowData.get('scheduleParams',{}).get('frequency')
-        for element in sourceConnections:
-            if 'typeInfo' in element.keys():
-                self.connectionInfo = {'id':element.get('id'),'name':element.get('typeInfo',{}).get('id')}
-            if 'baseConnection' in element.keys():
-                self.connectionInfo = {'id':element.get('baseConnection',{}).get('id'),'name':None}
-        if self.connectionInfo.get('id',None) is not None and self.connectionInfo.get('name',None) is None:
-            self.connectionInfo['name'] = self.flowAPI.getConnection(self.connectionInfo['id']).get('items',[{}])[0].get('name')
+        self.connectionInfo = {'id':self.flowData.get('sourceConnectionIds',[""])[0]}
         for trans in self.flowData.get('transformations',[{}]):
             if trans.get('name') == 'Mapping':
                 self.flowMapping = {'id':trans.get('params',{}).get('mappingId')}
@@ -1461,6 +1451,7 @@ class FlowManager:
             if self.flowSourceConnection['connectionSpec'].get('id') is not None:
                 connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
                 self.flowSourceConnection['connectionSpec']['name'] = connSpec.get('name')
+                self.connectionInfo['name'] = connSpec.get('name')
             if connSpec.get('sourceSpec',{}).get('attributes',{}).get('uiAttributes',{}).get('isSource',False):
                 self.connectionType = 'source'
             elif  connSpec.get('attributes',{}).get('isDestination',False):
@@ -1501,13 +1492,16 @@ class FlowManager:
         ## Mapping
         if self.flowMapping is not None:
             mappingInfo = self.mapperAPI.getMappingSet(self.flowMapping['id'])
-            self.flowMapping['createdDate'] = time.ctime(mappingInfo.get('createdDate')/1000)
-            self.flowMapping['createdDateTS'] = mappingInfo.get('createdDate')
-            self.flowMapping['updatedAtTS'] = mappingInfo.get('updatedAt',None)
-            if self.flowMapping['updatedAtTS'] is None:
-                self.flowMapping['updatedAt'] = None
-            else:
+            if 'createdDate' in mappingInfo.keys():
+                self.flowMapping['createdDate'] = time.ctime(mappingInfo.get('createdDate',1000)/1000)
+                self.flowMapping['createdDateTS'] = mappingInfo.get('createdDate')
+                self.flowMapping['updatedAtTS'] = mappingInfo.get('updatedAt',None)
                 self.flowMapping['updatedAt'] = time.ctime(mappingInfo.get('updatedAt',0)/1000)
+            else:
+                self.flowMapping['createdDate'] = None
+                self.flowMapping['createdDateTS'] = None
+                self.flowMapping['updatedAtTS'] = None
+                self.flowMapping['updatedAt'] = None
             self.getMapping = lambda : self.mapperAPI.getMappingSet(self.flowMapping['id'])
 
     def __setAttributes__(self,flowData:dict)->None:
