@@ -2949,7 +2949,7 @@ class FieldGroupManager:
         self.STATE = "EXISTING"
         return res
 
-    def importFieldGroupDefinition(self,fieldgroup:Union[pd.DataFrame,str],sep=',')->None:
+    def importFieldGroupDefinition(self,fieldgroup:Union[pd.DataFrame,str],sep:str=',',sheet_name:str=None)->None:
         """
         Importing the flat representation of the field group. It could be a dataframe or a CSV file containing the field group element.
         The field group needs to be editable to be updated.
@@ -2957,11 +2957,17 @@ class FieldGroupManager:
             fieldGroup : REQUIRED : The dataframe or csv of the field
                 It needs to contains the following columns : "path", "type", "fieldGroup"
             sep : OPTIONAL : In case your CSV is separated by something else than comma. Default (',')
+            sheet_name : OPTIONAL : In case you are uploading an Excel, you need to provide the sheet name
         """
         if self.EDITABLE != True:
             raise Exception(f'The field group {self.title} cannot be edited (EDITABLE == False). Only Title and Description can be changed via descriptors on the schemas')
         if type(fieldgroup) == str:
-            df_import = pd.read_csv(fieldgroup,sep=sep)
+            if '.csv' in fieldgroup:
+                df_import = pd.read_csv(fieldgroup,sep=sep)
+            if '.xls' in fieldgroup:
+                if sheet_name is None:
+                    raise ImportError("You need to pass a sheet name to use Excel")
+                df_import = pd.read_excel(fieldgroup,sheet_name=sheet_name)
         elif type(fieldgroup) == pd.DataFrame:
             df_import = fieldgroup
         if 'path' not in df_import.columns or 'type' not in df_import.columns or 'fieldGroup' not in df_import.columns:
@@ -3479,7 +3485,7 @@ class SchemaManager:
         return dict_operations
 
 
-    def importSchemaDefinition(self,schema:Union[str,pd.DataFrame]=None,sep:str=',')->dict:
+    def importSchemaDefinition(self,schema:Union[str,pd.DataFrame]=None,sep:str=',',sheet_name:str=None)->dict:
         """
         Import the definition of all the fields defined in csv or dataframe.
         Update all the corresponding field groups based on that.
@@ -3487,11 +3493,17 @@ class SchemaManager:
             schema : REQUIRED : The schema defined in the CSV.
                 It needs to contains the following columns : "path", "type", "fieldGroup","title"
             sep : OPTIONAL : If your CSV is separated by other character  than comma (,)
+            sheet_name : OPTIONAL : If you are loading an Excel, please provide the sheet_name. 
         """
         if schema is None:
             raise ValueError("Require a dataframe or a CSV")
         if type(schema) == str:
-            df_import = pd.read_csv(schema,sep=sep)
+            if '.csv' in schema:
+                df_import = pd.read_csv(schema,sep=sep)
+            if '.xls' in schema:
+                if sheet_name is None:
+                    raise ImportError("You need to pass a sheet name to use Excel")
+                df_import = pd.read_excel(schema,sheet_name=sheet_name)
         elif type(schema) == pd.DataFrame:
             df_import = schema
         if 'path' not in df_import.columns or 'type' not in df_import.columns or 'fieldGroup' not in df_import.columns:
