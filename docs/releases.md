@@ -30,6 +30,7 @@ Patch:
 * adding the `DataTypeManager` class instantiation from `Schema` instance
 * fixing `getAudiences` method in Segmentation
 * extending flowManager
+* fixing `importSchemaDefinition` and `importFieldGroupDefinition` first bugs.
 
 ## Version 0.3.1
 
