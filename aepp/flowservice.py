@@ -1413,12 +1413,13 @@ class FlowManager:
 
     def __init__(self,
                 flowId:str=None,
-                config: Union[dict,aepp.ConnectObject] = aepp.config.config_object,
-                header=aepp.config.header)->None:
+                config: Union[dict,aepp.ConnectObject] = aepp.config.config_object
+                )->None:
         """
         Instantiate a Flow Manager Instance based on the flow ID.
         Arguments:
             flowId : REQUIRED : A flow ID
+            config : OPTIONAL : The configuration to the sandbox and API
         """
         from aepp import schema, catalog,dataprep,flowservice
         self.schemaAPI = schema.Schema(config=config)
