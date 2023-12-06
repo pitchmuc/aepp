@@ -2535,7 +2535,7 @@ class FieldGroupManager:
         elif dataType == "date":
             obj['type'] = "string"
             obj['format'] = "date"
-        elif dataType == "DateTime":
+        elif dataType == "DateTime" or dataType == "dateTime":
             obj['type'] = "string"
             obj['format'] = "date-time"
         elif dataType == "byte":
