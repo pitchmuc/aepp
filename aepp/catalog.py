@@ -260,23 +260,24 @@ class Catalog:
             self.logger.debug(f"Starting getFailedBatchesDF")
         dict_failed = {}
         for batch in res:
-            if res.get(batch,{}).get('relatedObjects',[{'type':'unknown'}])[0]['type'] == "dataSet":
-                datasetId = res[batch]['relatedObjects'][0]['id']
-            dict_failed[batch] = {
-                "timestamp" : res[batch]['created'],
-                "recordsSize" : res[batch].get('metrics',{}).get('recordsSize',0),
-                "invalidRecordsProfile" : res[batch].get('metrics',{}).get('invalidRecordsProfile',0),
-                "invalidRecordsIdentity" : res[batch].get('metrics',{}).get('invalidRecordsIdentity',0),
-                "invalidRecordCount" : res[batch].get('metrics',{}).get('invalidRecordCount',0),
-                "invalidRecordsStreamingValidation" : res[batch].get('metrics',{}).get('invalidRecordsStreamingValidation',0),
-                "invalidRecordsMapper" : res[batch].get('metrics',{}).get('invalidRecordsMapper',0),
-                "invalidRecordsUnknown" : res[batch].get('metrics',{}).get('invalidRecordsUnknown',0),
-                "errorCode" : [er['code'] for er in res[batch]['errors']],
-                "errorMessage" : [er['description'] for er in res[batch]['errors']],
-                "flowId" : res[batch].get('tags',{}).get('flowId',[None])[0],
-                "dataSetId" : datasetId,
-                "sandbox" : res[batch]['sandboxId'],
-            }
+            if type(batch) == dict:
+                if res.get(batch,{}).get('relatedObjects',[{'type':'unknown'}])[0]['type'] == "dataSet":
+                    datasetId = res[batch]['relatedObjects'][0]['id']
+                dict_failed[batch] = {
+                    "timestamp" : res[batch]['created'],
+                    "recordsSize" : res[batch].get('metrics',{}).get('recordsSize',0),
+                    "invalidRecordsProfile" : res[batch].get('metrics',{}).get('invalidRecordsProfile',0),
+                    "invalidRecordsIdentity" : res[batch].get('metrics',{}).get('invalidRecordsIdentity',0),
+                    "invalidRecordCount" : res[batch].get('metrics',{}).get('invalidRecordCount',0),
+                    "invalidRecordsStreamingValidation" : res[batch].get('metrics',{}).get('invalidRecordsStreamingValidation',0),
+                    "invalidRecordsMapper" : res[batch].get('metrics',{}).get('invalidRecordsMapper',0),
+                    "invalidRecordsUnknown" : res[batch].get('metrics',{}).get('invalidRecordsUnknown',0),
+                    "errorCode" : [er['code'] for er in res[batch]['errors']],
+                    "errorMessage" : [er['description'] for er in res[batch]['errors']],
+                    "flowId" : res[batch].get('tags',{}).get('flowId',[None])[0],
+                    "dataSetId" : datasetId,
+                    "sandbox" : res[batch]['sandboxId'],
+                }
         df = pd.DataFrame(dict_failed).T
         return df
 
