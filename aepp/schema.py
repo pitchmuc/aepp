@@ -3160,7 +3160,7 @@ class SchemaManager:
         """
         Set a name for the schema.
         Arguments:
-            title : REQUIRED : a string to be used for the title of the FieldGroup
+            title : REQUIRED : a string to be used for the title of the Schema
         """
         if title is None:
             raise ValueError('title must be provided')
@@ -3249,20 +3249,9 @@ class SchemaManager:
         else:
             raise Exception("The field group manager was not set to True during instanciation. No Field Group Manager to return")
 
-    def setTitle(self,name:str=None)->None:
-        """
-        Set a name for the schema.
-        Arguments:
-            name : REQUIRED : a string to be used for the title of the FieldGroup
-        """
-        self.schema['title'] = name
-        self.title = name
-        return None
-
     def to_dataframe(self,save:bool=False,queryPath: bool = False,description:bool = False,xdmType:bool=False,editable:bool=False)->pd.DataFrame:
         """
         Extract the information from the Field Groups to a DataFrame. 
-        You need to have instanciated the Field Group manager.
         Arguments:
             save : OPTIONAL : If you wish to save it with the title used by the field group.
                 save as csv with the title used. Not title, used "unknown_schema_" + timestamp.
