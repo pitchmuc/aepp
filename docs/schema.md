@@ -23,21 +23,6 @@ Alternatively, you can use the docstring in the methods to have more information
     - [Get paths from schema](#get-paths-from-schema)
   - [SchemaManager](#schemamanager)
   - [FieldGroupManager](#fieldgroupmanager)
-    - [Field Group Manager instance](#field-group-manager-instance)
-    - [Field Groups Manager methods](#field-groups-manager-methods)
-      - [setTitle](#settitle-1)
-      - [getField](#getfield)
-      - [searchField](#searchfield-1)
-      - [searchAttribute](#searchattribute-1)
-      - [addFieldOperation](#addfieldoperation)
-      - [addField](#addfield)
-      - [removeField](#removefield)
-      - [to\_dict](#to_dict-1)
-      - [to\_dataframe](#to_dataframe-1)
-    - [to\_xdm](#to_xdm)
-    - [patchFieldGroup](#patchfieldgroup)
-      - [updateFieldGroup](#updatefieldgroup)
-      - [createFieldGroup](#createfieldgroup)
 
 ## Importing the module
 
@@ -47,7 +32,7 @@ To import the module you can use the import statement with the `schema` keyword.
 
 ```python
 import aepp
-aepp.importConfigFile('myConfig_file.json')
+prod = aepp.importConfigFile('myConfig_file.json', sandbox='prod', connectInstance=True)
 
 from aepp import schema
 ```
@@ -58,27 +43,31 @@ Because you can connect to multiple AEP instance at once, or multiple sandboxes,
 Following the previous method described above, you can realize this:
 
 ```python
-mySchemaConnection1 = schema.Schema()
+mySchemaConnection1 = schema.Schema(config=prod)
 ```
 
 Several parameters are possibles when instantiating the class:\
 
 * container_id : OPTIONAL : "tenant"(default) or "global"
-* config : OPTIONAL : config object in the config module (example : aepp.config.config_object)
+* config : OPTIONAL : mostly used to pass a ConnectObject instance that is linked to one sandbox. 
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
 
-### Using kwargs
+### Using different ConnectObject for different sandboxes
 
-Kwargs will be used to update the header used in the connection.\
-As described above, it can be useful when you want to connect to multiple sandboxes with the same JWT authentication.\
+You can use the `connectInstance` parameter to load multiple sandbox configuration and save them for re-use later on, when instantiating the `Schema` class. 
+As described above, it can be useful when you want to connect to multiple sandboxes with the same authentication.\
 In that case, the 2 instances will be created as such:
 
 ```python
-mySchemaConnection1 = schema.Schema({"x-sandbox-name":"mySandbox1"})
-```
+import aepp
+prod = aepp.importConfigFile('myConfig_file.json', sandbox='prod', connectInstance=True)
+dev = aepp.importConfigFile('myConfig_file.json', sandbox='dev', connectInstance=True)
 
-```python
-mySchemaConnection2 = schema.Schema({"x-sandbox-name":"mySandbox2"})
+from aepp import schema
+
+mySchemaConnection1 = schema.Schema(config=prod)
+mySchemaConnection2 = schema.Schema(config=dev)
+
 ```
 
 ## Tips for schema requests

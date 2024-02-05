@@ -2556,7 +2556,7 @@ class FieldGroupManager:
     
     def setTitle(self,title:str=None)->None:
         """
-        Set a name for the schema.
+        Set a name for the Field Group.
         Arguments:
             title : REQUIRED : a string to be used for the title of the FieldGroup
         """

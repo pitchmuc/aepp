@@ -74,6 +74,10 @@ class AdobeRequest:
         self.logger = logger
         self.retry = retry
         requests.packages.urllib3.disable_warnings()
+        if self.config["environment"] == "support":
+            self.connectionType = 'support'
+            if self.config["token"] != "":
+                self.token = self.config["token"]
         if self.config["token"] == "" or time.time() > self.config["date_limit"]:
             if self.config["private_key"] is not None or self.config["pathToKey"] is not None:
                 self.connectionType = 'jwt'
@@ -90,11 +94,15 @@ class AdobeRequest:
                     verbose=verbose
                 )
             else:
-                self.connectionType = 'oauthV1'
-                token_info = self.get_oauth_token_and_expiry_for_config(
-                    config=self.config,
-                    verbose=verbose
-                )
+                if self.config['environment'] != "support":
+                    self.connectionType = 'oauthV1'
+                    token_info = self.get_oauth_token_and_expiry_for_config(
+                        config=self.config,
+                        verbose=verbose
+                    )
+                else:
+                    self.connectionType = 'support'
+                    self.token = self.config["token"]
             self.token = token_info.token
             self.config["token"] = self.token
             if self.connectionType == 'jwt':
@@ -401,7 +409,12 @@ class AdobeRequest:
         return res_json
 
     def headData(
-        self, endpoint: str, params: dict = None, headers: dict = None, *args, **kwargs
+        self, 
+        endpoint: str, 
+        params: dict = None, 
+        headers: dict = None, 
+        *args, 
+        **kwargs
     ):
         """
         Abstraction for the head method.

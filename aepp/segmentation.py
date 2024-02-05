@@ -251,13 +251,19 @@ class Segmentation:
         res = self.connector.deleteData(self.endpoint + path, headers=self.header)
         return res
 
-    def updateSegment(self, segment_id: str = None, segment_data: dict = None) -> dict:
+    def updateSegment(self, segment_id: str = None, segment_data: dict = None,**kwargs) -> dict:
         """
         Update the segment characteristics from the definition pass to that method.
         Arguments:
             segment_id : REQUIRED : id of the segment to be udpated.
             segment_data : REQUIRED : Dictionary of the segment definition.
                 require in the segment_data: name, description, expression, schema, ttlInDays
+        possible kwargs:
+            name : name of the segment to be udpated
+            description : description of the segment to be udpated
+            expression : expression of the segment to be udpated
+            schema : schema of the segment to be udpated
+            ttlInDay : ttlInDays to be updated
         """
         if segment_id is None:
             raise Exception("Expecting a segment ID to update the segment.")
@@ -276,7 +282,7 @@ class Segmentation:
                 "Segment data doesn't hold one or several mandatory fields:\n\
                 name, description, expression, schema, ttlInDays"
             )
-        update = self.connector.postData(
+        update = self.connector.patchData(
             self.endpoint + path, headers=self.header, data=segment_data
         )
         return update

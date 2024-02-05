@@ -2,6 +2,27 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## Version 0.3.3
+* add Access Control new methods
+  * getRoles
+  * getRole
+  * createRoles
+  * patchRole
+  * putRole
+  * deleteRole
+  * getSubjects
+  * updateSubjects
+  * getPermissionSets
+  * getPermissionCategories
+  * getProducts
+  * createPolicy
+  * getPolicy
+  * getPolicies
+  * deletePolicy
+* rename `getReferences` to `getPermissions` in Access control
+* rename `postEffectivePolicies` to `getEffectivePolicies`, even if POST method, it returns a list that cannot be changed.
+* change `updateSegment` from POST method to PATCH
+
 ## Version 0.3.2
 
 * fix `getSchemas` and `getFieldGroups` because of Adobe AEP API change.

@@ -3,6 +3,10 @@
 This module is a custom module built by Adobe Consulting team in order to improve efficiency of the Schema Manipulation, Documentation and Analysis.\
 The Schema Manager is built on top of all of the existing [AEP Schema Registry API](https://developer.adobe.com/experience-platform-apis/references/schema-registry/), and [Schema class](./schema.md).
 
+## Menu
+- [Instantiation](#instantiation)
+- [Schema Manager methods](#schema-manager-methods)
+
 ## Instantiation
 
 The SchemaManager is a class that can be instantiated with different parameters:
@@ -40,11 +44,15 @@ myschemas = mySchemaInstance.getSchemas()
 singleSchema = mySchemaInstance.data.schema_altId['titleOfSchema']
 ### singleSchema will be the altId of that `TitleOfSchema` schema
 
-## option 1
+## option 1 : via schemaAPI parameter
 schemaManager = schema.SchemaManager(singleSchema,schemaAPI=mySchemaInstance)
 
-## option 2
+## option 2 : via config parameter
 schemaManager = schema.SchemaManager(singleSchema,config=mySandbox)
+
+## option 3 : from the Schema instance
+schemaManager = mySchemaInstance.SchemaManager(singleSchema)
+
 
 ```
 

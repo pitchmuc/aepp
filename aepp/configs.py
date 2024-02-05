@@ -12,7 +12,7 @@ import json
 import os
 from pathlib import Path
 from typing import Optional
-import json
+import json,time
 
 # Non standard libraries
 from .config import config_object, header, endpoints
@@ -84,6 +84,7 @@ def importConfigFile(
     connectInstance: bool = False,
     auth_type: str = None,
     sandbox:str = None,
+    **kwargs
 ):
     """Reads the file denoted by the supplied `path` and retrieves the configuration information
     from it.
@@ -145,6 +146,10 @@ def importConfigFile(
             args["auth_code"] = provided_config["auth_code"]
         else:
             raise ValueError("unsupported authentication type, currently only jwt and oauth are supported")
+        if kwargs.get('accesstoken','') != "":
+            args["accesstoken"] = kwargs["accesstoken"]
+        if kwargs.get('region','') != "":
+            args["region"] = kwargs["region"]
         myInstance = configure(**args)
 
     if connectInstance:
@@ -162,7 +167,8 @@ def configure(
     connectInstance: bool = False,
     environment: str = "prod",
     scopes: str = None,
-    auth_code:str=None
+    auth_code:str=None,
+    **kwargs
 ):
     """Performs programmatic configuration of the API using provided values.
     Arguments:
@@ -182,10 +188,10 @@ def configure(
         raise ValueError("`org_id` must be specified in the configuration.")
     if not client_id:
         raise ValueError("`client_id` must be specified in the configuration.")
-    if not secret:
+    if not secret and kwargs.get('accesstoken','') =="":
         raise ValueError("`secret` must be specified in the configuration.")
-    if (scopes is not None and (path_to_key is not None or private_key is not None) and auth_code is not None) \
-            or (scopes is None and path_to_key is None and private_key is None and auth_code is None):
+    if ((scopes is not None and (path_to_key is not None or private_key is not None) and auth_code is not None) \
+            or (scopes is None and path_to_key is None and private_key is None and auth_code is None)) and environment != "support":
         raise ValueError("either `scopes` needs to be specified or one of `private_key` or `path_to_key` or an `auth_code`")
     config_object["org_id"] = org_id
     header["x-gw-ims-org-id"] = org_id
@@ -199,11 +205,16 @@ def configure(
     config_object["auth_code"] = auth_code
     config_object["sandbox"] = sandbox
     header["x-sandbox-name"] = sandbox
-
+    if kwargs.get('accesstoken','') != "":
+        config_object["token"] = kwargs.get('accesstoken')
+        config_object["date_limit"] = kwargs.get('accesstoken')
     # ensure we refer to the right environment endpoints
     config_object["environment"] = environment
     if environment == "prod":
         endpoints["global"] = "https://platform.adobe.io"
+        config_object["imsEndpoint"] = "https://ims-na1.adobelogin.com"
+    elif environment == "support":
+        endpoints["global"] = kwargs.get('endpoint')
         config_object["imsEndpoint"] = "https://ims-na1.adobelogin.com"
     else:
         endpoints["global"] = f"https://platform-{environment}.adobe.io"
@@ -213,8 +224,11 @@ def configure(
     config_object["oauthTokenEndpointV1"] = f"{config_object['imsEndpoint']}/ims/token/v1"
     config_object["oauthTokenEndpointV2"] = f"{config_object['imsEndpoint']}/ims/token/v3"
     # ensure the reset of the state by overwriting possible values from previous import.
+    now_plus_1h = int(time.time()) + 60 * 60
+    config_object["token"] = kwargs.get('accesstoken','')
     config_object["date_limit"] = 0
-    config_object["token"] = ""
+    if config_object["token"] != "":
+        config_object["date_limit"] = now_plus_1h
     if connectInstance:
         myInstance = ConnectObject(
             org_id=org_id,
@@ -225,7 +239,11 @@ def configure(
             private_key = private_key,
             sandbox=sandbox,
             scopes=scopes,
-            auth_code=auth_code
+            auth_code=auth_code,
+            accesstoken=kwargs.get('accesstoken',''),
+            date_limit=config_object["date_limit"],
+            environment=environment,
+            endpoint = kwargs.get('endpoint','')
         )
         return myInstance
 
@@ -288,6 +306,8 @@ class ConnectObject:
             scopes:str=None,
             sandbox: str = "prod",
             environment: str = "prod",
+            accesstoken: str = "",
+            date_limit:int = 0,
             auth_code:str=None,
             **kwargs)->None:
         """
@@ -295,7 +315,7 @@ class ConnectObject:
         """
         self.header = {"Accept": "application/json",
           "Content-Type": "application/json",
-          "Authorization": "",
+          "Authorization": "Bearer "+accesstoken,
           "x-api-key": client_id,
           "x-gw-ims-org-id": org_id,
           "x-sandbox-name": sandbox
@@ -304,6 +324,10 @@ class ConnectObject:
         if environment == "prod":
             self.globalEndpoint = "https://platform.adobe.io"
             self.imsEndpoint = "https://ims-na1.adobelogin.com"
+        elif environment == "support":
+            self.globalEndpoint = kwargs.get("endpoint","https://platform.adobe.io")
+            self.imsEndpoint = "https://ims-na1.adobelogin.com"
+
         else:
             self.globalEndpoint = f"https://platform-{environment}.adobe.io"
             self.imsEndpoint = "https://ims-na1-stg1.adobelogin.com"
@@ -319,7 +343,8 @@ class ConnectObject:
         self.privateKey = private_key
         self.sandbox = sandbox
         self.scopes = scopes
-        self.token = ""
+        self.token = accesstoken
+        self.date_limit = date_limit
         self.__configObject__ = {
             "org_id": self.org_id,
             "client_id": self.client_id,
@@ -327,16 +352,17 @@ class ConnectObject:
             "pathToKey": self.pathToKey,
             "private_key": self.privateKey,
             "secret": self.secret,
-            "date_limit" : 0,
+            "date_limit" : date_limit,
             "sandbox": self.sandbox,
-            "token": "",
+            "token": accesstoken,
             "imsEndpoint" : self.imsEndpoint,
             "jwtTokenEndpoint" : self.jwtEndpoint,
             "oauthTokenEndpointV1" : self.oauthEndpointV1,
             "oauthTokenEndpointV2" : self.oauthEndpointV2,
-            "scopes": self.scopes
+            "scopes": self.scopes,
+            "environment":environment
         }
-    
+
     def __str__(self):
         return json.dumps({'class':'ConnectObject','sandbox':self.sandbox, 'token':self.token,'clientId':self.client_id,'orgId':self.org_id},indent=2)
     
@@ -367,10 +393,21 @@ class ConnectObject:
         Return the default header
         """
         return self.header
+    
+    def setConfigHeader(self,header:dict=None)->dict:
+        """
+        Set the header used by default.
+        Return the header set
+        """
+        if header is None:
+            raise ValueError("Require a dictionary")
+        self.header = header
+        return self.header
 
     def setSandbox(self,sandbox:str=None)->dict:
         """
-        Update the sandbox used
+        Update the sandbox used.
+        Return the whole config object.
         """
         if sandbox is None:
             return None
