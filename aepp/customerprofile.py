@@ -219,7 +219,10 @@ class Profile:
         return res
 
     def deleteEntity(
-        self, schema_name: str = None, entityId: str = None, entityIdNS: str = None
+        self, schema_name: str = None, 
+        entityId: str = None, 
+        entityIdNS: str = None,
+        mergePolicyId:str = None
     ) -> str:
         """
         Delete a specific entity
@@ -227,6 +230,7 @@ class Profile:
             schema_name : REQUIRED : Name of the associated XDM schema.
             entityId : REQUIRED : entity ID
             entityIdNS : OPTIONAL : entity ID Namespace
+            mergePolicyId : OPTIONAL : The merge Policy ID
         """
         path = "/access/entities"
         params = {}
@@ -238,6 +242,8 @@ class Profile:
             params["entityId"] = entityId
         if entityIdNS is not None:
             params["entityIdNS"] = entityIdNS
+        if mergePolicyId is not None:
+            params["mergePolicyId"] = mergePolicyId
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteEntity")
         res = self.connector.deleteData(

@@ -21,7 +21,9 @@ This page list all of the changes that came during the different release of the 
   * deletePolicy
 * rename `getReferences` to `getPermissions` in Access control
 * rename `postEffectivePolicies` to `getEffectivePolicies`, even if POST method, it returns a list that cannot be changed.
-* change `updateSegment` from POST method to PATCH
+* change `updateSegment` from POST method to PATCH\
+Patch:
+* Fix the `deleteEntity` in `customerProfile` with `mergePolicyId` Support
 
 ## Version 0.3.2
 
