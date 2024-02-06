@@ -1,6 +1,6 @@
 # FieldGroupManager for AEP Schema
 
-This module is a custom module built by Adobe Consulting team in order to improve efficiency of the Field Groups Manipulation, Documentation and Analysis.\
+This module is a custom module built by Adobe Consulting team in order to improve efficiency of the Field Groups manipulation, documentation and analysis.\
 The Field Group Manager is built on top of all of the existing [AEP Schema Registry API](https://developer.adobe.com/experience-platform-apis/references/schema-registry/), and [Schema class](./schema.md).
 
 It is important to understand that a Schema is built by aggregating different field groups within a class.\
@@ -167,7 +167,7 @@ Arguments:
 * queryPath : OPTIONAL : If you want to have the query path to be used.
 * description : OPTIONAL : If you want to have the description used (default False)
 * xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
-* editable : OPTIONAL : If you can manipulate the structure of the field groups (default False)
+* editable : OPTIONAL : If you can manipulate the structure of the field groups (default False) -> see [Editable](#editable-concept)
 
 ### to_xdm
 Return the fieldgroup definition as XDM
@@ -256,3 +256,13 @@ As you can see, there are special notation for arrays and array of objects:\
 the return of that method will be a dictionary that contains all field group as keys.\
 You can then check for each field group if the change is showing the expecting values.
 Once you are happy with the changes, you can apply these changes with the following method.
+
+## EDITABLE concept
+
+There is 2 way to build a field group.\ 
+One is to add each of the fields manually and create the different nodes (object) by hand or with the API.\
+You can use for that the different native fields of AEP (string, double, etc...).\
+The other is to use a predefined set of fields, that are called Data Type.\
+When you are using the Data Type field that are not the native ones, you are technically using an external reference in your field group, and this reference can be used in multiple places in your field group.\
+Because it is then wrong, and not possible, to modify one of the reference and not the other, the Field Groups that return `False` to the `Editable` column cannot be edited via `FieldGroupManager`.\
+These Data Type, that are representing more than one field, can be edited via the [DataTypeManager](./dataTypeManager.md), however, the same way than for Field Group, any modification in the Data Type will be repercuted to all Schema and Field Groups using this Data Type. 

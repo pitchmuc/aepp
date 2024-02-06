@@ -179,7 +179,7 @@ Arguments:
 * queryPath : OPTIONAL : If you want to have the query path to be used.
 * description : OPTIONAL : If you want to have the description added to your dataframe. (default False)
 * xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
-* editable : OPTIONAL : If you can manipulate the structure of the field groups
+* editable : OPTIONAL : If you can manipulate the structure of the field groups (default False). More details on [Editable concept](#editable-concept)
 
 ### to_dict
 Return a dictionary of the whole schema. You need to have instanciated the Field Group Manager
@@ -276,3 +276,14 @@ Apply the changes that you have imported to the field groups and possible descri
 It also update the references to the schema and add new field groups to the schema definition.\
 **NOTE**: You will need to update the Schema in case of new field groups have been added.\
 Returns a dictionary such as {'fieldGroupName':'{object returned by the action}'}\
+
+
+## EDITABLE concept
+
+A schema is always composed of Field Groups and there is 2 way to build a Field Group.\ 
+One is to add each of the fields manually and create the different nodes (object) by hand or with the API.\
+You can use for that the different native fields of AEP (string, double, etc...).\
+The other is to use a predefined set of fields, that are called Data Type.\
+When you are using the Data Type field that are not the native ones, you are technically using an external reference in your field group, and this reference can be used in multiple places in your field group.\
+Because it is then wrong, and not possible, to modify one of the reference and not the other, the Field Groups that return `False` to the `Editable` column cannot be edited via Field Group Manager.\
+These Data Type, that are representing more than one field, can be edited via the [DataTypeManager](./dataTypeManager.md), however, the same way than for Field Group, any modification in the Data Type will be repercuted to all Schema and Field Groups using this Data Type.

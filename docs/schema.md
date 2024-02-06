@@ -23,6 +23,7 @@ Alternatively, you can use the docstring in the methods to have more information
     - [Get paths from schema](#get-paths-from-schema)
   - [SchemaManager](#schemamanager)
   - [FieldGroupManager](#fieldgroupmanager)
+  - [Data Type Manager](#data-type-manager)
 
 ## Importing the module
 
@@ -175,5 +176,11 @@ The `FieldGroupManager` is not an official Adobe AEP element or class, and any m
 [The documentation around the Field Group Manager](./fieldGroupManager.md)
 
 
+## Data Type Manager
 
+The DataTypeManager is a class made to help you manage and analyze your custom data types that you have created in your sandbox.\
+The same way than what the Field Group Manager and Schema Manager provide, you can manipulate and analyse the different elements that compose your data type.\
+Any change that you are making to a Data Type has repercussion on all the elements that are using this Data Type (Schema or Field Groups).
+
+To get to know more on the Data Type Manager, please read [the documentation](./dataTypeManager.md)
 
