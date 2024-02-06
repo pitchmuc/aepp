@@ -69,14 +69,18 @@ This class can be instantiated by calling the `Catalog()` from the `catalog` mod
 
 Following the previous method described above, you can realize this:
 
-```python
-myCat = catalog.Catalog()
+```py
+import aepp
+from aepp import catalog
+
+mySandbox = aepp.importConfigFile('config.json',connectInstance=True,sandbox='prod')
+myCat = catalog.Catalog(config=mySandbox)
 ```
 
 ### Using kwargs
 2 parameters are possible for the instantiation of the class:
 
-* config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
+* config : OPTIONAL : the connect object instance created when you use `importConfigFile` with connectInstance parameter. Default to latest loaded configuration.
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
 * loggingObject : OPTIONAL : logging object to provide log of the application.
 
@@ -103,7 +107,11 @@ You can access them by using the `data` attribute on that instance:
 * `catalogInstance.data.ids` : gives you the dataSet name and their Ids
 
 ```python
-myCat = catalog.Catalog()
+import aepp
+from aepp import catalog
+
+mySandbox = aepp.importConfigFile('config.json',connectInstance=True,sandbox='prod')
+myCat = catalog.Catalog(config=mySandbox)
 
 DataSets = myCat.getDatasets()
 

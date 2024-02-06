@@ -41,7 +41,7 @@ class Identity:
         Additional kwargs will update the header.
         more info : https://docs.adobe.com/content/help/en/experience-platform/identity/api/getting-started.html
         Arguments:
-            region : REQUIRED : either nld2 or va7
+            region : REQUIRED : either nld2 or va7 or aus5
             loggingObject : OPTIONAL : logging object to log messages.
             config : OPTIONAL : config object in the config module. (DO NOT MODIFY)
             header : OPTIONAL : header object  in the config module. (DO NOT MODIFY)

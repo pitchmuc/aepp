@@ -49,9 +49,10 @@ To import the module you can use the import statement with the `identity` keywor
 
 ```python
 import aepp
-aepp.importConfigFile('myConfig_file.json')
-
+mySandbox = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='prod')
 from aepp import identity
+
+myIdentitySandbox = identity.Identity(config=mySandbox,region='va7')
 ```
 
 The identity module provides a class that you can use for generating and retrieving identities.\
@@ -60,12 +61,18 @@ The following documentation will provide you with more information on its usage.
 ## The Identity class
 
 The Identity class is the default API connector that you would encounter for any other submodules on this python module.\
-This class can be instantiated by calling the `Identity()` from the `identity` module.
+This class can be instantiated by calling the `Identity()` from the `identity` module.\
+**NOTE**: You need to provide a region for which the identity service is configured.
+Region values: `va7`,`nld2`,`aus5`
 
 Following the previous method described above, you can realize this:
 
 ```python
-myIds = identity.Identity(region='va7')
+import aepp
+mySandbox = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='prod')
+from aepp import identity
+
+myIdentitySandbox = identity.Identity(config=mySandbox,region='va7')
 ```
 
 3 parameters are possible for the instantiation of the class:
@@ -113,11 +120,11 @@ Because you may be interested only on the identity that **YOU** have setup, you 
 ```python
 import aepp
 
-aepp.importConfigFile('myConfigFile.json')
+prod = aepp.importConfigFile('myConfigFile.json',connectInstance=True,sandbox='prod')
 
 from aepp import identity
 
-myIds = identity.Identity() ## by default the nld2 region
+myIds = identity.Identity(config=prod) ## by default the nld2 region
 resultIds = myIds.getIdentites(only_custom=True)
 ## this will result in a list.
 ```

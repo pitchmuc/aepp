@@ -10,7 +10,9 @@ The method is : `createConfigFile`\
 Arguments:
 
 * destination : OPTIONAL : if you wish to save the file at a specific location.
-* sandbox : OPTIONAL : You can directly set your sandbox name in this parameter.
+* sandbox : OPTIONAL : You can directly set your sandbox name in this parameter. Default : `prod`
+* environment : OPTIONAL : This element is only for AEP core developer. **NOT TO BE CHANGED BY CLIENTS**.
+* auth_type : OPTIONAL : Default is OauthV2, but you can still use JWT (Deprecated in 2025) or OauthV1 (**for Internal only!**)
 * verbose : OPTIONAL : set to true, gives you a print statement where is the location.
 
 The JSON file is having this structure:
@@ -21,8 +23,9 @@ The JSON file is having this structure:
     "client_id": "<client_id>",
     "tech_id": "<something>@techacct.adobe.com",
     "secret": "<YourSecret>",
-    "pathToKey": "<path/to/your/privatekey.key>",
+    "scopes": "scope",
     "sandbox-name": "prod",
+    "environment" : "prod"
     }
 ```
 
@@ -42,6 +45,20 @@ Argument:
 * path: REQUIRED : path to the configuration file. Can be either a fully-qualified or relative.
 * connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class. (default False)
 
+**NOTE**: `connectInstance` is default to `False`, but we strongly recommend to use it as best practice when you are having multiple sandbox environment.
+
+Example: 
+
+```py
+import aepp
+from aepp import schema ## to manipulate schema definition
+
+## here I will create a connect instance to prod2 sandbox
+prod2 = aepp.importConfigFile('myconfig.json',sandbox='prod2',connectInstance=True)
+
+mySchema = schema.Schema(config=prod)
+```
+
 ## Configure connection
 
 The `configure` method directly available in the `aepp` module enables the possibility to pass all information required to connect to the AEP API without having to write them directly in a configuration file.\
@@ -53,8 +70,9 @@ Arguments:
 * tech_id : REQUIRED : Technical Account ID
 * secret : REQUIRED : secret generated for your connection
 * client_id : REQUIRED : The client_id (old api_key) provided by the JWT connection.
-* path_to_key : REQUIRED : If you have a file containing your private key value.
-* private_key : REQUIRED : If you do not use a file but pass a variable directly.
+* scopes : REQUIRED : The scope used in the OauthV2 connection.
+* path_to_key : REQUIRED : If you have a file containing your private key value. (JWT connection only, deprecated in 2025)
+* private_key : REQUIRED : If you do not use a file but pass a variable directly.(JWT connection only, deprecated in 2025)
 * sandbox : OPTIONAL : If not provided, default to prod
 * connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class (default False)
 * environment : OPTIONAL : If not provided, default to prod

@@ -13,7 +13,7 @@ To import the module you can use the import statement with the `segmentation` ke
 
 ```python
 import aepp
-aepp.importConfigFile('myConfig_file.json')
+prod = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='prod')
 
 from aepp import segmentation
 ```
@@ -29,7 +29,10 @@ This class can be instantiated by calling the `Segmentation()` from the `segment
 Following the previous method described above, you can realize this:
 
 ```python
-mySegs = segmentation.Segmentation()
+import aepp
+from aepp import segmentation
+prod = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='prod')
+mySegs = segmentation.Segmentation(config=prod)
 ```
 
 2 parameters are possible for the instantiation of the class:
@@ -55,10 +58,10 @@ In order to retrieve that information, you can use the `getSegments()` method as
 
 ```python
 import aepp
-aepp.importConfigFile('myConfig_file.json')
+dev = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='dev')
 
 from aepp import segmentation
-mySegs = segmentation.Segmentation()
+mySegs = segmentation.Segmentation(config=dev)
 
 mySegments = mySegs.getSegments()
 ```
