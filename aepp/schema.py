@@ -2890,6 +2890,7 @@ class FieldGroupManager:
         Patch the field group with the given operation.
         Arguments:
             operation : REQUIRED : The list of operation to realise
+                    Possible operations : add, remove, and replace
         """
         if self.EDITABLE == False:
             raise Exception("The Field Group is not Editable via Field Group Manager")
