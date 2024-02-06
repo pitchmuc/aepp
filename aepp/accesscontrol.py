@@ -35,7 +35,8 @@ class AccessControl:
         """
         Instantiate the access controle API wrapper.
         Arguments:
-            config : OPTIONAL : config object in the config module. (DO NOT MODIFY)
+            config : OPTIONAL : it could be the instance of the ConnectObject class (preferred) or a dictionary containing the config information. 
+                    Default will take the latest configuration loaded.
             header : OPTIONAL : header object  in the config module. (DO NOT MODIFY)
             loggingObject : OPTIONAL : logging object to log messages.
         kwargs :

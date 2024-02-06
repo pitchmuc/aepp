@@ -4,6 +4,13 @@ This documentation will provide you an overview on how to use the `accesscontrol
 To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/access-control/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
+## Menu
+- [Access Control module in aepp](#access-control-module-in-aepp)
+  - [Menu](#menu)
+  - [Importing the module](#importing-the-module)
+  - [The AccessControl Class](#the-accesscontrol-class)
+  - [AccessControl methods](accesscontrol-methods)
+
 ## Importing the module
 
 Before importing the module, you would need to import the configuration file, or alternatively provide the information required for the API connection through the configure method. [see getting starting](./getting-started.md)
@@ -22,28 +29,130 @@ The following documentation will provide you with more information on its capabi
 
 ## The AccessControl class
 
-The AccessControl class allows you to:
+You can instantiate an `AccessControl` class by using these parameters.
+Arguments:
+* config : OPTIONAL : it could be the instance of the ConnectObject class (preferred) or a dictionary containing the config information. Default will take the latest configuration loaded.
+* header : OPTIONAL : header object  in the config module. (DO NOT MODIFY)
+* loggingObject : OPTIONAL : logging object to log messages.\
+kwargs :
+* header options that you want to append to the header. Such as {"Accept":"accepted-value"}
 
-* List names of permissions and resource types
-* Lists all the effective policies for a user on given resources within a sandbox
-  
-This class can be instantiated by calling the `AccessControl()` from the `accesscontrol` module.
 
-Following the previous method described above, you can realize this:
+## AccessControl methods
 
-```python
-myAccess = accesscontrol.AccessControl()
+### getPermissions
+List all available permission names and resource types.
+
+
+### getEffectivePolicies
+List all effective policies for a user on given resources within a sandbox.\
+Arguments:
+* listElements : REQUIRED : List of resource urls. Example url : /resource-types/{resourceName} or /permissions/{highLevelPermissionName}\
+    example: "/permissions/manage-dataset" "/resource-types/schema" "/permissions/manage-schemas"
+
+
+### getRoles
+Return all existing roles in the Company.
+
+
+### getRole
+Retrieve a specific role based on the ID.\
+Arguments:
+* roleId : REQUIRED : Role ID to be retrieved
+
+
+### deleteRole
+Delete a role based on its ID.\
+Argument:
+* roleId : REQUIRED : The role ID to be deleted
+
+
+### patchRole
+PATCH the role with the attribute passed.\
+Attribute can have the following action "add" "replace" "remove".\
+Arguments:
+* roleId : REQUIRED : The role ID to be updated
+* roleDict : REQUIRED : The change to the role
+
+
+### putRole
+PUT the role with the new definition passed.\
+As a PUT method, the old definition will be replaced by the new one.\
+Arguments:
+* roleId : REQUIRED : The role ID to be updated
+* roleDict : REQUIRED : The change to the role\
+example:
+```JSON
+{
+"name": "Administrator Role",
+"description": "Role for administrator type of responsibilities and access.",
+"roleType": "user-defined"
+}
 ```
 
-2 parameters are possible for the instantiation of the class:
+### getSubjects
+Get the subjects attached to the role specified in the roleId.\
+Arguments:
+* roleId : REQUIRED : The roleId for which the subjects should be extracted
 
-* config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
-* header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
 
-## AccessControl use-cases
+### patchSubjects
+Manage the subjects attached to a specific role\
+Arguments:
+* roleId : REQUIRED : The role ID to update
+* subjectId : REQUIRED : The subject ID to be updated
+* operation : REQUIRED : The operation could be either "add" "replace" "remove"
 
-The existing methods of modules listed below are self explanatory.\
-In case of doubt, please refer to the docstring or the API documentation shared above.
 
-* getReferences - List all available permission names and resource types.
-* postEffectivePolicies - List all effective policies for a user on given resources within a sandbox.
+### getPolicies
+Returns all the policies applying in your organization
+
+
+### getPolicy
+Returns a specific policy based on its ID.\
+Arguments:
+* policyId : REQUIRED : The policy ID to be retrieved
+
+
+### deletePolicy
+Delete a specific policy based on its ID.
+Arguments:
+* policyId : REQUIRED : The policy ID to be deleted
+
+
+### createPolicy
+Create a policy based on the definition passed
+Arguments:
+* policyDef : REQUIRED : The policy definition requires
+
+
+### putPolicy
+Replace the policyID provided by the new definition passed. \
+Arguments:
+* policyId : REQUIRED : The policy ID to replaced
+* policyDef : REQUIRED : The new definition of the policy ID.
+
+
+### patchPolicy
+Patch the policyID provided with the operation provided\
+Arguments:
+* policyId : REQUIRED : The policy ID to be updated
+* operation : REQUIRED : The operation to realise ("add" "replace" "remove")
+* attribute : REQUIRED : The attribute to be updated. Ex : "/description"
+* value : REQUIRED : The new value to be used
+
+
+### getProducts
+List all entitled products
+
+
+### getPermissionCategories
+Retrieve the permissions categories for a specific product\
+Arguments:
+* productId : REQUIRED : The product you are looking for
+
+
+### getPermissionSets
+Retrieve the permissions set of the product ID you want to acces.\
+Arguments:
+* productId : REQUIRED : The product ID permissions set you want to retrieve

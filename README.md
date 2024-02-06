@@ -42,6 +42,9 @@ You can find this documentation [here](./docs/getting-started.md)
 At the moment the current wrapper is containing the following sub modules:
 
 * [schema](./docs/schema.md)
+  * [SchemaManager](./docs/schemaManager.md)
+  * [FieldGroupManager](./docs/fieldGroupManager.md)
+  * [DataTypeManager](./docs/dataTypeManager.md)
 * [queryservice](./docs/queryservice.md) (see note below)
 * [identity](./docs/identity.md)
 * [sandboxes](./docs/sandboxes.md)
@@ -58,7 +61,6 @@ At the moment the current wrapper is containing the following sub modules:
 * [destination Instance](./docs/destinationinstanceservice.md)
 * [observability](./docs/observability.md)
 * [accesscontrol](./docs/accesscontrol.md)
-* sensei
 * [privacyservice](./docs/privacyservice.md) (see 2nd note below)
 
 Last but not least, the core methods are described here: [main](./docs/main.md)
