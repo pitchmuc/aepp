@@ -86,9 +86,8 @@ class Profile:
         else:
             self.sandbox = self.connector.config["sandbox"]
         # same endpoint than segmentation
-        self.endpoint = (
-            aepp.config.endpoints["global"] + aepp.config.endpoints["segmentation"]
-        )
+        self.endpoint = aepp.config.endpoints["global"] + aepp.config.endpoints["segmentation"]
+        self.endpoint_global = aepp.config.endpoints["global"]
     
     def __str__(self):
         return json.dumps({'class':'Profile','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
@@ -676,16 +675,21 @@ class Profile:
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getComputedAttributes")
-        path = "/config/computedAttributes"
-        res = self.connector.getData(self.endpoint + path)
-        data = res["children"]
-        nextPage = res["_page"].get("next", "")
-        # while nextPage != "":
-        #     res = self.connector.getData(self.endpoint+path,
-        #                     params=params, headers=self.header)
-        #     data += res['children']
-        #     nextPage = res['_page'].get('next','')
-        return res
+        path = "/data/core/ca/attributes"
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/json"
+        params = {"offset":0,"limit":20}
+        res = self.connector.getData(self.endpoint_global + path,params=params,headers=privateHeader)
+        print(res)
+        data = res.get("computedAttributes",[])
+        offset = res.get("_page",{}).get("offset", 0)
+        while offset != 0:
+            params['offset'] += 20
+            res = self.connector.getData(self.endpoint_global+path,
+                             params=params, headers=privateHeader)
+            data += res['computedAttributes']
+            offset = res.get("_page",{}).get("offset", 0)
+        return data
 
     def getComputedAttribute(self, attributeId: str = None) -> dict:
         """
@@ -697,8 +701,10 @@ class Profile:
             raise ValueError("Require a computed attribute ID")
         if self.loggingEnabled:
             self.logger.debug(f"Starting getComputedAttribute")
-        path = f"/config/computedAttributes/{attributeId}"
-        res = self.connector.getData(self.endpoint + path)
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/json"
+        path = f"/data/core/ca/attributes/{attributeId}"
+        res = self.connector.getData(self.endpoint_global + path,headers=privateHeader)
         return res
 
     def deleteComputedAttribute(self, attributeId: str = None) -> dict:
@@ -711,8 +717,55 @@ class Profile:
             raise ValueError("Require a computed attribute ID")
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteComputedAttributes")
-        path = f"/config/computedAttributes/{attributeId}"
-        res = self.connector.deleteData(self.endpoint + path)
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/json"
+        path = f"/data/core/ca/attributes/{attributeId}"
+        res = self.connector.deleteData(self.endpoint_global + path,headers=privateHeader)
+        return res
+    
+    def createComputedAttribute(self, definition:dict = None) -> dict:
+        """
+        Delete a specific computed attribute.
+        Arguments:
+            definition : REQUIRED : The definition of the computed attribute to be created.
+        """
+        if definition is None:
+            raise ValueError("Require a definition")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createComputedAttribute")
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/json"
+        path = f"/data/core/ca/attributes/"
+        res = self.connector.postData(self.endpoint_global + path,data=definition,headers=privateHeader)
+        return res
+    
+    def patchComputedAttribute(self,attributeId: str = None,definition:str=None)->dict:
+        """
+        Patch an existing computed attribute with the new status
+        Arguments:
+            attributeId : REQUIRED : The computed attribute ID to be deleted.
+            definition : REQUIRED : the new definition of the attribute
+                example:
+                 {
+                    "description": "Sample Description",
+                    "expression": {
+                        "type": "PQL",
+                        "format": "pql/text",
+                        "value": "xEvent[(commerce.checkouts.value > 0.0 or commerce.purchases.value > 1.0 or commerce.order.priceTotal >= 10.0) and (timestamp occurs <= 7 days before now)].sum(commerce.order.priceTotal)"
+                    },
+                    "status": "NEW"
+                }'
+        """
+        if attributeId is None:
+            raise ValueError("Compute attribute ID is required")
+        if definition is None:
+            raise ValueError("Require a definition")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting patchComputedAttribute")
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/json"
+        path = f"/data/core/ca/attributes/"
+        res = self.connector.patchData(self.endpoint_global + path,data=definition,headers=privateHeader)
         return res
 
     def getDestinations(self) -> dict:

@@ -23,7 +23,8 @@ This page list all of the changes that came during the different release of the 
 * rename `postEffectivePolicies` to `getEffectivePolicies`, even if POST method, it returns a list that cannot be changed.
 * change `updateSegment` from POST method to PATCH\
 Patch:
-* Fix the `deleteEntity` in `customerProfile` with `mergePolicyId` Support
+* Fix the `deleteEntity` in `customerprofile` with `mergePolicyId` Support
+* Fix reference and header used in the Computed Attributes methods in `customerprofile` 
 
 ## Version 0.3.2
 
