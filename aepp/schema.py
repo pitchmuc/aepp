@@ -4393,5 +4393,6 @@ class DataTypeManager:
             else:
                 return res
         self.dataType = res
+        self.STATE = "EXISTING"
         self.__setAttributes__(self.dataType)
         return res
