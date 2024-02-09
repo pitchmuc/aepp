@@ -25,6 +25,7 @@ This page list all of the changes that came during the different release of the 
 Patch:
 * Fix the `deleteEntity` in `customerprofile` with `mergePolicyId` Support
 * Fix reference and header used in the Computed Attributes methods in `customerprofile` 
+* Making Field Group Manager supporting more default field groups.
 
 ## Version 0.3.2
 

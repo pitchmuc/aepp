@@ -2025,10 +2025,10 @@ class FieldGroupManager:
                             self.fieldGroup = tmp_def
                     else:
                         self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
-            elif type(fieldGroup) == str and (fieldGroup.startswith('https:') or fieldGroup.startswith(f'{self.tenantId}.')):
+            elif type(fieldGroup) == str:
                 if self.schemaAPI is None:
                     raise Exception("You try to retrieve the fieldGroup definition from the id, but no API has been passed in the schemaAPI parameter.")
-                if 'mixins' in fieldGroup:
+                if 'mixins' in fieldGroup and ((fieldGroup.startswith('https:') and self.tenantId in fieldGroup) or fieldGroup.startswith(f'{self.tenantId}.')):
                     self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
                     if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group 
                         self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
@@ -2036,7 +2036,6 @@ class FieldGroupManager:
                         self.EDITABLE = True
                 else: ## handling default mixins
                     tmp_def = self.schemaAPI.getFieldGroup(fieldGroup,full=True) ## handling default mixins
-                    tmp_def['definitions'] = tmp_def['properties']
                     self.fieldGroup = tmp_def
             else:
                 raise ValueError("the element pass is not a field group definition")
