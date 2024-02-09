@@ -3034,6 +3034,7 @@ class SchemaManager:
         self.fieldGroupIds=[]
         self.fieldGroupsManagers = {}
         self.title = title
+        self.STATE = "EXISTING"
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
         else:
@@ -3084,6 +3085,7 @@ class SchemaManager:
                         fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI)
                         self.fieldGroupsManagers[fgM.title] = fgM
         elif schema is None:
+            self.STATE = "NEW"
             self.schema = {
                     "title": self.title,
                     "description": "power by aepp",
@@ -3288,9 +3290,19 @@ class SchemaManager:
         """
         if self.schemaAPI is None:
             raise Exception("Require a Schema instance to connect to the API")
+        if '$id' in self.schema.keys():
+            del self.schema['$id']
+        if 'meta:altId' in self.schema.keys():
+            del self.schema['meta:altId']
+        listMetaTags = [key for key in self.schema.keys() if 'meta' in key]
+        if len(listMetaTags)>0:
+            for key in listMetaTags:
+                del self.schema[key]
         res = self.schemaAPI.createSchema(self.schema)
-        self.schema = res
-        self.__setAttributes__(self.schema)
+        if '$id' in res.keys():
+            self.schema = res
+            self.__setAttributes__(self.schema)
+            self.STATE = "EXISTING"
         return res
 
     def updateSchema(self)->dict:
@@ -3590,6 +3602,7 @@ class DataTypeManager:
             config : OPTIONAL : The config object in case you want to override the configuration.
         """
         self.EDITABLE = False
+        self.STATE = "EXISTING"
         self.dataType = {}
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
@@ -3605,6 +3618,7 @@ class DataTypeManager:
                 self.EDITABLE = True
             self.dataType = self.schemaAPI.getDataType(dataType,full=False)
         else:
+            self.STATE = "NEW"
             self.EDITABLE = True
             self.dataType = {
                 "title" : "",
