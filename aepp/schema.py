@@ -1645,6 +1645,8 @@ class Schema:
         if kwargs.get('prop',None) is not None:
             if 'property' in params.keys():
                 params["property"] += f",{kwargs.get('prop')}"
+            else:
+                params["property"] = kwargs.get('prop')
         privateHeader = deepcopy(self.header)
         privateHeader[
             "Accept"
@@ -3484,6 +3486,15 @@ class SchemaManager:
                                                                 alternateDescription=alternateDescription))
         dict_operations = {'create':operations_create,'update':operations_update}
         return dict_operations
+    
+    def getDescriptors(self)->dict:
+        """
+        Get the descriptors of that schema
+        """
+        if self.STATE=="NEW" or self.id == "":
+            raise Exception("Schema does not exist yet, there can not be a descriptor")    
+        res = self.schemaAPI.getDescriptors(prop=f"xdm:sourceSchema=={self.id}")
+        return res
 
 
     def importSchemaDefinition(self,schema:Union[str,pd.DataFrame]=None,sep:str=',',sheet_name:str=None)->dict:

@@ -26,6 +26,8 @@ Patch:
 * Fix the `deleteEntity` in `customerprofile` with `mergePolicyId` Support
 * Fix reference and header used in the Computed Attributes methods in `customerprofile` 
 * Making Field Group Manager supporting more default field groups.
+* Fix `getDescriptors` when only one property is passed as parameter
+* add `getDescriptors` in `SchemaManager`
 
 ## Version 0.3.2
 
