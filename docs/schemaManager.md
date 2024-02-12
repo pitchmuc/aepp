@@ -191,6 +191,10 @@ It removes the "$id" if one was provided to avoid overriding existing ID.
 ### updateSchema
 Use the PUT method to replace the existing schema with the new definition.
 
+### getDescriptors
+Use to retrieve all descriptors associated to that schema.\
+return a list.
+
 ### createDescriptorOperation
 Create a descriptor object to be used in the createDescriptor.\
 You can see the type of descriptor available in the DESCRIPTOR_TYPES attribute and also on the official documentation:
@@ -198,8 +202,8 @@ https://experienceleague.adobe.com/docs/experience-platform/xdm/api/descriptors.
 Arguments:
 * descType : REQUIRED : The type to be used.\
     it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"
-* completePath : REQUIRED : the complete path of the field you want to attach a descriptor.\
-    Example: '/definitions/customFields/properties/_tenant/properties/tenantObject/properties/field'
+* completePath : REQUIRED : the dot path of the field you want to attach a descriptor to.\
+    Example: '_tenant.tenantObject.field'
 * identityNSCode : OPTIONAL : if the descriptor is identity related, the namespace CODE  used.
 * identityPrimary : OPTIONAL : If the primary descriptor added is the primary identity.
 * alternateTitle : OPTIONAL : if the descriptor is alternateDisplay, the alternate title to be used.
