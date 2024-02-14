@@ -28,6 +28,8 @@ Patch:
 * Making Field Group Manager supporting more default field groups.
 * Fix `getDescriptors` when only one property is passed as parameter
 * add `getDescriptors` in `SchemaManager`
+* add `getProfileSnapshotDatasets` method to catalog
+* fix `disableDatasetIdentity` and `disableDatasetProfile` methods
 
 ## Version 0.3.2
 

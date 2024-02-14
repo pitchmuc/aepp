@@ -81,6 +81,7 @@ class AdobeRequest:
         if self.config["token"] == "" or time.time() > self.config["date_limit"]:
             if self.config["private_key"] is not None or self.config["pathToKey"] is not None:
                 self.connectionType = 'jwt'
+                self.config['connectionType'] = self.connectionType
                 token_info = self.get_jwt_token_and_expiry_for_config(
                     config=self.config,
                     verbose=verbose,
@@ -89,6 +90,7 @@ class AdobeRequest:
                 )
             elif self.config["scopes"] is not None:
                 self.connectionType = 'oauthV2'
+                self.config['connectionType'] = self.connectionType
                 token_info = self.get_oauth_token_and_expiry_for_config(
                     config=self.config,
                     verbose=verbose
@@ -96,12 +98,14 @@ class AdobeRequest:
             else:
                 if self.config['environment'] != "support":
                     self.connectionType = 'oauthV1'
+                    self.config['connectionType'] = self.connectionType
                     token_info = self.get_oauth_token_and_expiry_for_config(
                         config=self.config,
                         verbose=verbose
                     )
                 else:
                     self.connectionType = 'support'
+                    self.config['connectionType'] = self.connectionType
                     self.token = self.config["token"]
             self.token = token_info.token
             self.config["token"] = self.token
@@ -113,6 +117,10 @@ class AdobeRequest:
                 time.time() + token_info.expiry / timeScale - 500
             )
             self.header.update({"Authorization": f"Bearer {self.token}"})
+        else:
+            self.token = self.config["token"]
+            self.header.update({"Authorization": f"Bearer {self.token}"})
+            self.connectionType = self.config['connectionType']
         # x-sandbox-id is required when using non-user token, but forbidden for user token
         if self.connectionType == 'oauthV1' and "x-sandbox-id" not in self.header:
             self.update_sandbox_id(self.config["sandbox"])

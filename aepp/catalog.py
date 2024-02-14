@@ -382,6 +382,30 @@ class Catalog:
             df = pd.DataFrame(data).T
             return df
         return data
+    
+    def getProfileSnapshotDatasets(self,explicitMergePolicy:bool=False)->dict:
+        """
+        Return a dictionary of Profile Snapshot datasetId, containing the information related to them.
+        Arguments:
+            explicitMergePolicy : OPTIONAL : Provide a mergePolicyName attribute for the dataset to explain.
+        """
+        datasets = self.getDataSets()
+        snapshotDatasets = [key for key in self.data.ids.keys() if 'Profile-Snapshot-Export' in key]
+        data = {}
+        for snap in snapshotDatasets:
+            snapshot = self.getDataSet(self.data.ids[snap])
+            snapshotId = list(snapshot.keys())[0]
+            data[snapshotId] = deepcopy(snapshot[snapshotId])
+            if explicitMergePolicy==True:
+                unifiedProfileMergePolicy = snapshot[snapshotId].get('tags').get('unifiedProfile',None)
+                if unifiedProfileMergePolicy is not None:
+                    mergePolicy = [el for el in unifiedProfileMergePolicy if 'mergePolicyId' in el][0]
+                    mergePolicyId = mergePolicy.split(':')[1]
+                    from aepp import customerprofile
+                    profile = customerprofile.Profile(self.connector.config)
+                    mergePolicy = profile.getMergePolicy(mergePolicyId)
+                    data[snapshotId]['mergePolicyName'] = mergePolicy['name']
+        return data
 
     def createDataSets(self, 
                 data: dict = None,
@@ -597,13 +621,15 @@ class Catalog:
         path = f"/dataSets/{datasetId}"
         if self.loggingEnabled:
             self.logger.debug(f"Starting disableDatasetProfile for datasetId: {datasetId}")
+        privateHeader = deepcopy(self.header)
+        privateHeader["Content-Type"] = "application/json-patch+json"
         data = [
             { 
                 "op": "replace", 
                 "path": "/tags/unifiedProfile",
                 "value": ["enabled:false"] }
             ]
-        res = self.connector.patchData(self.endpoint+path, data=data)
+        res = self.connector.patchData(self.endpoint+path, data=data,headers=privateHeader)
         return res
     
     def disableDatasetIdentity(self,datasetId:str=None)->dict:
@@ -615,6 +641,8 @@ class Catalog:
         if datasetId is None:
             raise ValueError("Require a datasetId")
         path = f"/dataSets/{datasetId}"
+        privateHeader = deepcopy(self.header)
+        privateHeader["Content-Type"] = "application/json-patch+json"
         if self.loggingEnabled:
             self.logger.debug(f"Starting disableDatasetIdentity for datasetId: {datasetId}")
         data = [
@@ -623,7 +651,7 @@ class Catalog:
                 "path": "/tags/unifiedIdentity",
                 "value": ["enabled:false"] }
             ]
-        res = self.connector.patchData(self.endpoint+path, data=data)
+        res = self.connector.patchData(self.endpoint+path, data=data,headers=privateHeader)
         return res
     
     def createUnionProfileDataset(self)->dict:
