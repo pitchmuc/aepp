@@ -779,6 +779,10 @@ class ObservableSchemaManager:
             self.observableSchema = observableSchema
         self.schemaId = self.observableSchema.get('$id')
         self.title = self.observableSchema.get('title')
+        if 'datasetId' in observableSchema.keys():
+            self.datasetId = observableSchema['datasetId']
+        else:
+            self.datasetId = None
     
     def __str__(self)->str:
         return json.dumps(self.observableSchema,indent=2)
