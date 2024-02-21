@@ -744,6 +744,27 @@ class Catalog:
                 }
         df_final = pd.DataFrame(dict_result).T
         return df_final
+
+    def findActiveBatch(self,batchId:str=None,predecessor:str=None)->str:
+        """
+        Recursive function to find the active batch from any batch.
+        In case the inactive batch is part of a consolidation job, it returns the batch before consolidation. 
+        Argument:
+            batchId : REQUIRED : The original batch you want to look.
+            predecessor : OPTIONAL : The predecessor
+        """ 
+        res = self.getBatch(batchId)
+        batchId = list(res.keys())[0]
+        successor = res[list(res.keys())[0]]['tags'].get('acp_successor',[''])[0]
+        reason = res[list(res.keys())[0]].get('replay',{}).get('reason','')
+        if successor != "":
+            res = self.findActiveBatch(successor,batchId)
+            return res
+        else:
+            if reason == 'consolidation':
+                return predecessor
+            else:
+                return batchId
     
 class ObservableSchemaManager:
 
@@ -984,16 +1005,18 @@ class ObservableSchemaManager:
             xdmType : boolean to know if you want to retrieve the xdm Type
         """
         if dictionary is None:
-            dictionary = {'path':[],'type':[]}
+            dictionary = {'path':[],'type':[],'title':[]}
             if queryPath:
                 dictionary['querypath'] = []
             if description:
                 dictionary['description'] = []
+            if xdmType:
+                dictionary['xdmType'] = []
         else:
             dictionary = dictionary
         for key in mydict:
             if type(mydict[key]) == dict:
-                if mydict[key].get('type') == 'object':
+                if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys():
                     if path is None:
                         if key != "property" and key != "customFields":
                             tmp_path = key
@@ -1004,35 +1027,44 @@ class ObservableSchemaManager:
                     if tmp_path is not None:
                         dictionary["path"].append(tmp_path)
                         dictionary["type"].append(f"{mydict[key].get('type')}")
+                        dictionary["title"].append(f"{mydict[key].get('title')}")
                         if queryPath:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         if description:
                             dictionary["description"].append(f"{mydict[key].get('description','')}")
+                        if xdmType:
+                            dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
-                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath,description)
+                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath,description,xdmType)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
-                    if levelProperties is not None:
+                    if levelProperties is not None: ## array of objects
                         if path is None:
                             tmp_path = key
                         else :
                             tmp_path = f"{path}.{key}[]{{}}"
                         dictionary["path"].append(tmp_path)
-                        dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
+                        dictionary["type"].append(f"{mydict[key].get('type')}")
+                        dictionary["title"].append(f"{mydict[key].get('title')}")
                         if queryPath and tmp_path is not None:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         if description and tmp_path is not None:
-                            dictionary["description"].append(mydict[key]['items'].get('description',''))
-                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,description)
-                    else:
-                        finalpath = f"{path}.{key}"
+                            dictionary["description"].append(mydict[key].get('description',''))
+                        if xdmType:
+                            dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
+                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,description,xdmType)
+                    else: ## simple arrays
+                        finalpath = f"{path}.{key}[]"
                         dictionary["path"].append(finalpath)
-                        dictionary["type"].append(f"[{mydict[key]['items'].get('type')}]")
+                        dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
+                        dictionary["title"].append(f"{mydict[key].get('title')}")
                         if queryPath and finalpath is not None:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
                         if description and finalpath is not None:
-                            dictionary["description"].append(mydict[key]['items'].get('description',''))
+                            dictionary["description"].append(mydict[key].get('description',''))
+                        if xdmType:
+                            dictionary["xdmType"].append(mydict[key]['items'].get('meta:xdmType',''))
                 else:
                     if path is not None:
                         finalpath = f"{path}.{key}"
@@ -1040,10 +1072,13 @@ class ObservableSchemaManager:
                         finalpath = f"{key}"
                     dictionary["path"].append(finalpath)
                     dictionary["type"].append(mydict[key].get('type','object'))
+                    dictionary["title"].append(mydict[key].get('title',''))
                     if queryPath and finalpath is not None:
                         dictionary["querypath"].append(self.__cleanPath__(finalpath))
-                    if description and finalpath is not None:
+                    if description :
                         dictionary["description"].append(mydict[key].get('description',''))
+                    if xdmType :
+                        dictionary["xdmType"].append(mydict[key].get('meta:xdmType',''))
 
         return dictionary
     
@@ -1068,7 +1103,7 @@ class ObservableSchemaManager:
             queryPath : OPTIONAL : If you want to have the query path to be used.
             description : OPTIONAL : If you want to have the description used
         """
-        definition = self.observableSchema.get('properties',{})
+        definition = self.observableSchema.get('properties',self.observableSchema.get('definitions',{}))
         data = self.__transformationDF__(definition,queryPath=queryPath,description=description)
         df = pd.DataFrame(data)
         if save:
@@ -1083,7 +1118,7 @@ class ObservableSchemaManager:
             typed : OPTIONAL : If you want the type associated with the field group to be given.
             save : OPTIONAL : If you wish to save the dictionary in a JSON file
         """
-        definition = self.observableSchema.get('properties',{})
+        definition = self.observableSchema.get('properties',self.observableSchema.get('definitions',{}))
         data = self.__transformationDict__(definition,typed)
         if save:
             filename = self.observableSchema.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
