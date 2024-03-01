@@ -264,8 +264,8 @@ class Schema:
         path = f"/{self.container}/schemas/"
         params = {}
         if classFilter is not None:
-            params["property"] = f"meta:intendedToExtend=={classFilter}"
-        if excludeAdhoc:
+            params["property"] = f"meta:extends=={classFilter}"
+        elif excludeAdhoc:
             params["property"] = "meta:extends!=https://ns.adobe.com/xdm/data/adhoc"
         verbose = kwargs.get("debug", False)
         privateHeader = deepcopy(self.header)
