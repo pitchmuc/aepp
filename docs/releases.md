@@ -2,6 +2,13 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## Version 0.3.4
+
+* add `Hygiene` module
+* adding `datasetId` key to Observable Schemas
+* add the `findInactiveBatch` method on the catalog
+* fix schema class filtering on `getSchemas` methods
+
 ## Version 0.3.3
 * add Access Control new methods
   * getRoles

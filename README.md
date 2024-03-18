@@ -62,6 +62,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [observability](./docs/observability.md)
 * [accesscontrol](./docs/accesscontrol.md)
 * [privacyservice](./docs/privacyservice.md) (see 2nd note below)
+* [data hygiene](./docs/hygiene.md)
 
 Last but not least, the core methods are described here: [main](./docs/main.md)
 

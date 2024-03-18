@@ -37,7 +37,7 @@ class Catalog:
     More details here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#
     It possess a data attribute that is containing information about your datasets. 
     Arguments:
-        config : OPTIONAL : config object in the config module (DO NOT MODIFY)
+        config : OPTIONAL : f or a dictionary with key similar to the aepp.config.config_object
         header : OPTIONAL : header object  in the config module (DO NOT MODIFY)
         loggingObject : OPTIONAL : If you want to set logging capability for your actions.
     kwargs:
@@ -694,6 +694,8 @@ class Catalog:
                 Used to cut down the number of properties and amount of data returned in the response bodies.
             size : The number of bytes processed in the batch.
         """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getMapperErrors")
         df = self.getFailedBatchesDF(limit=limit,n_results=n_results,**kwargs)
         df['errorCodeStr'] = df['errorCode'].astype(str)
         df_mapper = df[df['errorCodeStr'].str.contains('DPMAP')]
@@ -748,11 +750,13 @@ class Catalog:
     def findActiveBatch(self,batchId:str=None,predecessor:str=None)->str:
         """
         Recursive function to find the active batch from any batch.
-        In case the inactive batch is part of a consolidation job, it returns the batch before consolidation. 
+        In case the active batch is part of a consolidation job, it returns the batch before consolidation. 
         Argument:
             batchId : REQUIRED : The original batch you want to look.
             predecessor : OPTIONAL : The predecessor
-        """ 
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting findActiveBatch for {batchId}")
         res = self.getBatch(batchId)
         batchId = list(res.keys())[0]
         successor = res[list(res.keys())[0]]['tags'].get('acp_successor',[''])[0]
