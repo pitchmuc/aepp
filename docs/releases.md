@@ -4,7 +4,7 @@ This page list all of the changes that came during the different release of the 
 
 ## Version 0.3.4
 
-* add `Hygiene` module
+* add `Hygiene` module ([documentation](./hygiene.md))
 * adding `datasetId` key to Observable Schemas
 * add the `findInactiveBatch` method on the catalog
 * fix schema class filtering on `getSchemas` methods
