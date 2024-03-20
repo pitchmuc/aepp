@@ -918,7 +918,7 @@ class Segmentation:
                     tmp_str = self.__read_chains__(param['object'],tmp_str=tmp_str)
             return tmp_str
     
-    def __read_fnApply__(self,var:dict,tmp_str=None)->str:
+    def __read_fnApply__(self,var:dict=None,tmp_str=None)->str:
         """
         Find the path used in fnApply functions
         """
@@ -932,7 +932,7 @@ class Segmentation:
                 tmp_str = self.__read_fnApply__(var[key],tmp_str=tmp_str)
         return tmp_str
     
-    def __chainReader__(self,chainDefinition:dict)->list:
+    def __chainReader__(self,chainDefinition:dict=None)->list:
         """
         Find the paths used in the Chain functions
         """
@@ -947,7 +947,7 @@ class Segmentation:
                         listFields.append(path)
         return listFields      
     
-    def __pqlJSONReader__(self,segDef:str=None,listFields=[])->list:
+    def __pqlJSONReader__(self,segDef:str=None,listFields=None)->list:
         """
         From segment definition define as pql/json, list of field used
         """
@@ -955,8 +955,14 @@ class Segmentation:
             json_seg = json.loads(segDef)
         else:
             json_seg = segDef
+        if listFields is None:
+            listFields = list()
         if json_seg['nodeType'] == 'chain':
             listFields += self.__chainReader__(json_seg)
+            if 'timestampField' in json_seg.keys():
+                path = self.__read_fnApply__(json_seg['timestampField'])
+                if path is not None:
+                    listFields.append(path) 
         if json_seg['nodeType'] == 'fnApply':
             params = json_seg['params']
             for param in params:
