@@ -17,7 +17,7 @@ import logging
 from typing import Union
 from copy import deepcopy
 from .configs import ConnectObject
-import json
+import json, re
 
 class Segmentation:
     """
@@ -898,5 +898,99 @@ class Segmentation:
         res = self.connector.putData(self.endpoint + path,data=audienceObj)
         return res
     
+
+    def __read_chains__(self,param:dict,tmp_str=None)->str:
+        """
+        Read the chains functions
+        """
+        if type(param) == dict:
+            for key in param:
+                if key == 'nodeType' and param[key] == "lambda":
+                    tmp_str = self.__read_chains__(param['body'],tmp_str=tmp_str)
+                elif key == 'nodeType' and param[key] == "fnApply":
+                    for element in param['params']:
+                        tmp_str = self.__read_chains__(element,tmp_str=tmp_str)
+                elif key == 'nodeType' and param[key] == "fieldLookup":
+                    if tmp_str is None:
+                        tmp_str = param["fieldName"]
+                    else:
+                        tmp_str = f'{param["fieldName"]}.{tmp_str}'
+                    tmp_str = self.__read_chains__(param['object'],tmp_str=tmp_str)
+            return tmp_str
+    
+    def __read_fnApply__(self,var:dict,tmp_str=None)->str:
+        """
+        Find the path used in fnApply functions
+        """
+        for key in var:
+            if key == 'fieldName':
+                if tmp_str is None:
+                    tmp_str = var['fieldName']
+                else:
+                    tmp_str = f"{var['fieldName']}.{tmp_str}"
+            if type(var[key]) == dict:
+                tmp_str = self.read_fnApply(var[key],tmp_str=tmp_str)
+        return tmp_str
+    
+    def __chainReader__(self,chainDefinition:dict)->list:
+        """
+        Find the paths used in the Chain functions
+        """
+        listFields = []
+        elements = chainDefinition.get('elements',[])
+        for element in elements:
+            params:list = element.get('what',{}).get('body',{}).get('params')
+            if params is not None:
+                for param in params:
+                    path = self.__read_chains__(param)
+                    if path is not None:
+                        listFields.append(path)
+        return listFields      
+    
+    def __pqlJSONReader__(self,segDef:str=None,listFields=[])->list:
+        """
+        From segment definition define as pql/json, list of field used
+        """
+        if type(segDef) == str:
+            json_seg = json.loads(segDef)
+        else:
+            json_seg = segDef
+        if json_seg['nodeType'] == 'chain':
+            listFields += self.__chainReader__(json_seg)
+        if json_seg['nodeType'] == 'fnApply':
+            params = json_seg['params']
+            for param in params:
+                if param['nodeType'] == 'fnApply':
+                    listFields += self.__pqlJSONReader__(param,listFields=listFields)
+                elif param['nodeType'] == 'select':
+                    for var in param['variables']:
+                        path = self.__read_fnApply__(var)
+                        if path is not None:
+                            listFields.append(path)
+                elif param['nodeType'] == 'chain':
+                    listFields += self.__chainReader__(param)
+                else:
+                    path = self.__read_fnApply__(param)
+                    if path is not None:
+                        listFields.append(path)  
+        return list(set(listFields))
+    
+
+    def extractPaths(self,audience:dict=None)->list:
+        """
+        Extract the schema paths present in the segment or audience definition.
+        BETA
+        Argument:
+            audience : REQUIRED : Audience or segment defintion.
+        """
+        if audience is None:
+            raise ValueError("require an audience or segment definition")
+        formatt = audience.get('expression',{}).get('format')
+        if formatt == 'pql/text':
+            paths = re.findall('WHAT\((.+?)\.[^\.]+\(',audience.get('expression',{}).get('value'))
+            return paths
+        if formatt == 'pql/json':
+            paths = self.__pqlJSONReader__(audience.get('expression',{}).get('value'))
+            return paths
 
 

@@ -290,7 +290,7 @@ class AdobeRequest:
                 token_with_expiry = self.get_jwt_token_and_expiry_for_config(config=self.config)
             elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
                 token_with_expiry = self.get_oauth_token_and_expiry_for_config(config=self.config)
-            self.token = token_with_expiry["token"]
+            self.token = token_with_expiry.token
             self.config["token"] = self.token
             if self.loggingEnabled:
                 self.logger.info("new token retrieved : {self.token}")
