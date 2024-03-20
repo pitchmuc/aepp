@@ -929,7 +929,7 @@ class Segmentation:
                 else:
                     tmp_str = f"{var['fieldName']}.{tmp_str}"
             if type(var[key]) == dict:
-                tmp_str = self.read_fnApply(var[key],tmp_str=tmp_str)
+                tmp_str = self.__read_fnApply__(var[key],tmp_str=tmp_str)
         return tmp_str
     
     def __chainReader__(self,chainDefinition:dict)->list:
