@@ -7,7 +7,11 @@ This page list all of the changes that came during the different release of the 
 * add `Hygiene` module ([documentation](./hygiene.md))
 * adding `datasetId` key to Observable Schemas
 * add the `findInactiveBatch` method on the catalog
-* fix schema class filtering on `getSchemas` methods
+* fix schema class filtering on `getSchemas` methods\
+Patch:
+* fix `UploadSmallFile` method in `ingestion` module
+* adding `extractPaths` method to `Segmentation` class
+* adding `extractAudiences` method in `Segmentation` class
 
 ## Version 0.3.3
 * add Access Control new methods
