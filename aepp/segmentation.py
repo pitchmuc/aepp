@@ -898,105 +898,72 @@ class Segmentation:
         res = self.connector.putData(self.endpoint + path,data=audienceObj)
         return res
     
-
-    def __read_chains__(self,param:dict,tmp_str=None)->str:
+    def __pqlJSONSegmentReader__(self,segmentValue:Union[str,dict],listFields=None,tmp_str=None)->list:
         """
-        Read the chains functions
+        read the dictionary of the segment.expression.value
+        use listFields and tmp_str to pass data in recursive mode
+        return a list of paths
         """
-        if type(param) == dict:
-            for key in param:
-                if key == 'nodeType' and param[key] == "lambda":
-                    tmp_str = self.__read_chains__(param['body'],tmp_str=tmp_str)
-                elif key == 'nodeType' and param[key] == "fnApply":
-                    for element in param['params']:
-                        tmp_str = self.__read_chains__(element,tmp_str=tmp_str)
-                elif key == 'nodeType' and param[key] == "fieldLookup":
-                    if tmp_str is None:
-                        tmp_str = param["fieldName"]
-                    else:
-                        tmp_str = f'{param["fieldName"]}.{tmp_str}'
-                    tmp_str = self.__read_chains__(param['object'],tmp_str=tmp_str)
-            return tmp_str
-    
-    def __read_fnApply__(self,var:dict=None,tmp_str=None)->str:
-        """
-        Find the path used in fnApply functions
-        """
-        for key in var:
-            if key == 'fieldName':
-                if tmp_str is None:
-                    tmp_str = var['fieldName']
-                else:
-                    tmp_str = f"{var['fieldName']}.{tmp_str}"
-            if type(var[key]) == dict:
-                tmp_str = self.__read_fnApply__(var[key],tmp_str=tmp_str)
-        return tmp_str
-    
-    def __chainReader__(self,chainDefinition:dict=None)->list:
-        """
-        Find the paths used in the Chain functions
-        """
-        listFields = []
-        elements = chainDefinition.get('elements',[])
-        for element in elements:
-            params:list = element.get('what',{}).get('body',{}).get('params')
-            if params is not None:
-                for param in params:
-                    path = self.__read_chains__(param)
-                    if path is not None:
-                        listFields.append(path)
-        return listFields      
-    
-    def __pqlJSONReader__(self,segDef:str=None,listFields=None)->list:
-        """
-        From segment definition define as pql/json, list of field used
-        """
-        if type(segDef) == str:
-            json_seg = json.loads(segDef)
+        if type(segmentValue) == str:
+            json_data = json.loads(segmentValue)
         else:
-            json_seg = segDef
+            json_data = segmentValue
         if listFields is None:
             listFields = list()
-        if json_seg['nodeType'] == 'chain':
-            listFields += self.__chainReader__(json_seg)
-            if 'timestampField' in json_seg.keys():
-                path = self.__read_fnApply__(json_seg['timestampField'])
-                if path is not None:
-                    listFields.append(path) 
-        if json_seg['nodeType'] == 'fnApply':
-            params = json_seg['params']
-            for param in params:
-                if param['nodeType'] == 'fnApply':
-                    listFields += self.__pqlJSONReader__(param,listFields=listFields)
-                elif param['nodeType'] == 'select':
-                    for var in param['variables']:
-                        path = self.__read_fnApply__(var)
-                        if path is not None:
-                            listFields.append(path)
-                elif param['nodeType'] == 'chain':
-                    listFields += self.__chainReader__(param)
+        for key in json_data:
+            if type(json_data[key]) == dict and key != 'object': ## if needs to be recursively checked, needs to pass the list already found
+                tmp_str = self.__pqlJSONSegmentReader__(json_data[key],listFields=listFields)
+            elif type(json_data[key]) == list: ## if needs to be looped through
+                for var in json_data[key]:
+                    if type(var) == dict: ## if element is a dict, it can be recursively checked, need to pass the list already found
+                        tmp_str = self.__pqlJSONSegmentReader__(var,listFields=listFields)
+            elif json_data[key] == 'fieldLookup': ## if the key is fieldLookup the path is built
+                if tmp_str is None: # if first element of the path
+                    tmp_str = json_data['fieldName']
                 else:
-                    path = self.__read_fnApply__(param)
-                    if path is not None:
-                        listFields.append(path)  
+                    tmp_str = f"{json_data['fieldName']}.{tmp_str}"
+                if 'object' in json_data.keys() and 'fieldName' in json_data.get('object',{}).keys(): ## if there is a lower/higher node to be added, passing the incomplete node and the list already found
+                    tmp_str = self.__pqlJSONSegmentReader__(json_data['object'],tmp_str=tmp_str,listFields=listFields)
+                else: ## if end of the nodes, just adding the path to the list of path found
+                    listFields.append(tmp_str)
+                    return tmp_str
         return list(set(listFields))
     
 
-    def extractPaths(self,audience:dict=None)->list:
+    def extractPaths(self,audience:Union[dict,str]=None,recursive:bool=False)->list:
         """
-        Extract the schema paths present in the segment or audience definition.
         BETA
+        Extract the schema paths present in the segment or audience definition.
         Argument:
-            audience : REQUIRED : Audience or segment defintion.
+            audience : REQUIRED : Audience or segment definition.
         """
         if audience is None:
             raise ValueError("require an audience or segment definition")
+        if type(audience) == str:
+            audience = self.getAudience(audience)
         formatt = audience.get('expression',{}).get('format')
         if formatt == 'pql/text':
             paths = re.findall('WHAT\((.+?)\.[^\.]+\(',audience.get('expression',{}).get('value'))
             return paths
         if formatt == 'pql/json':
-            paths = self.__pqlJSONReader__(audience.get('expression',{}).get('value'))
+            paths = self.__pqlJSONSegmentReader__(audience.get('expression',{}).get('value'))
+            if recursive:
+                dependencies = self.extractAudiences(audience)
+                if len(dependencies) > 0:
+                    for dependency in dependencies:
+                        paths += self.extractPaths(dependency, recursive=True)
             return paths
 
+    def extractAudiences(self,audience:dict=None)->list:
+        """
+        BETA
+        Extract the audience Id used in the audience definition.
+        In case you have build audience of audience.
+        Argument: 
+            audience : REQUIRED : Audience or Segment definition
+        """
+        if audience is None:
+            raise ValueError("require an audience or segment definition")
+        dependencies = audience.get('dependencies',[])
+        return dependencies
 
