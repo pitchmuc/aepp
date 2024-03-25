@@ -241,7 +241,7 @@ class DataIngestion:
         path = f"/batches/{batchId}/datasets/{datasetId}/files/{filePath}"
         if type(data) == str:
             if '.json' in data:
-                with open(Path(path),'r') as f:
+                with open(Path(data),'r') as f:
                     data = json.load(f)
         res = self.connector.putData(
             self.endpoint + path, data=data, headers=privateHeader
