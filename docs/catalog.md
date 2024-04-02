@@ -77,8 +77,7 @@ mySandbox = aepp.importConfigFile('config.json',connectInstance=True,sandbox='pr
 myCat = catalog.Catalog(config=mySandbox)
 ```
 
-### Using kwargs
-2 parameters are possible for the instantiation of the class:
+3 parameters are possible for the instantiation of the class:
 
 * config : OPTIONAL : the connect object instance created when you use `importConfigFile` with connectInstance parameter. Default to latest loaded configuration.
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)

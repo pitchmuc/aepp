@@ -936,6 +936,7 @@ class Segmentation:
         Extract the schema paths present in the segment or audience definition.
         Argument:
             audience : REQUIRED : Audience or segment definition.
+            recursive : OPTIONAL : If you want to check the path used in the audience used in the audience
         """
         if audience is None:
             raise ValueError("require an audience or segment definition")
