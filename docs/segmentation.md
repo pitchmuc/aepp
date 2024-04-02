@@ -11,7 +11,6 @@ Alternatively, you can use the docstring in the methods to have more information
   - [What is the segmentation capability in AEP](#what-is-the-segmentation-capability-in-aep)
   - [Importing the module](#importing-the-module)
   - [The Segmentation class](#the-segmentation-class)
-    - [Using kwargs](#using-kwargs)
   - [Segmentation attributes](#segmentation-attributes)
   - [Segmentation methods](#segmentation-methods)
   - [Segmentation use-cases](#segmentation-use-cases)
