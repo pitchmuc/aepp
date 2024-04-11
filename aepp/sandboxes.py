@@ -28,7 +28,7 @@ class Sandboxes:
     ## logging capability
     loggingEnabled = False
     logger = None
-    ARTIFACS_Type = ["REGISTRY_SCHEMA","MAPPING_SET","CATALOG_DATASET","JOURNEY","PROFILE_SEGMENT"]
+    ARTIFACS_TYPE = ["REGISTRY_SCHEMA","MAPPING_SET","CATALOG_DATASET","JOURNEY","PROFILE_SEGMENT"]
 
     def __init__(
         self,
@@ -277,7 +277,7 @@ class Sandboxes:
                 example : 
                 {"27115daa-c92b-4f17-a077-d65ffeb0c525":"PROFILE_SEGMENT",
                 "d8d8ed6d-696a-40bd-b4fe-ca053ec94e29" : "JOURNEY"}
-                For more types, refers to ARTIFACS_Type 
+                For more types, refers to ARTIFACS_TYPE 
             expiry : OPTIONAL : The expiry of that package in days (default 90 days)
         """
         if self.loggingEnabled:
@@ -409,7 +409,7 @@ class Sandboxes:
                 example of alternative dictionary: 
                     {"artifactIdInPackage": {
                         "id": "targetSandboxArtifactId"
-                        "type" : "REGISTRY_SCHEMA" (refer to ARTIFACS_Type for more types)
+                        "type" : "REGISTRY_SCHEMA" (refer to ARTIFACS_TYPE for more types)
                         }
                     }
         """
