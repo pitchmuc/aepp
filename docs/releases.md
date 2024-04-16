@@ -2,6 +2,13 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## Version 0.3.5
+
+Deprecate:
+* Deprecated `getLandingZoneContainerName` method in `flowservice`, new `getLandingZoneStorageName` should be used instead
+* Deprecated `getLandingZoneContainerTTL` method in `flowservice`, new `getLandingZoneStorageName` should be used instead
+* Deprecated `getLandingZoneStorageAccountName` method in `flowservice`, new `getLandingZoneStorageName` should be used instead
+
 ## Version 0.3.4
 
 * add `Hygiene` module ([documentation](./hygiene.md))
@@ -51,6 +58,7 @@ Patch:
 * add `getDescriptors` in `SchemaManager`
 * add `getProfileSnapshotDatasets` method to catalog
 * fix `disableDatasetIdentity` and `disableDatasetProfile` methods
+
 
 ## Version 0.3.2
 
