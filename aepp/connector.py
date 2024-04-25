@@ -120,6 +120,7 @@ class AdobeRequest:
         else:
             self.token = self.config["token"]
             self.header.update({"Authorization": f"Bearer {self.token}"})
+            self.header.update({"x-sandbox-name": self.config['sandbox']})
             self.connectionType = self.config['connectionType']
         # x-sandbox-id is required when using non-user token, but forbidden for user token
         if self.connectionType == 'oauthV1' and "x-sandbox-id" not in self.header:
