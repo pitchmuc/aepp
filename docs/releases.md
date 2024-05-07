@@ -12,6 +12,7 @@ Patch:
 * fix `UploadSmallFile` method in `ingestion` module
 * adding `extractPaths` method to `Segmentation` class ([doc](https://github.com/adobe/aepp/blob/main/docs/segmentation.md#extractpaths))
 * adding `extractAudiences` method in `Segmentation` class ([doc](https://github.com/adobe/aepp/blob/main/docs/segmentation.md#extractaudiences))
+* fixing the `updateFlowMapping` in FlowManager class.
 
 ## Version 0.3.3
 * add Access Control new methods
