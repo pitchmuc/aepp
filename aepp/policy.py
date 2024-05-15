@@ -9,7 +9,7 @@
 #  governing permissions and limitations under the License.
 
 import aepp
-import typing
+from typing import Union, IO
 from aepp import connector
 import logging
 from .configs import ConnectObject
@@ -27,7 +27,7 @@ class Policy:
 
     def __init__(
         self,
-        config: typing.Union[dict,ConnectObject] = aepp.config.config_object,
+        config: Union[dict,ConnectObject] = aepp.config.config_object,
         header: dict = aepp.config.header,
         loggingObject: dict = None,
         **kwargs,
@@ -201,7 +201,7 @@ class Policy:
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         return res
 
-    def createPolicy(self, policy: typing.Union(dict, typing.IO) = None):
+    def createPolicy(self, policy: Union[dict, IO] = None):
         """
         Create a custom policy.
         Arguments:
