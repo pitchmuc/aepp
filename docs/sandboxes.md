@@ -2,7 +2,7 @@
 
 This documentation will provide you some explanation on how to use the sandboxes module and the different methods supported by this module.\
 It will include some examples but be aware that not all methods will be documented here.\
-To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/sandbox/).\
+To have a full view on the different API endpoints specific to the sandbox API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/sandbox/).\
 Alternatively, you can use the docstring in the methods to have more information.\
 
 To be noted, some documentation about the sandbox tooling can be found here:[sandbox tooling documentation](https://experienceleague.adobe.com/en/docs/experience-platform/sandbox/troubleshooting-guide)
@@ -10,15 +10,12 @@ To be noted, some documentation about the sandbox tooling can be found here:[san
 ## Menu
 - [Sandboxes module in aepp](#sandboxes-module-in-aepp)
   - [Menu](#menu)
-  - [What is the segmentation capability in AEP](#what-is-the-segmentation-capability-in-aep)
   - [Importing the module](#importing-the-module)
   - [The Sandboxes class](#the-sandboxes-class)
   - [Sandboxes attributes](#sandboxes-attributes)
   - [Sandboxes methods](#sandboxes-methods)
   - [Sandboxes use-cases](#segmentation-use-cases)
     - [1. List all of your sandboxes](#list-all-of-your-sandboxes)
-
-
 
 ## Importing the module
 
@@ -33,7 +30,7 @@ prod = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='
 from aepp import sandboxes
 ```
 
-The sandboxes module provides a class that you can use for generating and retrieving sandboxes.\
+The sandboxes module provides a class `Sandboxes` that you can use for generating and retrieving sandboxes.\
 The following documentation will provide you with more information on its usage.
 
 ## The Sandboxes class

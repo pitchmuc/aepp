@@ -11,7 +11,9 @@ Alternatively, you can use the docstring in the methods to have more information
   - [Menu](#menu)
   - [Importing the module](#importing-the-module)
   - [Generating a Schema instance](#generating-a-schema-instance)
-    - [Using kwargs](#using-kwargs)
+    - [Connecting to different sandboxes](#connecting-to-different-sandboxess)
+  - [Schema attributes](#schema-attributes)
+  - [Schema methods](#schema-methods)
   - [Tips for schema requests](#tips-for-schema-requests)
     - [1. Generate Samples](#1-generate-samples)
     - [2. Using parameters in getSchema](#2-using-parameters-in-getschema)
@@ -53,9 +55,9 @@ Several parameters are possibles when instantiating the class:\
 * config : OPTIONAL : mostly used to pass a ConnectObject instance that is linked to one sandbox. 
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
 
-### Using different ConnectObject for different sandboxes
+### Connecting to different sandboxes
 
-You can use the `connectInstance` parameter to load multiple sandbox configuration and save them for re-use later on, when instantiating the `Schema` class. 
+You can use the `connectInstance` parameter to load multiple sandbox configurations and save them for re-use later on, when instantiating the `Schema` class. 
 As described above, it can be useful when you want to connect to multiple sandboxes with the same authentication.\
 In that case, the 2 instances will be created as such:
 
@@ -70,6 +72,15 @@ mySchemaConnection1 = schema.Schema(config=prod)
 mySchemaConnection2 = schema.Schema(config=dev)
 
 ```
+
+## Schema attributes
+
+Once you have instantiated the `Schema` class, you will have access to the following attributes.
+
+
+## Schema methods
+
+below are all the different methods that are available to you once you have instantiated the `Schema` class.
 
 ## Tips for schema requests
 

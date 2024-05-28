@@ -61,6 +61,7 @@ endpoints = {
     "destinationAuthoring": "/data/core/activation/authoring",
     "destinationInstance" : "/data/core/activation/disflowprovider",
     "hygiene" : "/data/core/hygiene",
+    "tags":"/unifiedtags",
     "streaming": {
         "inlet": "",
         "collection": "https://dcs.adobedc.net"

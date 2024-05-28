@@ -14,6 +14,8 @@ Patch:
 * adding `extractAudiences` method in `Segmentation` class ([doc](https://github.com/adobe/aepp/blob/main/docs/segmentation.md#extractaudiences))
 * fixing the `updateFlowMapping` in FlowManager class.
 * fixing the `policy` module
+* adding the `tags` module
+* improving the `schema` documentation
 
 ## Version 0.3.3
 * add Access Control new methods
