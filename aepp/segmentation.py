@@ -955,7 +955,7 @@ class Segmentation:
                         paths += self.extractPaths(dependency, recursive=True)
             return paths
 
-    def extractAudiences(self,audience:dict=None)->list:
+    def extractAudiences(self,audience:Union[str,dict]=None)->list:
         """
         BETA
         Extract the audience Id used in the audience definition.
@@ -965,6 +965,8 @@ class Segmentation:
         """
         if audience is None:
             raise ValueError("require an audience or segment definition")
+        if type(audience) == str:
+            audience = self.getAudience(audience)
         dependencies = audience.get('dependencies',[])
         return dependencies
 
