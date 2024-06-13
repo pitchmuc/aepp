@@ -134,6 +134,7 @@ class DataIngestion:
         multiline: bool = False,
         enableDiagnostic: bool = False,
         partialIngestionPercentage: int = 0,
+        tags:dict = None,
         **kwargs
     ) -> dict:
         """
@@ -142,6 +143,7 @@ class DataIngestion:
             datasetId : REQUIRED : The Dataset ID for the batch to upload data to.
             format : REQUIRED : the format of the data send.(default json)
             multiline : OPTIONAL : If you wish to upload multi-line JSON.
+            tags : OPTIONAL : In case some additional tags needs to be specified.
         Possible kwargs:
             replay : the replay object to replay a batch.
             https://experienceleague.adobe.com/docs/experience-platform/ingestion/batch/api-overview.html?lang=en#replay-a-batch
@@ -152,16 +154,20 @@ class DataIngestion:
             self.logger.debug(f"Using createBatch with following format ({format})")
         obj = {
             "datasetId": datasetId,
-            "inputFormat": {"format": format, "isMultiLineJson": False},
+            "inputFormat": {"format": format},
         }
         if len(kwargs.get('replay',{}))>0:
             obj['replay'] = kwargs.get('replay')
         if multiline is True:
             obj["inputFormat"]["isMultiLineJson"] = True
+        else:
+            obj["inputFormat"]["isMultiLineJson"] = False
         if enableDiagnostic != False:
             obj["enableErrorDiagnostics"] = True
         if partialIngestionPercentage > 0:
             obj["partialIngestionPercentage"] = partialIngestionPercentage
+        if tags is not None:
+            obj["tags"] = tags
         path = "/batches"
         res = self.connector.postData(self.endpoint + path, data=obj)
         return res

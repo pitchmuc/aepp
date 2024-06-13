@@ -67,10 +67,10 @@ mySandbox = aepp.importConfigFile('myconfig.json',sandbox='mysandbox',connectIns
 mySchemaInstance = schema.Schema(config=mySandbox)
 
 ## option 1
-fgManager = schema.SchemaManager(title='my Field Group Title', schemaAPI=mySchemaInstance)## setting a title now
+fgManager = schema.FieldGroupManager(title='my Field Group Title', schemaAPI=mySchemaInstance)## setting a title now
 
 ## option 2
-fgManager = schema.SchemaManager(config=mySandbox)
+fgManager = schema.FieldGroupManager(config=mySandbox)
 
 ```
 

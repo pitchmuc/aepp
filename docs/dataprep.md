@@ -46,6 +46,15 @@ mapper = dataprep.DataPrep()
 
 Any additional parameters in the kwargs will be updating the header content.
 
+## DataPrep attributes
+* sandbox : provide which sandbox is currently being used
+* header : provide the default header which is used for the requests.
+* loggingEnabled : if the logging capability has been used
+* endpoint : the default endpoint used for all methods.
+* containerId : In case you have modified the default container.
+* REFERENCE_MAPPING : An example of mapping definition
+* SOURCETYPE : A list of source types for mapping
+
 ## Use-cases
 
 The Data Prep Service enables you to use the mapping service. This service is used in order to map the incoming data to match specific field expectation in your schema (type / value).\

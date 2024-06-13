@@ -16,6 +16,9 @@ Patch:
 * fixing the `policy` module
 * adding the `tags` module
 * improving the `schema` documentation
+* improving docstring in `DataPrep`
+* improving batch ingestion in `ingestion` module.
+* Improve documentation for Schema and dropping mixins related methods.
 
 ## Version 0.3.3
 * add Access Control new methods

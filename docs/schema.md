@@ -50,7 +50,6 @@ mySchemaConnection1 = schema.Schema(config=prod)
 ```
 
 Several parameters are possibles when instantiating the class:\
-
 * container_id : OPTIONAL : "tenant"(default) or "global"
 * config : OPTIONAL : mostly used to pass a ConnectObject instance that is linked to one sandbox. 
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
@@ -76,11 +75,504 @@ mySchemaConnection2 = schema.Schema(config=dev)
 ## Schema attributes
 
 Once you have instantiated the `Schema` class, you will have access to the following attributes.
-
+* sandbox : provide which sandbox is currently being used
+* header : provide the default header which is used for the requests.
+* loggingEnabled : if the logging capability has been used
+* endpoint : the default endpoint used for all methods.
+* containerId : In case you have modified the default container.
+* PATCH_OBJ : An example of Patch operation payload
+* DESCRIPTOR_TYPES : A list of descriptor types
+* data : an object that contains the following information depending the methods used **previously**
+  * schemas_id : dictionary of {SchemaName:$id} when the `getSchemas` methods has been used
+  * schemas_altId : dictionary of {SchemaName:altId} when the `getSchemas` methods has been used
+  * fieldGroups_id : dictionary of {FieldGroupName:$id} when the `getFieldGroups` methods has been used
+  * fieldGroups_altId : dictionary of {FieldGroupName:altId} when the `getFieldGroups` methods has been used
+  * fieldGroupsGlobal_id : dictionary of Out of the box field groups such as {FieldGroupName:$id} when the `getFieldGroupsGlobal` methods has been used
+  * fieldGroupsGlobal_altId : dictionary of Out of the box field groups such as {FieldGroupName:altId} when the `getFieldGroupsGlobal` methods has been used
 
 ## Schema methods
 
 below are all the different methods that are available to you once you have instantiated the `Schema` class.
+
+### getResource
+Template for requesting data with a GET method.\
+Arguments:
+* endpoint : REQUIRED : The URL to GET
+* params: OPTIONAL : dictionary of the params to fetch
+* format : OPTIONAL : Type of response returned. Possible values:
+  * json : default
+  * txt : text file
+  * raw : a response object from the requests module
+
+### getStats
+Returns a list of the last actions realized on the Schema for this instance of AEP.
+
+### getTenantId
+Return the tenantID for the AEP instance.
+
+### getBehaviors
+Return a list of behaviors.
+
+### getBehavior
+Retrieve a specific behavior for class creation.\
+Arguments:
+* behaviorId : REQUIRED : the behavior ID to be retrieved.
+
+### getSchemas
+Returns the list of schemas retrieved for that instances in a "results" list.\
+Arguments:
+* classFilter : OPTIONAL : filter to a specific class.\
+  Example :
+  * https://ns.adobe.com/xdm/context/experienceevent
+  * https://ns.adobe.com/xdm/context/profile
+  * https://ns.adobe.com/xdm/data/adhoc
+* excludeAdhoc : OPTIONAL : exclude the adhoc schemas
+* output : OPTIONAL : either "raw" for a list or "df" for dataframe\
+Possible kwargs:
+* debug : if set to true, will print the result when error happens
+* format : if set to "xed", returns the full JSON for each resource (default : "xed-id" -  short summary)
+
+### getSchema
+Get the Schema. Requires a schema id.\
+Response provided depends on the header set, you can change the Accept header with kwargs.\
+Arguments:
+* schemaId : REQUIRED : $id or meta:altId
+* version : OPTIONAL : Version of the Schema asked (default 1)
+* full : OPTIONAL : True (default) will return the full schema.False just the relationships.
+* desc : OPTIONAL : If set to True, return the identity used as the descriptor.
+* deprecated : OPTIONAL : Display the deprecated field from that schema
+* flat : OPTIONAL : If set to True, return a flat schema for pathing.
+* schema_type : OPTIONAL : set the type of output you want (xdm or xed) Default : xdm.
+* save : OPTIONAL : save the result in json file (default False)\
+Possible kwargs:
+* Accept : Accept header to change the type of response.\
+more details held here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
+
+### getSchemaPaths
+Returns a list of the path available in your schema.\
+Arguments:
+* schemaId : REQUIRED : The schema you want to retrieve the paths for
+* simplified : OPTIONAL : Default True, only returns the list of paths for your schemas.
+* save : OPTIONAL : Save your schema paths in a file. Always the NOT simplified version.
+
+
+### getSchemaSample
+Generate a sample data from a schema id.\
+Arguments:
+* schema_id : REQUIRED : The schema ID for the sample data to be created.
+* save : OPTIONAL : save the result in json file (default False)
+* version : OPTIONAL : version of the schema to request
+
+### patchSchema
+Enable to patch the Schema with operation.
+Arguments:
+* schema_id : REQUIRED : $id or meta:altId
+* change : REQUIRED : List of changes that need to take place.\
+Example:
+```python
+    [
+        {
+            "op": "add",
+            "path": "/allOf",
+            "value": {'$ref': 'https://ns.adobe.com/emeaconsulting/mixins/fb5b3cd49707d27367b93e07d1ac1f2f7b2ae8d051e65f8d',
+        'type': 'object',
+        'meta:xdmType': 'object'}
+        }
+    ]
+```
+information : http://jsonpatch.com/
+
+### putSchema
+A PUT request essentially re-writes the schema, therefore the request body must include all fields required to create (POST) a schema.\
+This is especially useful when updating a lot of information in the schema at once.\
+Arguments:
+* schemaId : REQUIRED : $id or meta:altId
+* schemaDef : REQUIRED : dictionary of the new schema.\
+  It requires a allOf list that contains all the attributes that are required for creating a schema.\
+More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
+
+### deleteSchema
+Delete the request\
+Arguments:
+* schema_id : REQUIRED : $id or meta:altId to be deleted
+
+### createSchema
+Create a Schema based on the data that are passed in the Argument.\
+Arguments:
+* schema : REQUIRED : The schema definition that needs to be created.
+
+### createExperienceEventSchema
+Create an ExperienceEvent schema based on the list mixin ID provided.\
+Arguments:
+* name : REQUIRED : Name of your schema
+* mixinIds : REQUIRED : dict of mixins $id and their type ["object" or "array"] to create the ExperienceEvent schema\
+    Example `{'mixinId1':'object','mixinId2':'array'}`\
+    if just a list is passed, it infers a 'object type'
+* fieldGroupIds : REQUIRED : List of fieldGroup $id to create the Indiviudal Profile schema\
+    Example `{'fgId1':'object','fgId2':'array'}`\
+    if just a list is passed, it infers a 'object type'
+* description : OPTIONAL : Schema description
+
+### createProfileSchema
+Create an IndividualProfile schema based on the list mixin ID provided.\
+Arguments:
+* name : REQUIRED : Name of your schema
+* mixinIds : REQUIRED : List of mixins $id to create the Indiviudal Profile schema\
+    Example `{'mixinId1':'object','mixinId2':'array'}`\
+    if just a list is passed, it infers a 'object type'
+* fieldGroupIds : REQUIRED : List of fieldGroup $id to create the Indiviudal Profile schema\
+    Example `{'fgId1':'object','fgId2':'array'}`\
+    if just a list is passed, it infers a 'object type'
+* description : OPTIONAL : Schema description
+
+### addFieldGroupToSchema
+Take the list of field group ID to extend the schema.\
+Return the definition of the new schema with added field groups.\
+Arguments:
+* schemaId : REQUIRED : The ID of the schema (alt:metaId or $id)
+* fieldGroupIds : REQUIRED : The IDs of the fields group to add. It can be a list or dictionary.\
+    Example `{'fgId1':'object','fgId2':'array'}`\
+    if just a list is passed, it infers a 'object type'
+
+### getClasses
+Return the classes of the AEP Instances.\
+Arguments:
+* prop : OPTIONAL : A comma-separated list of top-level object properties to be returned in the response.\
+  For example, `property=meta:intendedToExtend==https://ns.adobe.com/xdm/context/profile`
+* oderBy : OPTIONAL : Sort the listed resources by specified fields. For example orderby=title
+* limit : OPTIONAL : Number of resources to return per request, default 300 - the max.
+* excludeAdhoc : OPTIONAL : Exlcude the Adhoc classes that have been created.
+* output : OPTIONAL : type of output, default "raw", can be "df" for dataframe.\
+kwargs:
+* debug : if set to True, will print result for errors
+
+### getClassesGlobal
+Return the Out-of-the-box classes of the AEP Instances.
+Arguments:
+* prop : OPTIONAL : A comma-separated list of top-level object properties to be returned in the response.\
+  For example, `property=meta:intendedToExtend==https://ns.adobe.com/xdm/context/profile`
+* oderBy : OPTIONAL : Sort the listed resources by specified fields. For example orderby=title
+* limit : OPTIONAL : Number of resources to return per request, default 300 - the max.
+* output : OPTIONAL : type of output, default "raw", can be "df" for dataframe.\
+kwargs:
+* debug : if set to True, will print result for errors
+
+### getClass
+Return a specific class.\
+Arguments:
+* classId : REQUIRED : the meta:altId or $id from the class
+* full : OPTIONAL : True (default) will return the full schema.False just the relationships.
+* desc : OPTIONAL : If set to True, return the descriptors.
+* deprecated : OPTIONAL : Display the deprecated field from that schema (False by default)
+* xtype : OPTIONAL : either "xdm" (default) or "xed". 
+* version : OPTIONAL : the version of the class to retrieve.
+* save : OPTIONAL : To save the result of the request in a JSON file.
+
+
+### createClass
+Create a class based on the object pass. It should include the "allOff" element.\
+Arguments:
+* class_obj : REQUIRED : You can pass a complete object to create a class, include a title and a "allOf" element.
+* title : REQUIRED : Title of the class if you want to pass individual elements
+* class_template : REQUIRED : type of behavior for the class, either "https://ns.adobe.com/xdm/data/record" or "https://ns.adobe.com/xdm/data/time-series"\
+Possible kwargs: 
+* description : To add a description to a class.
+
+### putClass
+Replace the current definition with the new definition.\
+Arguments:
+* classId : REQUIRED : The class to be updated ($id or meta:altId)
+* class_obj : REQUIRED : The dictionary defining the new class definition
+
+### patchClass
+Patch a class with the operation specified such as:\
+```python
+update = [{
+    "op": "replace",
+    "path": "title",
+    "value": "newTitle"
+}]
+```
+Possible operation value : "replace", "remove", "add"\
+Arguments:
+* classId : REQUIRED : The class to be updated  ($id or meta:altId)
+* operation : REQUIRED : List of operation to realize on the class
+
+
+### deleteClass
+Delete a class based on the its ID.\
+Arguments:
+* classId : REQUIRED : The class to be deleted  ($id or meta:altId)
+
+
+### getFieldGroups
+returns the fieldGroups of the account.\
+Arguments:
+* format : OPTIONAL : either "xdm" or "xed" format\
+kwargs:
+* debug : if set to True, will print result for errors
+
+### getFieldGroupsGlobal
+returns the global fieldGroups of the account.\
+Arguments:
+* format : OPTIONAL : either "xdm" or "xed" format
+* output : OPTIONAL : either "raw" (default) or "df" for dataframe\
+kwargs:
+* debug : if set to True, will print result for errors
+
+### getFieldGroup
+Returns a specific mixin / field group.\
+Arguments:
+* fieldGroupId : REQUIRED : meta:altId or $id
+* version : OPTIONAL : version of the mixin
+* full : OPTIONAL : True (default) will return the full schema.False just the relationships
+* desc : OPTIONAL : Add descriptor of the field group
+* type : OPTIONAL : Either "xed" (default) or "xdm"
+* flat : OPTIONAL : if the fieldGroup is flat (false by default)
+* deprecated : OPTIONAL : Display the deprecated fields from that schema
+* save : Save the fieldGroup to a JSON file
+
+### copyFieldGroup
+Copy the dictionary returned by getFieldGroup to the only required elements for copying it over.\
+Arguments:
+* fieldGroup : REQUIRED : the object retrieved from the getFieldGroup.
+* tenantId : OPTIONAL : if you want to change the tenantId (if None doesn't rename)
+* name : OPTIONAL : rename your mixin (if None, doesn't rename it)
+
+### createFieldGroup
+Create a mixin based on the dictionary passed.\
+Arguments :
+* fieldGroup_obj : REQUIRED : the object required for creating the field group.\
+  Should contain title, type, definitions
+
+### deleteFieldGroup
+Arguments:
+* fieldGroupId : meta:altId or $id of the field group to be deleted
+
+### patchFieldGroup
+Update the mixin with the operation described in the changes.\
+Arguments:
+* fieldGroupId : REQUIRED : meta:altId or $id
+* changes : REQUIRED : dictionary on what to update on that mixin.
+Example:
+```python
+    [
+        {
+            "op": "add",
+            "path": "/allOf",
+            "value": {'$ref': 'https://ns.adobe.com/emeaconsulting/mixins/fb5b3cd49707d27367b93e07d1ac1f2f7b2ae8d051e65f8d',
+        'type': 'object',
+        'meta:xdmType': 'object'}
+        }
+    ]
+```
+information : http://jsonpatch.com/
+
+### putFieldGroup
+A PUT request essentially re-writes the schema, therefore the request body must include all fields required to create (POST) a schema.\
+This is especially useful when updating a lot of information in the schema at once.\
+Arguments:
+* fieldGroupId : REQUIRED : $id or meta:altId
+* fieldGroupObj : REQUIRED : dictionary of the new Field Group.
+* It requires a allOf list that contains all the attributes that are required for creating a schema.
+
+
+### getUnions
+Get all of the unions that has been set for the tenant.\
+Returns a dictionary.\
+Possibility to add option using kwargs
+
+
+### getUnion
+Get a specific union type. Returns a dictionnary\
+Arguments :
+* union_id : REQUIRED :  meta:altId or $id
+* version : OPTIONAL : version of the union schema required.
+
+
+### getXDMprofileSchema
+Returns a list of all schemas that are part of the XDM Individual Profile.
+
+
+### getDataTypes
+Get the data types from a container.\
+Possible kwargs:
+* properties : str :limit the amount of properties return by comma separated list.
+
+
+### getDataType
+Retrieve a specific data type id\
+Argument:
+* dataTypeId : REQUIRED : The resource meta:altId or URL encoded $id URI.
+* full : OPTIONAL : If you want to retrieve the full setup of your data type.(default True)
+* type : OPTIONAL : default 'xdm', you can also pass the 'xed' format
+* version : OPTIONAL : The version of your data type
+* save : OPTIONAL : Save the data type in a JSON file.
+
+
+### createDataType
+Create Data Type based on the object passed.\
+Argument:
+* dataTypeObj : REQUIRED : The data type definition
+
+
+### patchDataType
+Patch an existing data type with the operation provided.\
+Arguments:
+* dataTypeId : REQUIRED : The Data Type ID to be used
+* operations : REQUIRED : The list of operation to be applied on that Data Type.
+  Example : 
+  ```python
+  '[
+    {
+    "op": "replace",
+    "path": "/loyaltyLevel/meta:enum",
+    "value": {
+        "ultra-platinum": "Ultra Platinum",
+        "platinum": "Platinum",
+        "gold": "Gold",
+        "silver": "Silver",
+        "bronze": "Bronze"
+      }
+    }
+  ]'
+  ```
+
+### putDataType
+Replace an existing data type definition with the new definition provided.\
+Arguments:
+* dataTypeId : REQUIRED : The Data Type ID to be replaced
+* dataTypeObj : REQUIRED : The new Data Type definition.
+
+
+### getDescriptors
+Return a list of all descriptors contains in that tenant id.\
+By default return a v2 for pagination.\
+Arguments:
+* type_desc : OPTIONAL : if you want to filter for a specific type of descriptor. None default.\
+    (possible value : "xdm:descriptorIdentity")
+* id_desc : OPTIONAL : if you want to return only the id.
+* link_desc : OPTIONAL : if you want to return only the paths.
+* save : OPTIONAL : Boolean that would save your descriptors in the schema folder. (default False)\
+possible kwargs:
+* prop : additional property that you want to filter with, such as "prop=f"xdm:sourceSchema==schema$Id"
+
+
+### getDescriptor
+Return a specific descriptor\
+Arguments:
+* descriptorId : REQUIRED : descriptor ID to return (@id).
+* save : OPTIONAL : Boolean that would save your descriptors in the schema folder. (default False)
+
+
+### createDescriptor
+Create a descriptor attached to a specific schema.\
+Arguments:
+* descriptorObj : REQUIRED : If you wish to pass the whole object.
+* desc_type : REQUIRED : the type of descriptor to create.(default Identity)
+* sourceSchema : REQUIRED : the schema attached to your identity ()
+* sourceProperty : REQUIRED : the path to the field
+* namespace : REQUIRED : the namespace used for the identity
+* primary : OPTIONAL : Boolean (True or False) to define if it is a primary identity or not (default None).\
+possible kwargs:
+* version : version of the creation (default 1)
+* xdm:property : type of property
+
+### deleteDescriptor
+Delete a specific descriptor.
+Arguments:
+* descriptor_id : REQUIRED : the descriptor id to delete
+
+
+### putDescriptor
+Replace the descriptor with the new definition. It updates the whole definition.\
+Arguments:
+* descriptorId : REQUIRED : the descriptor id to replace
+* descriptorObj : REQUIRED : The full descriptor object if you want to pass it directly.
+
+
+### getAuditLogs
+Returns the list of the changes made to a ressource (schema, class, mixin).\
+Arguments:
+* resourceId : REQUIRED : The "$id" or "meta:altId" of the resource.
+
+
+### exportResource
+Return all the associated references required for importing the resource in a new sandbox or a new Org.\
+Argument:
+* resourceId : REQUIRED : The $id or meta:altId of the resource to export.
+* Accept : OPTIONAL : If you want to change the Accept header of the request.
+
+
+### importResource
+Import a resource based on the export method.\
+Arguments:
+* dataResource : REQUIRED : dictionary of the resource retrieved.
+
+
+### extendFieldGroup
+Patch a Field Group to extend its compatibility with ExperienceEvents, IndividualProfile and Record.\
+Arguments:
+* fieldGroupId : REQUIRED : meta:altId or $id of the field group.
+* values : OPTIONAL : If you want to pass the behavior you want to extend the field group to.
+  Examples: 
+  ```python
+  ["https://ns.adobe.com/xdm/context/profile",
+  "https://ns.adobe.com/xdm/context/experienceevent"]
+  ```
+    by default profile and experienceEvent will be added to the FieldGroup.
+* tenant : OPTIONAL : default "tenant", possible value 'global'
+
+
+### enableSchemaForRealTime
+Enable a schema for real time based on its ID.\
+Arguments:
+* schemaId : REQUIRED : The schema ID required to be updated
+
+
+### FieldGroupManager
+Generates a Field Group Manager instance using the information provided by the schema instance.\
+Arguments:
+* fieldGroup : OPTIONAL : the field group definition as dictionary OR the ID to access it OR nothing if you want to start from scratch
+* title : OPTIONAL : If you wish to change the tile of the field group.
+
+
+### SchemaManager
+Generates a Schema Manager instance using the information provided by the schema instance.\
+Arguments:
+* schema : OPTIONAL : the schema definition as dictionary OR the ID to access it OR Nothing if you want to start from scratch
+* fieldGroups : OPTIONAL : If you wish to add a list of fieldgroups.
+* fgManager : OPTIONAL : If you wish to handle the different field group passed into a Field Group Manager instance and have additional methods available.
+
+### DataTypeManager
+Generates a Data Type Manager instance using the information provided by the schema instance.\
+Arguments:
+* dataType : OPTIONAL : The data Type definition, the reference Id or nothing if you want to start from scratch.
+
+### compareDFschemas
+Compare 2 schema dataframe returned by the SchemaManager `to_dataframe` method.\
+Arguments:
+* df1 : REQUIRED : the first schema dataframe to compare
+* df2 : REQUIRED : the second schema dataframe to compare\
+possible keywords:
+* title1 : title of the schema used in the dataframe 1 (default df1)
+* title2 : title of the schema used in the dataframe 2 (default df2)\
+The title1 and title2 will be used instead of df1 or df2 in the results keys presented below.
+
+Results: 
+* Results are stored in a dictionary with these keys:
+  * df1 (or title1) : copy of the dataframe 1 passed
+  * df2 (or title2) : copy of the dataframe 2 passed
+  * fielgroups: dictionary containing
+    * aligned : boolean to define if the schema dataframes contain the same field groups
+    * df1_missingFieldGroups : tuple of field groups missing on df1 compare to df2
+    * df2_missingFieldGroups : tuple of field groups missing on df2 compare to df1
+  * paths: dictionary containing
+    * aligned : boolean to define if the schema dataframes contain the same fields.
+    * df1_missing : tuple of the paths missing in df1 compare to df2
+    * df2_missing : tuple of the paths missing in df2 compare to df1
+  * type_issues: list of all the paths that are not of the same type in both schemas.
+
 
 ## Tips for schema requests
 

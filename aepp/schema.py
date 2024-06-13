@@ -64,6 +64,7 @@ class Schema:
     _schemaClasses = {
         "event": "https://ns.adobe.com/xdm/context/experienceevent",
         "profile": "https://ns.adobe.com/xdm/context/profile",
+        "" :""
     }
     PATCH_OBJ = [{"op": "add", "path": "/meta:immutableTags-", "value": "union"}]
     DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"]
@@ -372,7 +373,7 @@ class Schema:
         self, schemaId: str, simplified: bool = True, save: bool = False
     ) -> list:
         """
-        Returns a list of the path available in your schema. BETA.
+        Returns a list of the path available in your schema.
         Arguments:
             schemaId : REQUIRED : The schema you want to retrieve the paths for
             simplified : OPTIONAL : Default True, only returns the list of paths for your schemas.
@@ -495,10 +496,8 @@ class Schema:
         """
         Delete the request
         Arguments:
-            schema_id : REQUIRED : $id or meta:altId
+            schema_id : REQUIRED : $id or meta:altId to be deleted
             It requires a allOf list that contains all the attributes that are required for creating a schema.
-            #/Schemas/replace_schema
-            More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
         """
         if schemaId is None:
             raise Exception("Require an ID for the schema")
@@ -763,7 +762,7 @@ class Schema:
                    output:str='raw',
                    **kwargs):
         """
-        Return the classes of the AEP Instances.
+        Return the classes of the OOTB AEP Instances.
         Arguments:
             prop : OPTIONAL : A comma-separated list of top-level object properties to be returned in the response. 
                             For example, property=meta:intendedToExtend==https://ns.adobe.com/xdm/context/profile
@@ -1086,78 +1085,11 @@ class Schema:
             self.data.fieldGroups[res["title"]] = res
         return res
 
-    def copyMixin(
-        self, mixin: dict = None, tenantId: str = None, title: str = None
-    ) -> dict:
-        """
-        Copy the dictionary returned by getMixin to the only required elements for copying it over.
-        Arguments:
-            mixin : REQUIRED : the object retrieved from the getMixin.
-            tenantId : OPTIONAL : if you want to change the tenantId (if None doesn't rename)
-            name : OPTIONAL : rename your mixin (if None, doesn't rename it)
-        """
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting copyMixin")
-        if mixin is None:
-            raise ValueError("Require a mixin  object")
-        mixin_obj = deepcopy(mixin)
-        oldTenant = mixin_obj["meta:tenantNamespace"]
-        if "definitions" in mixin_obj.keys():
-            obj = {
-                "type": mixin_obj["type"],
-                "title": title or mixin_obj["title"],
-                "description": mixin_obj["description"],
-                "meta:intendedToExtend": mixin_obj["meta:intendedToExtend"],
-                "definitions": mixin_obj.get("definitions"),
-                "allOf": mixin_obj.get(
-                    "allOf",
-                    [
-                        {
-                            "$ref": "#/definitions/property",
-                            "type": "object",
-                            "meta:xdmType": "object",
-                        }
-                    ],
-                ),
-            }
-        elif "properties" in mixin_obj.keys():
-            obj = {
-                "type": mixin_obj["type"],
-                "title": title or mixin_obj["title"],
-                "description": mixin_obj["description"],
-                "meta:intendedToExtend": mixin_obj["meta:intendedToExtend"],
-                "definitions": {
-                    "property": {
-                        "properties": mixin_obj["properties"],
-                        "type": "object",
-                        "['meta:xdmType']": "object",
-                    }
-                },
-                "allOf": mixin_obj.get(
-                    "allOf",
-                    [
-                        {
-                            "$ref": "#/definitions/property",
-                            "type": "object",
-                            "meta:xdmType": "object",
-                        }
-                    ],
-                ),
-            }
-        if tenantId is not None:
-            if tenantId.startswith("_") == False:
-                tenantId = f"_{tenantId}"
-            obj["definitions"]["property"]["properties"][tenantId] = obj["definitions"][
-                "property"
-            ]["properties"][oldTenant]
-            del obj["definitions"]["property"]["properties"][oldTenant]
-        return obj
-
     def copyFieldGroup(
         self, fieldGroup: dict = None, tenantId: str = None, title: str = None
     ) -> dict:
         """
-        Copy the dictionary returned by getMixin to the only required elements for copying it over.
+        Copy the dictionary returned by getFieldGroup to the only required elements for copying it over.
         Arguments:
             fieldGroup : REQUIRED : the object retrieved from the getFieldGroup.
             tenantId : OPTIONAL : if you want to change the tenantId (if None doesn't rename)
@@ -1222,30 +1154,6 @@ class Schema:
                 del obj["definitions"]["customFields"]["properties"][oldTenant]
         return obj
 
-    def createMixin(self, mixin_obj: dict = None) -> dict:
-        """
-        Create a mixin based on the dictionary passed.
-        Arguments :
-            mixin_obj : REQUIRED : the object required for creating the mixin.
-            Should contain title, type, definitions
-        """
-        if mixin_obj is None:
-            raise Exception("Require a mixin object")
-        if (
-            "title" not in mixin_obj
-            or "type" not in mixin_obj
-            or "definitions" not in mixin_obj
-        ):
-            raise AttributeError(
-                "Require to have at least title, type, definitions set in the object."
-            )
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting createMixin")
-        path = f"/{self.container}/mixins/"
-        res = self.connector.postData(
-            self.endpoint + path, data=mixin_obj)
-        return res
-
     def createFieldGroup(self, fieldGroup_obj: dict = None) -> dict:
         """
         Create a mixin based on the dictionary passed.
@@ -1270,27 +1178,10 @@ class Schema:
             self.endpoint + path, data=fieldGroup_obj)
         return res
 
-    def deleteMixin(self, mixinId: str = None):
-        """
-        Arguments:
-            mixinId : meta:altId or $id
-        """
-        if mixinId is None:
-            raise Exception("Require an ID")
-        if mixinId.startswith("https://"):
-            from urllib import parse
-
-            mixinId = parse.quote_plus(mixinId)
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting deleteMixin")
-        path = f"/{self.container}/mixins/{mixinId}"
-        res = self.connector.deleteData(self.endpoint + path)
-        return res
-
     def deleteFieldGroup(self, fieldGroupId: str = None):
         """
         Arguments:
-            fieldGroupId : meta:altId or $id
+            fieldGroupId : meta:altId or $id of the field group to be deleted
         """
         if fieldGroupId is None:
             raise Exception("Require an ID")
@@ -1302,39 +1193,6 @@ class Schema:
             self.logger.debug(f"Starting deleteFieldGroup")
         path = f"/{self.container}/fieldgroups/{fieldGroupId}"
         res = self.connector.deleteData(self.endpoint + path)
-        return res
-
-    def patchMixin(self, mixinId: str = None, changes: list = None):
-        """
-        Update the mixin with the operation described in the changes.
-        Arguments:
-            mixinId : REQUIRED : meta:altId or $id
-            changes : REQUIRED : dictionary on what to update on that mixin.
-            Example:
-                [
-                    {
-                        "op": "add",
-                        "path": "/allOf",
-                        "value": {'$ref': 'https://ns.adobe.com/emeaconsulting/mixins/fb5b3cd49707d27367b93e07d1ac1f2f7b2ae8d051e65f8d',
-                    'type': 'object',
-                    'meta:xdmType': 'object'}
-                    }
-                ]
-        information : http://jsonpatch.com/
-        """
-        if mixinId is None or changes is None:
-            raise Exception("Require an ID and changes")
-        if mixinId.startswith("https://"):
-            from urllib import parse
-
-            mixinId = parse.quote_plus(mixinId)
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting patchMixin")
-        path = f"/{self.container}/mixins/{mixinId}"
-        if type(changes) == dict:
-            changes = list(changes)
-        res = self.connector.patchData(
-            self.endpoint + path, data=changes)
         return res
 
     def patchFieldGroup(self, fieldGroupId: str = None, changes: list = None):
@@ -1368,30 +1226,6 @@ class Schema:
             changes = list(changes)
         res = self.connector.patchData(
             self.endpoint + path, data=changes)
-        return res
-
-    def putMixin(self, mixinId: str = None, mixinObj: dict = None, **kwargs) -> dict:
-        """
-        A PUT request essentially re-writes the schema, therefore the request body must include all fields required to create (POST) a schema.
-        This is especially useful when updating a lot of information in the schema at once.
-        Arguments:
-            mixinId : REQUIRED : $id or meta:altId
-            mixinObj : REQUIRED : dictionary of the new schema.
-            It requires a allOf list that contains all the attributes that are required for creating a schema.
-            #/Schemas/replace_schema
-            More information on : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
-        """
-        if mixinId is None:
-            raise Exception("Require an ID for the schema")
-        if mixinId.startswith("https://"):
-            from urllib import parse
-
-            mixinId = parse.quote_plus(mixinId)
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting putMixin")
-        path = f"/{self.container}/mixins/{mixinId}"
-        res = self.connector.putData(
-            self.endpoint + path, data=mixinObj)
         return res
 
     def putFieldGroup(
@@ -1548,6 +1382,8 @@ class Schema:
     def createDataType(self, dataTypeObj: dict = None)->dict:
         """
         Create Data Type based on the object passed.
+        Argument:
+            dataTypeObj : REQUIRED : The data type definition
         """
         if dataTypeObj is None:
             raise Exception("Require a dictionary to create the Data Type")

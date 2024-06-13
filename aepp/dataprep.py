@@ -88,6 +88,7 @@ class DataPrep:
             aepp.config.endpoints["global"] + aepp.config.endpoints["mapping"]
         )
         self.REFERENCE_MAPPING = {"sourceType": "", "source": "", "destination": ""}
+        self.SOURCETYPE = ["ATTRIBUTE","EXPRESSION"]
 
     def __str__(self):
         return json.dumps({'class':'DataPrep','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
