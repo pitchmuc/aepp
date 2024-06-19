@@ -253,6 +253,52 @@ class QueryService:
                 if float(n_results) <= float(len(data)):  ## forcing exit when reaching number of results asked
                     nextPage = ""
         return data
+    
+    def createQuery(self,
+        data: dict = None,
+        name: str = None,
+        dbname: str = "prod:all",
+        sql: str = None,
+        templateId: str = None,
+        queryParameters: dict = None,
+        insertIntoParameters: dict = None,
+        ctasParameters: dict = None,
+        description: str = "",
+        **kwargs,
+        )->dict:
+        """
+        Create a query.
+        Arguments:
+            data : OPTIONAL : If you want to pass the full query statement.
+            name : REQUIRED : Name of the query
+            dbname : REQUIRED : the dataset name (default prod:all)
+            sql: REQUIRED : the SQL query as a string.
+            queryParameters : OPTIONAL : in case you are using template, providing the paramter in a dictionary.
+            insertIntoParameters : OPTIONAL : in case you want to insert the result to an existing dataset
+                example : {
+                    "datasetName": "string"
+                }
+            ctasParameters: OPTIONAL : in case you want to create a dataset out of that query, dictionary is required with "datasetName" and "description".
+                example : {
+                    "datasetName": "string",
+                    "description": "string",
+                    "targetSchemaTitle":"string"
+                    }
+                    targetSchemaTitle if you want to use a precreated schema.
+        """
+        res = self.postQueries(data=data,
+                         name=name,
+                         dbname=dbname,
+                         sql=sql,
+                         templateId=templateId,
+                         queryParameters=queryParameters,
+                         insertIntoParameters=insertIntoParameters,
+                         ctasParameters=ctasParameters,
+                         description=description,
+                         **kwargs
+                         )
+        return res
+
 
     def postQueries(
         self,
@@ -480,8 +526,10 @@ class QueryService:
             sql: OPTIONAL : the SQL query as a string.
             templateId : OPTIONAL : The Template ID to be used
             queryParameters : OPTIONAL : in case you are using template, providing the paramter in a dictionary.
+            insertIntoParameters : OPTIONAL : in case you want to insert the result into an existing dataset.
             ctasParameters: OPTIONAL : in case you want to create a dataset out of that query, dictionary is required with "datasetName" and "description".
             schedule : OPTIONAL : Dictionary giving the instruction to schedule the query.
+            description : OPTION : Description of the schedule query
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createSchedule")
@@ -958,7 +1006,9 @@ class InteractiveQuery:
 
     def transformToDataFrame(self, query: object = None) -> pd.DataFrame:
         """
-        This will return you a dataFrame
+        This will return you a dataFrame.
+        Argument:
+            query : REQUIRED : The query result that you returned as "raw" in the query method.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting transformToDataFrame")
