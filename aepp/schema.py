@@ -1869,7 +1869,6 @@ class FieldGroupManager:
                     else:
                         self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
             elif type(fieldGroup) == str:
-                print(full)
                 if self.schemaAPI is None:
                     raise Exception("You try to retrieve the fieldGroup definition from the id, but no API has been passed in the schemaAPI parameter.")
                 if 'mixins' in fieldGroup and ((fieldGroup.startswith('https:') and self.tenantId[1:] in fieldGroup) or fieldGroup.startswith(f'{self.tenantId}.')):
@@ -1877,12 +1876,10 @@ class FieldGroupManager:
                     if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Groupe
                         dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
                         dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
-                        print(full)
                         for dt in dataTypes:
                             dt_manager = self.schemaAPI.DataTypeManager(dt)
                             self.dataTypes[dt_manager.title] = dt_manager
                         if full != False:
-                            print("Full != False")
                             self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
                         else:
                             print("Full == False")
