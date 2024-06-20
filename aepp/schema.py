@@ -1821,6 +1821,7 @@ class FieldGroupManager:
                 fg_class:list=["experienceevent","profile"],
                 schemaAPI:'Schema'=None,
                 config: Union[dict,ConnectObject] = aepp.config.config_object,
+                full:bool=None,
                 )->None:
         """
         Instantiator for field group creation.
@@ -1832,6 +1833,7 @@ class FieldGroupManager:
                 by default events and profile, possible value : "record"
             schemaAPI : OPTIONAL : The instance of the Schema class. Provide a way to connect to the API.
             config : OPTIONAL : The config object in case you want to override the configuration.
+            full : OPTIONAL : Capability to force the full definition to be downloaded or not
         """
         self.EDITABLE = False
         self.STATE = "EXISTING"
@@ -1854,7 +1856,10 @@ class FieldGroupManager:
                                 for dt in dataTypes:
                                     dt_manager = self.schemaAPI.DataTypeManager(dt)
                                     self.dataTypes[dt_manager.title] = dt_manager
-                                self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
+                                if full!=False:
+                                    self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
+                                else:
+                                    self.EDITABLE = True
                             else:
                                 self.EDITABLE = True
                         else:
@@ -1864,12 +1869,24 @@ class FieldGroupManager:
                     else:
                         self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
             elif type(fieldGroup) == str:
+                print(full)
                 if self.schemaAPI is None:
                     raise Exception("You try to retrieve the fieldGroup definition from the id, but no API has been passed in the schemaAPI parameter.")
-                if 'mixins' in fieldGroup and ((fieldGroup.startswith('https:') and self.tenantId in fieldGroup) or fieldGroup.startswith(f'{self.tenantId}.')):
+                if 'mixins' in fieldGroup and ((fieldGroup.startswith('https:') and self.tenantId[1:] in fieldGroup) or fieldGroup.startswith(f'{self.tenantId}.')):
                     self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
-                    if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group 
-                        self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
+                    if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Groupe
+                        dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
+                        dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
+                        print(full)
+                        for dt in dataTypes:
+                            dt_manager = self.schemaAPI.DataTypeManager(dt)
+                            self.dataTypes[dt_manager.title] = dt_manager
+                        if full != False:
+                            print("Full != False")
+                            self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
+                        else:
+                            print("Full == False")
+                            self.EDITABLE = True
                     else:
                         self.EDITABLE = True
                 else: ## handling default mixins
@@ -2471,14 +2488,14 @@ class FieldGroupManager:
         return list(result_combi)
 
         
-    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,**kwargs)->None:
+    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,ref:str=None,**kwargs)->None:
         """
         Return the operation to be used on the field group with the Patch method (patchFieldGroup), based on the element passed in argument.
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field.
                 In case of array of objects, use the "[]{}" notation
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array"
+                A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array","dataType"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -2486,15 +2503,18 @@ class FieldGroupManager:
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
             enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
+            ref : OPTIONAL : If you have used "dataType" as a dataType, you can pass the reference to the Data Type there.
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
         """
         if self.EDITABLE == False:
             raise Exception("The Field Group is not Editable via Field Group Manager")
-        typeTyped = ["string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object",'array']
+        typeTyped = ["string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array","dataType"]
         dataType = dataType.replace('[]','')
         if dataType not in typeTyped:
-            raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object"')
+            raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","dataType"')
+        if dataType == "dataType" and ref is None:
+            raise ValueError("Required a reference to be passed when selecting 'dataType' type of data.")
         if dataType == 'object' and objectComponents is None:
             raise AttributeError('Require a dictionary providing the object component')       
         if title is None:
@@ -2504,7 +2524,7 @@ class FieldGroupManager:
         pathSplit = path.split('.')
         if pathSplit[0] == '':
             del pathSplit[0]
-        completePath = ['definitions',kwargs.get('defaultPath','property')]
+        completePath = ['definitions',kwargs.get('defaultPath','property'),'properties']
         for p in pathSplit:
             if '[]{}' in p:
                 completePath.append(self.__cleanPath__(p))
@@ -2513,13 +2533,15 @@ class FieldGroupManager:
             else:
                 completePath.append(self.__cleanPath__(p))
                 completePath.append('properties')
+        if dataType == "dataType":
+            completePath.pop() ## removing last part
         finalPath = '/' + '/'.join(completePath)
         operation = [{
             "op" : "add",
             "path" : finalPath,
             "value": {}
         }]
-        if dataType != 'object' and dataType != "array":
+        if dataType != 'object' and dataType != "array" and dataType != "dataType":
             if array: # array argument set to true
                 operation[0]['value']['type'] = 'array'
                 operation[0]['value']['items'] = self.__transformFieldType__(dataType)
@@ -2529,6 +2551,9 @@ class FieldGroupManager:
             if dataType == "object":
                 operation[0]['value']['type'] = self.__transformFieldType__(dataType)
                 operation[0]['value']['properties'] = {key:self.__transformFieldType__(value) for key, value in zip(objectComponents.keys(),objectComponents.values())}
+            elif dataType == "dataType":
+                operation[0]['value']['type'] = "object"
+                operation[0]['value']['$ref'] = ref
         operation[0]['value']['title'] = title
         if enumValues is not None and type(enumValues) == dict:
             if array == False:
@@ -2541,14 +2566,14 @@ class FieldGroupManager:
                     operation[0]['value']['items']['enum'] = list(enumValues.keys())
         return operation
 
-    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,**kwargs)->dict:
+    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,ref:str=None,**kwargs)->dict:
         """
         Add the field to the existing fieldgroup definition.
         Returns False when the field could not be inserted.
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array"
+                A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array","dataType"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -2556,6 +2581,7 @@ class FieldGroupManager:
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
             enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
+            ref : OPTIONAL : If you have used "dataType" as a dataType, you can pass the reference to the Data Type there.
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
             description : if you want to add a description on your field
@@ -2565,9 +2591,11 @@ class FieldGroupManager:
         if path is None:
             raise ValueError("path must provided")
         dataType = dataType.replace('[]','')
-        typeTyped = ["string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object",'array']
+        typeTyped = ["string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object",'array','dataType']
         if dataType not in typeTyped:
-            raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","bytes"')
+            raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","byte","dataType"')
+        if dataType == "dataType" and ref is None:
+            raise ValueError("Required a reference to be passed when selecting 'dataType' type of data.")
         if title is None:
             title = self.__cleanPath__(path.split('.').pop())
         if title == 'items' or title == 'properties':
@@ -2601,6 +2629,14 @@ class FieldGroupManager:
                         'properties':{}
                     }
                 }
+        elif dataType == "dataType":
+            obj = {'$ref': ref,
+                    'required': [],
+                    'type': 'object',
+                    'title': newField,
+                    }
+            if array:
+                obj['type'] = "array"
         else:
             obj = self.__transformFieldType__(dataType)
             obj['title'] = title
@@ -2659,7 +2695,7 @@ class FieldGroupManager:
         success = False
         ## Try customFields
         completePath:list[str] = ['customFields'] + pathSplit
-        success = self.__removeKey__(completePath,self.fieldGroup['definitions'])
+        success = self.__removeKey__(completePath,self.fieldGroup.get('definitions'))
         ## Try property
         if success == False:
             completePath:list[str] = ['property'] + pathSplit

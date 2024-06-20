@@ -18,7 +18,9 @@ Patch:
 * improving the `schema` documentation
 * improving docstring in `DataPrep`
 * improving batch ingestion in `ingestion` module.
-* Improve documentation for Schema and dropping mixins related methods.
+* Improve documentation for Schema and dropping mixins related methods
+* Improving `FieldGroupManager` to handle `dataType` & fix on typo
+* Improving `QueryService` documentation and setup a new method `createQuery` that is a copy of `postQueries`
 
 ## Version 0.3.3
 * add Access Control new methods

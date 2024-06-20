@@ -135,7 +135,7 @@ Returns False when the field could not be inserted.\
 Arguments:
 * path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
 * dataType : REQUIRED : the field type you want to create
-    A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array"
+    A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array","dataType"
     NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
 * title : OPTIONAL : if you want to have a custom title.
 * objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -143,9 +143,11 @@ Arguments:
 * array : OPTIONAL : Boolean. If the element to create is an array. False by default.
 * enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
 * enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)\
+* ref : OPTIONAL : If you have selected "dataType" as your `datatype`, you should use this parameter to pass the reference.
 possible kwargs:
 * defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
 * description : if you want to add a description on your field
+
 
 ### removeField
 Remove a field from the definition based on the path provided.\
