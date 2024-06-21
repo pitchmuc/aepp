@@ -2551,6 +2551,12 @@ class FieldGroupManager:
             elif dataType == "dataType":
                 operation[0]['value']['type'] = "object"
                 operation[0]['value']['$ref'] = ref
+                if array:
+                    del operation[0]['value']['$ref']
+                    operation[0]['value']['items'] = {
+                        "$ref" : ref,
+                        "type" : "object"
+                    }
         operation[0]['value']['title'] = title
         if enumValues is not None and type(enumValues) == dict:
             if array == False:
@@ -2634,6 +2640,11 @@ class FieldGroupManager:
                     }
             if array:
                 obj['type'] = "array"
+                del obj['$ref']
+                obj['items'] = {
+                    'type':"object",
+                    "$ref" : ref
+                }
         else:
             obj = self.__transformFieldType__(dataType)
             obj['title'] = title

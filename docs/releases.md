@@ -21,6 +21,7 @@ Patch:
 * Improve documentation for Schema and dropping mixins related methods
 * Improving `FieldGroupManager` to handle `dataType` & fix on typo
 * Improving `QueryService` documentation and setup a new method `createQuery` that is a copy of `postQueries`
+* Adding support for edge case scenario when data type are added as array.
 
 ## Version 0.3.3
 * add Access Control new methods
