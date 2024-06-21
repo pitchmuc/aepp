@@ -1346,7 +1346,7 @@ class FlowService:
         Arguments:
             landingZone : REQUIRED : response object of landingzone or landingzone/credentials invocation
         """
-        return 'containerName' in landingZoneResponse
+        return not ('dlzProvider' in landingZoneResponse and landingZoneResponse['dlzProvider'] == 'Amazon S3')
 
     def getLandingZoneCredential(
         self,
@@ -1728,12 +1728,12 @@ class FlowManager:
             patchOperation = [{'op': 'replace',
             'path': f'/transformations/{myIndex}',
             'value': {'name': 'Mapping',
-            'params': {'mappingId': operation['params']['mappingId'],
-            'mappingVersion': operation['params']['mappingVersion']}}}
+            'params': {'mappingId': operation['mappingId'],
+            'mappingVersion': operation['mappingVersion']}}}
             ]
         else:
             raise Exception('Could not find a mapping transformation in the flow')
-        res = self.updateFlow(self.id,self.etag,patchOperation)
+        res = self.updateFlow(patchOperation)
         self.flowData = res
         self.__setAttributes__(res)
         return res
