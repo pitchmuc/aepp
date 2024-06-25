@@ -1338,13 +1338,13 @@ class FlowService:
         if self._isAzureLandingZone(response):
             return int(response["containerTTL"])
         else:
-            return int(response["TTL"])
+            return int(response["dataTTL"]['timeQuantity'])
 
     def _isAzureLandingZone(self, landingZoneResponse) -> bool:
         """
-        Inspects landingZoneResponse structure, if "containerName" - is present this flags Azure otherwise its AWS;
+        Inspects landingZoneResponse structure, if "dlzProvider" - is present and value is not 'Amazon S3' flags it as Azure;
         Arguments:
-            landingZone : REQUIRED : response object of landingzone or landingzone/credentials invocation
+            landingZoneResponse : REQUIRED : response object of landingzone or landingzone/credentials invocation
         """
         return not ('dlzProvider' in landingZoneResponse and landingZoneResponse['dlzProvider'] == 'Amazon S3')
 

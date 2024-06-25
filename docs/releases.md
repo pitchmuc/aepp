@@ -6,8 +6,8 @@ This page list all of the changes that came during the different release of the 
 
 Deprecate:
 * Deprecated `getLandingZoneContainerName` method in `flowservice`, new `getLandingZoneStorageName` should be used instead
-* Deprecated `getLandingZoneContainerTTL` method in `flowservice`, new `getLandingZoneStorageName` should be used instead
-* Deprecated `getLandingZoneStorageAccountName` method in `flowservice`, new `getLandingZoneStorageName` should be used instead
+* Deprecated `getLandingZoneContainerTTL` method in `flowservice`, new `getLandingZoneStorageTTL` should be used instead
+* Deprecated `getLandingZoneStorageAccountName` method in `flowservice`, new `getLandingZoneNamespace` should be used instead
 
 ## Version 0.3.4
 
