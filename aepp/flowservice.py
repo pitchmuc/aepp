@@ -13,6 +13,7 @@ from aepp import connector
 from copy import deepcopy
 import time,json
 import logging
+import deprecation
 from dataclasses import dataclass
 from typing import Union
 from .configs import ConnectObject
@@ -1285,6 +1286,7 @@ class FlowService:
         res = self.connector.getData(self.endpoint_gloal + path, params=params)
         return res
 
+    @deprecation.deprecated(deprecated_in="0.3.4", details="Use getLandingZoneStorageName instead")
     def getLandingZoneContainerName(
         self,
         dlz_type: str = "user_drop_zone"
@@ -1296,6 +1298,22 @@ class FlowService:
         """
         return self.getLandingZoneContainer(dlz_type=dlz_type)["containerName"]
 
+    def getLandingZoneStorageName(
+        self,
+        dlz_type: str = "user_drop_zone"
+    ) -> str:
+        """
+        Returns the name of the DLZ storage corresponding to this type.
+        Arguments:
+            dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+        """
+        response = self.getLandingZoneContainer(dlz_type=dlz_type)
+        if self._isAzureLandingZone(response):
+            return response["containerName"]
+        else:
+            return response["dlzPath"]["dlzFolder"]
+
+    @deprecation.deprecated(deprecated_in="0.3.4", details="Use getLandingZoneStorageTTL instead")
     def getLandingZoneContainerTTL(
         self,
         dlz_type: str = "user_drop_zone"
@@ -1306,7 +1324,30 @@ class FlowService:
             dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
         """
         return int(self.getLandingZoneContainer(dlz_type=dlz_type)["containerTTL"])
-    
+
+    def getLandingZoneStorageTTL(
+            self,
+            dlz_type: str = "user_drop_zone"
+    ) -> int:
+        """
+        Returns the TTL in days of the DLZ storage corresponding to this type.
+        Arguments:
+            dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+        """
+        response = self.getLandingZoneContainer(dlz_type=dlz_type)
+        if self._isAzureLandingZone(response):
+            return int(response["containerTTL"])
+        else:
+            return int(response["dataTTL"]['timeQuantity'])
+
+    def _isAzureLandingZone(self, landingZoneResponse) -> bool:
+        """
+        Inspects landingZoneResponse structure, if "dlzProvider" - is present and value is not 'Amazon S3' flags it as Azure;
+        Arguments:
+            landingZoneResponse : REQUIRED : response object of landingzone or landingzone/credentials invocation
+        """
+        return not ('dlzProvider' in landingZoneResponse and landingZoneResponse['dlzProvider'] == 'Amazon S3')
+
     def getLandingZoneCredential(
         self,
         dlz_type: str = "user_drop_zone"
@@ -1332,7 +1373,11 @@ class FlowService:
         Arguments:
             dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
         """
-        return self.getLandingZoneCredential(dlz_type=dlz_type)["SASUri"]
+        response = self.getLandingZoneCredential(dlz_type=dlz_type)
+        if self._isAzureLandingZone(response):
+            return response["SASUri"]
+        else:
+            raise Exception("Not Azure Landing Zone, consider using getLandingZoneCredential instead")
 
     def getLandingZoneSASToken(
         self,
@@ -1343,8 +1388,13 @@ class FlowService:
         Arguments:
             dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
         """
-        return self.getLandingZoneCredential(dlz_type=dlz_type)["SASToken"]
+        response = self.getLandingZoneCredential(dlz_type=dlz_type)
+        if self._isAzureLandingZone(response):
+            return response["SASToken"]
+        else:
+            raise Exception("Not Azure Landing Zone, consider using getLandingZoneCredential instead")
 
+    @deprecation.deprecated(deprecated_in="0.3.4", details="Use getLandingZoneNamespace instead")
     def getLandingZoneStorageAccountName(
         self,
         dlz_type: str = "user_drop_zone"
@@ -1355,6 +1405,24 @@ class FlowService:
             dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
         """
         return self.getLandingZoneCredential(dlz_type=dlz_type)["storageAccountName"]
+
+    def getLandingZoneNamespace(
+            self,
+            dlz_type: str = "user_drop_zone"
+    ) -> str:
+        """
+        Returns either:
+          'storage account name' of the DLZ storage if provisioned on Azure
+           or
+          's3 bucket name' of the DLZ storage if provisioned on Amazon
+        Arguments:
+            dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+        """
+        response = self.getLandingZoneCredential(dlz_type=dlz_type)
+        if self._isAzureLandingZone(response):
+            return response["storageAccountName"]
+        else:
+            return response["dlzPath"]["bucketName"]
 
     def exploreLandingZone(self,objectType:str='root',fileType:str=None,object:str=None)->list:
         """
@@ -1532,7 +1600,7 @@ class FlowManager:
         if self.flowMapping is not None:
             data['mapping'] = self.flowMapping
         return json.dumps(data,indent=2)
-    
+
     def __str__(self)->str:
         data = {
                 "id" : self.id,
@@ -1578,7 +1646,7 @@ class FlowManager:
         if self.flowSourceConnection['id'] is not None:
             sourceConnData = self.flowAPI.getSourceConnection(self.flowSourceConnection['id'])
             return sourceConnData
-    
+
     def getConnectionSpec(self)->dict:
         """
         return a dictionary of the source connection spec information
@@ -1586,7 +1654,7 @@ class FlowManager:
         if self.flowSourceConnection['connectionSpec'].get('id') is not None:
             connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
             return connSpec
-    
+
     def getTargetConnection(self)->dict:
         """
         return a dictionary of the target connection
@@ -1594,7 +1662,7 @@ class FlowManager:
         if self.flowTargetConnection['id'] is not None:
             targetConnData = self.flowAPI.getTargetConnection(self.flowTargetConnection['id'])
             return targetConnData
-    
+
     def getTargetConnectionSpec(self)->dict:
         """
         return a dictionary of the target connection spec
@@ -1602,7 +1670,7 @@ class FlowManager:
         if self.flowTargetConnection['connectionSpec'].get('id') is not None:
             connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
             return connSpec
-    
+
     def getRuns(self,limit:int=10,n_results=100,prop:str=None)->list:
         """
         Returns the last run of the flow.
@@ -1616,13 +1684,13 @@ class FlowManager:
             props.append(prop)
         runs = self.flowAPI.getRuns(limit,n_results,prop=props)
         return runs
-    
+
     def updateFlow(self, operations:list=None)->dict:
         """
         Update the flow with the operation provided.
         Argument:
             operations : REQUIRED : The operation to set on the PATCH method
-                Example : 
+                Example :
             [
                 {
                     "op": "Add",
@@ -1639,7 +1707,7 @@ class FlowManager:
         self.flowData = res
         self.__setAttributes__(res)
         return res
-    
+
     def updateFlowMapping(self,mappingId:str)->dict:
         """
         Update the flow with the latest version of the mapping Id provided.
