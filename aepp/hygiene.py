@@ -188,7 +188,7 @@ class Hygiene:
         path = f"/ttl/{ttlId}"
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteDatasetExpiration, ttlId: {ttlId}")
-        res = self.connector.deleteData(self.endpoint+path)
+        res = self.connector.postData(self.endpoint+path)
         return res
 
     def createRecordDeleteRequest(self,datasetId:str="ALL",name:str=None,identities:list=None,description:str="")->dict:
