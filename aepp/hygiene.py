@@ -221,7 +221,7 @@ class Hygiene:
             "description": description,
             "identities":identities
         }
-        res = self.connector.getData(self.endpoint+path,data=data)
+        res = self.connector.postData(self.endpoint+path,data=data)
         return res
     
     def getWorkOrderStatus(self,workorderId:str=None)->dict:
