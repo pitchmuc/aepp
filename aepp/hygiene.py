@@ -188,7 +188,7 @@ class Hygiene:
         path = f"/ttl/{ttlId}"
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteDatasetExpiration, ttlId: {ttlId}")
-        res = self.connector.postData(self.endpoint+path)
+        res = self.connector.deleteData(self.endpoint+path)
         return res
 
     def createRecordDeleteRequest(self,datasetId:str="ALL",name:str=None,identities:list=None,description:str="")->dict:
@@ -221,7 +221,7 @@ class Hygiene:
             "description": description,
             "identities":identities
         }
-        res = self.connector.getData(self.endpoint+path,data=data)
+        res = self.connector.postData(self.endpoint+path,data=data)
         return res
     
     def getWorkOrderStatus(self,workorderId:str=None)->dict:
