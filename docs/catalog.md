@@ -12,7 +12,7 @@ Alternatively, you can use the docstring in the methods to have more information
   - [Importing the module](#importing-the-module)
   - [The Catalog class](#the-catalog-class)
     - [Using kwargs](#using-kwargs)
-  - [Catalog methods](#catalog-methods)
+    - [Catalog methods](#catalog-methods)
   - [Observable Schema Manager](#observable-schema-manager)
     - [Observable Schema Manager Methods](#observable-schema-manager-methods)
   - [Catalog use-cases](#catalog-use-cases)
