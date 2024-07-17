@@ -7,7 +7,12 @@ This page list all of the changes that came during the different release of the 
 Deprecate:
 * Deprecated `getLandingZoneContainerName` method in `flowservice`, new `getLandingZoneStorageName` should be used instead
 * Deprecated `getLandingZoneContainerTTL` method in `flowservice`, new `getLandingZoneStorageTTL` should be used instead
-* Deprecated `getLandingZoneStorageAccountName` method in `flowservice`, new `getLandingZoneNamespace` should be used instead
+* Deprecated `getLandingZoneStorageAccountName` method in `flowservice`, new `getLandingZoneNamespace` should be used instead\
+Patch:
+* fix on Data Hygiene method `createRecordDeleteRequest`
+* fix some typo on `customerProfile` docstring and methods
+* adding better docstring and documentation for `catalog` module [here](./catalog.md)
+* adding `enableDatasetUpsert` specific method in `catalog` to enable a profile for upsert.
 
 ## Version 0.3.4
 

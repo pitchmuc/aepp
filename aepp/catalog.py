@@ -211,6 +211,7 @@ class Catalog:
             dataSet : Used to filter on the related object: &dataSet=dataSetId.
             version : Filter by Semantic version of the account. Updated when the object is modified.
             status : Filter by the current (mutable) status of the batch.
+                    possible values:"processing","success","failure","queued","retrying","stalled","aborted","abandoned","inactive","failed","loading","loaded","staged","active","staging","deleted"
             orderBy : Sort parameter and direction for sorting the response. 
                 Ex. orderBy=asc:created,updated. This was previously called sort.
             properties : A comma separated whitelist of top-level object properties to be returned in the response. 
@@ -567,7 +568,7 @@ class Catalog:
     
     def enableDatasetProfile(self,datasetId:str=None,upsert:bool=False)->dict:
         """
-        Enable a dataset for profile with upsert.
+        Enable a dataset for profile, optionally with upsert.
         Arguments:
             datasetId : REQUIRED : Dataset ID to be enabled for profile
             upsert : OPTIONAL : If you wish to enabled the dataset for upsert.
@@ -590,9 +591,33 @@ class Catalog:
         res = self.connector.patchData(self.endpoint+path, data=data,headers=privateHeader)
         return res
     
+    def enableDatasetUpsert(self,datasetId:str=None)->dict:
+        """
+        Enable a dataset for upsert on profile.
+        The dataset is automatically enabled for profile as well.
+        Arguments:
+            datasetId : REQUIRED : Dataset ID to be enabled for upsert
+        """
+        if datasetId is None:
+            raise ValueError("Require a datasetId")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting enableDatasetUpsert for datasetId: {datasetId}")
+        path = f"/dataSets/{datasetId}"
+        privateHeader = deepcopy(self.header)
+        privateHeader['Content-Type'] = "application/json-patch+json"
+        data = [
+            { 
+                "op": "replace", 
+                "path": "/tags/unifiedProfile",
+                "value": ["enabled:true","isUpsert:true"] 
+                }
+            ]
+        res = self.connector.patchData(self.endpoint+path, data=data,headers=privateHeader)
+        return res
+    
     def enableDatasetIdentity(self,datasetId:str=None)->dict:
         """
-        Enable a dataset for profile with upsert.
+        Enable a dataset for profile for identity ingestion.
         Arguments:
             datasetId : REQUIRED : Dataset ID to be enabled for Identity
         """
@@ -634,7 +659,7 @@ class Catalog:
     
     def disableDatasetIdentity(self,datasetId:str=None)->dict:
         """
-        Enable a dataset for profile with upsert.
+        Disable a dataset for identity ingestion
         Arguments:
             datasetId : REQUIRED : Dataset ID to be disabled for Identity
         """
@@ -775,7 +800,7 @@ class ObservableSchemaManager:
     def __init__(self,observableSchema:dict=None)->None:
         """
         Arguments:
-            observableSchema : dictionary of the data stored in the "observableSchema" key
+            observableSchema : : dictionary of the data stored in the "observableSchema" key
         """
         if 'observableSchema' in observableSchema.keys():
             self.observableSchema = observableSchema['observableSchema']
