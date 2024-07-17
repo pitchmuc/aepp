@@ -100,6 +100,7 @@ Arguments:
   * txt : text file
   * raw : a response object from the requests module
 
+
 #### decodeStreamBatch
 Decode the full txt batch via the codecs module.\
 Usually the full batch is returned by the getResource method with format == "txt".\
@@ -108,6 +109,7 @@ Arguments:
 
 return None when issue is raised
 
+
 #### jsonStreamMessages
 Try to create a list of dictionary messages from the decoded stream batch extracted from the decodeStreamBatch method.\
 Arguments:
@@ -115,6 +117,7 @@ Arguments:
 * verbose : OPTIONAL : print errors and information on the decoding.
 
 return None when issue is raised
+
 
 #### getLastBatches
 Returns the last batch from a specific datasetId.\
@@ -125,6 +128,7 @@ Possible kwargs:
 * created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
 * lastBatchStatus : Filter by the status of the last related batch of the dataset [success, inactive, replay]
 * properties : A comma separated allowlist of top-level object properties to be returned in the response. Used to cut down the number of properties and amount of data returned in the response bodies.
+
 
 #### getBatches
 Retrieve a list of batches.\
@@ -151,6 +155,7 @@ possible values:"processing","success","failure","queued","retrying","stalled","
 * size : The number of bytes processed in the batch.\
 /Batches/get_batch, more details : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
 
+
 #### getFailedBatchesDF
 Abstraction of getBatches method that focus on failed batches and return a dataframe with the batchId and errors.\
 Also adding some meta data information from the batch information provided.\
@@ -160,16 +165,19 @@ Arguments:
 * orderBy : OPTIONAL : The order of the batch. Default "desc:created"\
 Possible kwargs: Any additional parameter for filtering the requests
 
+
 #### getBatch
 Get a specific batch id.\
 Arguments:
 * batch_id : REQUIRED : batch ID to be retrieved.
+
 
 #### createBatch
 Create a new batch.\
 Arguments:
 * object : REQUIRED : Object that define the data to be onboarded.\
 see reference here: https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Batches/postBatch
+
 
 #### getResources
 Retrieve a list of resource links for the Catalog Service.\
@@ -179,6 +187,7 @@ Possible kwargs:
   Ex. orderBy=asc:created,updated. This was previously called sort.
 * property : A comma separated whitelist of top-level object properties to be returned in the response.\
   Used to cut down the number of properties and amount of data returned in the response bodies.
+
 
 #### getDataSets
 Return a list of a datasets.\
@@ -195,10 +204,12 @@ Possible kwargs:
 * property : Regex used to filter objects in the response. Ex. property=name~^test.\
   /Datasets/get_data_sets, more possibilities : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
 
+
 #### getProfileSnapshotDatasets
 Return a dictionary of Profile Snapshot datasetId, containing the information related to them.\
 Arguments:
   * explicitMergePolicy : OPTIONAL : Provide a mergePolicyName attribute for the dataset to explain.
+
 
 #### createDataSets
 Create a new dataSets based either on preconfigured setup or by passing the full dictionary for creation.\
@@ -215,10 +226,12 @@ Arguments:
 possible kwargs:
 * requestDataSource : Set to true if you want Catalog to create a dataSource on your behalf; otherwise, pass a dataSourceId in the body.
 
+
 #### getDataSet
 Return a single dataset.\
 Arguments:
 * datasetId : REQUIRED : Id of the dataset to be retrieved.
+
 
 #### getDataSetObservableSchema
 Return a single dataset observable schema.\
@@ -227,10 +240,12 @@ Arguments:
 * datasetId : REQUIRED : Id of the dataset for which the observable schema should be retrieved.
 * appendDatasetInfo : OPTIONAL : If set to True, it will append the "datasetId" into the dictionary return
 
+
 #### deleteDataSet
 Delete a dataset by its id.\
 Arguments:
 * datasetId : REQUIRED : Id of the dataset to be deleted.
+
 
 #### getDataSetViews
 Get views of the datasets.\
@@ -242,11 +257,13 @@ Possible kwargs:
 * start : Returns results from a specific offset of objects. This was previously called offset. Ex. start=3.
 * property : Regex used to filter objects in the response. Ex. property=name~^test.
 
+
 #### getDataSetView
 Get a specific view on a specific dataset.\
 Arguments:
 * datasetId : REQUIRED : ID of the dataset to be looked down.
 * viewId : REQUIRED : ID of the view to be look upon.
+
 
 #### getDataSetViewFiles
 Returns the list of files attached to a view in a Dataset.\
@@ -254,29 +271,42 @@ Arguments:
 * datasetId : REQUIRED : ID of the dataset to be looked down.
 * viewId : REQUIRED : ID of the view to be look upon.
 
+
 #### enableDatasetProfile
 Enable a dataset for profile with upsert.\
 Arguments:
 * datasetId : REQUIRED : Dataset ID to be enabled for profile
 * upsert : OPTIONAL : If you wish to enabled the dataset for upsert.
 
+
 #### enableDatasetIdentity
 Enable a dataset for profile with upsert.\
 Arguments:
 * datasetId : REQUIRED : Dataset ID to be enabled for Identity
+
+
+#### enableDatasetUpsert
+Enable a dataset for upsert on profile.
+        The dataset is automatically enabled for profile as well.
+        Arguments:
+            datasetId : REQUIRED : Dataset ID to be enabled for upsert
+
 
 #### disableDatasetProfile
 Disable the dataset for Profile ingestion.\
 Arguments:
 * datasetId : REQUIRED : Dataset ID to be disabled for profile
 
+
 #### disableDatasetIdentity
 Disable a dataset for identity ingestion\
 Arguments:
 * datasetId : REQUIRED : Dataset ID to be disabled for Identity
 
+
 #### createUnionProfileDataset
 Create a dataset with an union Profile schema.
+
 
 #### getMapperErrors
 Get failed batches for Mapper errors, based on error code containing "MAPPER".\
@@ -300,12 +330,14 @@ Possible kwargs:
   Used to cut down the number of properties and amount of data returned in the response bodies.
 * size : The number of bytes processed in the batch.
 
+
 #### findActiveBatch
 Recursive function to find the active batch from any batch.\
 In case the active batch is part of a consolidation job, it returns the batch before consolidation.\
 Argument:
 * batchId : REQUIRED : The original batch you want to look.
 * predecessor : OPTIONAL : The predecessor
+
 
 ## Observable Schema Manager
 
@@ -472,77 +504,3 @@ Example of a request type (with createDataSource set to `True`):\
 ```
 
 Note that you can create dataSet for parquet or JSON format data type.
-
-## Catalog Methods
-
-### Get Methods
-
-The get methods are GET HTTP protocole.\
-
-**getResource** : Template for requesting data with a GET method.\
-It is using the Header of the `Catalog` instance in order to acces some resource / URL.\
-Arguments:
-  * endpoint : REQUIRED : The URL to GET
-  * params: OPTIONAL : dictionary of the params to fetch
-  * format : OPTIONAL : Type of response returned. Possible values:\
-        json : default\
-        txt : text file\
-        raw : a response object from the requests module
-
-**getLastBatches** : Returns the last batch from a specific datasetId.\
-Arguments:
-  * dataSetId : OPTIONAL : the datasetId to be retrieved the batch about
-
-**getBatches** : Retrieve a list of batches.\
-Arguments:
-  * limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
-  * n_results : OPTIONAL :  number of result you want to get in total. (will loop)
-  * output : OPTIONAL : Can be "raw" response (dict) or "dataframe".
-  Possible kwargs:
-  * created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
-  * createdAfter : Exclusively filter records created after this timestamp. 
-  * createdBefore : Exclusively filter records created before this timestamp.
-  * start : Returns results from a specific offset of objects. This was previously called offset. (see next line)
-  *  offset : Will offset to the next limit (sort of pagination)        
-  * updated : Filter by the Unix timestamp (in milliseconds) for the time of last modification.
-  * createdUser : Filter by the ID of the user who created this object.
-  * dataSet : Used to filter on the related object: &dataSet=dataSetId.
-  * version : Filter by Semantic version of the account. Updated when the object is modified.
-  * status : Filter by the current (mutable) status of the batch.
-  * orderBy : Sort parameter and direction for sorting the response. 
-        Ex. orderBy=asc:created,updated. This was previously called sort.
-  * properties : A comma separated whitelist of top-level object properties to be returned in the response.\
-    Used to cut down the number of properties and amount of data returned in the response bodies.
-  * size : The number of bytes processed in the batch.
-
-**getFailedBatchesDF** :  Abstraction of getBatches method that focus on failed batches and return a dataframe with the batchId and errors.\
-Also adding some meta data information from the batch information provided.\
-Arguments:
-  * limit : Limit response to a specified positive number of objects. Ex. limit=10 (max = 100)
-  * n_results : OPTIONAL :  number of result you want to get in total. (will loop)
-  * orderBy : OPTIONAL : The order of the batch. Default "desc:created"\
-    Possible kwargs: Any additional parameter for filtering the requests
-
-
-
-### Create Methods
-
-The create methods are POST HTTP protocole.\
-
-
-## Other methods
-
-The other methods can be PUT, PATCH or wrapping methods.
-
-**decodeStreamBatch** : Decode the full txt batch via the codecs module.\
-Usually the full batch is returned by the getResource method with format == "txt".\
-Arguments:
-  * message: REQUIRED : the text file return from the failed batch message.
-  
-return `None` when issue is raised
-
-**jsonStreamMessages** : Try to create a list of dictionary messages from the decoded stream batch extracted from the decodeStreamBatch method.\  Arguments:
-  * message : REQUIRED : a decoded text file, usually returned from the decodeStreamBatch method
-  * verbose : OPTIONAL : print errors and information on the decoding.
-        
-return `None` when issue is raised
