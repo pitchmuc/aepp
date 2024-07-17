@@ -873,7 +873,7 @@ class Profile:
         if name is not None:
             params["name"] = name
         res = self.connector.getData(
-            self.endpoint + path, params=params, headers=self.headers
+            self.endpoint + path, params=params, headers=self.header
         )
         return res
 

@@ -42,7 +42,6 @@ endpoints = {
     "schemas": "/data/foundation/schemaregistry",
     "query": "/data/foundation/query",
     "catalog": "/data/foundation/catalog",
-    "policy": "/data/foundation/dulepolicy",
     "segmentation": "/data/core/ups",
     "export": "/data/foundation/export",
     "identity": "/data/core/",
