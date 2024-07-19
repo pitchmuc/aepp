@@ -37,7 +37,7 @@ class Catalog:
     More details here : https://www.adobe.io/apis/experienceplatform/home/api-reference.html#
     It possess a data attribute that is containing information about your datasets. 
     Arguments:
-        config : OPTIONAL : f or a dictionary with key similar to the aepp.config.config_object
+        config : OPTIONAL : ConnectObject or a dictionary with key similar to the aepp.config.config_object
         header : OPTIONAL : header object  in the config module (DO NOT MODIFY)
         loggingObject : OPTIONAL : If you want to set logging capability for your actions.
     kwargs:
@@ -613,6 +613,27 @@ class Catalog:
                 }
             ]
         res = self.connector.patchData(self.endpoint+path, data=data,headers=privateHeader)
+        return res
+
+    def disableDatasetValidationContext(self,datasetId:str=None)->dict:
+        """
+        Disable the acp_validationContext
+        Arguments:
+            datasetId : REQUIRED : the datasetId that needs to be updated.
+        """
+        if datasetId is None:
+            raise ValueError("Require a datasetId")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting disableValidationContext for datasetId: {datasetId}")
+        path = f"/dataSets/{datasetId}"
+        data = [
+            { 
+                "op": "add", 
+                "path": "/tags/acp_validationContext",
+                "value": ["disabled"] 
+                }
+            ]
+        res = self.connector.patchData(self.endpoint+path, data=data,)
         return res
     
     def enableDatasetIdentity(self,datasetId:str=None)->dict:
