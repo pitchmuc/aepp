@@ -9,7 +9,19 @@ To have a full view on the different API endpoints specific to the schema API, p
 
 Alternatively, you can use the docstring in the methods to have more information.
 
-## What is the Data Ingestion in AEP ?
+## Menu
+- [Ingestion module in aepp](#segmentation-module-in-aepp)
+  - [Menu](#menu)
+  - [What is the Data Ingestion in AEP](#what-is-the-data-ingestion-in-aep)
+  - [Importing the module](#importing-the-module)
+  - [The DataIngestion class](#the-dataingestion-class)
+  - [DataIngestion attributes](#dataingestion-attributes)
+  - [DataIngestion methods](#dataingestion-methods)
+  - [The data ingestion use-cases](#use-cases)
+    - [1. HTTP Stream](#streaming-use-case)
+    - [2. Batch Ingestion](#batch-use-case)
+
+## What is the Data Ingestion in AEP
 
 The Data Ingestion endpoints allows you to send data to AEP data lake directly (through your datasets).\
 You can ingest the data through Batch or via Streaming.\
@@ -48,9 +60,7 @@ from aepp import ingestion
 myConnector = ingestion.DataIngestion(dev)
 ```
 
-2 parameters are possible for the instantiation of the class:
-
-2 parameters are possible for the instantiation of the class:
+3 parameters are possible for the instantiation of the class:
 * config : OPTIONAL : mostly used to pass a ConnectObject instance that is linked to one sandbox. 
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
 * loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements, see [logging documentation](./logging.md)
