@@ -288,7 +288,7 @@ class DataPrep:
         self, name: str = None, prop: str = None, limit: int = 100
     ) -> list:
         """
-        Returns all mapping sets for given IMS Org Id
+        Returns all mapping sets for given IMS Org Id and sandbox.
         Arguments:
             name : OPTIONAL : Filtering by name
             prop : OPTIONAL : property filter. Supported fields are: xdmSchema, status.
@@ -338,7 +338,7 @@ class DataPrep:
     ) -> dict:
         """
         Get a specific mappingSet by its ID.
-        Argument:
+        Arguments:
             mappingSetId : REQUIRED : mappingSet ID to be retrieved.
             save : OPTIONAL : save your mapping set defintion in a JSON file.
             saveMappingRules : OPTIONAL : save your mapping rules only in a JSON file

@@ -5,6 +5,16 @@ It will include some examples but be aware that not all methods will be document
 To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/data-prep/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
+## Menu
+- [Data Prep module in aepp](#data-prep-module-in-aepp)
+  - [Menu](#menu)
+  - [What is the Data Prep in AEP](#what-is-the-data-prep-in-aep)
+  - [Importing the module](#importing-the-module)
+  - [The DataPrep class](#the-dataingestion-class)
+  - [DataPrep attributes](#dataingestion-attributes)
+  - [DataPrep methods](#dataingestion-methods)
+  - [The data prep use-cases](#use-cases)
+
 ## What is the Data Prep in AEP ?
 
 The `dataprep` module contains the Mapping Service in AEP and it is a service happening during  the data ingestion in AEP.\
@@ -20,7 +30,7 @@ To import the module you can use the import statement with the `dataprep` keywor
 
 ```python
 import aepp
-aepp.importConfigFile('myConfig_file.json')
+dev = aepp.importConfigFile('myConfig_file.json',sandbox='dev',connectInstance=True)
 
 from aepp import dataprep
 ```
@@ -36,13 +46,20 @@ This class can be instantiated by calling the `DataPrep()` from the `dataprep` m
 Following the previous method described above, you can realize this:
 
 ```python
-mapper = dataprep.DataPrep()
+import aepp
+from aepp import dataprep
+
+dev = aepp.importConfigFile('myConfig_file.json',sandbox='dev',connectInstance=True)
+mapper = dataprep.DataPrep(dev)
+
 ```
 
-2 parameters are possible for the instantiation of the class:
+3 parameters are possible for the instantiation of the class:
 
-* config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
+* config : OPTIONAL : mostly used to pass a ConnectObject instance that is linked to one sandbox. 
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
+* loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements, see [logging documentation](./logging.md)
+
 
 Any additional parameters in the kwargs will be updating the header content.
 
@@ -54,6 +71,199 @@ Any additional parameters in the kwargs will be updating the header content.
 * containerId : In case you have modified the default container.
 * REFERENCE_MAPPING : An example of mapping definition
 * SOURCETYPE : A list of source types for mapping
+
+
+## DataPrep methods
+
+On the elements below, all methods are documented.\
+You can access these methods once you have instantiated the DataPrep class.
+
+#### getXDMBatchConversions
+Returns all XDM conversions\
+Arguments:
+* dataSetId : OPTIONAL : Destination dataSet ID to filter for.
+* property : OPTIONAL : Filters for dataSetId, batchId and Status.
+* batchId : OPTIONAL : batchId Filter
+* status : OPTIONAL : status of the batch.
+* limit : OPTIONAL : number of results to return (default 100)
+
+
+#### getXDMBatchConversion
+Returns XDM Conversion info.\
+Arguments:
+* conversionId : REQUIRED : Conversion ID to be returned
+
+
+#### getXDMBatchConversionActivities
+Returns activities for a XDM Conversion ID.\
+Arguments:
+* conversionId : REQUIRED : Conversion ID for activities to be returned
+
+
+#### getXDMBatchConversionRequestActivities
+Returns conversion activities for given request\
+Arguments:
+* requestId : REQUIRED : the request ID to look for
+* activityId : REQUIRED : the activity ID to look for
+
+
+#### createXDMConversion
+Create a XDM conversion request.\
+Arguments:
+* dataSetId : REQUIRED : destination dataSet ID
+* batchId : REQUIRED : Source Batch ID
+* mappingSetId : REQUIRED : Mapping ID to be used
+
+
+#### copyMappingRules
+Create a copy of the mapping based on the mapping information passed.\
+Argument:
+* mapping : REQUIRED : either the list of mapping or the dictionary returned from the getMappingSetMapping
+* tenantid : REQUIRED : in case tenant is present, replace the existing one with new one.
+
+#### cleanMappingRules
+Create a clean copy of the mapping based on the mapping list information passed.\
+Argument:
+* mapping : REQUIRED : either the list of mapping or the dictionary returned from the getMappingSetMapping
+
+#### getMappingSets
+Returns all mapping sets for given IMS Org Id and sandbox.\
+Arguments:
+* name : OPTIONAL : Filtering by name
+* prop : OPTIONAL : property filter. Supported fields are: xdmSchema, status.
+  * Example : prop="status==success"
+* limit : OPTIONAL : number of result to retun. Default 100.
+
+#### getMappingSuggestions
+Returns non-persisted mapping set suggestion for review\
+Arguments:
+* dataSetId : OPTIONAL : Id of destination DataSet. Must be a DataSet with schema.
+* batchId : OPTIONAL : Id of source Batch.
+* excludeUnmapped : OPTIONAL : Exclude unmapped source attributes (default True)
+
+#### getMappingSet
+Get a specific mappingSet by its ID.\
+Arguments:
+* mappingSetId : REQUIRED : mappingSet ID to be retrieved.
+* save : OPTIONAL : save your mapping set defintion in a JSON file.
+* saveMappingRules : OPTIONAL : save your mapping rules only in a JSON file
+* mappingRulesOnly : OPTIONAL : If set to True, return only the mapping rules.\
+optional kwargs:
+* encoding : possible to set encoding for the file.
+
+#### deleteMappingSet
+Delete a specific mappingSet by its ID.\
+Argument:
+* mappingSetId : REQUIRED : mappingSet ID to be deleted.
+
+
+#### createMappingSet
+Create a mapping set.\
+Arguments:
+* schemaId : OPTIONAL : schemaId to map to.
+* mappingList: OPTIONAL : List of mapping to set.
+* validate : OPTIONAL : Validate the mapping.\
+if you want to provide a dictionary for mapping set creation, you can pass the following params:
+* mappingSet : REQUIRED : A dictionary that creates the mapping info.\
+  see info on https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Mappings/createMappingSetUsingPOST
+
+#### updateMappingSet
+Update a specific Mapping set based on its Id.\
+Arguments:
+* mappingSetId : REQUIRED : mapping Id to be updated
+* mappingRules : REQUIRED : the list of different rule to map
+* outputSchema : OPTIONAL : If you wish to change the destination output schema. By default taking the same one.
+
+
+#### getMappingSetMappings
+Returns all mappings for a mapping set\
+Arguments:
+* mappingSetId : REQUIRED : the mappingSet ID to retrieved
+
+#### createMappingSetMapping
+Create mappings for a mapping set\
+Arguments:
+* mappingSetId : REQUIRED : the mappingSet ID to attached the mapping
+* mapping : REQUIRED : a dictionary to define the new mapping.
+
+#### getMappingSetMapping
+Get a mapping from a mapping set.\
+Arguments:
+* mappingSetId : REQUIRED : The mappingSet ID
+* mappingId : REQUIRED : The specific Mapping
+
+
+#### deleteMappingSetMapping
+Delete a mapping in a mappingSet\
+Arguments:
+* mappingSetId : REQUIRED : The mappingSet ID
+* mappingId : REQUIRED : The specific Mapping
+
+#### updateMappingSetMapping
+Update a mapping for a mappingSet (PUT method)\
+Arguments:
+* mappingSetId : REQUIRED : The mappingSet ID
+* mappingId : REQUIRED : The specific Mapping
+* mapping : REQUIRED : dictionary to update
+
+#### previewDataOutput
+The data you want to run through as a preview, which will be transformed by the mapping sets within the body.\
+Arguments:
+* data : REQUIRED : A dictionary containing the data to test.
+* mappingSet : REQUIRED : The mappingSet to test.
+
+Example:
+```JSON
+{
+    "data": {
+        "id": 1234,
+        "firstName": "Jim",
+        "lastName": "Seltzer"
+    },
+    "mappingSet": {
+        "outputSchema": {
+        "schemaRef": {
+            "id": "https://ns.adobe.com/stardust/schemas/89abc189258b1cb1a816d8f2b2341a6d98000ed8f4008305",
+            "contentType": "application/vnd.adobe.xed-full+json;version=1"
+        }
+        },
+        "mappings": [
+        {
+            "sourceType": "ATTRIBUTE",
+            "source": "id",
+            "destination": "_id",
+            "name": "id",
+            "description": "Identifier field"
+        },
+        {
+            "sourceType": "ATTRIBUTE",
+            "source": "firstName",
+            "destination": "person.name.firstName"
+        },
+        {
+            "sourceType": "ATTRIBUTE",
+            "source": "lastName",
+            "destination": "person.name.lastName"
+        }
+        ]
+    }
+}
+```
+
+#### getMappingSetFunctions
+Return list of mapping functions.
+
+#### getMappingSetOperators
+Return list of mapping operators.
+
+#### validateExpression
+Check if the expression that you have passed is valid.\
+Arguments:
+* expression : REQUIRED : the expression you are trying to validate.
+* mappingSetId : OPTIONAL : MappingSetId to integrate this expression.
+* sampleData : OPTIONAL : Sample Date to validate
+* sampleDataType : OPTIONAL : Data Type of your Sample data.
+
 
 ## Use-cases
 
