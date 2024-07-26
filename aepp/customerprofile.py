@@ -774,9 +774,12 @@ class Profile:
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getDestinations")
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/vnd.adobe.platform.projectionDestinationList+json; version=1"
         path = "/config/destinations"
-        res = self.connector.getData(self.endpoint + path)
-        return res
+        res = self.connector.getData(self.endpoint + path,headers=privateHeader)
+        data = res.get('_embedded',{}).get('projectionDestinations',[])
+        return data
 
     def createDestination(self, destinationConfig: dict = None) -> dict:
         """
@@ -808,8 +811,10 @@ class Profile:
             raise ValueError("Require a destination ID")
         if self.loggingEnabled:
             self.logger.debug(f"Starting getDestination")
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/vnd.adobe.platform.projectionDestination+json; version=1"
         path = f"/config/destinations/{destinationId}"
-        res = self.connector.getData(self.endpoint + path)
+        res = self.connector.getData(self.endpoint + path,headers=privateHeader)
         return res
 
     def deleteDestination(self, destinationId: str = None) -> dict:
@@ -823,7 +828,9 @@ class Profile:
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteDestination")
         path = f"/config/destinations/{destinationId}"
-        res = self.connector.deleteData(self.endpoint + path)
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/vnd.adobe.platform.projectionDestination+json; version=1"
+        res = self.connector.deleteData(self.endpoint + path,headers=privateHeader)
         return res
 
     def updateDestination(
@@ -868,14 +875,17 @@ class Profile:
             )
         if self.loggingEnabled:
             self.logger.debug(f"Starting getProjections")
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/vnd.adobe.platform.projectionConfigList+json; version=1"
         if schemaName is not None:
             params["schemaName"] = schemaName
         if name is not None:
             params["name"] = name
         res = self.connector.getData(
-            self.endpoint + path, params=params, headers=self.header
+            self.endpoint + path, params=params, headers=privateHeader
         )
-        return res
+        data = res.get('_embedded',{}).get('projectionConfigs',[])
+        return data
 
     def getProjection(self, projectionId: str = None) -> dict:
         """
@@ -887,8 +897,10 @@ class Profile:
             raise ValueError("Require a projection ID")
         if self.loggingEnabled:
             self.logger.debug(f"Starting getProjection")
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/vnd.adobe.platform.projectionConfig+json; version=1"
         path = f"/config/projections/{projectionId}"
-        res = self.connector.getData(self.endpoint + path)
+        res = self.connector.getData(self.endpoint + path,headers=privateHeader)
         return res
 
     def deleteProjection(self, projectionId: str = None) -> dict:
@@ -901,8 +913,10 @@ class Profile:
             raise ValueError("Require a projection ID")
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteProjection")
+        privateHeader = deepcopy(self.header)
+        privateHeader['Accept'] = "application/vnd.adobe.platform.projectionConfig+json; version=1"
         path = f"/config/projections/{projectionId}"
-        res = self.connector.deleteData(self.endpoint + path)
+        res = self.connector.deleteData(self.endpoint + path,headers=privateHeader)
         return res
 
     def createProjection(
@@ -911,7 +925,7 @@ class Profile:
         """
         Create a projection
         Arguments:
-            schemaName : REQUIRED : XDM schema namess
+            schemaName : REQUIRED : XDM schema names
             projectionConfig : REQUIRED : the object definiing the projection
         """
         if schemaName is None:
