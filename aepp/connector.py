@@ -61,70 +61,72 @@ class AdobeRequest:
             logger : OPTIONAL : instance of the logger created
             retry : OPTIONAL : When GET request fails, if set to an int, it will retry this number of time
         """
-        if type(config) != dict:
+        if type(config) != dict and config is not None:
             config = config.getConfigObject()
-        if config["org_id"] == "":
+        if config["org_id"] == "" and config is not None:
             raise Exception(
                 "You have to upload the configuration file with importConfigFile or configure method."
             )
-        self.config = deepcopy(config)
         self.header = deepcopy(header)
         self.endpoints = deepcopy(endpoints)
         self.loggingEnabled = loggingEnabled
         self.logger = logger
         self.retry = retry
+        self.token = None
         requests.packages.urllib3.disable_warnings()
-        if self.config["environment"] == "support":
-            self.connectionType = 'support'
-            if self.config["token"] != "":
-                self.token = self.config["token"]
-        if self.config["token"] == "" or time.time() > self.config["date_limit"]:
-            if self.config["private_key"] is not None or self.config["pathToKey"] is not None:
-                self.connectionType = 'jwt'
-                self.config['connectionType'] = self.connectionType
-                token_info = self.get_jwt_token_and_expiry_for_config(
-                    config=self.config,
-                    verbose=verbose,
-                    aepScope=kwargs.get("aepScope"),
-                    privacyScope=kwargs.get("privacyScope"),
-                )
-            elif self.config["scopes"] is not None:
-                self.connectionType = 'oauthV2'
-                self.config['connectionType'] = self.connectionType
-                token_info = self.get_oauth_token_and_expiry_for_config(
-                    config=self.config,
-                    verbose=verbose
-                )
-            else:
-                if self.config['environment'] != "support":
-                    self.connectionType = 'oauthV1'
+        if config is not None: ## Config can be None for Edge Server Side
+            self.config = deepcopy(config)
+            if self.config["environment"] == "support":
+                self.connectionType = 'support'
+                if self.config["token"] != "":
+                    self.token = self.config["token"]
+            if self.config["token"] == "" or time.time() > self.config["date_limit"]:
+                if self.config["private_key"] is not None or self.config["pathToKey"] is not None:
+                    self.connectionType = 'jwt'
+                    self.config['connectionType'] = self.connectionType
+                    token_info = self.get_jwt_token_and_expiry_for_config(
+                        config=self.config,
+                        verbose=verbose,
+                        aepScope=kwargs.get("aepScope"),
+                        privacyScope=kwargs.get("privacyScope"),
+                    )
+                elif self.config["scopes"] is not None:
+                    self.connectionType = 'oauthV2'
                     self.config['connectionType'] = self.connectionType
                     token_info = self.get_oauth_token_and_expiry_for_config(
                         config=self.config,
                         verbose=verbose
                     )
                 else:
-                    self.connectionType = 'support'
-                    self.config['connectionType'] = self.connectionType
-                    self.token = self.config["token"]
-            self.token = token_info.token
-            self.config["token"] = self.token
-            if self.connectionType == 'jwt':
-                timeScale = 1000 ## jwt returns milliseconds expiry
-            elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
-                timeScale = 1 ## oauth returns seconds expiry
-            self.config["date_limit"] = (
-                time.time() + token_info.expiry / timeScale - 500
-            )
-            self.header.update({"Authorization": f"Bearer {self.token}"})
-        else:
-            self.token = self.config["token"]
-            self.header.update({"Authorization": f"Bearer {self.token}"})
-            self.header.update({"x-sandbox-name": self.config['sandbox']})
-            self.connectionType = self.config['connectionType']
-        # x-sandbox-id is required when using non-user token, but forbidden for user token
-        if self.connectionType == 'oauthV1' and "x-sandbox-id" not in self.header:
-            self.update_sandbox_id(self.config["sandbox"])
+                    if self.config['environment'] != "support":
+                        self.connectionType = 'oauthV1'
+                        self.config['connectionType'] = self.connectionType
+                        token_info = self.get_oauth_token_and_expiry_for_config(
+                            config=self.config,
+                            verbose=verbose
+                        )
+                    else:
+                        self.connectionType = 'support'
+                        self.config['connectionType'] = self.connectionType
+                        self.token = self.config["token"]
+                self.token = token_info.token
+                self.config["token"] = self.token
+                if self.connectionType == 'jwt':
+                    timeScale = 1000 ## jwt returns milliseconds expiry
+                elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
+                    timeScale = 1 ## oauth returns seconds expiry
+                self.config["date_limit"] = (
+                    time.time() + token_info.expiry / timeScale - 500
+                )
+                self.header.update({"Authorization": f"Bearer {self.token}"})
+            else:
+                self.token = self.config["token"]
+                self.header.update({"Authorization": f"Bearer {self.token}"})
+                self.header.update({"x-sandbox-name": self.config['sandbox']})
+                self.connectionType = self.config['connectionType']
+            # x-sandbox-id is required when using non-user token, but forbidden for user token
+            if self.connectionType == 'oauthV1' and "x-sandbox-id" not in self.header:
+                self.update_sandbox_id(self.config["sandbox"])
 
     def _find_path(self, path: str) -> Optional[Path]:
         """Checks if the file denoted by the specified `path` exists and returns the Path object
@@ -284,7 +286,7 @@ class AdobeRequest:
         Checking if the token is still valid
         """
         now = time.time()
-        if now > self.config["date_limit"]:
+        if now > self.config["date_limit"] and self.token is not None:
             if self.loggingEnabled:
                 self.logger.warning("token expired. Trying to retrieve a new token")
             if self.connectionType == 'jwt':

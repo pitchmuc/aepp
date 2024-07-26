@@ -40,7 +40,7 @@ class Profile:
         """
             This will instantiate the profile class
             Arguments:
-                config : OPTIONAL : config object in the config module.
+                config : OPTIONAL : ConnectObject or a dictionary with key similar to the aepp.config.config_object
                 header : OPTIONAL : header object  in the config module.
                 loggingObject : OPTIONAL : logging object to log messages.
         kwargs:
@@ -141,8 +141,8 @@ class Profile:
             params["limit"] = kwargs.get("limit", 1000)
             params["startTime"] = kwargs.get("startTime", None)
             params["endTime"] = kwargs.get("endTime", None)
-            del params["entityId"]
-            del params["entityIdNS"]
+            #del params["entityId"]
+            #del params["entityIdNS"]
         params["fields"] = kwargs.get("fields", None)
         res = self.connector.getData(
             self.endpoint + path, params=params, headers=self.header

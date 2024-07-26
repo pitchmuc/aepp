@@ -17,6 +17,8 @@ import logging
 import json
 from pathlib import Path
 from .configs import ConnectObject
+import deprecation
+
 
 class DataIngestion:
     """
@@ -120,6 +122,7 @@ class DataIngestion:
                 },
             },
         }
+        self.TAG_BATCH_MAPPING = {"aep_sip_mapper": ["mapping-set-id:<mappingSetId>","mapping-set-version:X"]}
 
     def __str__(self):
         return json.dumps({'class':'DataIngestion','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
@@ -228,7 +231,7 @@ class DataIngestion:
             filePath : REQUIRED : the filePath that will store the value.
             data : REQUIRED : The data to be uploaded (following the type provided). List or Dictionary, depending if multiline is enabled.
                 You can also pass a JSON file path. If the element is a string and ends with ".json", the file will be loaded and transform automatically to a dictionary. 
-            verbose: OPTIONAL : if you wish to see comments around the
+            verbose: OPTIONAL : if you wish to see comments around the ingestion
         """
         if batchId is None:
             raise Exception("require a batchId")
@@ -280,6 +283,7 @@ class DataIngestion:
         )
         return res
 
+    @deprecation.deprecated(deprecated_in="0.3.6", details="Method will be removed from AEP API")
     def uploadLargeFileStartEnd(
         self,
         batchId: str = None,
@@ -310,6 +314,7 @@ class DataIngestion:
         res = self.connector.postData(self.endpoint + path, params=params)
         return res
 
+    @deprecation.deprecated(deprecated_in="0.3.6", details="Method will be removed from AEP API")
     def uploadLargeFilePart(
         self,
         batchId: str = None,
