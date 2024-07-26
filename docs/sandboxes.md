@@ -52,7 +52,7 @@ mySandboxes = sandboxes.Sandboxes(config=prod)
 
 * config : OPTIONAL : the connect object instance created when you use `importConfigFile` with connectInstance parameter. Default to latest loaded configuration.
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
-* loggingObject : OPTIONAL : logging object to provide log of the application.
+* loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements, see [logging documentation](./logging.md)
 
 **Note**: Kwargs can be used to update the header used in the connection.
 

@@ -35,8 +35,9 @@ myProfiles = customerprofile.Profile()
 
 2 parameters are possible for the instantiation of the class:
 
-* config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
+* config : OPTIONAL : mostly used to pass a ConnectObject instance that is linked to one sandbox. 
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
+* loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements, see [logging documentation](./logging.md)
 
 ## Preequisites before using the customer profile module
 

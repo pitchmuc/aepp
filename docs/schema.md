@@ -53,6 +53,7 @@ Several parameters are possibles when instantiating the class:\
 * container_id : OPTIONAL : "tenant"(default) or "global"
 * config : OPTIONAL : mostly used to pass a ConnectObject instance that is linked to one sandbox. 
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
+* loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements, see [logging documentation](./logging.md)
 
 ### Connecting to different sandboxes
 

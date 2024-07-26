@@ -1,7 +1,7 @@
 # DataTypeManager for AEP Schema
 
 This module is a custom module built by Adobe Consulting team in order to improve efficiency of the Data Type manipulation, documentation and analysis.\
-The Field Group Manager is built on top of all of the existing [AEP Schema Registry API](https://developer.adobe.com/experience-platform-apis/references/schema-registry/), and [Schema class](./schema.md).
+The Data Type Manager is built on top of all of the existing [AEP Schema Registry API](https://developer.adobe.com/experience-platform-apis/references/schema-registry/), and [Schema class](./schema.md).
 
 It is important to understand that a Field Group is built by using different data types. 
 The native data types are : 
@@ -30,7 +30,7 @@ A modification to a Data Type will have repercussion in all the schemas and fiel
 
 ## Instantiation
 
-The SchemaManager is a class that can be instantiated with different parameters.
+The DataTypeManager is a class that can be instantiated with different parameters.
 Arguments:
 * dataType : OPTIONAL : Either a data type id ($id or altId) or the data type dictionary itself.
     If dataType Id is passed, you need to provide the schemaAPI connection as well.
@@ -70,8 +70,6 @@ prod = aepp.importConfigFile('myConfig.json',connectInstance=True,sandbox='prod'
 dataTypeManager = schema.DataTypeManager(config=prod)
 
 ```
-
-
 
 ## Data Type Manager methods
 

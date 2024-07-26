@@ -12,6 +12,7 @@ Alternatively, you can use the docstring in the methods to have more information
   - [Importing the module](#importing-the-module)
   - [The Catalog class](#the-catalog-class)
     - [Using kwargs](#using-kwargs)
+    - [Catalog class attributes](#the-catalog-class-attributes)
     - [Catalog methods](#catalog-methods)
   - [Observable Schema Manager](#observable-schema-manager)
     - [Observable Schema Manager Methods](#observable-schema-manager-methods)
@@ -84,7 +85,38 @@ myCat = catalog.Catalog(config=mySandbox)
 
 * config : OPTIONAL : the connect object instance created when you use `importConfigFile` with connectInstance parameter. Default to latest loaded configuration.
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
-* loggingObject : OPTIONAL : logging object to provide log of the application.
+* loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements, see [logging documentation](./logging.md)
+
+### The Catalog class attributes
+
+You can access some attributes once you have instantiated the class.\
+These following elements would be available:
+* sandbox : provide which sandbox is currently being used
+* header : provide the default header which is used for the requests.
+* loggingEnabled : if the logging capability has been used
+* endpoint : the default endpoint used for all methods.
+
+#### The data attributes
+
+Once you have run the `getDatasets` method via the `Catalog` instance. You will automatically populate the `data` attributes. \
+This data attribute contains 3 dictionaries:
+* table_names : represent the following mapping `{ 'datasetName' : 'QueryServiceTableName' }`
+* schema_ref : represent the following mapping `{ 'datasetName' : 'schemaRefId' }`
+* ids : represent the following mapping `{ 'datasetName' : 'datasetId' }`
+
+To enable it, just do the following: 
+
+```py
+import aepp
+from aepp import catalog
+
+mySandbox = aepp.importConfigFile('config.json',connectInstance=True,sandbox='prod')
+myCat = catalog.Catalog(config=mySandbox)
+
+mydatasets = myCat.getDatasets()
+
+SchemaRef:dict = myCat.data.schema_ref
+```
 
 ## Catalog methods
 
