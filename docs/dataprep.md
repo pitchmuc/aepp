@@ -10,9 +10,9 @@ Alternatively, you can use the docstring in the methods to have more information
   - [Menu](#menu)
   - [What is the Data Prep in AEP](#what-is-the-data-prep-in-aep)
   - [Importing the module](#importing-the-module)
-  - [The DataPrep class](#the-dataingestion-class)
-  - [DataPrep attributes](#dataingestion-attributes)
-  - [DataPrep methods](#dataingestion-methods)
+  - [The DataPrep class](#the-dataprep-class)
+  - [DataPrep attributes](#dataprep-attributes)
+  - [DataPrep methods](#dataprep-methods)
   - [The data prep use-cases](#use-cases)
 
 ## What is the Data Prep in AEP ?

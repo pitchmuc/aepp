@@ -404,7 +404,6 @@ class DataPrep:
         if you want to provide a dictionary for mapping set creation, you can pass the following params:
             mappingSet : REQUIRED : A dictionary that creates the mapping info.
                 see info on https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Mappings/createMappingSetUsingPOST
-            
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createMappingSet")
