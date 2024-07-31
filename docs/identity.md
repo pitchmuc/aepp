@@ -5,7 +5,18 @@ It will include some examples but be aware that not all methods will be document
 To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/identity-service/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
-## What is an identity ?
+## Menu
+
+- [What is an identity](#what-is-an-identity)
+    - [Default Identities](#default-identities)
+- [Importing the module](#importing-the-module)
+- [Creating Identity class](#the-identity-class)
+    - [Region parameter](#region-parameter)
+    - [Using Kwargs](#using-kwargs)
+- [Identity Methods](#identity-methods)
+- [Identity Use-cases](#identity-use-cases)
+
+## What is an identity
 
 The identity service is a key component of Adobe Experience Platform. The whole system is based on the **users** data that are recognizable by the different identities these users are using during their journey.\
 A user coming on the website will probably have a cookie ID that will enable its identification during several sessions, this is an identity (identity A).\
@@ -106,6 +117,105 @@ myIds2 = queryservice.Identity({"region":"va7","x-sandbox-name":"mySandbox2"})
 ```
 
 **Note**: Sandbox can be setup in the configuration file and when calling the `configure` method.
+
+## Identity Methods
+
+Below you can find all the methods available on the `identity` module.
+
+#### getIdentity
+Given the namespace and an ID in that namespace, returns XID string.\
+Arguments:
+* id_str : REQUIRED : Id in given namespace (ECID value)
+* nsid : REQUIRED : namespace id. (e.g. 411)
+* namespace : OPTIONAL : namespace code (e.g. adcloud)
+
+#### getIdentities
+Get the list of all identity namespaces available in the organization.\
+Arguments:
+* only_custom : OPTIONAL : if set to True, return only customer made identities (default False)
+* save : OPTIONAL : if set to True, save the result in its respective folder (default False)
+
+#### getIdentityDetail
+List details of a specific identity namespace by its ID.\
+Arguments:
+* id_str : REQUIRED : identity of the "id" field.
+* save : OPTIONAL : if set to True, save the result in a file, in its respective folder (default False)
+
+#### createIdentity
+List details of a specific identity namespace by its ID.\
+Arguments:
+* name : REQUIRED : Display name of the identity
+* code : REQUIRED : Identity Symbol for user interface.
+* idType : REQUIRED : one of those : COOKIE, CROSS_DEVICE, DEVICE, EMAIL, MOBILE, NON_PEOPLE or PHONE.
+* description : OPTIONAL : description for this identity
+* dict_identity : OPTIONAL : you can use this to directly pass the dictionary.
+
+
+#### updateIdentity
+Update identity based on its ID.\
+Arguments:
+* id_str: REQUIRED : ID of the identity namespace to update.
+* name : REQUIRED : Display name of the identity
+* code : REQUIRED : Identity Symbol for user interface.
+* idType : REQUIRED : one of those : COOKIE, CROSS_DEVICE, DEVICE, EMAIL, MOBILE, NON_PEOPLE or PHONE.
+* description : OPTIONAL : description for this identity
+
+
+#### getIdentitiesIMS
+Returns all identities from the IMS Org itself.\
+Only shared ones if IMS Org doesn't match the IMS Org sent in the header.\
+Arguments:
+* imsOrg : OPTIONAL : the IMS org. If not set, takes the current one automatically.
+
+
+#### getClustersMembers
+Given an XID return all XIDs, in the same or other namespaces, that are linked to it by the device graph type.\
+The related XIDs are considered to be part of the same cluster.\
+It is required to pass either xid or (namespace/nsid & id) pair to get cluster members.\
+Arguments:
+* xid : REQUIRED : Identity string returns by the getIdentity method.
+* nsid : OPTIONAL : namespace id (default : 411)
+* namespace : OPTIONAL : namespace code. (default : adcloud)
+* id_value : OPTIONAL : ID of the customer in given namespace.
+* graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
+
+#### postClustersMembers
+Given set of identities, returns all linked identities in cluster corresponding to each identity.\
+Arguments:
+* xids : REQUIRED : list of identity as returned by getIdentity method.
+* version : OPTIONAL : Version of the clusterMembers (default 1.0)
+* graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
+
+
+#### getClusterHistory
+Given an XID, return all cluster associations with that XID.\
+It is required to pass either xid or (namespace/nsid & id) pair to get cluster history.\
+Arguments:
+* xid : REQUIRED : Identity string returns by the getIdentity method.
+* nsid : OPTIONAL : namespace id (default : 411)
+* namespace : OPTIONAL : namespace code. (default : adcloud)
+* id_value : OPTIONAL : ID of the customer in given namespace.
+* graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
+
+#### getIdentityMapping
+Given an XID, returns all XID mappings in the requested namespace (targetNs).\
+It is required to pass either xid or (namespace/nsid & id) pair to get mappings in required namespace.\
+Arguments:
+* xid : REQUIRED : Identity string returns by the getIdentity method.
+* nsid : OPTIONAL : namespace id (default : 411)
+* namespace : OPTIONAL : namespace code. (default : adcloud)
+* id_value : OPTIONAL : ID of the customer in given namespace.
+* graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
+* targetNs : OPTIONAL : The namespace you want to get the mappings from.
+
+#### postIdentityMapping
+Given an identity, returns all identity mappings in requested namespace (target namespace).\
+Arguments:
+* xids : REQUIRED : List of identities
+* targetNs : REQUIRED : Target Namespace (default 411)
+* version : OPTIONAL : version of the mapping
+
+
 
 ## Identity use-cases
 
