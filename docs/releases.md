@@ -2,6 +2,15 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## Version 0.3.6
+* Adding the `edge` module
+* adding better docstring and documentation for `catalog` module [here](./catalog.md)
+* adding `enableDatasetUpsert` specific method in `catalog` to enable a profile for upsert.
+* fixing methods for `customerprofile` in order to retrieve destinations and projections.
+* adding complete documentation for `ingestion` module.
+* Deprecated `uploadLargeFilePart` & `uploadLargeFileStartEnd` in `ingestion` module.
+
+
 ## Version 0.3.5
 
 Deprecate:
@@ -11,8 +20,7 @@ Deprecate:
 Patch:
 * fix on Data Hygiene method `createRecordDeleteRequest`
 * fix some typo on `customerProfile` docstring and methods
-* adding better docstring and documentation for `catalog` module [here](./catalog.md)
-* adding `enableDatasetUpsert` specific method in `catalog` to enable a profile for upsert.
+
 
 ## Version 0.3.4
 

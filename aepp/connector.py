@@ -61,21 +61,22 @@ class AdobeRequest:
             logger : OPTIONAL : instance of the logger created
             retry : OPTIONAL : When GET request fails, if set to an int, it will retry this number of time
         """
-        if type(config) != dict and config is not None:
+        if type(config) != dict and kwargs.get('origin') != "edge-no-auth":
             config = config.getConfigObject()
-        if config["org_id"] == "" and config is not None:
-            raise Exception(
-                "You have to upload the configuration file with importConfigFile or configure method."
-            )
+        if kwargs.get('origin') != "edge-no-auth":
+            if config["org_id"] == "":
+                raise Exception(
+                    "You have to upload the configuration file with importConfigFile or configure method."
+                )
         self.header = deepcopy(header)
         self.endpoints = deepcopy(endpoints)
         self.loggingEnabled = loggingEnabled
         self.logger = logger
         self.retry = retry
         self.token = None
+        self.config = deepcopy(config)
         requests.packages.urllib3.disable_warnings()
-        if config is not None: ## Config can be None for Edge Server Side
-            self.config = deepcopy(config)
+        if kwargs.get('origin') != "edge-no-auth": ## Config can be None for Edge Server Side
             if self.config["environment"] == "support":
                 self.connectionType = 'support'
                 if self.config["token"] != "":
@@ -286,25 +287,26 @@ class AdobeRequest:
         Checking if the token is still valid
         """
         now = time.time()
-        if now > self.config["date_limit"] and self.token is not None:
-            if self.loggingEnabled:
-                self.logger.warning("token expired. Trying to retrieve a new token")
-            if self.connectionType == 'jwt':
-                token_with_expiry = self.get_jwt_token_and_expiry_for_config(config=self.config)
-            elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
-                token_with_expiry = self.get_oauth_token_and_expiry_for_config(config=self.config)
-            self.token = token_with_expiry.token
-            self.config["token"] = self.token
-            if self.loggingEnabled:
-                self.logger.info("new token retrieved : {self.token}")
-            self.header.update({"Authorization": f"Bearer {self.token}"})
-            if self.connectionType == 'jwt':
-                timeScale = 1000 ## jwt returns milliseconds expiry
-            elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
-                timeScale = 1 ## oauth returns seconds expiry
-            self.config["date_limit"] = (
-                time.time() + token_with_expiry["expiry"] / timeScale - 500
-            )
+        if self.config is not None:
+            if now > self.config["date_limit"]:
+                if self.loggingEnabled:
+                    self.logger.warning("token expired. Trying to retrieve a new token")
+                if self.connectionType == 'jwt':
+                    token_with_expiry = self.get_jwt_token_and_expiry_for_config(config=self.config)
+                elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
+                    token_with_expiry = self.get_oauth_token_and_expiry_for_config(config=self.config)
+                self.token = token_with_expiry.token
+                self.config["token"] = self.token
+                if self.loggingEnabled:
+                    self.logger.info("new token retrieved : {self.token}")
+                self.header.update({"Authorization": f"Bearer {self.token}"})
+                if self.connectionType == 'jwt':
+                    timeScale = 1000 ## jwt returns milliseconds expiry
+                elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
+                    timeScale = 1 ## oauth returns seconds expiry
+                self.config["date_limit"] = (
+                    time.time() + token_with_expiry["expiry"] / timeScale - 500
+                )
 
     def updateSandbox(self, sandbox: str) -> None:
         """
