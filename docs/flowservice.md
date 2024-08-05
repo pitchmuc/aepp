@@ -5,7 +5,18 @@ It will include some examples but be aware that not all methods will be document
 To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/flow-service/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
-## What is the Flow Service in AEP ?
+## Menu
+
+- [What is the Flow Service module in AEP](#What-is-the-flow-service-module-in-aep)
+- [Importing the module](importing-the-module)
+- [The Flow Service class](#the-flow-service-class)
+  - [The Flow Service class attributes](#the-edge-class-attributes)
+  - [The Flow Service methods](#edge-methods)
+- [The FlowManager class](#the-flowmanager-class)
+- [The IdentityMapHelper class](#the-identitymaphelper-class)
+
+
+## What is the Flow Service module in AEP
 
 The Flow Service create the different connectors for data ingestion inside Platform.\
 It is true that you can ingest data directly into Adobe Experience Platform via the Data Insertion API.\
@@ -26,7 +37,7 @@ To import the module you can use the import statement with the `flowservice` key
 
 ```python
 import aepp
-aepp.importConfigFile('myConfig_file.json')
+prod = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='prod')
 
 from aepp import flowservice
 ```
@@ -42,13 +53,50 @@ This class can be instantiated by calling the `FlowService()` from the `flowserv
 Following the previous method described above, you can realize this:
 
 ```python
-flw = flowservice.FlowService()
+import aepp
+prod = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='prod')
+
+from aepp import flowservice
+flw = flowservice.FlowService(prod)
 ```
 
-2 parameters are possible for the instantiation of the class:
+3 parameters are possible for the instantiation of the class:
 
-* config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
+* config : OPTIONAL : mostly used to pass a ConnectObject instance that is linked to one sandbox. 
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
+* loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements, see [logging documentation](./logging.md)
+
+## The Flow Service attributes
+
+You can access some attributes once you have instantiated the class.\
+These following elements would be available:
+
+* sandbox : provide which sandbox is currently being used
+* header : provide the default header which is used for the requests.
+* loggingEnabled : if the logging capability has been used
+* endpoint : the default endpoint used for all methods.
+* data.flowId : a dictionary of flow name and flow ID.
+* data.flowSpecId : a dictionary of flow name and flow spec ID.
+
+### The data attributes 
+
+The `data` attributes is populated once you have used the `getFlows` methods at least once.\
+If you are using the `getFlows` method with parameters to filters it (`onlyDestinations` and `onlySources`), it will only get restricted the data into the data attributes. 
+
+## Flow Service Methods
+
+You can find below the different methods available once you have instantiated the class.
+
+
+
+## The FlowManager class
+
+On top of the `FlowService` class, another class is provided in this module. The `FlowManager` class.\
+The FlowManager class provide a way to group information on a specific flow.\
+A flow is always a grouping of a `targetConnection` and `sourceConnection` with some specification.\
+It takes several parameters as arguments:
+
+* flowId : REQUIRED : the flow ID to use for gathering all relationships.
 
 ## Use-cases
 

@@ -45,7 +45,7 @@ At the moment the current wrapper is containing the following sub modules:
   * [SchemaManager](./docs/schemaManager.md)
   * [FieldGroupManager](./docs/fieldGroupManager.md)
   * [DataTypeManager](./docs/dataTypeManager.md)
-* [queryservice](./docs/queryservice.md) (see note below)
+* [queryservice](./docs/queryservice.md)
 * [identity](./docs/identity.md)
 * [sandboxes](./docs/sandboxes.md)
 * [dataaccess](./docs/dataaccess.md)
@@ -63,32 +63,34 @@ At the moment the current wrapper is containing the following sub modules:
 * [accesscontrol](./docs/accesscontrol.md)
 * [privacyservice](./docs/privacyservice.md) (see 2nd note below)
 * [data hygiene](./docs/hygiene.md)
+* [edge](./docs/edge.md)
 
 Last but not least, the core methods are described here: [main](./docs/main.md)
 
-## queryservice module
+## Special classes
 
-The queryservice Module contains 2 classes:
+The wrapper is having a class in all submodule in order to connect to the different service APIs.\
+In addition to that, there are other classes that are provided in order to help you working with the API.
 
-### QueryService class
+### InteractiveQuery  and InteractiveQuery2 classes
 
-The QueryService class is the wrapper around the AEP Query Service API.\
-It provides access to the different endpoints available from the API.
-
-Use-Case example : At the moment the capability to scheduled query is only accessible from the API.
-
-[Detail documentation](./docs/queryservice.md)
-
-#### InteractiveQuery  and InteractiveQuery2 classes
-
-These classes are based on the pyGreSQL and psycopg2 module for python.\
+These classes are implemented in the `queryservice` modulebased on the pyGreSQL and psycopg2 module for python.\
 It provides you the capability to realize query directly from your local Jupyter notebook and returns a dataframe.
 In order to use these classes, you would need to install these module and a PSQL server.
 On top of that, you would need to the psql server accessible in the environment path.
 
-## PrivacyService module
+### SchemaManager, FieldGroupManager and DataTypeManager
 
-The privacy service module is part of the AEP python wrapper but requires a different JWT connection in console.adobe.io.
+These classes are available from the `schema` module and alloy you to handle the different elements of the schema definition.
+You can use them to extract information on your schema definition.
+
+### FlowManager
+
+The FlowManager is part of the `flowservice` module and allows you to group every aspect of a flow in a single class and simplify the search for the relationship between `sourceFlows`, `targetFlow` and the main flow elements.
+
+### PrivacyService module
+
+The privacy service module is part of the AEP python wrapper (`aepp`) but requires a different JWT connection in console.adobe.io.
 Be careful that your JWT connection has the correct setup to access this API endpoints.
 
 ## Releases

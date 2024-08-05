@@ -3,7 +3,7 @@
 This page list all of the changes that came during the different release of the aepp module.
 
 ## Version 0.3.6
-* Adding the `edge` module
+* Adding the `edge` module. [Documentation](./edge.md)
 * adding better docstring and documentation for `catalog` module [here](./catalog.md)
 * adding `enableDatasetUpsert` specific method in `catalog` to enable a profile for upsert.
 * fixing methods for `customerprofile` in order to retrieve destinations and projections.
