@@ -256,14 +256,14 @@ class IdentityMapHelper:
     def __repr__(self):
         return json.dumps(self.data,indent=2)
         
-    def addIdentity(self,namespace:str=None,identity:str=None,primary:bool=False,state:str="ambigous")->None:
+    def addIdentity(self,namespace:str=None,identity:str=None,primary:bool=False,state:str="ambiguous")->None:
         """
         Add an identity to the identityMap.
         Arguments:
             namespace : REQUIRED : User namespace
             identity : REQUIRED : User Value for that namespace
             primary : OPTIONAL : Default False.
-            state : OPTIONAL : Default "ambigous", possible state: "authenticated"
+            state : OPTIONAL : Default "ambiguous", possible state: "authenticated"
         """
         if namespace is None:
             raise ValueError("No namespace specified")
