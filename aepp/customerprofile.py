@@ -383,10 +383,11 @@ class Profile:
 
     def createMergePolicy(self, policy: dict = None) -> dict:
         """
+        Create a merge policy
         Arguments:
             policy: REQUIRED : The dictionary defining the policy
         Refer to the documentation : https://experienceleague.adobe.com/docs/experience-platform/profile/api/merge-policies.html
-        Example of JSON:
+        Example of a dictionary:
         {
             "name": "real-time-customer-profile-default",
             "imsOrgId": "1BD6382559DF0C130A49422D@AdobeOrg",
@@ -423,7 +424,7 @@ class Profile:
             mergePolicyId : REQUIRED : The merge Policy Id
             policy : REQUIRED : a dictionary giving the definition of the merge policy
             Refer to the documentation : https://experienceleague.adobe.com/docs/experience-platform/profile/api/merge-policies.html
-        Example of JSON:
+        Example of a dictionary:
         {
             "name": "real-time-customer-profile-default",
             "imsOrgId": "1BD6382559DF0C130A49422D@AdobeOrg",
@@ -725,7 +726,7 @@ class Profile:
     
     def createComputedAttribute(self, definition:dict = None) -> dict:
         """
-        Delete a specific computed attribute.
+        Create a specific computed attribute.
         Arguments:
             definition : REQUIRED : The definition of the computed attribute to be created.
         """
