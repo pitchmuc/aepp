@@ -536,7 +536,7 @@ class Profile:
         if output == "df":
             df = pd.DataFrame(res["data"])
             return df
-        return res
+        return res.get('data',res)
 
     def getPreviewDataSetOverlap(self, date: str = None, output: str = "raw") -> dict:
         """
@@ -562,7 +562,7 @@ class Profile:
         if output == "df":
             df = pd.DataFrame(res["data"])
             return df
-        return res
+        return res.get('data',res)
 
     def getPreviewNamespace(self, date: str = None, output: str = "raw") -> dict:
         """
@@ -587,7 +587,7 @@ class Profile:
         if output == "df":
             df = pd.DataFrame(res["data"])
             return df
-        return res
+        return res.get('data',res)
 
     def createDeleteSystemJob(self, dataSetId: str = None, batchId: str = None) -> dict:
         """
