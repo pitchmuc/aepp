@@ -5,6 +5,7 @@ The Schema Manager is built on top of all of the existing [AEP Schema Registry A
 
 ## Menu
 - [Instantiation](#instantiation)
+- [Schema Manager attributs](#schema-manager-attributes)
 - [Schema Manager methods](#schema-manager-methods)
 
 ## Instantiation
@@ -99,6 +100,18 @@ schemaManager = schema.SchemaManager(title='my Schema Title', schemaAPI=mySchema
 schemaManager = schema.SchemaManager(config=mySandbox)
 
 ```
+## Schema Manager attributes
+
+Once you have instantiated the schema manager you can access some attributes directly via this object.\
+The attributes available are:
+
+* fieldGroupIds : a list of Field Group Ids
+* fieldGroupsManagers : a dictionary of the Field group Name and their FieldGroupManager Instances
+* title : Title of the Schema
+* STATE : either "EXISTING" or "NEW"
+* id : $id of the schema
+* altId : meta:altId of the schema
+* classId : Class Id associated with the Schema
 
 ## Schema Manager methods
 

@@ -8,6 +8,7 @@ Therefore, when modifying the schema, what happens in the back-end is often a mo
 
 ## Menu
 - [Instantiation](#instantiation)
+- [Field Group Manager attrbites](#field-group-manager-attributes)
 - [Field Group Manager methods](#field-group-manager-methods)
 
 ## Instantiation
@@ -73,6 +74,17 @@ fgManager = schema.FieldGroupManager(title='my Field Group Title', schemaAPI=myS
 fgManager = schema.FieldGroupManager(config=mySandbox)
 
 ```
+## Field Group Manager attributes
+
+Once you have instantiated the field group manager you can access some attributes directly via this object.\
+The attributes available are:
+
+* EDITABLE : `True` if it can be modified directly via FieldGroupManager, `False` if contains custom DataType
+* title : Title of the Field Group
+* STATE : either "EXISTING" or "NEW"
+* id : $id of the field group
+* altId : meta:altId of the field Group
+* dataTypes : Dictionary of dataType Id and their DataTypeManager
 
 ## Field Group Manager methods
 
