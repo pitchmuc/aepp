@@ -79,7 +79,7 @@ Arguments:
 
 ### The `connectInstance` parameter
 
-In an environment when you have multiple organization and / or multiple sandboxes to manage via `aepp`, it would be cumbersome to import the new environment any time you want to switch the Organuzation or the sandbox.\
+In an environment when you have multiple organization and / or multiple sandboxes to manage via `aepp`, it would be cumbersome to import the new environment any time you want to switch the Organization or the sandbox.\
 For that use-case, we provide a way for you to save your configuration in an instance of a `ConnectObject` class.\
 This class will save your organization, your sandbox and any information related to your configuration setup.\
 Therefore, in instantiation of any class later on, such as Schema class per example, you can pass the appropriate instance to connect to the right organization.

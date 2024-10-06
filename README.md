@@ -34,7 +34,7 @@ You can use pyenv to generate a local environment if required.
 
 ## Getting Started
 
-In order to get started, I have compile a guide to help you initialize this module and what is required.
+In order to get started, I have compiled a guide to help you initialize this module and what is required.
 You can find this documentation [here](./docs/getting-started.md)
 
 ## AEPP docs
