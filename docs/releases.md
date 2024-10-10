@@ -8,7 +8,9 @@ This page list all of the changes that came during the different release of the 
 * adding `enableDatasetUpsert` specific method in `catalog` to enable a profile for upsert.
 * fixing methods for `customerprofile` in order to retrieve destinations and projections.
 * adding complete documentation for `ingestion` module.
-* Deprecated `uploadLargeFilePart` & `uploadLargeFileStartEnd` in `ingestion` module.
+* Deprecated `uploadLargeFilePart` & `uploadLargeFileStartEnd` in `ingestion` module.\
+Patch: 
+* adding `getParquetFilesToDataFrame` and `transformDataToDataFrame` methods in `dataaccess` 
 
 
 ## Version 0.3.5

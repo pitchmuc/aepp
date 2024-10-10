@@ -16,6 +16,7 @@ import io
 from typing import Union
 from .configs import ConnectObject
 import json
+import pandas as pd
 
 class DataAccess:
     """
@@ -321,3 +322,38 @@ class DataAccess:
                     "element is an object. Output is unclear. No save made.\nPlease save this element manually"
                 )
         return res
+    
+    def getParquetFilesToDataFrame(self,
+                            dataSetFileId: str = None,
+                            paths: list[str] = None
+                            )->pd.DataFrame:
+        """
+        Get a list of paths and download all of the files, transform them into dataframe and return the aggregated dataframe
+        Arguments:
+            dataSetFileId : REQUIRED : The ID of the dataset file you are retrieving.
+            path : REQUIRED : the list of name of the files. The contents of the files will be downloaded if this parameter is provided.
+                For example of value: ["YWGJ48C8R3QWPPQ_part-00001-93b3f57d-a7e5-4887-8832-f6ab1d1706b1-c0000.snappy.parquet"]
+                It is intended for data that has been saved as snappy.parquet file in AEP.
+        """
+        if dataSetFileId is None:
+            raise ValueError("Require a datasetFileId")
+        if paths is None or type(paths) != list:
+            raise ValueError("Require a list of file path to extract")
+        list_res = []
+        for file in paths:
+            list_res += self.getFiles(dataSetFileId,path=file)
+        list_df = []
+        for data in list_res:
+            list_df += pd.DataFrame(data)
+        full_df = pd.concat(list_df,ignore_index=True)
+        return full_df
+        
+    
+    def transformDataToDataFrame(self,data:bytes)->pd.DataFrame:
+        """
+        By passing the result of the getFiles with the parquet file path in the parameter, tries to return a pandas dataframe of the records.
+        Argument:
+            data : REQUIRED : The _io.BytesIO data format returned by the getFiles method. 
+        """
+        df = pd.read_parquet(data)
+        return df
