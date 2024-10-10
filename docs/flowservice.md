@@ -87,6 +87,411 @@ If you are using the `getFlows` method with parameters to filters it (`onlyDesti
 
 You can find below the different methods available once you have instantiated the class.
 
+#### getResource
+Template for requesting data with a GET method.\
+Arguments:
+* endpoint : REQUIRED : The URL to GET
+* params: OPTIONAL : dictionary of the params to fetch
+* format : OPTIONAL : Type of response returned. Possible values:
+  * json : default
+  * txt : text file
+  * raw : a response object from the requests module
+
+
+#### getConnections
+Returns the list of connections available.\
+Arguments:
+* limit : OPTIONAL : number of result returned per request (default 20)
+* n_results : OPTIONAL : number of total result returned (default 100, set to "inf" for retrieving everything)
+* count : OPTIONAL : if set to True, just returns the number of connections
+kwargs will be added as query parameters
+
+#### createConnection
+Create a connection based on either the data being passed or the information passed.\
+Arguments:
+* data : REQUIRED : dictionary containing the different elements required for the creation of the connection.
+
+In case you didn't pass a data parameter, you can pass different information.
+* name : REQUIRED : name of the connection.
+* auth : REQUIRED : dictionary that contains "specName" and "params"
+  * specName : string that names of the the type of authentication to be used with the base connection.
+  * params : dict that contains credentials and values necessary to authenticate and create a connection.
+* connectionSpec : REQUIRED : dictionary containing the "id" and "verison" key.
+  * id : The specific connection specification ID associated with source
+  * version : Specifies the version of the connection specification ID. Omitting this value will default to the most recent version\
+Possible kwargs:
+* responseType : by default json, but you can request 'raw' that return the requests response object.
+
+#### createStreamingConnection
+Create a Streaming connection based on the following connectionSpec :\
+```py
+"connectionSpec": {
+  "id": "bc7b00d6-623a-4dfc-9fdb-f1240aeadaeb",
+  "version": "1.0",
+  }
+```
+with provider ID : `521eee4d-8cbe-4906-bb48-fb6bd4450033`\
+Arguments:
+* name : REQUIRED : Name of the Connection.
+* sourceId : REQUIRED : The ID of the streaming connection you want to create (random string possible).
+* dataType : REQUIRED : The type of data to ingest (default xdm)
+* paramName : REQUIRED : The name of the streaming connection you want to create.
+* description : OPTIONAL : if you want to add a description\
+kwargs possibility:
+* specName : if you want to modify the specification Name.(Default : "Streaming Connection")
+* responseType : by default json, but you can request 'raw' that return the requests response object.
+
+#### getConnection
+Returns a specific connection object.\
+Argument:
+* connectionId : REQUIRED : The ID of the connection you wish to retrieve.
+
+
+#### connectionTest
+Test a specific connection ID.\
+Argument:
+* connectionId : REQUIRED : The ID of the connection you wish to test.
+
+#### deleteConnection
+Delete a specific connection ID.\
+Argument:
+* connectionId : REQUIRED : The ID of the connection you wish to delete.
+
+#### getConnectionSpecs
+Returns the list of connectionSpecs in that instance.\
+If that doesn't work, return the response.
+
+#### getConnectionSpecsMap
+Returns the detail for a specific connection.\
+Arguments:
+* specId : REQUIRED : The specification ID of a connection
+
+#### getConnectionSpecIdFromName
+Returns the connection spec ID corresponding to a connection spec name.\
+Arguments:
+* name : REQUIRED : The specification name of a connection
+
+#### getFlows
+Returns the flows set between Source and Target connection.\
+Arguments:
+* limit : OPTIONAL : number of results returned
+* n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
+* prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response.
+    Used to cut down the amount of data returned in the response body.
+    For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
+* filterMappingSetId : OPTIONAL : returns only the flow that possess the mappingSetId passed in a list.
+* filterSourceIds : OPTIONAL : returns only the flow that possess the sourceConnectionIds passed in a list.
+* filterTargetIds : OPTIONAL : returns only the flow that possess the targetConnectionIds passed in a list.
+* onlyDestinations : OPTIONAL : Filter to only destinations flows (max 100)
+* onlySources : OPTIONAL : Filter to only source flows (max 100)
+
+#### getFlow
+Returns the details of a specific flow.\
+Arguments:
+* flowId : REQUIRED : the flow ID to be returned
+
+#### deleteFlow
+Delete a specific flow by its ID.\
+Arguments:
+* flowId : REQUIRED : the flow ID to be returned
+
+
+#### createFlow
+Create a flow with the API.\
+Arguments:
+* obj : REQUIRED : body to create the flow service.
+  Details can be seen at <https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Flows/postFlow>
+  requires following keys : name, sourceConnectionIds, targetConnectionIds.
+
+#### createFlowDataLakeToDataLandingZone
+Create a Data Flow to move data from Data Lake to the Data Landing Zone.\
+Arguments:
+* name : REQUIRED : The name of the Data Flow.
+* source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake.
+* target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone.
+* schedule_start_time : REQUIRED : The time from which the Data Flow should start running.
+* schedule_frequency : OPTIONAL : The granularity of the Data Flow. Currently only "hour" supported.
+* schedule_interval : OPTIONAL : The interval on which the Data Flow runs. Either 3, 6, 9, 12 or 24. Default to 3.
+* transformation_mapping_id : OPTIONAL : If a transformation is required, its mapping ID.
+* transformation_name : OPTIONAL : If a transformation is required, its name.
+* transformation_version : OPTIONAL : If a transformation is required, its version.
+* version : OPTIONAL : The version of the Data Flow.
+* flow_spec_name : OPTIONAL : The name of the Data Flow specification. Same for all customers.
+
+#### createFlowDataLandingZoneToDataLake
+Create a Data Flow to move data from Data Lake to the Data Landing Zone.\
+Arguments:
+* name : REQUIRED : The name of the Data Flow.
+* source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake.
+* target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone.
+* schedule_start_time : REQUIRED : The time from which the Data Flow should start running.
+* schedule_frequency : OPTIONAL : The granularity of the Data Flow. Can be "hour" or "minute". Default to "minute".
+* schedule_interval : OPTIONAL : The interval on which the Data Flow runs. Default to 15
+* transformation_mapping_id : OPTIONAL : If a transformation is required, its mapping ID.
+* transformation_name : OPTIONAL : If a transformation is required, its name.
+* transformation_version : OPTIONAL : If a transformation is required, its version.
+* version : OPTIONAL : The version of the Data Flow.
+* flow_spec_name : OPTIONAL : The name of the Data Flow specification. Same for all customers.
+
+#### updateFlow
+update the flow based on the operation provided.\
+Arguments:
+* flowId : REQUIRED : the ID of the flow to Patch.
+* etag : REQUIRED : ETAG value for patching the Flow.
+* updateObj : REQUIRED : List of operation to realize on the flow.
+
+Follow the following structure:
+```JSON
+[
+    {
+        "op": "Add",
+        "path": "/auth/params",
+        "value": {
+        "description": "A new description to provide further context on a specified connection or flow."
+        }
+    }
+]
+```
+
+#### getFlowSpecs
+Returns the flow specifications.\
+Arguments:
+* prop : OPTIONAL : A comma separated list of top-level object properties to be returned in the response.
+* Used to cut down the amount of data returned in the response body.\
+For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
+
+#### getFlowSpecIdFromNames
+Return the Flow specification ID corresponding to some conditions.\
+Arguments:
+* flow_spec_name : REQUIRED : The flow specification name to look for
+* source_spec_name : OPTIONAL : Additional filter to only return a flow with a source specification ID.
+* target_spec_name : OPTIONAL : Additional filter to only return a flow with a target specification ID.
+
+#### getFlowSpec
+Return the detail of a specific flow ID Spec\
+Arguments:
+* flowSpecId : REQUIRED : The flow ID spec to be checked
+
+
+#### getRuns
+Returns the list of runs. Runs are instances of a flow execution.\
+Arguments:
+* limit : OPTIONAL : number of results returned per request
+* n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
+* prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response.
+    Used to cut down the amount of data returned in the response body.
+    For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
+
+#### createRun
+Generate a run based on the flowId.\
+Arguments:
+* flowId : REQUIRED : the flow ID to run
+* status : OPTIONAL : Status of the flow
+
+#### getRun
+Return a specific runId.\
+Arguments:
+* runId : REQUIRED : the run ID to return
+
+
+#### getSourceConnections
+Return the list of source connections\
+Arguments:
+* n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)\
+kwargs will be added as query parameterss
+
+#### getSourceConnection
+Return detail of the sourceConnection ID\
+Arguments:
+* sourceConnectionId : REQUIRED : The source connection ID to be retrieved
+
+
+#### deleteSourceConnection
+Delete a sourceConnection ID\
+Arguments:
+* sourceConnectionId : REQUIRED : The source connection ID to be deleted
+
+
+#### createSourceConnection
+Create a sourceConnection based on the dictionary passed.\
+Arguments:
+* obj : REQUIRED : the data to be passed for creation of the Source Connection.\
+
+Details can be seen at <https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Source_connections/postSourceConnection>\
+requires following keys : name, data, connectionSpec.
+
+
+#### createSourceConnectionStreaming
+Create a source connection based on streaming connection created.\
+Arguments:
+* connectionId : REQUIRED : The Streaming connection ID.
+* name : REQUIRED : Name of the Connection.
+* format : REQUIRED : format of the data sent (default : delimited)
+* description : REQUIRED : Description of of the Connection Source.
+* spec_name : OPTIONAL : The name of the source specification corresponding to Streaming.
+
+
+#### createSourceConnectionDataLandingZone
+Create a new data landing zone connection.\
+Arguments:
+* name : REQUIRED : A name for the connection
+* format : REQUIRED : The type of data type loaded. Default "delimited". Can be "json" or "parquet" 
+* path : REQUIRED : The path to the data you want to ingest. Can be a single file or folder.
+* type : OPTIONAL : Use "file" if path refers to individual file, otherwise "folder".
+* recursive : OPTIONAL : Whether to look for files recursively under the path or not.
+* spec_name : OPTIONAL : The name of the source specification corresponding to Data Landing Zone.
+
+#### createSourceConnectionDataLake
+Create a new data lake connection.\
+Arguments:
+* name : REQUIRED : A name for the connection
+* format : REQUIRED : The type of data type loaded. Default "delimited". Can be "json" or "parquet"
+* dataset_ids : REQUIRED : A list of dataset IDs acting as a source of data.
+* spec_name : OPTIONAL : The name of the source specification corresponding to Data Lake.
+
+
+#### updateSourceConnection
+Update a source connection based on the ID provided with the object provided.\
+Arguments:
+* sourceConnectionId : REQUIRED : The source connection ID to be updated
+* etag: REQUIRED : A header containing the etag value of the connection or flow to be updated.
+* updateObj : REQUIRED : The operation call used to define the action needed to update the connection. Operations include add, replace, and remove.
+
+#### getTargetConnections
+Return the target connections\
+Arguments:
+* n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)\
+kwargs will be added as query parameters
+
+
+#### getTargetConnection
+Retrieve a specific Target connection detail.\
+Arguments:
+* targetConnectionId : REQUIRED : The target connection ID is a unique identifier used to create a flow.
+
+#### deleteTargetConnection
+Delete a specific Target connection detail\
+Arguments:
+* targetConnectionId : REQUIRED : The target connection ID to be deleted
+
+
+#### createTargetConnection
+Create a new target connection\
+Arguments:
+* name : REQUIRED : The name of the target connection
+* connectionSpecId : REQUIRED : The connectionSpecId to use.
+* datasetId : REQUIRED : The dataset ID that is the target
+* version : REQUIRED : version to be used (1.0 by default)
+* format : REQUIRED : Data format to be used (parquet_xdm by default)
+* description : OPTIONAL : description of your target connection
+* data : OPTIONAL : If you pass the complete dictionary for creation\
+Details can be seen at <https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Target_connections/postTargetConnection>\
+requires following keys : name, data, params, connectionSpec.
+
+#### createTargetConnectionDataLandingZone
+Create a target connection to the Data Landing Zone\
+Arguments:
+* name : REQUIRED : The name of the target connection
+* format : REQUIRED : Data format to be used
+* path : REQUIRED : The path to the data you want to ingest. Can be a single file or folder.
+* type : OPTIONAL : Use "file" if path refers to individual file, otherwise "folder".
+* version : REQUIRED : version of your target destination
+* description : OPTIONAL : description of your target destination.
+* spec_name : OPTIONAL : The name of the target specification corresponding to Data Lake.
+
+
+#### createTargetConnectionDataLake
+Create a target connection to the AEP Data Lake.\
+Arguments:
+* name : REQUIRED : The name of your target Destination
+* datasetId : REQUIRED : the dataset ID of your target destination.
+* schemaId : REQUIRED : The schema ID of your dataSet. (NOT meta:altId)
+* format : REQUIRED : format of your data inserted
+* version : REQUIRED : version of your target destination
+* description : OPTIONAL : description of your target destination.
+* spec_name : OPTIONAL : The name of the target specification corresponding to Data Lake.
+
+
+#### updateTargetConnection
+Update a target connection based on the ID provided with the object provided.\
+Arguments:
+* targetConnectionId : REQUIRED : The target connection ID to be updated
+* etag: REQUIRED : A header containing the etag value of the connection or flow to be updated.
+* updateObj : REQUIRED : The operation call used to define the action needed to update the connection. Operations include add, replace, and remove.
+
+#### updatePolicy
+By passing the policy IDs as a list, we update the Policies apply to this Flow.\
+Arguments:
+* flowId : REQUIRED : The Flow ID to be updated
+* policies : REQUIRED : The list of policies Id to add to the Flow\
+    example of value: "/dulepolicy/marketingActions/06621fe3q-44t3-3zu4t-90c2-y653rt3hk4o499"
+* operation : OPTIONAL : By default "replace" the current policies. It can be an "add" operation.
+
+
+#### getLandingZoneContainer
+Returns a dictionary of the available Data Landing Zone container information.\
+Arguments:
+* dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+
+
+#### getLandingZoneStorageName
+Returns the name of the DLZ storage corresponding to this type.\
+Arguments:
+* dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+
+
+#### getLandingZoneStorageTTL
+Returns the TTL in days of the DLZ storage corresponding to this type.\
+Arguments:
+* dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+
+
+#### getLandingZoneCredential
+Returns a dictionary with the credential to be used in order to create a new zone\
+Arguments:
+* dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+
+#### getLandingZoneSASUri
+Returns the SAS URI of the DLZ container corresponding to this type.\
+Arguments:
+* dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+
+
+#### getLandingZoneSASToken
+Returns the SAS token of the DLZ container corresponding to this type.\
+Arguments:
+* dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+
+
+#### getLandingZoneNamespace
+Returns either:
+* 'storage account name' of the DLZ storage if provisioned on Azure\
+or
+* 's3 bucket name' of the DLZ storage if provisioned on Amazon\
+Arguments:
+* dlz_type : OPTIONAL : The type of DLZ container - default to "user_drop_zone" but can be "dlz_destination"
+
+#### exploreLandingZone
+Return the structure of your landing zones\
+Arguments:
+* objectType : OPTIONAL : The type of the object you want to access.(root (default), folder, file)
+* fileType : OPTIONAL : The type of the file to see. (delimited, json, parquet )
+* object : OPTIONAL : To be used to defined the path when you are using the "folder" or "file" attribute on objectType
+
+#### getLandingZoneContent
+Return the structure of your landing zones\
+Arguments:
+* fileType : OPTIONAL : The type of the file to see.\
+  Possible option : "delimited", "json" or "parquet"
+* file : OPTIONAL : the path to the specific file.
+* determineProperties : OPTIONAL : replace other parameter to auto-detect file properties.
+* preview : OPTIONAL : If you wish to see a preview of the file.
+
+#### postFlowAction
+Define a flow action to realize.\
+Arguments:
+* flowId : REQUIRED : The flow ID to pass the action
+* action : REQUIRED : The type of action to pass
 
 
 ## The FlowManager class

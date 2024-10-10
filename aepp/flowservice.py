@@ -515,7 +515,7 @@ class FlowService:
         Arguments:
             obj : REQUIRED : body to create the flow service.
                 Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Flows/postFlow
-                requires following keys : name, flowSpec, sourceConnectionIds, targetConnectionIds, transformations, scheduleParams.
+                requires following keys : name, sourceConnectionIds, targetConnectionIds.
         """
         if obj is None:
             if any(param is None for param in [name, source_connection_id, target_connection_id]):
@@ -722,7 +722,7 @@ class FlowService:
         target_spec_name: str = None
     ) -> str:
         """
-        Return the Flow specification ID corresponding to some conditions..
+        Return the Flow specification ID corresponding to some conditions.
         Arguments:
             flow_spec_name : REQUIRED : The flow specification name to look for
             source_spec_name : OPTIONAL : Additional filter to only return a flow with a source specification ID.
@@ -796,7 +796,7 @@ class FlowService:
         Generate a run based on the flowId.
         Arguments:
             flowId : REQUIRED : the flow ID to run
-            stats : OPTIONAL : Status of the flow
+            status : OPTIONAL : Status of the flow
         """
         path = "/runs"
         if flowId is None:
@@ -1034,7 +1034,7 @@ class FlowService:
         Return the target connections
         Arguments:
             n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
-        kwargs will be added as query parameterss
+        kwargs will be added as query parameters
         """
         params = {**kwargs}
         path: str = f"/targetConnections"
@@ -1463,6 +1463,12 @@ class FlowService:
         return res
 
     def postFlowAction(self,flowId:str,action:str)->dict:
+        """
+        Define a flow action to realize.
+        Arguments:
+            flowId : REQUIRED : The flow ID to pass the action
+            action : REQUIRED : The type of action to pass
+        """
         if flowId is None:
             raise Exception("Requires a flowId to be present")
         if action is None:
