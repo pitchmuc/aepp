@@ -182,13 +182,21 @@ class Catalog:
             created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
             lastBatchStatus : Filter by the status of the last related batch of the dataset [success, inactive, replay]
             properties : A comma separated allowlist of top-level object properties to be returned in the response. Used to cut down the number of properties and amount of data returned in the response bodies.
+            orderBy : Sort parameter and direction for sorting the response. Ex. orderBy=asc:created,updated. This was previously called sort.
+                Example: orderBy=orderBy=asc:created,updated
         """
         path = "/lastBatches"
         params = {"limit":limit}
         if dataSetId is not None:
             params['dataSetId'] = dataSetId
         if kwargs.get('created', None) is not None:
-            params = {'created',kwargs.get('created')}
+            params['created'] = kwargs.get('created')
+        if kwargs.get('orderBy', None) is not None:
+            params['orderBy'] = kwargs.get('orderBy')
+        if kwargs.get('orderBy', None) is not None:
+            params['orderBy'] = kwargs.get('orderBy')
+        if kwargs.get('properties', None) is not None:
+            params['properties'] = kwargs.get('properties')
         res = self.connector.getData(self.endpoint+path,params=params)
         return res
         
