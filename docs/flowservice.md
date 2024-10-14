@@ -10,11 +10,9 @@ Alternatively, you can use the docstring in the methods to have more information
 - [What is the Flow Service module in AEP](#What-is-the-flow-service-module-in-aep)
 - [Importing the module](importing-the-module)
 - [The Flow Service class](#the-flow-service-class)
-  - [The Flow Service class attributes](#the-edge-class-attributes)
-  - [The Flow Service methods](#edge-methods)
+  - [The Flow Service class attributes](#the-flow-service-attributes)
+  - [The Flow Service methods](#flow-service-methods)
 - [The FlowManager class](#the-flowmanager-class)
-- [The IdentityMapHelper class](#the-identitymaphelper-class)
-
 
 ## What is the Flow Service module in AEP
 

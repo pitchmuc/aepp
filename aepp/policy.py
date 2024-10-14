@@ -112,12 +112,12 @@ class Policy:
         res = self.connector.putData(self.endpoint + path, data=obj)
         return res
 
-    def bulkEval(self, data: dict = None) -> dict:
+    def bulkEval(self, data: list = None) -> dict:
         """
         Enable to pass a list of policies to check against a list of dataSet.
         Argument:
-            data : REQUIRED : Dictionary describing the set of label and datasets.
-                see https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Bulk_evaluation/bulkEvalPost
+            data : REQUIRED : List/array describing the set of label and datasets.
+                see https://developer.adobe.com/experience-platform-apis/references/policy-service/#operation/bulkEval
         """
         path = "/bulk-eval"
         if data is None:

@@ -7,6 +7,14 @@ The module is therefore relying on the information of Experience League and is h
 **NOTE** : All functionalities of the data hygiene setup is not yet provided to all customers. Some requires migration of your data platform, some are available after a licence purchase.\
 Contact your adobe representative to know what can be used in your organization.
 
+## Menu
+
+- [Data Hygiene in AEP](#data-hygiene-in-aep)
+- [Importing the module](importing-the-module)
+- [Generating a Hygiene instance](#generating-a-hygiene-instance)
+  - [Data Hygiene Methods](#data-hygiene-methods)
+
+
 ## Importing the module
 
 Before importing the module, you would need to import the configuration file, or alternatively provide the information required for the API connection through the configure method. [see getting starting](./getting-started.md)
