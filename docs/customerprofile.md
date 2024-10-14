@@ -13,7 +13,7 @@ Alternatively, you can use the docstring in the methods to have more information
 - [Importing the module](#importing-the-module)
 - [The Profile class](#the-profile-class)
     - [The Profile class attributes](#the-profile-attributes)
-    - [The Profile methods]()
+    - [The Profile methods](#the-profile-methods)
 - [Use Cases](#customer-profile-use-cases)
 
 ## What is the Customer Profile API
