@@ -96,7 +96,7 @@ class Edge:
             data['token'] = self.token
         return json.dumps(data,indent=2)    
 
-    def interact(self,payload:dict=None,xdm:dict=None,data:dict=None,scopes:list=None,surfaces:list=None,params:dict=None)->dict:
+    def interact(self,payload:dict=None,xdm:dict=None,data:dict=None,scopes:list=None,surfaces:list=None,params:dict=None,assuranceToken:str=None)->dict:
         """
         Send an interact calls. It usually return a response that can be used on the application.
         Arguments:
@@ -106,6 +106,7 @@ class Edge:
             scopes : OPTIONAL : In case you want to pass Target scopes/mbox in the request. List of strings.
             surfaces : OPTIONAL : In case you want to pass AJO surfaces in the request. List of strings.
             params: OPTIONAL : If you want to pass additional query parameter. It takes a dictionary.
+            assuranceToken : OPTIONAL : If you want to pass an assurance token value for debugging via a session. Usually one value, additional ones are separated by a pip such as: "dc9d59df-9b15-44d3-82d6-2f718ad5ec4a|7ddf4cc5-e304-4d95-991c-01359fe9a7de"
         """
         if payload is None and xdm is None and data is None:
             raise ValueError("an argument should be used to send data")
@@ -113,6 +114,8 @@ class Edge:
         if params is not None:
             for key, value in params.items():
                 privateParams[key] = value
+        if assuranceToken is not None:
+            params['adobeAepValidationToken'] = assuranceToken
         if payload is not None:
             dataPayload = payload
         else:
@@ -184,7 +187,7 @@ class Edge:
         res = self.connector.postData(self.endpoint,params=privateParams,data=dataPayload)
         return res
     
-    def collect(self,payloads:list=None,xdms:list=None,data:list=None)->dict:
+    def collect(self,payloads:list=None,xdms:list=None,data:list=None,assuranceToken:str=None)->dict:
         """
         In case you want to send multiple requests in one go. These are not returning response that can be used by the application.
         They are just sending data to AEP.
@@ -193,11 +196,15 @@ class Edge:
             payloads : OPTIONAL : A list of payload to be send via Edge.
             xdms : OPTIONAL : A list of xdm to be sent via Edge
             data : OPTIONAL : A list of data to attach to the xdms calls (note that the list of xdms and data should be in the same order)
+            assuranceToken : OPTIONAL : If you want to pass an assurance token value for debugging via a session. Usually one value, additional ones are separated by a pip such as: "dc9d59df-9b15-44d3-82d6-2f718ad5ec4a|7ddf4cc5-e304-4d95-991c-01359fe9a7de"
         """
         if payloads is None and xdms is None and data is None:
             raise ValueError("an argument should be used to send data")
+        params = {**self.params}
+        if assuranceToken is not None:
+            params['adobeAepValidationToken'] = assuranceToken
         if payloads is not None:
-            res = self.connector.postData(self.endpoint,params=self.params,data=payloads)
+            res = self.connector.postData(self.endpoint,params=params,data=payloads)
             return res
         elif xdms is not None:
             dataPayloads = [
@@ -212,7 +219,7 @@ class Edge:
                 for index,d in enumerate(data):
                     if d is not None:
                         dataPayloads[index]['event']['data'] = data
-            res = self.connector.postData(self.endpoint,params=self.params,data=dataPayloads)
+            res = self.connector.postData(self.endpoint,params=params,data=dataPayloads)
             return res
         elif data is not None:
             dataPayloads = [
@@ -223,7 +230,7 @@ class Edge:
                 }
                 for d in data
             ]
-            res = self.connector.postData(self.endpoint,params=self.params,data=dataPayloads)
+            res = self.connector.postData(self.endpoint,params=params,data=dataPayloads)
             return res
 
 class IdentityMapHelper:
