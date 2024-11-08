@@ -2,6 +2,21 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## Version 0.3.7
+* adding support for assurance token on Edge methods
+* adding following methods to flowservice
+  * `createFlowStreaming`
+  * `createTargetConnectionDatasetToDataLandingZone`
+  * `getExportableDatasets`
+  * `getExportableDatasetsDLZ`
+  * `createBaseConnectionS3Target`
+  * `createBaseConnectionBlobTarget`
+  * `createBaseConnectionDLZTarget`
+  * `exportDatasetToDLZ`
+  * [see documentation](./flowservice.md#createFlowStreaming)
+
+
+
 ## Version 0.3.6
 * Adding the `edge` module. [Documentation](./edge.md)
 * adding better docstring and documentation for `catalog` module [here](./catalog.md)

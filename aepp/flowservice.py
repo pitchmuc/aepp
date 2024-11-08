@@ -17,6 +17,7 @@ import deprecation
 from dataclasses import dataclass
 from typing import Union
 from .configs import ConnectObject
+import datetime
 
 @dataclass
 class _Data:
@@ -206,13 +207,13 @@ class FlowService:
 
             In case you didn't pass a data parameter, you can pass different information.
             name : REQUIRED : name of the connection.
-            auth : REQUIRED : dictionary that contains "specName" and "params"
-                specName : string that names of the the type of authentication to be used with the base connection.
-                params : dict that contains credentials and values necessary to authenticate and create a connection.
             connectionSpec : REQUIRED : dictionary containing the "id" and "verison" key.
                 id : The specific connection specification ID associated with source
                 version : Specifies the version of the connection specification ID. Omitting this value will default to the most recent version
-        Possible kwargs:
+            auth : OPTIONAL : dictionary that contains "specName" and "params"
+                specName : string that names of the the type of authentication to be used with the base connection.
+                params : dict that contains credentials and values necessary to authenticate and create a connection.
+            Possible kwargs:
             responseType : by default json, but you can request 'raw' that return the requests response object.
         """
         if self.loggingEnabled:
@@ -221,7 +222,6 @@ class FlowService:
         if data is not None:
             if (
                 "name" not in data.keys()
-                or "auth" not in data.keys()
                 or "connectionSpec" not in data.keys()
             ):
                 raise Exception(
@@ -231,25 +231,24 @@ class FlowService:
             res = self.connector.postData(self.endpoint + path, data=obj,format=kwargs.get('responseType','json'))
             return res
         elif data is None:
-            if "specName" not in auth.keys() or "params" not in auth.keys():
-                raise Exception(
-                    "Require some keys to be present in auth dict : specName, params"
-                )
             if "id" not in connectionSpec.keys():
                 raise Exception(
                     "Require some keys to be present in connectionSpec dict : id"
                 )
             if name is None:
                 raise Exception("Require a name to be present")
-            obj = {"name": name, "auth": auth, "connectionSpec": connectionSpec}
+            obj = {"name": name, "connectionSpec": connectionSpec}
+            if auth is not None:
+                obj["auth"] = auth
             res = self.connector.postData(self.endpoint + path, data=obj,format=kwargs.get('responseType','json'))
             return res
 
-    def createStreamingConnection(
+    def createConnectionStreaming(
         self,
         name: str = None,
         sourceId: str = None,
         dataType: str = "xdm",
+        authenticationRequired:bool=False,
         paramName: str = None,
         description: str = "provided by aepp",
         **kwargs,
@@ -261,10 +260,11 @@ class FlowService:
                 "version": "1.0",
             },
             with provider ID : 521eee4d-8cbe-4906-bb48-fb6bd4450033
+        It requires a mapping file to be provided in the flow.
         Arguments:
             name : REQUIRED : Name of the Connection.
             sourceId : REQUIRED : The ID of the streaming connection you want to create (random string possible).
-            dataType : REQUIRED : The type of data to ingest (default xdm)
+            dataType : REQUIRED : The type of data to ingest (default "xdm") possible value: "raw".
             paramName : REQUIRED : The name of the streaming connection you want to create.
             description : OPTIONAL : if you want to add a description
         kwargs possibility:
@@ -298,6 +298,8 @@ class FlowService:
                 },
             },
         }
+        if authenticationRequired:
+            obj['auth']['params']['authenticationRequired'] = True
         res = self.createConnection(data=obj,responseType=kwargs.get('responseType','json'))
         return res
 
@@ -502,17 +504,21 @@ class FlowService:
         source_connection_id: str = None,
         target_connection_id: str = None,
         schedule_start_time: str = None,
+        schedule_end_time: str = None,
         schedule_frequency: str = "minute",
         schedule_interval: int = 15,
         transformation_mapping_id: str = None,
         transformation_name: str = None,
         transformation_version: int = 0,
         obj: dict = None,
-        version: str = "1.0"
+        version: str = "1.0",
+        **kwargs
     ) -> dict:
         """
         Create a flow with the API.
         Arguments:
+            flow_spec_id : REQUIRED : flow spec ID If you decide to use specific parameterization
+            name : REQUIRED : Name of the flow 
             obj : REQUIRED : body to create the flow service.
                 Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Flows/postFlow
                 requires following keys : name, sourceConnectionIds, targetConnectionIds.
@@ -537,8 +543,15 @@ class FlowService:
                 "transformations": [],
                 "scheduleParams": {}
             }
+            if kwargs.get("export_mode",None) is not None:## infer dataset export
+                obj["scheduleParams"]["exportMode"] = kwargs.get("export_mode",None)
+                obj["scheduleParams"]["foldernameTemplate"] = "%DESTINATION%_%DATASET_ID%_%DATETIME(YYYYMMdd_HHmmss)%"
+            if kwargs.get("schedule_timeUnit",None) is not None:
+                obj["scheduleParams"]["timeUnit"] = kwargs.get("schedule_timeUnit",None)
             if schedule_start_time is not None:
                 obj["scheduleParams"]["startTime"] = schedule_start_time
+            if schedule_end_time is not None:
+                obj["scheduleParams"]["endTime"] = schedule_end_time
             if schedule_frequency is not None:
                 obj["scheduleParams"]["frequency"] = schedule_frequency
             if schedule_interval is not None:
@@ -567,6 +580,42 @@ class FlowService:
         path: str = "/flows"
         res: dict = self.connector.postData(self.endpoint + path, data=obj)
         return res
+    
+    def createFlowStreaming(self,
+                            name: str = None,
+                            description: str = "power by aepp",
+                            source_connection_id: str = None,
+                            target_connection_id: str = None,
+                            transformation : bool = False,
+                            transformation_mapping_id: str = None,
+                            transformation_name: str = None,
+                            transformation_version: int = 0,
+                            )-> dict:
+        """
+        Create a streaming flow with or without transformation
+            name : REQUIRED : The name of the Data Flow.
+            description : OPTIONAL : description of the Flow
+            source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake.
+            target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone.
+            transformation : OPTIONAL : if it is using transformation step. If Optional, set to True.
+            transformation_mapping_id : OPTIONAL : If a transformation is required, its mapping ID.
+            transformation_name : OPTIONAL : If a transformation is required, its name.
+            transformation_version : OPTIONAL : If a transformation is required, its version.
+        """
+        if transformation:
+            flowSpecId = 'c1a19761-d2c7-4702-b9fa-fe91f0613e81'
+        else:
+            flowSpecId = 'd8a6f005-7eaf-4153-983e-e8574508b877'
+        return self.createFlow(
+            flow_spec_id=flowSpecId,
+            name=name,
+            description=description,
+            source_connection_id=source_connection_id,
+            target_connection_id=target_connection_id,
+            transformation_mapping_id=transformation_mapping_id,
+            transformation_name=transformation_name,
+            transformation_version=transformation_version,
+        )
 
     def createFlowDataLakeToDataLandingZone(
         self,
@@ -574,15 +623,16 @@ class FlowService:
         source_connection_id: str,
         target_connection_id: str,
         schedule_start_time: str,
+        schedule_end_time:str=None,
+        export_mode: str=None,
         schedule_frequency: str = "hour",
+        schedule_timeUnit:str = None,
         schedule_interval: int = 3,
         transformation_mapping_id: str = None,
         transformation_name: str = None,
         transformation_version: int = 0,
         version: str = "1.0",
-        flow_spec_name: str = "Data Landing Zone",
-        source_spec_name: str = "activation-datalake",
-        target_spec_name: str = "Data Landing Zone"
+        description: str = "power by aepp"
     ) -> dict:
         """
         Create a Data Flow to move data from Data Lake to the Data Landing Zone.
@@ -590,23 +640,28 @@ class FlowService:
             name : REQUIRED : The name of the Data Flow.
             source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake.
             target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone.
-            schedule_start_time : REQUIRED : The time from which the Data Flow should start running.
+            schedule_start_time : REQUIRED : The time from which the Data Flow should start running. Unix in seconds.
+            schedule_end_time : OPTIONAL : The time from which the data flow should not run anymore. Unix in seconds.
+            export_mode : OPTIONAL : Type of export you want for dataset. "DAILY_FULL_EXPORT" or "FIRST_FULL_THEN_INCREMENTAL"
             schedule_frequency : OPTIONAL : The granularity of the Data Flow. Currently only "hour" supported.
             schedule_interval : OPTIONAL : The interval on which the Data Flow runs. Either 3, 6, 9, 12 or 24. Default to 3.
             transformation_mapping_id : OPTIONAL : If a transformation is required, its mapping ID.
             transformation_name : OPTIONAL : If a transformation is required, its name.
             transformation_version : OPTIONAL : If a transformation is required, its version.
             version : OPTIONAL : The version of the Data Flow.
-            flow_spec_name : OPTIONAL : The name of the Data Flow specification. Same for all customers.
+            description : OPTIONAL : description of the Flow
         """
-        flow_spec_id = self.getFlowSpecIdFromNames(flow_spec_name, source_spec_name, target_spec_name)
         return self.createFlow(
-            flow_spec_id=flow_spec_id,
+            flow_spec_id="cd2fc47e-e838-4f38-a581-8fff2f99b63a",
             name=name,
+            description=description,
             source_connection_id=source_connection_id,
             target_connection_id=target_connection_id,
             schedule_start_time=schedule_start_time,
+            schedule_end_time=schedule_end_time,
+            export_mode=export_mode,
             schedule_frequency=schedule_frequency,
+            schedule_timeUnit=schedule_timeUnit,
             schedule_interval=schedule_interval,
             transformation_mapping_id=transformation_mapping_id,
             transformation_name=transformation_name,
@@ -896,7 +951,8 @@ class FlowService:
         connectionId: str = None,
         name: str = None,
         format: str = "delimited",
-        description: str = "",
+        description: str = "Streaming Source powered by aepp",
+        providerId:str = "521eee4d-8cbe-4906-bb48-fb6bd4450033",
         spec_name: str = "Streaming Connection"
     ) -> dict:
         """
@@ -906,14 +962,18 @@ class FlowService:
             name : REQUIRED : Name of the Connection.
             format : REQUIRED : format of the data sent (default : delimited)
             description : REQUIRED : Description of of the Connection Source.
-            spec_name : OPTIONAL : The name of the source specification corresponding to Streaming.
+            providerId : OPTIONAL : By default using the 521eee4d-8cbe-4906-bb48-fb6bd4450033 provider ID from 'Streaming Connection' connection Specification. 
+            spec_name : OPTIONAL : The name of the source specification corresponding used to get the providerId, if you decide to change from the default provider ID specified by default.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createSourceConnectionStreaming")
-        spec_id = self.getConnectionSpecIdFromName(spec_name)
+        if providerId is None:
+            if spec_name is None:
+                raise ValueError("spec_name is required if you did not want the default provider ID")
+            spec_id = self.getConnectionSpecIdFromName(spec_name)
         obj = {
             "name": name,
-            "providerId": "521eee4d-8cbe-4906-bb48-fb6bd4450033",
+            "providerId": providerId,
             "description": description,
             "baseConnectionId": connectionId,
             "connectionSpec": {
@@ -1166,6 +1226,52 @@ class FlowService:
             self.logger.debug(f"Starting createTargetConnectionDataLandingZone")
         res = self.createTargetConnection(data=obj)
         return res
+    
+    def createTargetConnectionDatasetToDataLandingZone(
+        self,
+        name: str = None,
+        baseConnectionId: str = None,
+        path: str = None,
+        datasetFileType: str = "JSON",
+        compression:str= "GZIP",
+        version: str = "1.0",
+        description: str = "power by aepp"
+    ) -> dict:
+        """
+        Create a target connection to the Data Landing Zone
+        Arguments:
+                name : REQUIRED : The name of the target connection
+                baseConnectionId : REQUIRED : The base connection ID you have used which define the dataset to export.
+                path : REQUIRED : The path to the data you want to ingest. Can be a single file or folder.
+                datasetFileType : OPTIONAL : Default JSON compressed data, other possible value "PARQUET".
+                compression : OPTIONAL : If you wish to compress the file (default: GZIP, other value : NONE). JSON file cannot be sent uncompressed.
+                version : REQUIRED : version of your target destination
+                description : OPTIONAL : description of your target destination.
+        """
+        if name is None:
+            raise ValueError("Require a name for the connection")
+        if baseConnectionId is None:
+            raise Exception("Require a base connection ID")
+        obj = {
+            "name": name,
+            "description" : description,
+            "baseConnectionId": baseConnectionId,
+            "params": {
+                "mode": "Server-to-server",
+                "path": path,
+                "compression": compression,
+                "datasetFileType": datasetFileType
+            },
+            "connectionSpec": {
+                "id": "10440537-2a7b-4583-ac39-ed38d4b848e8",
+                "version": version
+            }
+        }
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createTargetConnectionDatasetToDataLandingZone")
+        res = self.createTargetConnection(data=obj)
+        return res
+
 
     def createTargetConnectionDataLake(
         self,
@@ -1478,6 +1584,170 @@ class FlowService:
         privateHeader.pop("Content-Type")
         res = self.connector.postData(endpoint=self.endpoint + path, headers=privateHeader)
         return res
+    
+    def getExportableDatasets(self,connectionSpec:str=None,)->list:
+        """
+        Retrieve the exportable dataset 
+        Arguments:
+            connectionSpec : REQUIRED : The connection Spec used for the flow 
+        """
+        path = f"/connectionSpecs/{connectionSpec}/configs"
+        params = {"outputType":"activationDatasets","outputField":"datasets","limit":100,"start":0}
+        res = self.connector.getData(self.endpoint+path,params=params)
+        items = res.get('items',[])
+        hasnext = res.get('pageInfo',{}).get('hasNext',False)
+        while hasnext:
+            params["start"] += 100
+            res = self.connector.getData(self.endpoint+path,params=params)
+            items += res.get('items',[])
+            hasnext = res.get('pageInfo',{}).get('hasNext',False)
+        return items
+    
+    def getExportableDatasetsDLZ(self)->list:
+        """
+        Return the exportable dataset to Data Landing Zone
+        """
+        results = self.getExportableDatasets('10440537-2a7b-4583-ac39-ed38d4b848e8')
+        return results
+
+
+    def createBaseConnectionS3Target(self,name:str=None,s3AccessKey:str=None,s3SecretKey:str=None)->dict:
+        """
+        Create a base connection for S3 storage as Target.
+        Arguments:
+            name : REQUIRED : Name of the connectionBase
+            s3AccessKey : REQUIRED : The S3 Access Key to access the storage
+            s3SecretKey : REQUIRED : The S3 Secret Key to access the storage
+        """
+        if name is None or s3AccessKey is None or s3SecretKey is None:
+            raise Exception("The required parameters are not filled")
+        data = {"name": name,
+        "auth": {
+                "specName": "Access Key",
+                "params": {
+                "s3SecretKey": s3SecretKey,
+                "s3AccessKey": s3AccessKey
+                }
+            },
+            "connectionSpec": {
+                "id": "4fce964d-3f37-408f-9778-e597338a21ee",
+                "version": "1.0"
+            }
+        }
+        res = self.createConnection(data)
+        return res
+
+    def createBaseConnectionBlobTarget(self,name:str=None,connectionString:str=None)->dict:
+        """
+        Create a base connection for Blob Storage as Target. 
+        Use the connection string auth passed by Azure Blob Storage.
+        Arguments:
+            name : REQUIRED : Name of your base connection
+            connectionString : REQUIRED : Connection string used to authenticate to Blob Storage
+        """
+        if name is None or connectionString is None:
+            raise Exception("Required parameters are not filled")
+        data = {
+            "name": name,
+            "auth": {
+                "specName": "ConnectionString",
+                "params": {
+                "connectionString": connectionString
+                }
+            },
+            "connectionSpec": {
+                "id": "6d6b59bf-fb58-4107-9064-4d246c0e5bb2",
+                "version": "1.0"
+            }
+        }
+        res = self.createConnection(data)
+        return res
+    
+    def createBaseConnectionDLZTarget(self,name:str=None)->dict:
+        """
+        Create a Connection for Data Landing Zone as Target 
+        Arguments:
+            name : REQUIRED : The name of your Data Landing Zone
+        """
+        if name is None:
+            Exception("Require a name for the connection")
+        data = {
+            "name": name,
+            "connectionSpec": {
+                "id": "10440537-2a7b-4583-ac39-ed38d4b848e8",
+                "version": "1.0"
+            }
+        }
+        res = self.createConnection(data)
+        return res
+    
+    def exportDatasetToDLZ(self,
+                           datasetIds:list=None,
+                           path:str="/aepp",
+                           fileType:str="JSON",
+                           compression:str="GZIP",
+                           exportMode:str="FIRST_FULL_THEN_INCREMENTAL",
+                           scheduleStart:str=None,
+                           scheduleEnd:str=None,
+                           scheduleUnit:str="day",
+                           scheduleInterval:str="1",
+                           baseConnection:str="base-dataset-export-dlz",
+                           sourceConnection:str="source-dataset-export-dlz",
+                           targetConnection:str="target-dataset-export-dlz",
+                           flowname:str="flow-dataset-export-dlz",
+                           )->dict:
+        """
+        Create a Flow to export a specific dataset to your data landing zone.
+        Taking care of creating a base, source, target and the related specification in DLZ.
+        Arguments:
+            datasetIds : REQUIRED : The list of datasetId that needs to be exported.
+            path : REQUIRED : The path that will be used in DLZ to export the data (default:aepp)
+            fileType : REQUIRED : can be JSON (default),PARQUET or DELIMITED (CSV)
+            compression : REQUIRED : JSON are automatically compressed. Only PARQUET can not be compressed.
+            exportMode: REQUIRED : Can be "FIRST_FULL_THEN_INCREMENTAL" (default) or "DAILY_FULL_EXPORT"
+            scheduleStart : REQUIRED : The UNIX seconds when to start the flow runs
+            scheduleEnd : OPTIONAL : The UNIX seconds when to end the flow runs
+            scheduleUnit : OPTIONAL : The unit used to define intervals to send new files, by default "day", "hour" supported
+            scheduleInterval : OPTIONAL : Interval between 2 export.
+            baseConnection : OPTIONAL : Base Connection name, by default "base-dataset-export-dlz" + date
+            sourceConnection : OPTIONAL : Source Connection name, by default "source-dataset-export-dlz" + date
+            targetConnection : OPTIONAL : Target Connection name, by default "target-dataset-export-dlz" + date
+            flowname : OPTIONAL : Name of your flow, by default "flow-dataset-export-dlz" + date
+        """
+        date = datetime.datetime.now().date().isoformat()
+        if baseConnection == "base-dataset-export-dlz":
+            baseConnection = f"{baseConnection} {date}"
+        if sourceConnection == "source-dataset-export-dlz":
+            sourceConnection = f"{sourceConnection} {date}"
+        if targetConnection == "target-dataset-export-dlz":
+            targetConnection = f"{targetConnection} {date}"
+        if flowname == "flow-dataset-export-dlz":
+            flowname = f"{flowname} {date}"
+        if type(datasetIds) == str:
+            if ',' in datasetIds:
+                datasetIds = datasetIds.split(',')
+            else:
+                datasetIds = list(datasetIds)
+        exportableDatasets = self.getExportableDatasetsDLZ()
+        for dsId in datasetIds:
+            if dsId not in [ds['id'] for ds in exportableDatasets]:
+                raise Exception(f"{dsId} cannot be found on the list of exportable datasets for DLZ")
+        if fileType == "JSON":
+            compression = "GZIP"
+        baseConn = self.createBaseConnectionDLZTarget(baseConnection)
+        sourceConn = self.createSourceConnectionDataLake(sourceConnection,dataset_ids=datasetIds)
+        targetConn = self.createTargetConnectionDatasetToDataLandingZone(targetConn,baseConnectionId=baseConn['id'],path=path,datasetFileType=fileType,compression=compression)
+        flow = self.createFlowDataLakeToDataLandingZone(flowname,
+                                                        source_connection_id=sourceConn['id'],
+                                                        target_connection_id=targetConn['id'],
+                                                        export_mode=exportMode,
+                                                        schedule_start_time=scheduleStart,
+                                                        schedule_end_time=scheduleEnd,
+                                                        schedule_timeUnit=scheduleUnit,
+                                                        schedule_interval = scheduleInterval
+                                                        )
+        return flow
+
 
 class FlowManager:
     """

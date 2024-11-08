@@ -93,16 +93,20 @@ Arguments:
 * scopes : OPTIONAL : In case you want to pass Target scopes/mbox in the request or the Offer Decisioning scope. It should be a list of strings. `["scopeId","__view__"]`
 * surfaces : OPTIONAL : In case you want to pass AJO surfaces in the request. List of strings.
 * params: OPTIONAL : If you want to pass additional query parameter. It takes a dictionary.
+* assuranceToken : OPTIONAL : If you want to pass an assurance token value for debugging via a session\
+  Usually one value, additional ones are separated by a pip such as: "dc9d59df-9b15-44d3-82d6-2f718ad5ec4a|7ddf4cc5-e304-4d95-991c-01359fe9a7de"
 
 
 #### collect
 In case you want to send multiple requests in one go. These are not returning response that can be used by the application.\
 They are just sending data to AEP.\
-You can send requests from different users.\ 
+You can send requests from different users.\
 Arguments:
 * payloads : OPTIONAL : A list of payload to be send via Edge.
 * xdms : OPTIONAL : A list of xdm to be sent via Edge
 * data : OPTIONAL : A list of data to attach to the xdms calls (note that the list of xdms and data should be in the same order)
+* assuranceToken : OPTIONAL : If you want to pass an assurance token value for debugging via a session.\
+  Usually one value, additional ones are separated by a pip such as: "dc9d59df-9b15-44d3-82d6-2f718ad5ec4a|7ddf4cc5-e304-4d95-991c-01359fe9a7de"
 
 
 ## IdentityMapHelper

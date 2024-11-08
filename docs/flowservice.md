@@ -491,6 +491,75 @@ Arguments:
 * flowId : REQUIRED : The flow ID to pass the action
 * action : REQUIRED : The type of action to pass
 
+#### createFlowStreaming
+Create a streaming flow with or without transformation\
+Arguments:
+* name : REQUIRED : The name of the Data Flow.
+* description : OPTIONAL : description of the Flow
+* source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake.
+* target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone.
+* transformation : OPTIONAL : if it is using transformation step. If Optional, set to True.
+* transformation_mapping_id : OPTIONAL : If a transformation is required, its mapping ID.
+* transformation_name : OPTIONAL : If a transformation is required, its name.
+* transformation_version : OPTIONAL : If a transformation is required, its version.
+
+#### createTargetConnectionDatasetToDataLandingZone
+Create a target connection to the Data Landing Zone\
+Arguments:
+* name : REQUIRED : The name of the target connection
+* baseConnectionId : REQUIRED : The base connection ID you have used which define the dataset to export.
+* path : REQUIRED : The path to the data you want to ingest. Can be a single file or folder.
+* datasetFileType : OPTIONAL : Default JSON compressed data, other possible value "PARQUET".
+* compression : OPTIONAL : If you wish to compress the file (default: GZIP, other value : NONE). JSON file cannot be sent uncompressed.
+* version : REQUIRED : version of your target destination
+* description : OPTIONAL : description of your target destination.
+
+#### getExportableDatasets
+Retrieve the exportable dataset\
+Arguments:
+* connectionSpec : REQUIRED : The connection Spec used for the flo
+
+#### getExportableDatasetsDLZ
+Return the exportable dataset to Data Landing Zone
+
+#### createBaseConnectionS3Target
+Create a base connection for S3 storage as Target.\
+Arguments:
+* name : REQUIRED : Name of the connectionBase
+* s3AccessKey : REQUIRED : The S3 Access Key to access the storage
+* s3SecretKey : REQUIRED : The S3 Secret Key to access the storage
+
+#### createBaseConnectionBlobTarget
+Create a base connection for Blob Storage as Target.\
+Use the connection string auth passed by Azure Blob Storage.\
+Arguments:
+* name : REQUIRED : Name of your base connection
+* connectionString : REQUIRED : Connection string used to authenticate to Blob Storage
+
+#### createBaseConnectionDLZTarget
+Create a Connection for Data Landing Zone as Target\
+Arguments:
+* name : REQUIRED : The name of your Data Landing Zone
+
+
+#### exportDatasetToDLZ
+Create a Flow to export a specific dataset to your data landing zone.\
+Taking care of creating a base, source, target and the related specification in DLZ.\
+Arguments:
+* datasetIds : REQUIRED : The list of datasetId that needs to be exported.
+* path : REQUIRED : The path that will be used in DLZ to export the data (default:aepp)
+* fileType : REQUIRED : can be JSON (default),PARQUET or DELIMITED (CSV)
+* compression : REQUIRED : JSON are automatically compressed. Only PARQUET can not be compressed.
+* exportMode: REQUIRED : Can be "FIRST_FULL_THEN_INCREMENTAL" (default) or "DAILY_FULL_EXPORT"
+* scheduleStart : REQUIRED : The UNIX seconds when to start the flow runs
+* scheduleEnd : OPTIONAL : The UNIX seconds when to end the flow runs
+* scheduleUnit : OPTIONAL : The unit used to define intervals to send new files, by default "day", "hour" supported
+* scheduleInterval : OPTIONAL : Interval between 2 export.
+* baseConnection : OPTIONAL : Base Connection name, by default "base-dataset-export-dlz" + date
+* sourceConnection : OPTIONAL : Source Connection name, by default "source-dataset-export-dlz" + date
+* targetConnection : OPTIONAL : Target Connection name, by default "target-dataset-export-dlz" + date
+* flowname : OPTIONAL : Name of your flow, by default "flow-dataset-export-dlz" + date
+
 
 ## The FlowManager class
 
