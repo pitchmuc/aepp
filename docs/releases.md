@@ -14,6 +14,14 @@ This page list all of the changes that came during the different release of the 
   * `createBaseConnectionDLZTarget`
   * `exportDatasetToDLZ`
   * [see documentation](./flowservice.md#createFlowStreaming)
+* adding methods to package ([see sandbox methods](./sandboxes.md))
+  * `createShareRequest`
+  * `approvingShareRequest`
+  * `getShareRequests`
+  * `transferPackage`
+  * `getTransfer`
+  * `getTransfers`
+  * `importPublicPackage`
 
 
 

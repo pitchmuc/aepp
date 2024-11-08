@@ -200,6 +200,58 @@ Arguments:
 * packageId : REQUIRED : The package you want to copy over.
 * targetSandbox : REQUIRED : The Target sandbox to be used
 
+
+### createShareRequest
+Send a request to a target partner organization for sharing approval by making a POST request to the handshake/bulkCreate endpoint.\
+This is required before you can share private packages.\
+Arguments:
+* imsTargets : REQUIRED : List of IMS ORG ID that should be targeted
+* imsSourceId : REQUIRED : The IMS Org ID that create the package
+* imsSourceName : REQUIRED : The IMS Org Name that create the package
+
+
+### approvingShareRequest
+Approve share requests from target partner organizations by making a POST request to the /handshake/action endpoint.\
+After approval, source partner organizations can share private packages.\
+Use the information received by createShareRequest\
+Arguments:
+* linkind_id : REQUIRED : The Linkind_id received when created share request.
+* ims_name : REQUIRED : The Org name that receiving the data
+* ims_id : OPTIONAL : The Org ID that is used to receiving the data
+* region : OPTIONAL : The region used for the receiving organization (default NLD2, possible values: VA7,AUS5 )
+
+### getShareRequests
+returns a list of all outgoing and incoming share requests.\
+Arguments:
+* requestType : REQUIRED : Either "INCOMING" or "OUTGOING"
+
+
+### transferPackage
+Transfer the package to the target IMS ID.\
+Arguments:
+* packageId : REQUIRED : The package ID to transfer
+* imsTargetId : REQUIRED : The list of IMS ORG ID to the transfer the package
+
+
+### getTransfer
+Fetch the details of a share request by transferId.\
+Argument:
+* transferId : REQUIRED : The transfer ID to be fetched.
+
+
+### getTransfers
+Return the list of the transfert based on the filter.\
+Arguments:
+* status : REQUIRED : The status used to filter : COMPLETED, PENDING, IN_PROGRESS, FAILED.
+* requestType : OPTIONAL : The type of request, accepts either PUBLIC or PRIVATE
+
+### importPublicPackage
+Import a package from the public repository.\
+Arguments:
+* ims_sourceId : REQUIRED : The IMS Org ID used to create the package
+* packageId : REQUIRED : The package ID to import
+
+
 ## Sandboxes use-cases
 
 The usage of that module is pretty straight forward as you can use it to identify your sandboxes set on your AEP instance.\

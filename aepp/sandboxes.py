@@ -484,3 +484,142 @@ class Sandboxes:
         params = {"targetSandbox":targetSandbox}
         path = f"/packages/preflight/{packageId}"
         res = self.connector.getData(self.endpointPackage+path,params=params)
+    
+    def createShareRequest(self,imsTargets:list=None,imsSourceId:str=None,imsSourceName:str=None)->dict:
+        """
+        Send a request to a target partner organization for sharing approval by making a POST request to the /handshake/bulkCreate endpoint. 
+        This is required before you can share private packages.
+        Arguments:
+            imsTargets : REQUIRED : List of IMS ORG ID that should be targeted
+            imsSourceId : REQUIRED : The IMS Org ID that create the package
+            imsSourceName : REQUIRED : The IMS Org Name that create the package
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting createShareRequest with Source: {imsSourceName}")
+        if imsTargets is None:
+            raise ValueError("Require a list of target IMS org ID")
+        if imsSourceId is None or imsSourceName is None:
+            raise Exception("Require IMS ORG ID and Name from the source")
+        path = "/handshake/bulkCreate"
+        data = {
+            "targetIMSOrgIds":imsTargets,
+            "sourceIMSDetails":{
+                "id":imsSourceId,
+                "name":imsSourceName
+            }
+        }
+        res = self.connector.postData(self.endpointPackage+path,data=data)
+        return res
+    
+    def approvingShareRequest(self,linkind_id:str=None,ims_name:str=None,ims_id:str=None,region:str="nld2")->dict:
+        """
+        Approve share requests from target partner organizations by making a POST request to the /handshake/action endpoint. 
+        After approval, source partner organizations can share private packages.
+        Use the information received by createShareRequest
+        Arguments:
+            linkind_id : REQUIRED : The Linkind_id received when created share request.
+            ims_name : REQUIRED : The Org name that receiving the data
+            ims_id : OPTIONAL : The Org ID that is used to receiving the data
+            region : OPTIONAL : The region used for the receiving organization (default NLD2, possible values: VA7,AUS5 )
+        """
+        if linkind_id is None:
+            raise ValueError("Linkind_id is not provided")
+        if ims_id is None:
+            ims_id = self.connector.config['org_id']
+        path =  f"/handshake/action"
+        {
+            "linkingID":linkind_id,
+            "status":"APPROVED",
+            "reason":"Done",
+            "targetIMSOrgDetails":{
+                "id":ims_id,
+                "name":ims_name,
+                "region":region
+            }
+        }
+        res = self.connector.postData(self.endpointPackage+path)
+        return res
+    
+    def getShareRequests(self,requestType:str="INCOMING")->list:
+        """
+        returns a list of all outgoing and incoming share requests.
+        Arguments:
+            requestType : REQUIRED : Either "INCOMING" or "OUTGOING"
+        """
+        path = f"/handshake/list"
+        params = {"property":"status==APPROVED","requestType":requestType}
+        res = self.connector.getData(self.endpointPackage+path,params=params)
+        return res
+    
+    def transferPackage(self,packageId:str=None,imsTargets:list=None)->list:
+        """
+        Transfer the package to the target IMS ID.
+        Arguments:
+            packageId : REQUIRED : The package ID to transfer
+            imsTargetId : REQUIRED : The list of IMS ORG ID to the transfer the package
+        """
+        if packageId is None:
+            raise ValueError("A Package ID is required")
+        path = f"/transfer/"
+        list_org_ids = [{"imsOrgId":t_id} for t_id in imsTargets]
+        data = {
+        "packageId": packageId,
+        "targets": list_org_ids
+        }
+        res = self.connector.postData(self.endpointPackage+path,data=data)
+        return res
+    
+    def getTransfer(self,transferId:str=None)->dict:
+        """
+        Fetch the details of a share request by transferId.
+        Argument:
+            transferId : REQUIRED : The transfer ID to be fetched.
+        """
+        if transferId is None:
+            raise ValueError("transferId is required")
+        path = f"/transfer/{transferId}"
+        res = self.connector.getData(self.endpointPackage+path)
+        return res
+    
+    def getTransfers(self,status:str="COMPLETED",requestType:str=None)->list:
+        """
+        Return the list of the transfert based on the filter.
+        Arguments:
+            status : REQUIRED : The status used to filter : COMPLETED, PENDING, IN_PROGRESS, FAILED.
+            requestType : OPTIONAL : The type of request, accepts either PUBLIC or PRIVATE
+        """
+        path = "/transfer/list"
+        params = {"start":0,"limit":50}
+        if requestType is not None:
+            params['requestType'] = requestType
+        res = self.connector.getData(self.endpoint+path,params=params)
+        data = res.get('data',[])
+        next_page = res.get('hasNextPage',False)
+        while next_page:
+            params["start"] += 51
+            res = self.connector.getData(self.endpoint+path,params=params)
+            data += res.get('data',[])
+            next_page = res.get('hasNextPage',False)
+        return data
+    
+    def importPublicPackage(self,ims_sourceId:str=None,packageId:str=None)->dict:
+        """
+        Import a package from the public repository.
+        Arguments:
+            ims_sourceId : REQUIRED : The IMS Org ID used to create the package
+            packageId : REQUIRED : The package ID to import
+        """
+        if ims_sourceId is None:
+            raise Exception('Require the ims ORG ID used as source')
+        if packageId is None:
+            raise Exception('Require the package ID')
+        path = f"/transfer/pullRequest"
+        data = {
+            "imsOrgId": ims_sourceId,
+            "packageId": packageId,
+        }
+        res = self.connector.postData(self.endpointPackage+path,data=data)
+        return res
+    
+
+
