@@ -88,7 +88,7 @@ myIdentitySandbox = identity.Identity(config=mySandbox,region='va7')
 
 3 parameters are possible for the instantiation of the class:
 
-* region : **REQUIRED** : The region to be used for identity database. By default, the NLD2 will be selected. (other choice : va7)
+* region : **REQUIRED** : The region to be used for identity database. By default, the NLD2 will be selected. (other choice : va7,aus5,ind2,can2)
 * config : OPTIONAL : mostly used to pass a ConnectObject instance that is linked to one sandbox. 
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
 * loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements, see [logging documentation](./logging.md)

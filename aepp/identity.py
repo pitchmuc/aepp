@@ -37,11 +37,11 @@ class Identity:
     ):
         """
         Require a region.
-        By default, the NLD2 will be selected. (other choice : va7)
+        By default, the NLD2 will be selected. (other choice : "va7","aus5", "can2", "ind2")
         Additional kwargs will update the header.
         more info : https://docs.adobe.com/content/help/en/experience-platform/identity/api/getting-started.html
         Arguments:
-            region : REQUIRED : either nld2 or va7 or aus5
+            region : REQUIRED : either nld2 (default) or "va7" or "aus5 or "can2" or "ind2"
             loggingObject : OPTIONAL : logging object to log messages.
             config : OPTIONAL : config object in the config module. (DO NOT MODIFY)
             header : OPTIONAL : header object  in the config module. (DO NOT MODIFY)
