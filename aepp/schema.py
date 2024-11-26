@@ -2636,14 +2636,15 @@ class FieldGroupManager:
             obj = {'$ref': ref,
                     'required': [],
                     'type': 'object',
-                    'title': newField,
+                    'title': title,
                     }
             if array:
                 obj['type'] = "array"
                 del obj['$ref']
                 obj['items'] = {
                     'type':"object",
-                    "$ref" : ref
+                    "$ref" : ref,
+                    "title":title
                 }
         else:
             obj = self.__transformFieldType__(dataType)
