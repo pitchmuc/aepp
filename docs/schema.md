@@ -401,6 +401,10 @@ Possible kwargs:
 * properties : str :limit the amount of properties return by comma separated list.
 
 
+### getDataTypesGlobal
+Get the out-of-the-box data types.
+
+
 ### getDataType
 Retrieve a specific data type id\
 Argument:

@@ -44,7 +44,10 @@ class _Data:
         self.fieldGroups = {}
         self.fieldGroupsGlobal_id = {}
         self.fieldGroupsGlobal_altId = {}
-
+        self.dataTypes_id = {}
+        self.dataTypes_altId = {}
+        self.dataTypesGlobal_id = {}
+        self.dataTypesGlobal_altId = {}
 
 class Schema:
     """
@@ -1293,9 +1296,7 @@ class Schema:
             union_id = parse.quote_plus(union_id)
         path = f"/{self.container}/unions/{union_id}"
         privateHeader = deepcopy(self.header)
-        privateHeader.update(
-            {"Accept": "application/vnd.adobe.xdm-full+json; version=" + str(version)}
-        )
+        privateHeader.update({"Accept": "application/vnd.adobe.xdm-full+json; version=" + str(version)})
         res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         return res
 
@@ -1336,7 +1337,38 @@ class Schema:
             data += res.get("results",[])
             page = res.get("_page",{})
             nextPage = page.get('next',None)
+        self.data.dataTypes_id = {mix["title"]: mix["$id"] for mix in data}
+        self.data.dataTypes_altId = {mix["title"]: mix["meta:altId"] for mix in data}
         return data
+    
+    def getDataTypesGlobal(self,**kwargs)->list:
+        """
+        Get the OOTB data types.
+        possible kwargs: Any kwarg pass will be passed as paramter of the request.
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getDataTypes")
+        path = f"/global/datatypes/"
+        privateHeader = deepcopy(self.header)
+        privateHeader.update({"Accept": "application/vnd.adobe.xdm-id+json"})
+        params = {}
+        for key in kwargs.keys():
+            params[key] = kwargs[key]
+        res = self.connector.getData(
+            self.endpoint + path, headers=privateHeader, params=params
+        )
+        data = res["results"]
+        page = res.get("_page",{})
+        nextPage = page.get('next',None)
+        while nextPage is not None:
+            res = self.connector.getData(self.endpoint + path, headers=privateHeader, params=params)
+            data += res.get("results",[])
+            page = res.get("_page",{})
+            nextPage = page.get('next',None)
+        self.data.dataTypesGlobal_altId = {mix["title"]: mix["$id"] for mix in data}
+        self.data.dataTypesGlobal_id = {mix["title"]: mix["meta:altId"] for mix in data}
+        return data
+
 
     def getDataType(
         self, dataTypeId: str = None, 
