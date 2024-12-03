@@ -149,3 +149,48 @@ Arguments:
 Validate if specific tag Ids exist.\
 Arguments: 
 * tagsIds : REQUIRE : List of tag Ids to validate
+
+### getFolders
+Retrieve the folders for the tags.\
+Arguments:
+* folderType : REQUIRED : Default "segment", possible values: "dataset"
+
+### getSubFolders
+Return the list of subfolders.\
+Arguments:
+* folderType : REQUIRED : Default "segment", possible values: "dataset"
+* folderId : REQUIRED : The folder ID that you want to retrieve
+
+### getSubFolder
+Return a specific sub folder\
+Arguments:
+* folderType : REQUIRED : Default "segment", possible values: "dataset"
+* folderId : REQUIRED : The folder ID that you want to retrieve
+
+### deleteSubFolder
+Delete a specific subFolder\
+Arguments:
+* folderType : REQUIRED : Default "segment", possible values: "datasets"
+* folderId : REQUIRED : The folder ID you want to delete
+
+### createSubFolder
+Create a sub Folder.\
+Arguments:
+* folderType : REQUIRED : Default "segment", possible values: "dataset"
+* name : REQUIRED : Name of the folder
+* parentId : REQUIRED : The parentID attached to your folder 
+
+### updateFolder
+Update an existing folder name\
+Arguments:
+* folderType : REQUIRED : Default "segment", possible values: "dataset"
+* folderId : REQUIRED : the folder ID you want to rename
+* name : OPTIONAL : The new name you want to give that folder
+* parentFolderId : OPTIONAL : The new parent folder id 
+
+### validateFolder
+Validate if a folder is eligible to have objects in it\
+Arguments:
+* folderType : REQUIRED : Default "segment", possible values: "dataset"
+* folderId : REQUIRED : The Folder ID
+

@@ -11,13 +11,10 @@
 # Internal Library
 import aepp
 from aepp import connector
-import time
-from concurrent import futures
 import logging
 from typing import Union
-from copy import deepcopy
 from .configs import ConnectObject
-import json, re
+import json
 
 
 class Tags:
@@ -82,9 +79,14 @@ class Tags:
             self.connector.header.update({"x-sandbox-name":kwargs.get('sandbox')})
         else:
             self.sandbox = self.connector.config["sandbox"]
-        self.endpoint = (
+        self.endpointTag = (
             "https://experience.adobe.io" + aepp.config.endpoints["tags"]
         )
+        self.endpointFolders = (
+            "https://experience.adobe.io" + aepp.config.endpoints["folders"]
+        )
+        self.header['x-api-key'] = 'exc_app'
+        self.connector.header['x-api-key'] = 'exc_app'
 
     def __str__(self):
         return json.dumps({'class':'Tags','sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
@@ -101,7 +103,7 @@ class Tags:
             self.logger.debug(f"Starting getCategories")
         path = "/tagCategory"
         params = {"limit":limit}
-        res = self.connector.getData(self.endpoint+path,params=params)
+        res = self.connector.getData(self.endpointTag+path,params=params)
         data = res.get('tags',[])
         return data
     
@@ -116,7 +118,7 @@ class Tags:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getCategory")
         path = f"/tagCategory/{tagCategoryId}"
-        res = self.connector.getData(self.endpoint+path)
+        res = self.connector.getData(self.endpointTag+path)
         return res
 
     def createCategory(self,name:str=None,description:str=None)->dict:
@@ -137,7 +139,7 @@ class Tags:
             "name" : name,
             "description" : description
         }
-        res = self.connector.postData(self.endpoint+path,data=data)
+        res = self.connector.postData(self.endpointTag+path,data=data)
         return res
     
     def patchCategory(self,tagCategoryId:str=None,operation:dict="replace",op:str=None,path:str=None,value:str=None)->dict:
@@ -170,7 +172,7 @@ class Tags:
                     "path": path,
                     "value": value
                 }
-        res = self.connector.patchData(self.endpoint+path,data=data)
+        res = self.connector.patchData(self.endpointTag+path,data=data)
         return res
     
     def deleteTagCategory(self,tagCategoryId:str)->dict:
@@ -184,7 +186,7 @@ class Tags:
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteTagCategory with id : {tagCategoryId}")
         path = f"/tagCategory/{tagCategoryId}"
-        res = self.connector.deleteData(self.endpoint+path)
+        res = self.connector.deleteData(self.endpointTag+path)
         return res
     
     def getTags(self,tagCategoryId:str=None)->list:
@@ -197,8 +199,16 @@ class Tags:
             path = "/tags"
         else:
             path = f"/tags/{tagCategoryId}"
-        res = self.connector.getData(self.endpoint+path)
-        return res
+        params = {'start':0}
+        res = self.connector.getData(self.endpointTag+path)
+        nextPage = res.get('_page',{}).get('next',None)
+        data = res.get('tags')
+        while nextPage is not None:
+            params['start'] += 100
+            res = self.connector.getData(self.endpointTag+path)
+            data += res.get('tags')
+            nextPage = res.get('_page',{}).get('next',None)
+        return data
     
     def getTag(self,tagId:str)->dict:
         """
@@ -211,7 +221,7 @@ class Tags:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getTag with id : {tagId}")
         path = f"/tags/{tagId}"
-        res = self.connector.getData(self.endpoint+path)
+        res = self.connector.getData(self.endpointTag+path)
         return res
     
     def createTag(self,name:str,tagCategoryId:str)->dict:
@@ -231,7 +241,7 @@ class Tags:
         if tagCategoryId is not None:
             data['tagCategoryId'] = tagCategoryId
         path = "/tags"
-        res = self.connector.postData(self.endpoint+path,data=data)
+        res = self.connector.postData(self.endpointTag+path,data=data)
         return res
     
     def patchTag(self,tagId:str=None,operation:dict=None,op:str="replace",path:str=None,value:str=None)->dict:
@@ -264,7 +274,7 @@ class Tags:
                     "path": path,
                     "value": value
                 }
-        res = self.connector.patchData(self.endpoint+path,data=data)
+        res = self.connector.patchData(self.endpointTag+path,data=data)
         return res
     
     def deleteTag(self,tagId:str=None)->dict:
@@ -278,7 +288,7 @@ class Tags:
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteTag with id : {tagId}")
         path = f"/tags/{tagId}"
-        res = self.connector.deleteData(self.endpoint+path)
+        res = self.connector.deleteData(self.endpointTag+path)
         return res
 
     def validateTags(self,tagsIds:list=None)->dict:
@@ -295,5 +305,122 @@ class Tags:
         data = {
             "ids" : tagsIds
         }
-        res = self.connector.postData(self.endpoint+path,data=data)
+        res = self.connector.postData(self.endpointTag+path,data=data)
+        return res
+    
+    def getFolders(self,folderType:str='segment')->list:
+        """
+        Retrieve the folders for the tags.
+        Arguments:
+            folderType : REQUIRED : Default "segment", possible values: "dataset"
+        """
+        path = f"/folders/{folderType}/root/folderview"
+        res = self.connector.getData(self.endpointFolders+path)
+        data = res.get('children',[])
+        return data
+
+    def getSubFolders(self,folderType:str="segment",folderId:str=None)->list:
+        """
+        Return the list of subfolders.
+        Arguments:
+            folderType : REQUIRED : Default "segment", possible values: "dataset"
+            folderId : REQUIRED : The folder ID that you want to retrieve
+        """
+        if folderId is None:
+            raise ValueError("Require a folder ID")
+        path = f"/folders/{folderType}/{folderId}/subfolders"
+        res = self.connector.getData(self.endpointFolders+path)
+        return res
+    
+    def getSubFolder(self,folderType:str="segment",folderId:str=None)->dict:
+        """
+        Return a specific sub folder
+        Arguments:
+            folderType : REQUIRED : Default "segment", possible values: "dataset"
+            folderId : REQUIRED : The folder ID that you want to retrieve
+        """
+        if folderId is None:
+            raise ValueError("Require a folder ID")
+        path = f"/folders/{folderType}/{folderId}/"
+        res = self.connector.getData(self.endpointFolders+path)
+        return res
+    
+    def deleteSubFolder(self,folderType:str="segment",folderId:str=None)->dict:
+        """
+        Delete a specific subFolder
+        Arguments:
+            folderType : REQUIRED : Default "segment", possible values: "datasets"
+            folderId : REQUIRED : The folder ID you want to delete
+        """
+        if folderId is None:
+            raise ValueError("Require a folder ID")
+        path = f"/{folderType}/{folderId}/"
+        res = self.connector.deleteData(self.endpointFolders+path)
+        return res
+    
+    def createSubFolder(self,folderType:str="segment",name:str=None,parentId:str=None)->dict:
+        """
+        Create a sub Folder.
+        Arguments:
+            folderType : REQUIRED : Default "segment", possible values: "dataset"
+            name : REQUIRED : Name of the folder
+            parentId : REQUIRED : The parentID attached to your folder 
+        """
+        if folderType is None:
+            raise ValueError("Require a folder type")
+        if name is None:
+            raise ValueError("Require a name")
+        if parentId is None:
+            raise ValueError("Require a parent ID")
+        path = f"/folder/{folderType}"
+        data = {
+                    "name": name,
+                    "parentId": parentId
+                }
+        res = self.connector.postData(self.endpointFolders+path,data=data)
+        return res
+    
+    def updateFolder(self,folderType:str="segment",folderId:str=None,name:str=None,parentFolderId:str=None)->dict:
+        """
+        Update an existing folder name
+        Arguments:
+            folderType : REQUIRED : Default "segment", possible values: "dataset"
+            folderId : REQUIRED : the folder ID you want to rename
+            name : OPTIONAL : The new name you want to give that folder
+            parentFolderId : OPTIONAL : The new parent folder id 
+        """
+        if folderType is None:
+            raise ValueError("A Folder Type is required")
+        if folderId is None:
+            raise ValueError("A folder ID is required")
+        path = f"/{folderType}/{folderId}"
+        data = []
+        if name is not None:
+            data.append({
+                "op": "replace",
+                "path": "/name",
+                "value": name
+            })
+        if parentFolderId is not None:
+            data.append({
+                "op": "replace",
+                "path": "/parentFolderId",
+                "value": parentFolderId
+            })
+        res = self.connector.patchData(self.endpointFolders+path,data=data)
+        return res
+    
+    def validateFolder(self,folderType:str="segment",folderId:str=None)->dict:
+        """
+        Validate if a folder is eligible to have objects in it 
+        Arguments:
+            folderType : REQUIRED : Default "segment", possible values: "dataset"
+            folderId : REQUIRED : The Folder ID
+        """
+        if folderId is None:
+            raise ValueError("Folder ID is required")
+        if folderType is None:
+            raise ValueError("Folder type is required")
+        path = f"/{folderType}/{folderId}/validate"
+        res = self.connector.getData(self.endpointFolders+path)
         return res

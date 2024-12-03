@@ -869,6 +869,9 @@ class Segmentation:
                                     }
                                 }
                             ]
+
+                possible paths:
+                 * linkedAudienceRef, value : {'audienceFolderId':folderId} for Folder
         """
         if audienceId is None:
             raise ValueError("Require an audience ID")
