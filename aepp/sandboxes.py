@@ -224,7 +224,7 @@ class Sandboxes:
         data = res.get('data',[])
         hasNext = res.get('hasNext',False)
         while hasNext:
-            params["start"] += 20
+            params["start"] += limit
             res = self.connector.getData(self.endpointPackage+path,params=params)
             data += res.get('data',[])
             hasNext = res.get('hasNext',False)
@@ -243,6 +243,33 @@ class Sandboxes:
         path = f"/packages/{packageId}"
         res = self.connector.getData(self.endpointPackage+path)
         return res
+    
+    def getPublicPackages(self,requestType:str="public",prop:Union[str,list]=None,limit:int=20)->list:
+        """
+        Returns the public packages available.
+        Arguments:
+            requestType : OPTIONAL : Eithe "private" or "public"
+            prop : OPTIONAL : A list of options to filter the different packages.
+                Ex: ["status==DRAFT,PUBLISHED","createdDate>=2023-05-11T18:29:59.999Z","createdDate<=2023-05-16T18:29:59.999Z"]
+            limit : OPTIONAL : The number of package to return per request
+        Possible kwargs:
+            see https://experienceleague.adobe.com/docs/experience-platform/sandbox/sandbox-tooling-api/appendix.html?lang=en
+        """
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getPublicPackages")
+        params = {"start":0, "orderby":"-createdDate","limit":limit,"requestType":requestType}
+        if prop is not None:
+            params['property'] = prop
+        path = "/transfer/list"
+        res = self.connector.getData(self.endpointPackage+path,params=params)
+        data = res.get('data',[])
+        hasNext = res.get('hasNext',False)
+        while hasNext:
+            params["start"] += limit
+            res = self.connector.getData(self.endpointPackage+path,params=params)
+            data += res.get('data',[])
+            hasNext = res.get('hasNext',False)
+        return data
     
     def deletePackage(self,packageId:str=None)->dict:
         """
@@ -520,7 +547,7 @@ class Sandboxes:
             linkind_id : REQUIRED : The Linkind_id received when created share request.
             ims_name : REQUIRED : The Org name that receiving the data
             ims_id : OPTIONAL : The Org ID that is used to receiving the data
-            region : OPTIONAL : The region used for the receiving organization (default NLD2, possible values: VA7,AUS5 )
+            region : OPTIONAL : The region used for the receiving organization (default NLD2, possible values: VA7,AUS5,CAN2 or IND2 )
         """
         if linkind_id is None:
             raise ValueError("Linkind_id is not provided")
@@ -601,7 +628,7 @@ class Sandboxes:
             data += res.get('data',[])
             next_page = res.get('hasNextPage',False)
         return data
-    
+        
     def importPublicPackage(self,ims_sourceId:str=None,packageId:str=None)->dict:
         """
         Import a package from the public repository.

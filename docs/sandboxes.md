@@ -218,7 +218,7 @@ Arguments:
 * linkind_id : REQUIRED : The Linkind_id received when created share request.
 * ims_name : REQUIRED : The Org name that receiving the data
 * ims_id : OPTIONAL : The Org ID that is used to receiving the data
-* region : OPTIONAL : The region used for the receiving organization (default NLD2, possible values: VA7,AUS5 )
+* region : OPTIONAL : The region used for the receiving organization (default NLD2, possible values: VA7,AUS5,CAN2, IND2)
 
 ### getShareRequests
 returns a list of all outgoing and incoming share requests.\
@@ -244,6 +244,14 @@ Return the list of the transfert based on the filter.\
 Arguments:
 * status : REQUIRED : The status used to filter : COMPLETED, PENDING, IN_PROGRESS, FAILED.
 * requestType : OPTIONAL : The type of request, accepts either PUBLIC or PRIVATE
+
+### getPublicPackages
+Returns the public packages available.\
+Arguments:
+* requestType : OPTIONAL : Eithe "private" or "public"
+* prop : OPTIONAL : A list of options to filter the different packages.\
+    Ex: ["status==DRAFT,PUBLISHED","createdDate>=2023-05-11T18:29:59.999Z","createdDate<=2023-05-16T18:29:59.999Z"]
+* limit : OPTIONAL : The number of package to return per request
 
 ### importPublicPackage
 Import a package from the public repository.\
