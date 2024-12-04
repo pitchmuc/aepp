@@ -61,6 +61,7 @@ endpoints = {
     "destinationInstance" : "/data/core/activation/disflowprovider",
     "hygiene" : "/data/core/hygiene",
     "tags":"/unifiedtags",
+    "folders":"/unifiedfolders",
     "streaming": {
         "inlet": "",
         "collection": "https://dcs.adobedc.net"
