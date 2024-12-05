@@ -63,7 +63,7 @@ mySom = som.Som()
 
 ```py
 mySom.assign('data.string','value1')
-## it will output
+## mySom will now contain
 
 {
   "data": {
@@ -72,34 +72,139 @@ mySom.assign('data.string','value1')
 }
 ```
 
-#### Array assignment
+Based on these principle you can extend your Som object with additional assignments
 
 ```py
-mySom.assign('data.array.[0]','val1')
-## it will output
+mySom.assign('data.integer',10)
+## mySom will now contain
+
 {
   "data": {
-    "array":["val1"]
-  }
-}
-mySom.assign('data.array.[1]','val2')
-## it will now be
-{
-  "data": {
-    "array":["val1","val2"]
-  }
-}
-mySom.assign('data.array.[1]','val3')
-## it will now be
-{
-  "data": {
-    "array":["val1","val3"]
+    "string":"value1",
+    "integer":10
   }
 }
 ```
 
+```py
+mySom.assign('data.something.nested.float',1.0)
+## mySom will now contain
+
+{
+  "data": {
+    "string":"value1",
+    "integer":10,
+    "something":{
+      "nested":{
+        "float":1.0
+        }
+      }
+  }
+}
+```
+
+
+
+#### List assignment
+
+You can find below some examples when manipulating `list` and the expected outcome of the operations.\
+For demo, we imagine that it is based on an empty Som (`mySom`)
+
+```py
+mySom.assign('data.list.[0]','val1')
+## mySom will output
+{
+  "data": {
+    "list":["val1"]
+  }
+}
+mySom.assign('data.list.[1]','val2')
+## it will now be
+{
+  "data": {
+    "list":["val1","val2"]
+  }
+}
+mySom.assign('data.list.[1]','val3')
+## it will now be
+{
+  "data": {
+    "list":["val1","val3"]
+  }
+}
+mySom.assign('data.list.[1]',('val4','val5'))
+## it will now be
+{
+  "data": {
+    "list":["val1","val3","val4","val5"]
+  }
+}
+
+```
+
+#### Set assignment
+
+The `set` are sort of a list that cannot contain duplicate, they can be quite helpful.\
+You can find below of some example operation made on `set` object.\
+For demo, we imagine that it is based on an empty Som (`mySom`)
+
+```py
+mySom.assign('data.set',set(['val1']))
+## it will output
+{
+  "data": {
+    "set":["val1"]
+  }
+}
+mySom.assign('data.set','val2')
+## it will now be
+{
+  "data": {
+    "set":["val1","val2"]
+  }
+}
+mySom.assign('data.set',['val3','val4'])
+## it will now be
+{
+  "data": {
+    "set":["val1","val2","val3","val4"]
+  }
+}
+```
+
+#### Tuple assignment
+The `tuple` are sort of a list that cannot be mutated. Their main reason to exist is to contain a data that cannot be modified.\
+You can find below of some example operation made on `tuple` object.\
+The `tuples` are really different than any iterable object and therefore their assignment support are different.
+For demo, we imagine that it is based on an empty Som (`mySom`)
+
+```py
+mySom.assign('data.tuple',tuple(['val1']))
+## it will output
+{
+  "data": {
+    "tuple":["val1"]
+  }
+}
+mySom.assign('data.tuple','val2')
+## it will now be
+{
+  "data": {
+    "tuple":["val1","val2"]
+  }
+}
+mySom.assign('data.tuple',['val3','val4'])
+## it will now be
+{
+  "data": {
+    "tuple":["val1","val2","val3","val4"]
+  }
+}
+```
+
+
 #### Assignment deepdive
-As you may have seen with the examples, the assignment capability is using pre-defined behavior to deal with merging different type.\
+As you have seen with the previous examples, the assignment capability is using pre-defined behavior to deal with merging different type.\
 In order to help the understanding, I created the table below to see how the data will be treated, depending their type.\
 
 The most unorthodox behavior would concern the `tuple`, that are ummutable per nature, so they have different behavior than the `list` and `set` type.
@@ -112,16 +217,22 @@ The most unorthodox behavior would concern the `tuple`, that are ummutable per n
 | som.assign('path',[1,2]) | None | list | list |  |
 | som.assign('path',(1,2)) | None | tuple | tuple |  |
 | som.assign('path',set([1,2])) | None | set | set |  |
-| som.assign('path','str') | list | list |  |
-| som.assign('path',4) | list | list |  |
-| som.assign('to_list',1.5) | list | list | data is appended |
-| som.assign('to_list',[1,2]) | list | list | The list will be appended, it is not deconstructed. See `merge` for that behavior |
-| som.assign('to_list',(1,2)) | list | list | tuple will be appended, it is not deconstructed. See `merge` for that behavior |
-| som.assign('to_list',set([1,2])) | list | list | set will be appended, it is not deconstructed. See `merge` for that behavior |
-| som.assign('to_tuple',1.5) | tuple | new data type | tuple are immutable, therefore are not modified and they are overriden |
-| som.assign('to_list',[1,2]) | list | list | The list will be appended, it is not deconstructed. See `merge` for that behavior |
-| som.assign('to_list',(1,2)) | list | list | tuple will be appended, it is not deconstructed. See `merge` for that behavior |
-| som.assign('to_list',set([1,2])) | list | list | set will be appended, it is not deconstructed. See `merge` for that behavior |
+| som.assign('path','str') | list | str | list |  |
+| som.assign('path',4) | list | integer | list |  |
+| som.assign('to_list',1.5) | list | float | list | data is appended to the list |
+| som.assign('to_list',[1,2]) | list | list | list | The list will be appended, it is not deconstructed. See `merge` for that behavior |
+| som.assign('to_list',(1,2)) | list | tuple | list | tuple will be appended, it is not deconstructed. See `merge` for that behavior |
+| som.assign('to_list',set([1,2])) | list | set | list | set will be appended, it is not deconstructed. See `merge` for that behavior |
+| som.assign('to_set','something') | set | string | set | The string will be appended to the set |
+| som.assign('to_set',1.5) | set | float | set | The float will be appended to the set |
+| som.assign('to_set',[1,2]) | set | list  | set | The list will be deconstructed and each element added indidvidually to the set. |
+| som.assign('to_set',(1,2)) | set | tuple | set | The tuple will be deconstructed and each element added indidvidually to the set. |
+| som.assign('to_set',set([1,2])) | set | set | set | The set will be deconstructed and each element added indidvidually to the set.|
+| som.assign('to_tuple','something') | tuple | string | string | tuple are immutable, therefore are not modified and they are overriden |
+| som.assign('to_tuple',1.5) | tuple | float | float | tuple are immutable, therefore are not modified and they are overriden |
+| som.assign('to_tuple',[1,2]) | tuple | list  | list | Tuple are immutable. The list will replace the original tuple. See `merge` for adding element to tuple |
+| som.assign('to_tuple',(1,2)) | tuple | tuple | tuple | Tuple are immutable. The new tuple will replace the old one. See `merge` for adding elements to tuple. |
+| som.assign('to_tuple',set([1,2])) | tuple | set | set | set will be appended, it is not deconstructed. See `merge` for that behavior |
 
 
 
@@ -150,16 +261,101 @@ Example: having a structure as such
 
 
 ### merge
-Merge a dictionary object with the existing Som data.\
+Merge a dictionary or a specific `list`, `tuple` or `set` object with the existing Som data.\
 Arguments:
 * path : OPTIONAL : The path as dot notation where the merge should happen
 * data : REQUIRED : The data to be merged with the existing Som data
 
+#### Merging use-case
+
+The merging operation is the only operation that deconstruct elements to `list`, and expand the `tuples`.\
+
+Examples:
+
+```py
+mySom = som.Som({'myList':[1,2,3]})
+mySom.assign('myList',[4,5,6])
+# It will automatically create this structure
+{"myList":[1,2,3,[4,5,6]]}
+
+mySom = som.Som({'myList':[1,2,3]})
+mySom.merge('myList',[4,5,6])
+# It will automatically create this structure
+{"myList":[1,2,3,4,5,6]}
+
+```
+
+
+```py
+
+```
+
 
 ### to_dict
-Return the data hosted in the Som instance as a deep copy dictionary
+Return the data hosted in the Som instance as a deep copy dictionary.\
+Arguments:
+* jsonCompatible : OPTIONAL : In case your dictionary has set, you would not be able to export it to JSON.
+  This capability offer natively to transform the Som dictionary into one compatible with JSON. Transforming `set` to `list`.
+
 
 ### to_dataframe
 Return the data as flatten dataframe
 Arguments:
 * expand_arrays : OPTIONAL : Default `False`, if set to `True`, it will create multiple rows for the arrays elements.
+
+#### DataFrame Deepdive
+
+by default the Som `to_dataframe` method will flatten all of the elements in the Som into a single row.\
+It means that even list of object contains in your data will be flatten in a single row.\
+
+Example of data:
+
+```py
+{"data":
+  {
+    "myfield":"value",
+    "myList" : [1,2,3],
+    "arrayObject1":[
+      {
+        "field_name":"array_item1",
+        "arrayObject2":[
+          {
+            "field_name":"array_item_1_1"
+          },
+          {
+            "field_name":"array_item_1_2"
+          }
+        ]
+      },
+      {
+        "field_name":"array_item2"
+      }
+    ]
+  }
+}
+
+```
+
+The `to_dataframe` operation will return this type of table:
+
+| data.myfield | data.mylist | data.arrayOfObject[0].field_name | data.arrayOfObject[0].arrayObject2[0].field_name | data.arrayOfObject[0].arrayObject2[1].field_name  | data.arrayOfObject[1].field_name |
+| -- | --  | -- | -- | -- | -- |
+| value | [1,2,3] | array_item1 | array_item_1_1 | array_item_1_2 |array_item2 |
+
+
+If you set the `expand_arrays` array parameter to `True`, you will automatically create new rows for each element of the array of objects.\
+The result of operation will return this type of table:
+
+| data.myfield | data.mylist | data.arrayOfObject | data.arrayOfObject.field_name | data.arrayOfObject.arrayObject2 | data.arrayOfObject.arrayObject2.field_name |
+| -- | --  | -- | -- | -- | -- |
+| value | [1,2,3] | 0 | array_item1 | 0 | array_item_1_1 | 
+| value | [1,2,3] | 0 | array_item1 | 1 | array_item_1_2 | 
+| value | [1,2,3] | 1 | array_item2 | NaN | NaN |
+
+### from_dataframe
+Build a Som object from a dataframe row.\
+It only works when the data has been completely flatten (without `expand_arrays` set to `True`)\
+The naming convention for element of arrays needs to be respected, ex: `[0]`
+Arguments:
+* dataFrame : REQUIRED : The dataframe countaining your data
+* orient : OPTIONAL : The orientation of the dataframe. Default 0 by row. 1 by columns.

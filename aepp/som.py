@@ -236,7 +236,11 @@ class Som:
                             if override:
                                 data[node] = value
                             else:
-                                data[node].add(value)
+                                if isinstance(value,Iterable) and type(value) != str:
+                                    for val in value:
+                                        data[node].add(val)
+                                else:
+                                    data[node].add(value)
                         elif type(data[node]) == tuple:
                             if override:
                                 data[node] = value
@@ -292,6 +296,8 @@ class Som:
                                 data[node] = value
                         else:
                             data[node] = value        
+            elif type(data) == set:
+                raise Exception(f"Cannot access a specific item of a set: {data}")
             else:
                 if datatype is not None and type(value) != list:
                     if isinstance(value, Iterable) == False or type(value)==str:
@@ -415,6 +421,10 @@ class Som:
                         if isinstance(o_data[key],Iterable) and type(o_data[key])!=str:
                             tmp_list = list(deepcopy(o_data[key]))
                             tmp_list += list(data[key])
+                            o_data[key] = tuple(tmp_list)
+                        elif type(o_data[key])==str:
+                            tmp_list = list([o_data[key]])
+                            tmp_list += data[key]
                             o_data[key] = tuple(tmp_list)
                         else:
                             tmp_list = list(o_data[key])
