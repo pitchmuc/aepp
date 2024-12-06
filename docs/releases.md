@@ -2,6 +2,14 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## Version 0.3.8
+* creating the `som` module [documentation](./som.md)
+* expanding hints for additional server on `identity` and `sandbox`
+* fix support for `title` parameter in custom `dataType` for `fieldGroupManager`
+* adding the `getDataTypeGlobal` method in the schema module
+* adding dataTypes in the `data` object when querying `getDataTypes` and `getDataTypesGlobal`
+* Fixing issues on API spec for `Tags` and adding `Folders` endpoints
+
 ## Version 0.3.7
 * adding support for assurance token on Edge methods
 * adding following methods to flowservice

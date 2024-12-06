@@ -64,6 +64,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [privacyservice](./docs/privacyservice.md) (see 2nd note below)
 * [data hygiene](./docs/hygiene.md)
 * [edge](./docs/edge.md)
+* [som](./docs/som.md)
 
 Last but not least, the core methods are described here: [main](./docs/main.md)
 
@@ -71,6 +72,14 @@ Last but not least, the core methods are described here: [main](./docs/main.md)
 
 The wrapper is having a class in all submodule in order to connect to the different service APIs.\
 In addition to that, there are other classes that are provided in order to help you working with the API.
+
+### Simple Object Manager
+
+In order to simplify the management of objects via python, especially when dealing with XDM object, we provide an abstraction that aim to simplify the manipulation of complex objects.\
+The Simple Object Manager (SOM) is aiming at supporting the creation, manipulation or analysis of XDM messages.\
+You can find all information about the methods available of that class (`Som`) in the related documentation.
+
+The Simple Object Manager documentation is located here: [SOM documentation](./docs/som.md)
 
 ### InteractiveQuery  and InteractiveQuery2 classes
 
