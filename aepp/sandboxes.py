@@ -648,5 +648,24 @@ class Sandboxes:
         res = self.connector.postData(self.endpointPackage+path,data=data)
         return res
     
+    def publishPackage(self,packageId:str=None,packageVisibility:str="PUBLIC")->dict:
+        """
+        Change a package from private to public.
+        By default, a package is created with private availability.
+        Argument:
+            packageId : REQUIRED : The package ID to make public
+            packageVisibility : OPTIONAL : By default "PUBLIC", you can also use "PRIVATE" to reverse.
+        """
+        if packageId is None:
+            raise ValueError("Expect a package ID")
+        path = "/packages"
+        data ={
+            "id":packageId,
+            "action":"UPDATE",
+            "packageVisibility":packageVisibility
+        }
+        res = self.connector.putData(self.endpointPackage+path,data=data)
+        return res
+    
 
 

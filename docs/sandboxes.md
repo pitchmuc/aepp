@@ -259,6 +259,12 @@ Arguments:
 * ims_sourceId : REQUIRED : The IMS Org ID used to create the package
 * packageId : REQUIRED : The package ID to import
 
+### publishPackage
+Change a package from private to public.\
+By default, a package is created with private availability.\
+Argument:
+* packageId : REQUIRED : The package ID to make public
+* packageVisibility : OPTIONAL : By default "PUBLIC", you can also use "PRIVATE" to reverse.
 
 ## Sandboxes use-cases
 
