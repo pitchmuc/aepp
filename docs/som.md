@@ -211,28 +211,28 @@ The most unorthodox behavior would concern the `tuple`, that are ummutable per n
 
 | assignment | som original data type | data type of the assignment | expected type after assignment | comment |
 | -- | --  | -- | -- | -- |
-| som.assign('path','str') | None | string | string |  |
-| som.assign('path',4) | None| integer | integer |  |
-| som.assign('path',1.5) | None | float | float |  |
-| som.assign('path',[1,2]) | None | list | list |  |
-| som.assign('path',(1,2)) | None | tuple | tuple |  |
-| som.assign('path',set([1,2])) | None | set | set |  |
-| som.assign('path','str') | list | str | list |  |
-| som.assign('path',4) | list | integer | list |  |
-| som.assign('to_list',1.5) | list | float | list | data is appended to the list |
-| som.assign('to_list',[1,2]) | list | list | list | The list will be appended, it is not deconstructed. See `merge` for that behavior |
-| som.assign('to_list',(1,2)) | list | tuple | list | tuple will be appended, it is not deconstructed. See `merge` for that behavior |
-| som.assign('to_list',set([1,2])) | list | set | list | set will be appended, it is not deconstructed. See `merge` for that behavior |
-| som.assign('to_set','something') | set | string | set | The string will be appended to the set |
-| som.assign('to_set',1.5) | set | float | set | The float will be appended to the set |
-| som.assign('to_set',[1,2]) | set | list  | set | The list will be deconstructed and each element added indidvidually to the set. |
-| som.assign('to_set',(1,2)) | set | tuple | set | The tuple will be deconstructed and each element added indidvidually to the set. |
-| som.assign('to_set',set([1,2])) | set | set | set | The set will be deconstructed and each element added indidvidually to the set.|
-| som.assign('to_tuple','something') | tuple | string | string | tuple are immutable, therefore are not modified and they are overriden |
-| som.assign('to_tuple',1.5) | tuple | float | float | tuple are immutable, therefore are not modified and they are overriden |
-| som.assign('to_tuple',[1,2]) | tuple | list  | list | Tuple are immutable. The list will replace the original tuple. See `merge` for adding element to tuple |
-| som.assign('to_tuple',(1,2)) | tuple | tuple | tuple | Tuple are immutable. The new tuple will replace the old one. See `merge` for adding elements to tuple. |
-| som.assign('to_tuple',set([1,2])) | tuple | set | set | set will be appended, it is not deconstructed. See `merge` for that behavior |
+| `som.assign('path','str')` | None | string | string |  |
+| `som.assign('path',4)` | None| integer | integer |  |
+| `som.assign('path',1.5)` | None | float | float |  |
+| `som.assign('path',[1,2])` | None | list | list |  |
+| `som.assign('path',(1,2))` | None | tuple | tuple |  |
+| `som.assign('path',set([1,2]))` | None | set | set |  |
+| `som.assign('path','str')` | list | str | list |  |
+| `som.assign('path',4)` | list | integer | list |  |
+| `som.assign('to_list',1.5)` | list | float | list | data is appended to the list |
+| `som.assign('to_list',[1,2])` | list | list | list | The list will be appended, it is not deconstructed. See `merge` for that behavior |
+| `som.assign('to_list',(1,2))` | list | tuple | list | tuple will be appended, it is not deconstructed. See `merge` for that behavior |
+| `som.assign('to_list',set([1,2]))` | list | set | list | set will be appended, it is not deconstructed. See `merge` for that behavior |
+| `som.assign('to_set','something')` | set | string | set | The string will be appended to the set |
+| `som.assign('to_set',1.5)` | set | float | set | The float will be appended to the set |
+| `som.assign('to_set',[1,2])` | set | list  | set | The list will be deconstructed and each element added indidvidually to the set. |
+| `som.assign('to_set',(1,2))` | set | tuple | set | The tuple will be deconstructed and each element added indidvidually to the set. |
+| `som.assign('to_set',set([1,2]))` | set | set | set | The set will be deconstructed and each element added indidvidually to the set.|
+| `som.assign('to_tuple','something')` | tuple | string | tuple | Tuples are immutable, therefore are not modified and they are overriden. The new value string will be the only value in that tuple. See `merge` for adding element to tuple. |
+| `som.assign('to_tuple',1.5)` | tuple | float | tuple | Tuples are immutable, therefore are not modified and they are overriden. The new value float will be the only value in that tuple. See `merge` for adding element to tuple  |
+| `som.assign('to_tuple',[1,2])` | tuple | list  | tuple | Tuples are immutable. The list values will replace the original tuple value(s). See `merge` for adding element to tuple |
+| `som.assign('to_tuple',(1,2))` | tuple | tuple | tuple | Tuples are immutable. The new tuple value(s) will replace the old one(s). See `merge` for adding elements to tuple. |
+| `som.assign('to_tuple',set([1,2]))` | tuple | set | tuple | Tuples are immutable. The new tuple value(s) will replace the old one(s). See `merge` for adding elements to tuple. See `merge` for that behavior |
 
 
 
@@ -285,8 +285,20 @@ mySom.merge('myList',[4,5,6])
 
 ```
 
+The merge operation is the only operation that can append elements to an existing `tuple`.\
+Tuples are immutable and therefore the default behavior of the assignment is to replace the existing value(s) with the new value(s) provided.\
+If you want to extend the tuple value(s) you can use the merge operation
 
 ```py
+mySom = som.Som({'myTuple':(1,2,3)})
+mySom.assign('myTuple',(4,5,6))
+# It will automatically create this structure
+{"myTuple":(4,5,6)}
+
+mySom = som.Som({'myTuple':(1,2,3)})
+mySom.merge('myTuple',(4,5,6))
+# It will automatically create this structure
+{"myTuple":(1,2,3,4,5,6)}
 
 ```
 

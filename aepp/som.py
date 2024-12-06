@@ -133,8 +133,11 @@ class Som:
         """
         if type(self.stack) == list and not kwargs.get('merge',False):
             self.stack.append({'method' : 'get', 'path':path})
-        if path is None:
-            return self.__data__
+        if path is None or path == "":
+            if kwargs.get('merge',False):
+                return self.__data__
+            else:
+                return deepcopy(self.__data__)
         if type(path) == str:
             paths = [path]
         elif type(path) == set:
@@ -479,6 +482,7 @@ class Som:
                 list_path = list(reversed(list_path))
                 path = '.'.join(list_path)
                 o_data = self.get(path,merge=True)
+                print(o_data)
         self.__mergedata__(o_data,deepcopy(data))
         return None
         
