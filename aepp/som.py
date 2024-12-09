@@ -36,22 +36,34 @@ class Som:
             if type(data) == str:
                 if '.json' in data:
                     with open(data,'r') as f:
-                        self.__data__ = json.load(f)
+                        json_data = json.load(f)
+                        self.__data__ = self.___build_data__(json_data)
                 else:
                     try:
-                        self.__data__ = json.loads(data)
+                        json_data = json.loads(f)
+                        self.__data__ = self.___build_data__(json_data)
                     except:
                         raise Exception('Cannot read the JSON')
             elif type(data) == dict:
                 if options.get("deepcopy",True):
-                    self.__data__ = deepcopy(data)
+                    self.__data__ = self.___build_data__(deepcopy(data))
                 else:
-                    self.__data__ = data
+                    self.__data__ = self.___build_data__(data)
         self.__defaultValue__ = options.get('defaultValue',None)
         if options.get('stack',False):
             self.stack = []
         else:
             self.stack = None
+    
+    def ___build_data__(self,json:dict)->dict:
+        """
+        Build the data model based on the JSON pass
+        """
+        subSom = Som()
+        for key,value in json.items():
+            subSom.assign(key,value)
+        return subSom.get()
+
 
     def __str__(self)->str:
         return json.dumps(self.to_dict(),indent=2)
@@ -506,12 +518,6 @@ class Som:
             data = deepcopy(self.__data__)
         return data
     
-    def __expand_dataframe__(self,df:pd.DataFrame=None)->pd.DataFrame:
-        """
-        Expand the dataframe to multiple rows
-        """
-        columns = list(df.columns)
-
     def __building_dataframe_flatten__(self,key:str=None,data:dict=None,path:str=None,result_data:dict=None)->dict:
         """
         Build the dataframe columns and value
@@ -532,16 +538,15 @@ class Som:
             else:
                 path = f"{path}.{key}"
         if type(data) != dict and type(data)!=list and type(data) != tuple:
-            result_data[path] = data
+            if pd.notnull(data):
+                result_data[path] = data
         if type(data) == list or type(data) == tuple: ## list or tuple handling
-            if len(data)>0:
+            if len(data)>0: ## only considering not empty list
                 if type(data[0]) == dict:
                     for index, el in enumerate(data):
                         self.__building_dataframe_flatten__(index,el,path,result_data)
                 else:
                     result_data[path] = data
-            else:
-                result_data[path] = data
         else: ## dictionary
             if key == "{}":
                 for key1,value1 in data.items():
@@ -558,9 +563,11 @@ class Som:
                         self.__building_dataframe_flatten__(key1,value1,path,result_data)
                     else:
                         if key is not None:
-                            result_data[f"{path}.{key1}"] = value1
+                            if pd.notnull(value1):
+                                result_data[f"{path}.{key1}"] = value1
                         else:
-                            result_data[f"{key1}"] = value1
+                            if pd.notnull(value1):
+                                result_data[f"{key1}"] = value1
         return result_data
     
     def __building_dataframe_explode__(self,key:str=None,data:dict=None,path:str=None,result_data:list=None)->dict:
@@ -581,12 +588,13 @@ class Som:
             path = f"{path}.{key}"
         if type(data) != dict and type(data)!=list and type(data) != tuple:
             for el in result_data:
-                el[path] = data
+                if pd.notnull(data):
+                    el[path] = data
         elif type(data) == dict:
             for key,item in data.items():
                 result_data = self.__building_dataframe_explode__(key,item,path,result_data)
         elif type(data) == list or type(data) == tuple:
-            if len(data)>0:
+            if len(data)>0: ## only capturing not empty list
                 if type(data[0]) == dict:
                     new_result_data = []
                     for index,subdict in enumerate(data):
@@ -599,9 +607,6 @@ class Som:
                 else:
                     for result in result_data:
                         result[path] = data
-            else:
-                for result in result_data:
-                    result[path] = data
         return result_data
 
 
@@ -621,7 +626,11 @@ class Som:
             return df
         else:
             dict_data = self.__building_dataframe_flatten__(None,self.__data__)
-            df = pd.DataFrame.from_dict(dict_data,orient='index').T
+            ## ensuring the start with a simple value to avoid array decomposition
+            simple_start = {'a':'value'}
+            simple_start.update(dict_data)
+            df = pd.DataFrame.from_dict(simple_start,orient='index').T
+            df = df.drop('a',axis=1)
             return df
     
     def from_dataframe(self,dataFrame:pd.DataFrame=None,orient:int=0)->None:
