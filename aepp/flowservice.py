@@ -510,6 +510,7 @@ class FlowService:
         transformation_mapping_id: str = None,
         transformation_name: str = None,
         transformation_version: int = 0,
+        output_folder_name: str = "%DESTINATION%_%DATASET_ID%_%DATETIME(YYYYMMdd_HHmmss)%",
         obj: dict = None,
         version: str = "1.0",
         **kwargs
@@ -526,8 +527,6 @@ class FlowService:
         if obj is None:
             if any(param is None for param in [name, source_connection_id, target_connection_id]):
                 raise KeyError("Require either obj or all of 'name', 'source_connection_id', 'target_connection_id'")
-            if schedule_frequency not in ("minute", "hour"):
-                raise ValueError("schedule frequency has to be either minute or hour")
             obj = {
                 "name": name,
                 "flowSpec": {
@@ -543,19 +542,29 @@ class FlowService:
                 "transformations": [],
                 "scheduleParams": {}
             }
-            if kwargs.get("export_mode",None) is not None:## infer dataset export
-                obj["scheduleParams"]["exportMode"] = kwargs.get("export_mode",None)
-                obj["scheduleParams"]["foldernameTemplate"] = "%DESTINATION%_%DATASET_ID%_%DATETIME(YYYYMMdd_HHmmss)%"
-            if kwargs.get("schedule_timeUnit",None) is not None:
-                obj["scheduleParams"]["timeUnit"] = kwargs.get("schedule_timeUnit",None)
+            if schedule_frequency == "once":
+                obj["scheduleParams"] = {
+                    "timeUnit": "day",
+                    "interval": 0,
+                    "exportMode": "DAILY_FULL_EXPORT"
+                }
+            elif schedule_frequency not in ("minute", "hour"): 
+                if kwargs.get("schedule_timeUnit",None) is not None:
+                    obj["scheduleParams"]["timeUnit"] = kwargs.get("schedule_timeUnit",None)
+                if schedule_end_time is not None:
+                    obj["scheduleParams"]["endTime"] = schedule_end_time
+                if schedule_frequency is not None:
+                    obj["scheduleParams"]["frequency"] = schedule_frequency
+                if schedule_interval is not None:
+                    obj["scheduleParams"]["interval"] = str(schedule_interval)
+                if kwargs.get("export_mode", None) is not None: ## infer dataset export
+                    obj["scheduleParams"]["exportMode"] = kwargs.get("export_mode",None)
+            else:
+                raise ValueError("schedule frequency has to be either once, minute or hour")
+
             if schedule_start_time is not None:
                 obj["scheduleParams"]["startTime"] = schedule_start_time
-            if schedule_end_time is not None:
-                obj["scheduleParams"]["endTime"] = schedule_end_time
-            if schedule_frequency is not None:
-                obj["scheduleParams"]["frequency"] = schedule_frequency
-            if schedule_interval is not None:
-                obj["scheduleParams"]["interval"] = str(schedule_interval)
+            obj["scheduleParams"]["foldernameTemplate"] = output_folder_name
             if transformation_mapping_id is not None:
                 obj["transformations"] = [
                     {
