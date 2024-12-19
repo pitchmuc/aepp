@@ -18,7 +18,7 @@ Alternatively, you can use the docstring in the methods to have more information
 
 The Flow Service create the different connectors for data ingestion inside Platform.\
 It is true that you can ingest data directly into Adobe Experience Platform via the Data Insertion API.\
-However, it is recommended and usually preferred to set up a pipeline from different data sources.\
+However, it is recommended and usually preferred to set up a pipeline from different data sources.
 
 The data sources available can be of different sort (Azure Blob, AWS S3, (S)FTP, HTTP streaming, etc...).\
 In order to deal with all of that setup, the flow service has been created so it can scale to different type of source connector.\
@@ -27,28 +27,20 @@ Once you have setup the flow in the Adobe Experience platform API via a Source, 
 In order to make the best of this API, it is preferred to have connection to one of the possible data source method cited previously.\
 We will see later on how the process look like.
 
-## Importing the module
+## Importing the module & the FlowService class
+To use the module, you must first set up the configuration. This can be done in one of two ways:
 
-Before importing the module, you would need to import the configuration file, or alternatively provide the information required for the API connection through the configure method. [see getting starting](./getting-started.md)
+1. Import the configuration file directly.
+2. Use the configure method to manually provide the information required for the API connection.
 
-To import the module you can use the import statement with the `flowservice` keyword.
+For detailed instructions, refer to the [Getting Started guide](./getting-started.md).\
 
-```python
-import aepp
-prod = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='prod')
+The `flowservice` module includes the FlowService class, which is designed to help you manage connections to both your Source and Destination systems (see example below).
 
-from aepp import flowservice
-```
+This documentation will provide detailed information on the class’s capabilities and how to utilize them effectively.
 
-The flowservice module provides a class that you can use for managing your connection to your Source and Destinations (see below).\
-The following documentation will provide you with more information on its capabilities.
+The FlowService class relies on the default API connector, which is consistent across other submodules within this Python package. To instantiate the class, simply call `FlowService()` from the flowservice module.
 
-## The FlowService class
-
-The FlowService class uses the default API connector that you would encounter for any other submodules on this python module.\
-This class can be instantiated by calling the `FlowService()` from the `flowservice` module.
-
-Following the previous method described above, you can realize this:
 
 ```python
 import aepp
@@ -602,7 +594,7 @@ conns = flw.getConnectionSpecs()
 
 ## Getting Streaming - Just an example
 streaming = [spec for spec in specs if spec['name'] == "Streaming Connection"][0]
-From there, you can find the different ID required.
+## From there, you can find the different ID required.
 ## Provider ID would look like this : 'providerId': '521eee4d-8cbe-4906-bb48-fb6bd4450033'
 ## ID would look like this : 'id': 'bc7b00d6-623a-4dfc-9fdb-f1240aeadaeb'
 

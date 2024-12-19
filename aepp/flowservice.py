@@ -510,24 +510,39 @@ class FlowService:
         transformation_mapping_id: str = None,
         transformation_name: str = None,
         transformation_version: int = 0,
+        output_folder_name: str = "%DESTINATION%_%DATASET_ID%_%DATETIME(YYYYMMdd_HHmmss)%",
         obj: dict = None,
         version: str = "1.0",
         **kwargs
     ) -> dict:
         """
-        Create a flow with the API.
+        Create a flow with the API using predefined dictionary or a generated dictionary from parameters 
+
         Arguments:
-            flow_spec_id : REQUIRED : flow spec ID If you decide to use specific parameterization
-            name : REQUIRED : Name of the flow 
-            obj : REQUIRED : body to create the flow service.
-                Details can be seen at https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Flows/postFlow
-                requires following keys : name, sourceConnectionIds, targetConnectionIds.
+            flow_spec_id : REQUIRED : The flow specification ID to be used for parameterizing the flow.
+            name : REQUIRED : The name of the flow. 
+            source_connection_id : REQUIRED : The ID of the source connection for the flow.
+            target_connection_id : REQUIRED : The ID of the target connection for the flow.
+            schedule_start_time : OPTIONAL : The start time for the flow schedule in ISO 8601 format. 
+            schedule_end_time : OPTIONAL : The end time for the flow schedule in ISO 8601 format. 
+            schedule_frequency : OPTIONAL : The frequency of the flow schedule, either "once", "minute", or "hour".
+            schedule_interval : OPTIONAL : The interval for the flow schedule, relative to the frequency. 
+            transformation_mapping_id : OPTIONAL : The ID of the transformation mapping to be applied to the flow.
+            transformation_name : OPTIONAL : The name of the transformation to be applied.
+            transformation_version : OPTIONAL : The version number of the transformation. 
+            output_folder_name : OPTIONAL : The naming format for the output folder.
+            obj : OPTIONAL : A dictionary containing the body required to create the flow service.
+            version : OPTIONAL : The API version to use. Defaults to "1.0".
+            **kwargs : OPTIONAL : Additional parameters to customize `scheduleParams`, including:
+                - `schedule_timeUnit`: The time unit for the schedule (e.g., "day").
+                - `export_mode`: The export mode for the dataset (e.g., "DAILY_FULL_EXPORT" or "FIRST_FULL_THEN_INCREMENTAL").
+
+        Returns:
+            dict : A dictionary containing the response from the API, including details about the created flow.
         """
         if obj is None:
             if any(param is None for param in [name, source_connection_id, target_connection_id]):
                 raise KeyError("Require either obj or all of 'name', 'source_connection_id', 'target_connection_id'")
-            if schedule_frequency not in ("minute", "hour"):
-                raise ValueError("schedule frequency has to be either minute or hour")
             obj = {
                 "name": name,
                 "flowSpec": {
@@ -543,19 +558,30 @@ class FlowService:
                 "transformations": [],
                 "scheduleParams": {}
             }
-            if kwargs.get("export_mode",None) is not None:## infer dataset export
-                obj["scheduleParams"]["exportMode"] = kwargs.get("export_mode",None)
-                obj["scheduleParams"]["foldernameTemplate"] = "%DESTINATION%_%DATASET_ID%_%DATETIME(YYYYMMdd_HHmmss)%"
-            if kwargs.get("schedule_timeUnit",None) is not None:
-                obj["scheduleParams"]["timeUnit"] = kwargs.get("schedule_timeUnit",None)
+            if schedule_frequency == "once":
+                obj["scheduleParams"] = {
+                    "timeUnit": "day",
+                    "interval": 0,
+                    "exportMode": "DAILY_FULL_EXPORT"
+                }
+            elif schedule_frequency in ("minute", "hour"): 
+                if kwargs.get("schedule_timeUnit",None) is not None:
+                    obj["scheduleParams"]["timeUnit"] = kwargs.get("schedule_timeUnit",None)
+                if schedule_end_time is not None:
+                    obj["scheduleParams"]["endTime"] = schedule_end_time
+                if schedule_frequency is not None:
+                    obj["scheduleParams"]["frequency"] = schedule_frequency
+                if schedule_interval is not None:
+                    obj["scheduleParams"]["interval"] = str(schedule_interval)
+                if kwargs.get("export_mode", None) is not None: ## infer dataset export
+                    obj["scheduleParams"]["exportMode"] = kwargs.get("export_mode",None)
+            else:
+                raise ValueError("schedule frequency has to be either once, minute or hour")
+
             if schedule_start_time is not None:
                 obj["scheduleParams"]["startTime"] = schedule_start_time
-            if schedule_end_time is not None:
-                obj["scheduleParams"]["endTime"] = schedule_end_time
-            if schedule_frequency is not None:
-                obj["scheduleParams"]["frequency"] = schedule_frequency
-            if schedule_interval is not None:
-                obj["scheduleParams"]["interval"] = str(schedule_interval)
+            if output_folder_name is not None:
+                obj["scheduleParams"]["foldernameTemplate"] = output_folder_name
             if transformation_mapping_id is not None:
                 obj["transformations"] = [
                     {
