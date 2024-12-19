@@ -564,7 +564,7 @@ class FlowService:
                     "interval": 0,
                     "exportMode": "DAILY_FULL_EXPORT"
                 }
-            elif schedule_frequency not in ("minute", "hour"): 
+            elif schedule_frequency in ("minute", "hour"): 
                 if kwargs.get("schedule_timeUnit",None) is not None:
                     obj["scheduleParams"]["timeUnit"] = kwargs.get("schedule_timeUnit",None)
                 if schedule_end_time is not None:
@@ -580,7 +580,8 @@ class FlowService:
 
             if schedule_start_time is not None:
                 obj["scheduleParams"]["startTime"] = schedule_start_time
-            obj["scheduleParams"]["foldernameTemplate"] = output_folder_name
+            if output_folder_name is not None:
+                obj["scheduleParams"]["foldernameTemplate"] = output_folder_name
             if transformation_mapping_id is not None:
                 obj["transformations"] = [
                     {
