@@ -101,7 +101,7 @@ class Profile:
         schema_name: str = "_xdm.context.profile",
         entityId: str = None,
         entityIdNS: str = None,
-        mergePoliciyId: str = None,
+        mergePolicyId: str = None,
         n_events : int = 1000,
         **kwargs,
     ) -> dict:
@@ -111,7 +111,7 @@ class Profile:
             schema_name : REQUIRED : class name of the schema to be retrieved. default : _xdm.context.profile
             entityId : OPTIONAL : identity ID
             entityIdNS : OPTIONAL : Identity Namespace code. Required if entityId is used (except for native identity)
-            mergePoliciyId : OPTIONAL : Id of the merge policy.
+            mergePolicyId : OPTIONAL : Id of the merge policy.
             n_events : OPTIONAL : Maximum number of event returned
         Possible kwargs:
             fields : path of the elements to be retrieved, separated by comma. Ex : "person.name.firstName,person.name.lastName"
@@ -130,7 +130,7 @@ class Profile:
             "schema.name": schema_name,
             "entityId": entityId,
             "entityIdNS": entityIdNS,
-            "mergePoliciyId": mergePoliciyId,
+            "mergePolicyId": mergePolicyId,
         }
         if schema_name == "_xdm.context.experienceevent":
             params["relatedSchema.name"] = kwargs.get(
