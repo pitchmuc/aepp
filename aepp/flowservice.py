@@ -845,7 +845,7 @@ class FlowService:
         Arguments:
             limit : OPTIONAL : number of results returned per request
             n_results : OPTIONAL : total number of results returned (default 100, set to "inf" for retrieving everything)
-            prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response.
+            prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response or list of property.
                 Used to cut down the amount of data returned in the response body.
                 For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
         """
@@ -1973,17 +1973,18 @@ class FlowManager:
             connSpec = self.flowAPI.getConnectionSpec(self.flowSourceConnection['connectionSpec'].get('id'))
             return connSpec
 
-    def getRuns(self,limit:int=10,n_results=100,prop:str=None)->list:
+    def getRuns(self,limit:int=10,n_results=100,prop:list=None)->list:
         """
         Returns the last run of the flow.
         Arguments:
             limit : OPTIONAL : Amount of item per requests
             n_results : OPTIONAL : Total amount of item to return
-            prop : OPTIONAL : Property to filter the flow
+            prop : OPTIONAL : list of property to add to filter the flow runs 
+                example: property=lastRunDetails.startedAtUTC>=1670880253121
         """
         props = [f"flowId=={self.id}"]
-        if prop is not None:
-            props.append(prop)
+        if prop is not None and type(prop) == list :
+            props += prop
         runs = self.flowAPI.getRuns(limit,n_results,prop=props)
         return runs
 
