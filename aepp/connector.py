@@ -305,7 +305,7 @@ class AdobeRequest:
                 elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
                     timeScale = 1 ## oauth returns seconds expiry
                 self.config["date_limit"] = (
-                    time.time() + token_with_expiry["expiry"] / timeScale - 500
+                    time.time() + token_with_expiry.expiry / timeScale - 500
                 )
 
     def updateSandbox(self, sandbox: str) -> None:
