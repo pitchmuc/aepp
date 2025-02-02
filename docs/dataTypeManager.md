@@ -23,6 +23,8 @@ If you were to create some, that are custom, you can use the DataTypeManager to 
 
 A modification to a Data Type will have repercussion in all the schemas and field groups that are using this data type.
 
+**Since version 0.3.9**
+**It is part of the `datatypemanager` module**
 
 ## Menu
 - [Instantiation](#instantiation)
@@ -43,6 +45,7 @@ code example:
 ```python
 import aepp
 from aepp import schema
+from aepp import datatypemanager
 
 prod = aepp.importConfigFile('myConfig.json',connectInstance=True,sandbox='prod')
 
@@ -52,7 +55,7 @@ myDataTypes = schemaInstance.getDataTypes()
 ## Selection of a data type
 myDataType = 'https://ns.adobe.com/tenant/datatypes/257370e5e265b90a2f71341bead54cd5d46c10fd14e'
 
-dataTypeManager = schema.DataTypeManager(myDataType,config=prod)
+dataTypeManager = datatypemanager.DataTypeManager(myDataType,config=prod)
 
 ```
 
@@ -65,9 +68,10 @@ Example code:
 ```python
 import aepp
 from aepp import schema
+from aepp import datatypemanager
 
 prod = aepp.importConfigFile('myConfig.json',connectInstance=True,sandbox='prod')
-dataTypeManager = schema.DataTypeManager(config=prod)
+dataTypeManager = datatypemanager.DataTypeManager(config=prod)
 
 ```
 

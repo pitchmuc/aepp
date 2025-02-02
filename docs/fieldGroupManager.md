@@ -24,8 +24,12 @@ The `FieldGroupManager` is a class that can be instantiated with different param
 * fg_class : OPTIONAL : A list of classes. By default, it will be using the `IndividualProfile` class **and** the `ExperienceEvent` class. Possible value: `record`
 * schemaAPI : OPTIONAL : To connect to your sandbox, you can pass the instance of the `Schema` class you want.
 * config : OPTIONAL : Recommended to pass a [`ConnectObject` instance](./getting-started.md#the-connectinstance-parameter) if you did not pass the schemaAPI. That would ensure the usage of the correct sandbox.
+* description : OPTIONAL : If you want to add a description to your field group.
+
 
 In the end these different parameters offer you different options to use the Field Group Manager.
+**Since version 0.3.9**
+**It is part of the `fieldgroupmanager` module**
 
 ### 1 Connecting to an existing Field Group
 
@@ -35,6 +39,7 @@ If this is your use-case, you can adapt the following code below:
 ```python
 import aepp
 from aepp import schema
+from aepp import fieldgroupmanager
 
 mySandbox = aepp.importConfigFile('myconfig.json',sandbox='mysandbox',connectInstance=True)
 mySchemaInstance = schema.Schema(config=mySandbox)
@@ -45,10 +50,10 @@ singleFG = mySchemaInstance.data.fieldGroup_altId['titleOfFieldGroup']
 ### singleFG will be the altId of that `titleOfFieldGroup` field group
 
 ## option 1 : via schemaAPI parameter
-fgManager = schema.FieldGroupManager(singleFG,schemaAPI=mySchemaInstance)
+fgManager = fieldgroupmanager.FieldGroupManager(singleFG,schemaAPI=mySchemaInstance)
 
 ## option 2 : via config parameter
-fgManager = schema.FieldGroupManager(singleFG,config=mySandbox)
+fgManager = fieldgroupmanager.FieldGroupManager(singleFG,config=mySandbox)
 
 ## option 3 : from the Schema instance
 fgManager = mySchemaInstance.FieldGroupManager(singleFG)
@@ -88,7 +93,7 @@ The attributes available are:
 
 ## Field Group Manager methods
 
-The different methods available for Field Group Manger will be available below.
+The different methods available for Field Group Manager will be available below.
 
 ### setTitle
 Set a name for the Field Group.\
@@ -143,7 +148,7 @@ possible kwargs:
         
 ### addField
 Add the field to the existing fieldgroup definition.\
-Returns False when the field could not be inserted.\
+Returns `False` when the field could not be inserted.\
 Arguments:
 * path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
 * dataType : REQUIRED : the field type you want to create
@@ -157,7 +162,7 @@ Arguments:
 * enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)\
 * ref : OPTIONAL : If you have selected "dataType" as your `datatype`, you should use this parameter to pass the reference.
 possible kwargs:
-* defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
+* defaultPath : Define which path to take by default for adding new field on tenant. Default "customFields", possible alternative : "property".
 * description : if you want to add a description on your field
 
 
@@ -182,6 +187,7 @@ Arguments:
 * description : OPTIONAL : If you want to have the description used (default False)
 * xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
 * editable : OPTIONAL : If you can manipulate the structure of the field groups (default False) -> see [Editable](#editable-concept)
+* excludeObjects : OPTIONAL : Boolean that remove the lines that are defining objects/nodes. Default `False`.
 
 ### to_xdm
 Return the fieldgroup definition as XDM
@@ -237,13 +243,13 @@ Importing the flat representation of the field group. It could be a dataframe or
 The field group needs to be editable to be updated.\
 Argument:
 * fieldGroup : REQUIRED : The dataframe or csv of the field\
-    It needs to contains the following columns : "path", "type", "fieldGroup"
+    It needs to contains the following columns : "path", "xdmType", "fieldGroup"
 * sep : OPTIONAL : In case your CSV is separated by something else than comma. Default (',')
 * sheet_name : OPTIONAL : In case you are uploading an Excel, you need to provide the sheet name
 
 Example of a table used for creating a new schema
 
-| path | type | fieldGroup | title | 
+| path | xdmType | fieldGroup | title | 
 | -- | -- | -- | -- |
 |_tenant.object{} | object | fieldGroup1 | myObject|
 |_tenant.object.field1 | string | fieldGroup1 | myField 1 |

@@ -28,6 +28,9 @@ The SchemaManager is a class that can be instantiated with different parameters:
 
 In the end these different parameters offer you different options to use the schemaManager.
 
+**Since version 0.3.9**
+**It is part of the `schemamanager` module**
+
 ### 1 Connecting to an existing schema
 
 In this case, you can either the `schemaAPI` parameter or the `config` parameter.\
@@ -36,6 +39,7 @@ If this is your use-case, you can adapt the following code below:
 ```python
 import aepp
 from aepp import schema
+from aepp import schemamanager
 
 mySandbox = aepp.importConfigFile('myconfig.json',sandbox='mysandbox',connectInstance=True)
 mySchemaInstance = schema.Schema(config=mySandbox)
@@ -46,10 +50,10 @@ singleSchema = mySchemaInstance.data.schema_altId['titleOfSchema']
 ### singleSchema will be the altId of that `TitleOfSchema` schema
 
 ## option 1 : via schemaAPI parameter
-schemaManager = schema.SchemaManager(singleSchema,schemaAPI=mySchemaInstance)
+schemaManager = schemamanager.SchemaManager(singleSchema,schemaAPI=mySchemaInstance)
 
 ## option 2 : via config parameter
-schemaManager = schema.SchemaManager(singleSchema,config=mySandbox)
+schemaManager = schemamanager.SchemaManager(singleSchema,config=mySandbox)
 
 ## option 3 : from the Schema instance
 schemaManager = mySchemaInstance.SchemaManager(singleSchema)
@@ -64,6 +68,7 @@ If this is your use-case, you can adapt the following code below:
 ```python
 import aepp
 from aepp import schema
+from aepp import schemamanager
 
 mySandbox = aepp.importConfigFile('myconfig.json',sandbox='mysandbox',connectInstance=True)
 mySchemaInstance = schema.Schema(config=mySandbox)
@@ -74,10 +79,10 @@ myFieldGroups = mySchemaInstance.getFieldGroups()
 listFGids = ['fgId1','fgId2','fgId2']
 
 ## option 1
-schemaManager = schema.SchemaManager(fieldGroups=listFGids,schemaAPI=mySchemaInstance)
+schemaManager = schemamanager.SchemaManager(fieldGroups=listFGids,schemaAPI=mySchemaInstance)
 
 ## option 2
-schemaManager = schema.SchemaManager(fieldGroups=listFGids,config=mySandbox)
+schemaManager = schemamanager.SchemaManager(fieldGroups=listFGids,config=mySandbox)
 
 ```
 
@@ -89,15 +94,16 @@ If this is your use-case, you can adapt the following code below:
 ```python
 import aepp
 from aepp import schema
+from aepp import schemamanager
 
 mySandbox = aepp.importConfigFile('myconfig.json',sandbox='mysandbox',connectInstance=True)
 mySchemaInstance = schema.Schema(config=mySandbox)
 
 ## option 1
-schemaManager = schema.SchemaManager(title='my Schema Title', schemaAPI=mySchemaInstance)## setting a title now
+schemaManager = schemamanager.SchemaManager(title='my Schema Title', schemaAPI=mySchemaInstance)## setting a title now
 
 ## option 2
-schemaManager = schema.SchemaManager(config=mySandbox)
+schemaManager = schemamanager.SchemaManager(config=mySandbox)
 
 ```
 ## Schema Manager attributes
@@ -140,8 +146,10 @@ code example:
 ```python
 import aepp
 from aepp import schema
+from aepp import schemamanager
+
 mySandbox = aepp.importConfigFile('myconfig.json',sandbox='mysandbox',connectInstance=True)
-schemaManager = schema.SchemaManager('singleSchemaId',config=mySandbox)
+schemaManager = schemamanager.SchemaManager('singleSchemaId',config=mySandbox)
 
 res = schemaManager.searchField('myFieldName',partialMatch=True,caseSensitive=False)
 
@@ -193,6 +201,7 @@ Arguments:
 * description : OPTIONAL : If you want to have the description added to your dataframe. (default False)
 * xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
 * editable : OPTIONAL : If you can manipulate the structure of the field groups (default False). More details on [Editable concept](#editable-concept)
+* excludeObjects : OPTIONAL : Boolean that remove the lines that are defining objects/nodes. Default `False`.
 
 ### to_dict
 Return a dictionary of the whole schema. You need to have instanciated the Field Group Manager
@@ -253,14 +262,14 @@ The update is local only, see following method to apply that change in your sand
 Returns a dictionary such as {'fieldGroupName':'changeMadeByThatImport'}
 Argument:
 * schema : REQUIRED : The schema defined in the CSV.
-    It needs to contains the following columns : "path", "type", "fieldGroup","title"
+    It needs to contains the following columns : "path", "xdmType", "fieldGroup","title"
 * sep : OPTIONAL : If your CSV is separated by other character  than comma (,)
 * sheet_name : OPTIONAL : If you are loading an Excel, please provide the sheet_name.
 
 
 Example of a table used for creating a new schema
 
-| path | type | fieldGroup | title | 
+| path | xdmType | fieldGroup | title | 
 | -- | -- | -- | -- |
 |_tenant.object{} | object | fieldGroup1 | myObject|
 |_tenant.object.field1 | string | fieldGroup1 | myField 1 |

@@ -101,7 +101,10 @@ Therefore, you will need to inform the connector which region you want to connec
 The different regions available are:
 
 * NLD2 : Europe (Amsterdam data center)
-* VA7 : US / World (Virginia data center)
+* VA7 : US / World
+* IND2 : India 
+* AUS5 : Australia
+* CAN2 : Canada
 
 ### Using kwargs
 

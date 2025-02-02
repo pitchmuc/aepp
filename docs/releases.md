@@ -2,15 +2,32 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.3.9
+
+* refactor `SchemaManager`, `FieldGroupManager` and `DataTypeManager` for better maintenance
+* adding the `classManager` class. [documentation](./classmanager.md)
+* change the default `addField` path to `customFields` instead of `property` in FieldGroupManager.
+* fixing the refresh of token with new data class for token.
+* supporting custom classes for FieldGroupManager creation
+* change the requirement for `importSchemaDefinition` and `importFieldGroupDefinition` to `xdmType` and not `type`.
+* adding multiple parameter supports in some  flowservice methods
+* adding Once dataset export capability via community push
+
+
 ## Version 0.3.8
+
 * creating the `som` module [documentation](./som.md)
 * expanding hints for additional server on `identity` and `sandbox`
 * fix support for `title` parameter in custom `dataType` for `fieldGroupManager`
 * adding the `getDataTypeGlobal` method in the schema module
 * adding dataTypes in the `data` object when querying `getDataTypes` and `getDataTypesGlobal`
-* Fixing issues on API spec for `Tags` and adding `Folders` endpoints
+* Fixing issues on API spec for `Tags` and adding `Folders` endpoints\
+Patch:
+* adding the `excludeObjects` parameter in `to_dataframe` methods for `FieldGroups` and `SchemaManager`
+
 
 ## Version 0.3.7
+
 * adding support for assurance token on Edge methods
 * adding following methods to flowservice
   * `createFlowStreaming`
