@@ -45,6 +45,7 @@ At the moment the current wrapper is containing the following sub modules:
   * [SchemaManager](./docs/schemaManager.md)
   * [FieldGroupManager](./docs/fieldGroupManager.md)
   * [DataTypeManager](./docs/dataTypeManager.md)
+  * [ClassManager](./docs/classManager.md)
 * [queryservice](./docs/queryservice.md)
 * [identity](./docs/identity.md)
 * [sandboxes](./docs/sandboxes.md)
@@ -90,7 +91,7 @@ On top of that, you would need to the psql server accessible in the environment 
 
 ### SchemaManager, FieldGroupManager and DataTypeManager
 
-These classes are available from the `schema` module and alloy you to handle the different elements of the schema definition.
+Since version 0.3.9, these classes are available from their respective modules, previously they were available from the `schema` module and alloy you to handle the different elements of the schema definition.\
 You can use them to extract information on your schema definition.
 
 ### FlowManager
