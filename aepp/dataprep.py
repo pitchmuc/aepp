@@ -285,7 +285,7 @@ class DataPrep:
                 return None
 
     def getMappingSets(
-        self, name: str = None, prop: str = None, limit: int = 100
+        self, name: str = None, prop: str = None, limit: int = 100, expand_schema: bool = False
     ) -> list:
         """
         Returns all mapping sets for given IMS Org Id and sandbox.
@@ -294,6 +294,7 @@ class DataPrep:
             prop : OPTIONAL : property filter. Supported fields are: xdmSchema, status.
                 Example : prop="status==success"
             limit : OPTIONAL : number of result to retun. Default 100.
+            expand_schema: OPTIONAL : Expand the schema in the response.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getMappingSets")
@@ -302,6 +303,8 @@ class DataPrep:
             params["name"] = name
         if prop is not None:
             params["property"] = prop
+        if expand_schema:
+            params["expandSchema"] = True
         path = "/mappingSets"
         res = self.connector.getData(self.endpoint + path, params=params)
         data = res["data"]
