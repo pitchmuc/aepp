@@ -199,13 +199,13 @@ class Tags:
             path = "/tags"
         else:
             path = f"/tags/{tagCategoryId}"
-        params = {'start':0}
+        params = {'start':''}
         res = self.connector.getData(self.endpointTag+path)
         nextPage = res.get('_page',{}).get('next',None)
         data = res.get('tags')
         while nextPage is not None:
-            params['start'] += 100
-            res = self.connector.getData(self.endpointTag+path)
+            params['start'] = nextPage
+            res = self.connector.getData(self.endpointTag+path, params=params)
             data += res.get('tags')
             nextPage = res.get('_page',{}).get('next',None)
         return data
