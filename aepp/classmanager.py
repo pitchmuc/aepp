@@ -32,15 +32,16 @@ class ClassManager:
             self.schemaAPI = schemaAPI
         else:
             self.schemaAPI = Schema(config=config)
-        self.tenantId = f"_{self.schemaAPI.getTenantId()}"
+        tenantNoUnderscore = self.schemaAPI.getTenantId()
+        self.tenantId = f"_{tenantNoUnderscore}"
         if type(aepclass) == dict:
-            if 'classes' in aepclass['id']:
+            if tenantNoUnderscore in aepclass['id']:
                 self.aepclass = self.schemaAPI.getClass(aepclass['id'],full=False,xtype='xed')
             else:
                 self.aepclass = self.schemaAPI.getClass(aepclass['id'],full=True,xtype='xed')
             self.__setAttributes__(self.aepclass)
         elif type(aepclass) == str:
-            if 'classes' in aepclass:
+            if tenantNoUnderscore in aepclass:
                 self.aepclass = self.schemaAPI.getClass(aepclass,full=False,xtype='xed')
             else:
                 self.aepclass = self.schemaAPI.getClass(aepclass,full=True,xtype='xed')

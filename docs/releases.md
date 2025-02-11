@@ -11,7 +11,14 @@ This page list all of the changes that came during the different release of the 
 * supporting custom classes for FieldGroupManager creation
 * change the requirement for `importSchemaDefinition` and `importFieldGroupDefinition` to `xdmType` and not `type`.
 * adding multiple parameter supports in some  flowservice methods
-* adding Once dataset export capability via community push
+* adding Once dataset export capability via community push\
+Patch:
+* added option to return expanded schema in MappingSet retrieval
+* fix so that credential properties are not case sensitive
+* set max limit to 100 for segment retrieval to avoid 400 errors
+* better support of native class in `ClassManager`
+* fix looping for `getTags` method
+* Supporting a new descriptor in `SchemaManager`
 
 
 ## Version 0.3.8

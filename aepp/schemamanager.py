@@ -391,6 +391,8 @@ class SchemaManager:
                                 alternateDescription:str=None,
                                 lookupSchema:str=None,
                                 targetCompletePath:str=None,
+                                timezone:str="UTC",
+                                granularity:str="day",
                                 )->dict:
         """
         Create a descriptor object to be used in the createDescriptor.
@@ -407,7 +409,9 @@ class SchemaManager:
             alternateDescription : OPTIONAL if you wish to add a new description.
             lookupSchema : OPTIONAL : The schema ID for the lookup if the descriptor is for lookup setup
             targetCompletePath : OPTIONAL : if you have the complete path for the field in the target lookup schema.
-            idField : OPTIONAL : If it touches a specific Field ID 
+            idField : OPTIONAL : If it touches a specific Field ID
+            timezone : OPTIONAL : The proper timezone identifier value from the TZ identifier column (see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+            granularity : OPTION : hour or day (default)
         """
         if descType not in self.DESCRIPTOR_TYPES:
             raise Exception(f"The value provided ({descType}) is not supported by this method")
@@ -466,6 +470,14 @@ class SchemaManager:
                 "xdm:sourceSchema": self.id,
                 "xdm:sourceVersion": 1,
                 "xdm:sourceProperty": completePath
+            }
+        elif descType == "xdm:descriptorTimeSeriesGranularity":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceVersion": 1,
+                "xdm:granularity": granularity,
+                "xdm:ianaTimezone":timezone
             }
         return obj
     
