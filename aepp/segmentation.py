@@ -167,7 +167,7 @@ class Segmentation:
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getSegments")
-        params = {"limit": kwargs.get("limit", 100)}
+        params = {"limit": min(kwargs.get("limit", 100), 100)}
         if onlyRealTime:
             params["evaluationInfo.continuous.enabled"] = True
         path = "/segment/definitions"

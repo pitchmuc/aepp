@@ -108,15 +108,20 @@ def importConfigFile(
         raise FileNotFoundError(
             f"Unable to find the configuration file under path `{path}`."
         )
+    
+    def get_case_insensitive_key(d, key):
+        key_lower = key.lower()
+        for k, v in d.items():
+            if k.lower() == key_lower:
+                return v
+        return None
+
     with open(config_file_path, "r") as file:
         provided_config = json.load(file)
-        provided_keys = list(provided_config.keys())
-        if "api_key" in provided_keys:
-            ## old naming for client_id
-            client_id = provided_config["api_key"]
-        elif "client_id" in provided_keys:
-            client_id = provided_config["client_id"]
-        else:
+        provided_keys = [k.lower() for k in provided_config.keys()]
+        
+        client_id = get_case_insensitive_key(provided_config, "api_key") or get_case_insensitive_key(provided_config, "client_id")
+        if client_id is None:
             raise RuntimeError(
                 f"Either an `api_key` or a `client_id` should be provided."
             )
@@ -127,23 +132,30 @@ def importConfigFile(
                 auth_type = 'jwt'
             elif 'auth_code' in provided_keys:
                 auth_type = 'oauthV1'
+        
         args = {
-            "org_id": provided_config["org_id"],
+            "org_id": get_case_insensitive_key(provided_config, "org_id"),
             "client_id": client_id,
-            "secret": provided_config["secret"],
-            "sandbox": provided_config.get("sandbox-name", "prod"),
-            "environment": provided_config.get("environment", "prod"),
+            "secret": get_case_insensitive_key(provided_config, "secret") or get_case_insensitive_key(provided_config, "client_secret") or get_case_insensitive_key(provided_config, "client_secrets")[0],
+            "sandbox": get_case_insensitive_key(provided_config, "sandbox-name") or "prod",
+            "environment": get_case_insensitive_key(provided_config, "environment") or "prod",
             "connectInstance": connectInstance
         }
-        if sandbox is not None: ## overriding sandbox from parameter
+        
+        if sandbox is not None:  # overriding sandbox from parameter
             args["sandbox"] = sandbox
+        
         if auth_type == "jwt":
-            args["tech_id"] = provided_config["tech_id"]
-            args["path_to_key"] = provided_config["pathToKey"]
+            args["tech_id"] = get_case_insensitive_key(provided_config, "tech_id") or get_case_insensitive_key(provided_config, "technical_account_id")
+            args["path_to_key"] = get_case_insensitive_key(provided_config, "pathtokey")
         elif auth_type == "oauthV2":
-            args["scopes"] = provided_config["scopes"].replace(' ','')
+            scopes = get_case_insensitive_key(provided_config, "scopes")
+            if type(scopes) == list:
+                args["scopes"] = ",".join(scopes)
+            else:
+                args["scopes"] = scopes.replace(' ', '')
         elif auth_type == "oauthV1":
-            args["auth_code"] = provided_config["auth_code"]
+            args["auth_code"] = get_case_insensitive_key(provided_config, "auth_code")
         else:
             raise ValueError("unsupported authentication type, currently only jwt and oauth are supported")
         if kwargs.get('accesstoken','') != "":
