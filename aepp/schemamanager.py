@@ -415,10 +415,11 @@ class SchemaManager:
         """
         if descType not in self.DESCRIPTOR_TYPES:
             raise Exception(f"The value provided ({descType}) is not supported by this method")
-        if completePath is None:
-            raise ValueError("Require a field complete path")
-        else:
-            completePath = '/'+completePath.replace('.','/')
+        if descType != "xdm:descriptorTimeSeriesGranularity":
+            if completePath is None:
+                raise ValueError("Require a field complete path")
+            else:
+                completePath = '/'+completePath.replace('.','/')
         if descType == "xdm:descriptorIdentity":
             obj = {
                 "@type": descType,
