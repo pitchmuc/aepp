@@ -84,9 +84,15 @@ class Identity:
             self.connector.header.update({"x-sandbox-name":kwargs.get('sandbox')})
         else:
             self.sandbox = self.connector.config["sandbox"]
-        self.endpoint = (
-            f"https://platform-{region}.adobe.io" + aepp.config.endpoints["identity"]
-        )
+
+        environment = config["environment"]
+        base_url = f"https://platform-{region}.adobe.io"
+
+        if environment != "prod":
+            base_url = f"https://platform-{environment}-{region}.adobe.io"
+
+        # Construct the endpoint
+        self.endpoint = base_url + aepp.config.endpoints["identity"]
 
     def __str__(self):
         return json.dumps({'class':'Identity','region':self.region,'sandbox':self.sandbox,'clientId':self.connector.config.get("client_id"),'orgId':self.connector.config.get("org_id")},indent=2)
