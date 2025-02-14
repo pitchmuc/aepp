@@ -19,6 +19,9 @@ Patch:
 * better support of native class in `ClassManager`
 * fix looping for `getTags` method
 * Supporting a new descriptor in `SchemaManager`
+* Fixing customer profile typo
+* Enhancing `Identity` class connection for AEP developer
+* Adding new reference for descriptors in `SchemaManager`.
 
 
 ## Version 0.3.8

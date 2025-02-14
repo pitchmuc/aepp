@@ -25,7 +25,7 @@ class SchemaManager:
     """
     A class to handle the schema management.
     """
-    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"]
+    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity"]
 
     def __init__(self,
                 schema:Union[str,dict]=None,
@@ -400,7 +400,7 @@ class SchemaManager:
         https://experienceleague.adobe.com/docs/experience-platform/xdm/api/descriptors.html?lang=en#appendix
         Arguments:
             descType : REQUIRED : The type to be used.
-                it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"
+                it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity"
             completePath : REQUIRED : the dot path of the field you want to attach a descriptor to.
                 Example: '_tenant.tenantObject.field'
             identityNSCode : OPTIONAL : if the descriptor is identity related, the namespace CODE  used.
