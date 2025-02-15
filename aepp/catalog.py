@@ -767,13 +767,13 @@ class Catalog:
                 if 'MAPPER' in code:
                     errorMessages.append(message)
                     errorCodes.append(code)
-                    matchDestPath = re.search('destination path (.+?)\. ',message)
+                    matchDestPath = re.search(r'destination path (.+?)\. ',message)
                     if matchDestPath:
                         destinationPaths.append(matchDestPath.group(1))
                     matchExpectedTypes = re.search('expected data type was: ([A-Z]+?), ',message)
                     if matchExpectedTypes:
                         expectedTypes.append(matchExpectedTypes.group(1))
-                    matchActualTypes = re.search('actual data type was: ([A-Z]+?)\. ',message)
+                    matchActualTypes = re.search(r'actual data type was: ([A-Z]+?)\. ',message)
                     if matchActualTypes:
                         actualTypes.append(matchActualTypes.group(1))
                     matchSourceField = re.search('sourceField: (.+?) destinationField',message)

@@ -22,6 +22,7 @@ Patch:
 * Fixing customer profile typo
 * Enhancing `Identity` class connection for AEP developer
 * Adding new reference for descriptors in `SchemaManager`.
+* Patch invalid escape sequence in `catalog` and `fieldgroupmanager` 
 
 
 ## Version 0.3.8

@@ -1074,7 +1074,7 @@ class FieldGroupManager:
         df_import = df_import[~(df_import.duplicated('path'))].copy() ## removing duplicated paths
         df_import = df_import[~(df_import['path']==self.tenantId)].copy() ## removing tenant field
         df_import = df_import.fillna('')
-        underscoreDF = df_import[df_import.path.str.contains('\._')].copy() ## special fields not supported
+        underscoreDF = df_import[df_import.path.str.contains(r'\._')].copy() ## special fields not supported
         if len(underscoreDF)>0:
             list_paths = underscoreDF['path'].to_list()
             objectRoots = set([p.split('.')[-2] for p in list_paths]) ## removing all objects using these fields
@@ -1085,7 +1085,7 @@ class FieldGroupManager:
             df_import['title'] = df_import['path'].apply(lambda x : x.split('.')[-1])
         if 'description' not in df_import.columns:
             df_import['description'] = ""
-        df_import['pathDot'] = df_import.path.str.count('\.')
+        df_import['pathDot'] = df_import.path.str.count(r'\.')
         df_import = df_import.sort_values(['pathDot'])##sorting creation of objects
         for index, row in df_import.iterrows():
             #if 'error' in res.keys():
