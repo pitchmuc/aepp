@@ -635,19 +635,18 @@ class Som:
     
     def from_dataframe(self,dataFrame:pd.DataFrame=None,orient:int=0)->None:
         """
-        Build a Som object from a dataframe row. 
+        Build a Som object from a single dataframe row or column.
         Arguments:
             dataFrame : REQUIRED : The dataframe countaining your data
-            orient : OPTIONAL : The orientation of the dataframe. Default 0 by row. 1 by columns.
+            orient : OPTIONAL : The orientation of the dataframe. 0 read by row (default). 1 read by columns.
         """
         if type(self.stack) == list:
             self.stack.append({'method' : 'from_dataframe', 'path':None})
         if orient==0:
             for index, row in dataFrame.iterrows():
-                for key,value in row:
-                    self.assign(key,value)
+                self.assign(index,row[0])
         elif orient==1:
-            for col in dataFrame:
-                for key,value in col:
+            for index, row in dataFrame.iterrows():
+                for key,value in row.items():
                     self.assign(key,value)
         return self.to_dict()

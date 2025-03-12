@@ -365,7 +365,7 @@ The result of operation will return this type of table:
 | value | [1,2,3] | 1 | array_item2 | NaN | NaN |
 
 ### from_dataframe
-Build a Som object from a dataframe row.\
+Build a Som object from a **SINGLE** dataframe row or column.\
 It only works when the data has been completely flatten (without `expand_arrays` set to `True`)\
 The naming convention for element of arrays needs to be respected, ex: `[0]`
 Arguments:
