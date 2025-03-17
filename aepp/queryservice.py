@@ -1091,7 +1091,7 @@ class InteractiveQuery2:
     loggingEnabled = False
     logger = None
 
-    def __init__(self, conn_object: dict = None, loggingObject: dict = None):
+    def __init__(self, conn_object: dict = None, loggingObject: dict = None,sslmode:str="allow"):
         """
         Importing the psycopg2 library and instantiating the connection via the conn_object pass over the instantiation method.
         Arguments:
@@ -1113,6 +1113,7 @@ class InteractiveQuery2:
             "user": self.user,
             "password": self.passwd,
             "port": self.port,
+            "sslmode":sslmode
         }
         self.connect = psycopg2.connect(**self.config_object)
         if loggingObject is not None and sorted(

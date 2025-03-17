@@ -22,7 +22,9 @@ Patch:
 * Fixing customer profile typo
 * Enhancing `Identity` class connection for AEP developer
 * Adding new reference for descriptors in `SchemaManager`.
-* Patch invalid escape sequence in `catalog` and `fieldgroupmanager` 
+* Patch invalid escape sequence in `catalog` and `fieldgroupmanager`
+* Patch the `from_dataframe` in the `som` module 
+* adding capability to request ssl connection in `InteractiveQuery2`
 
 
 ## Version 0.3.8
