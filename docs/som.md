@@ -248,7 +248,7 @@ it is important to note that the array elements can be accessed by their numbers
 Example: having a structure as such
 
 ```py
-{
+test = {
   "data":{
     "string":"value1",
     "nested":{
@@ -257,6 +257,20 @@ Example: having a structure as such
   
   }
 }
+
+mysom = som.Som(test)
+
+```
+
+Examples of get method usage:
+
+```py
+
+mysom.get('data') ## returns {"string":"value1","nested":{"string":"value2"}}
+mysom.get('data.string') ## returns "value1"
+mysom.get('data.nested.string') ## returns "value2"
+mysom.get('data.nested.somethingElse') ## returns None because "somethingElse" does not exist
+mysom.get('data.nested.somethingElse','fallback') ## returns 'fallback' as "somethingElse" does not exist
 ```
 
 
