@@ -134,13 +134,14 @@ Arguments:
 * name : REQUIRED : Name of the package.
 * description : OPTIONAL : Description of the package
 * fullPackage : OPTIONAL : If you want to copy the whole sandbox. (default False)
-* artefacts : OPTIONAL : If you set fullPackage to False, then you need to provide a dictionary of items with their type.\
-example :
-```JS
-    {"27115daa-c92b-4f17-a077-d65ffeb0c525":"PROFILE_SEGMENT",
-    "d8d8ed6d-696a-40bd-b4fe-ca053ec94e29" : "JOURNEY"}
-```
-For more types, refers to ARTIFACS_TYPE
+* artefacts : OPTIONAL : If you set fullPackage to False, then you need to provide a list of dictionaries susch as [{"id":"myId","title":"mytitle",:"type":"typeOfArtefact"}]\
+    example :
+    ```py 
+    [
+        {"id":"27115daa-c92b-4f17-a077-d65ffeb0c525":"type":"PROFILE_SEGMENT","title":"mysegment"} ,\
+        {"id":"d8d8ed6d-696a-40bd-b4fe-ca053ec94e29","type": "JOURNEY","title":"myJourney"}
+    ]
+For more types, refers to `ARTIFACS_TYPE` attributes.
 * expiry : OPTIONAL : The expiry of that package in days (default 90 days)
 
 ### updatePackage
@@ -150,10 +151,14 @@ Arguments:
 * operation : OPTIONAL : Type of update, either "UPDATE", "DELETE","ADD"
 * name : OPTIONAL : In case you selected UPDATE and want to change the name of the package.
 * description : OPTIONAL : In case you selected UPDATE and want to change the description of the package.
-* artifacts : OPTIONAL : In case you used DELETE or ADD, the dictionary of artifacts such as {"id":"type"}\
-    example : {"27115daa-c92b-4f17-a077-d65ffeb0c525":"PROFILE_SEGMENT",\
-    "d8d8ed6d-696a-40bd-b4fe-ca053ec94e29" : "JOURNEY"}
-
+* artifacts : OPTIONAL : In case you used DELETE or ADD, a list of dictionary as [{"id":"myId","title":"mytitle",:"type":"typeOfArtefact"}]\
+    example :
+    ```py 
+    [
+        {"id":"27115daa-c92b-4f17-a077-d65ffeb0c525":"type":"PROFILE_SEGMENT","title":"mysegment"} ,\
+        {"id":"d8d8ed6d-696a-40bd-b4fe-ca053ec94e29","type": "JOURNEY","title":"myJourney"}
+    ]
+    ```
 
 ### publishPackage
 Publish a package. Requires step before importing the package.\

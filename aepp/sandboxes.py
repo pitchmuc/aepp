@@ -291,7 +291,7 @@ class Sandboxes:
                       name:str=None,
                       description:str=None,
                       fullPackage:bool=False,
-                      artifacts:dict=None,
+                      artifacts:list=None,
                       expiry:int=90,
                       **kwargs)->dict:
         """
@@ -300,10 +300,11 @@ class Sandboxes:
             name : REQUIRED : Name of the package.
             description : OPTIONAL : Description of the package
             fullPackage : OPTIONAL : If you want to copy the whole sandbox. (default False)
-            artefacts : OPTIONAL : If you set fullPackage to False, then you need to provide a dictionary of items with their type.
-                example : 
-                {"27115daa-c92b-4f17-a077-d65ffeb0c525":"PROFILE_SEGMENT",
-                "d8d8ed6d-696a-40bd-b4fe-ca053ec94e29" : "JOURNEY"}
+            artifacts : OPTIONAL : If you set fullPackage to False, then you need to provide a list of dictionary of items.
+                example : [
+                    {"id":"27115daa-c92b-4f17-a077-d65ffeb0c525","title": "my segment title", "type" : "PROFILE_SEGMENT"},
+                    {"id":"d8d8ed6d-696a-40bd-b4fe-ca053ec94e29","title": "my journey title", "type" : "JOURNEY"}
+                ]
                 For more types, refers to ARTIFACS_TYPE 
             expiry : OPTIONAL : The expiry of that package in days (default 90 days)
         """
@@ -330,7 +331,6 @@ class Sandboxes:
                 "artifacts": []
             }
         else:
-            myartefacts = [{"id":key,"type":artifacts[key]} for key in artifacts]
             data = {
                 "name": name,
                 "description": desc,
@@ -340,7 +340,7 @@ class Sandboxes:
                     "imsOrgId": self.org_id
                 },
                 "expiry": now90daysZ_str,
-                "artifacts": deepcopy(myartefacts)
+                "artifacts": deepcopy(artifacts)
             }
         path = "/packages"
         res = self.connector.postData(self.endpointPackage+path,data=data)
@@ -350,7 +350,7 @@ class Sandboxes:
                       operation:str=None,
                       name:str=None,
                       description:str=None,
-                      artifacts:dict=None,)->dict:
+                      artifacts:list=None,)->dict:
         """
         Update a package ID.
         Arguments:
@@ -358,9 +358,11 @@ class Sandboxes:
             operation : OPTIONAL : Type of update, either "UPDATE", "DELETE","ADD"
             name : OPTIONAL : In case you selected UPDATE and want to change the name of the package.
             description : OPTIONAL : In case you selected UPDATE and want to change the description of the package.
-            artifacts : OPTIONAL : In case you used DELETE or ADD, the dictionary of artifacts such as {"id":"type"}
-                example : {"27115daa-c92b-4f17-a077-d65ffeb0c525":"PROFILE_SEGMENT",
-                "d8d8ed6d-696a-40bd-b4fe-ca053ec94e29" : "JOURNEY"}
+            artifacts : OPTIONAL : In case you used DELETE or ADD, provide a list of dictionary of items.
+                example : [
+                    {"id":"27115daa-c92b-4f17-a077-d65ffeb0c525","title": "my segment title", "type" : "PROFILE_SEGMENT"},
+                    {"id":"d8d8ed6d-696a-40bd-b4fe-ca053ec94e29","title": "my journey title", "type" : "JOURNEY"}
+                ]
             
         """
         if packageId is None:
@@ -381,11 +383,10 @@ class Sandboxes:
                 }
             }
         elif operation == "DELETE" or operation == "ADD":
-            myartefacts = [{"id":key,"type":artifacts[key]} for key in artifacts]
             data = {
                 "id" : packageId,
                 "action" : action,
-                "artifacts": myartefacts
+                "artifacts": deepcopy(artifacts)
             }
         path = "/packages"
         res = self.connector.putData(self.endpointPackage+path,data=data)

@@ -2,6 +2,9 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.3.10
+* refactor the `createPackage` and `updatePackage` methods ([documentation](./sandboxes.md#createPackage)).
+
 ## version 0.3.9
 
 * refactor `SchemaManager`, `FieldGroupManager` and `DataTypeManager` for better maintenance
