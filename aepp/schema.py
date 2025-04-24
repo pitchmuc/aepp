@@ -94,6 +94,7 @@ class Schema:
             self.loggingEnabled = True
             self.logger = logging.getLogger(f"{__name__}")
             self.logger.setLevel(loggingObject["level"])
+            formatter = logging.Formatter("%(asctime)s::%(name)s::%(funcName)s::%(levelname)s::%(message)s::%(lineno)d")
             if type(loggingObject["format"]) == str:
                 formatter = logging.Formatter(loggingObject["format"])
             elif type(loggingObject["format"]) == logging.Formatter:
@@ -706,6 +707,7 @@ class Schema:
                    orderBy:str=None,
                    limit:int=300, 
                    output:str='raw',
+                   format:str='xdm',
                    excludeAdhoc: bool = True,
                    **kwargs):
         """
@@ -715,6 +717,7 @@ class Schema:
                             For example, property=meta:intendedToExtend==https://ns.adobe.com/xdm/context/profile
             oderBy : OPTIONAL : Sort the listed resources by specified fields. For example orderby=title
             limit : OPTIONAL : Number of resources to return per request, default 300 - the max.
+            format : OPTIONAL : type of response, default "xdm", can be "xed" for xed format.
             excludeAdhoc : OPTIONAL : Exlcude the Adhoc classes that have been created.
             output : OPTIONAL : type of output, default "raw", can be "df" for dataframe.
         kwargs:
@@ -723,7 +726,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getClasses")
         privateHeader = deepcopy(self.header)
-        privateHeader.update({"Accept": "application/vnd.adobe.xdm-id+json"})
+        privateHeader.update({"Accept": f"application/vnd.adobe.{format}-id+json"})
         params = {"limit":limit}
         if excludeAdhoc:
             params["property"] = "meta:extends!=https://ns.adobe.com/xdm/data/adhoc"
@@ -758,6 +761,7 @@ class Schema:
         
     def getClassesGlobal(self, 
                    prop:str=None,
+                   format:str='xdm',
                    orderBy:str=None,
                    limit:int=300, 
                    output:str='raw',
@@ -767,6 +771,7 @@ class Schema:
         Arguments:
             prop : OPTIONAL : A comma-separated list of top-level object properties to be returned in the response. 
                             For example, property=meta:intendedToExtend==https://ns.adobe.com/xdm/context/profile
+            format : OPTIONAL : type of response, default "xdm", can be "xed" for xed format.
             oderBy : OPTIONAL : Sort the listed resources by specified fields. For example orderby=title
             limit : OPTIONAL : Number of resources to return per request, default 300 - the max.
             output : OPTIONAL : type of output, default "raw", can be "df" for dataframe.
@@ -776,7 +781,7 @@ class Schema:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getClasses")
         privateHeader = deepcopy(self.header)
-        privateHeader.update({"Accept": "application/vnd.adobe.xdm-id+json"})
+        privateHeader.update({"Accept": f"application/vnd.adobe.{format}-id+json"})
         params = {"limit":limit}
         if prop is not None:
             if 'property' not in params.keys():
@@ -813,9 +818,10 @@ class Schema:
         full: bool = True,
         desc: bool = False,
         deprecated: bool = False,
-        xtype : str = "xdm",
+        type: str = "xdm",
         version: int = 1,
         save: bool = False,
+        **kwargs
     ):
         """
         Return a specific class.
@@ -824,7 +830,7 @@ class Schema:
             full : OPTIONAL : True (default) will return the full schema.False just the relationships.
             desc : OPTIONAL : If set to True, return the descriptors.
             deprecated : OPTIONAL : Display the deprecated field from that schema (False by default)
-            xtype : OPTIONAL : either "xdm" (default) or "xed". 
+            type : OPTIONAL : either "xdm" (default) or "xed". 
             version : OPTIONAL : the version of the class to retrieve.
             save : OPTIONAL : To save the result of the request in a JSON file.
         """
@@ -844,8 +850,10 @@ class Schema:
             updateDesc = "-desc"
         if deprecated:
             updateDeprecated = "-deprecated"
+        if kwargs.get("xtype", None) is not None and kwargs.get("xtype", False) != type:
+            type = kwargs.get("xtype", 'xdm')
         privateHeader.update(
-                {"Accept": f"application/vnd.adobe.{xtype}{updateFull}{updateDesc}{updateDeprecated}+json; version=" + str(version)}
+                {"Accept": f"application/vnd.adobe.{type}{updateFull}{updateDesc}{updateDeprecated}+json; version=" + str(version)}
             )
         path = f"/{self.container}/classes/{classId}"
         res = self.connector.getData(self.endpoint + path, headers=privateHeader)
@@ -1043,6 +1051,7 @@ class Schema:
         flat: bool = False,
         deprecated: bool = False,
         save: bool = False,
+        **kwargs
     ):
         """
         Returns a specific mixin / field group.
@@ -1072,9 +1081,9 @@ class Schema:
             accept_flat = "-flat"
         if deprecated:
             accept_deprec = "-deprecated"
-        update_accept = (
-            f"application/vnd.adobe.{type}{accept_full}{accept_desc}{accept_flat}{accept_deprec}+json; version={version}"
-        )
+        if kwargs.get('xtype', None) is not None and kwargs.get('xtype', None) != type:
+            type = kwargs.get('xtype', 'xdm')
+        update_accept = (f"application/vnd.adobe.{type}{accept_full}{accept_desc}{accept_flat}{accept_deprec}+json; version={version}")
         privateHeader.update({"Accept": update_accept})
         path = f"/{self.container}/fieldgroups/{fieldGroupId}"
         res = self.connector.getData(self.endpoint + path, headers=privateHeader)
@@ -1101,6 +1110,7 @@ class Schema:
         if fieldGroup is None:
             raise ValueError("Require a mixin  object")
         mixin_obj = deepcopy(fieldGroup)
+        obj = {}
         oldTenant = mixin_obj["meta:tenantNamespace"]
         if "definitions" in mixin_obj.keys():
             obj = {

@@ -63,12 +63,11 @@ class FlowService:
             header : OPTIONAL : header object  in the config module.
             loggingObject : OPTIONAL : A dictionary presenting the configuration of the logging service.
         """
-        if loggingObject is not None and sorted(
-            ["level", "stream", "format", "filename", "file"]
-        ) == sorted(list(loggingObject.keys())):
+        if loggingObject is not None and sorted(["level", "stream", "format", "filename", "file"]) == sorted(list(loggingObject.keys())):
             self.loggingEnabled = True
             self.logger = logging.getLogger(f"{__name__}")
             self.logger.setLevel(loggingObject["level"])
+            formatter = logging.Formatter("%(asctime)s::%(name)s::%(funcName)s::%(levelname)s::%(message)s::%(lineno)d")
             if type(loggingObject["format"]) == str:
                 formatter = logging.Formatter(loggingObject["format"])
             elif type(loggingObject["format"]) == logging.Formatter:
@@ -993,10 +992,13 @@ class FlowService:
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createSourceConnectionStreaming")
+        spec_id = None
         if providerId is None:
             if spec_name is None:
                 raise ValueError("spec_name is required if you did not want the default provider ID")
             spec_id = self.getConnectionSpecIdFromName(spec_name)
+        if spec_id is None:
+            raise Exception("Require a specId to be present")
         obj = {
             "name": name,
             "providerId": providerId,
@@ -1399,7 +1401,7 @@ class FlowService:
 
             }
         ]
-        res = self.updateFlow(flowId=flowId, operation=op)
+        res = self.updateFlow(flowId=flowId, updateObj=op)
         return res
     
     def getLandingZoneContainer(
@@ -1696,7 +1698,7 @@ class FlowService:
             name : REQUIRED : The name of your Data Landing Zone
         """
         if name is None:
-            Exception("Require a name for the connection")
+            raise Exception("Require a name for the connection")
         data = {
             "name": name,
             "connectionSpec": {
@@ -1762,7 +1764,7 @@ class FlowService:
             compression = "GZIP"
         baseConn = self.createBaseConnectionDLZTarget(baseConnection)
         sourceConn = self.createSourceConnectionDataLake(sourceConnection,dataset_ids=datasetIds)
-        targetConn = self.createTargetConnectionDatasetToDataLandingZone(targetConn,baseConnectionId=baseConn['id'],path=path,datasetFileType=fileType,compression=compression)
+        targetConn = self.createTargetConnectionDatasetToDataLandingZone(targetConnection,baseConnectionId=baseConn['id'],path=path,datasetFileType=fileType,compression=compression)
         flow = self.createFlowDataLakeToDataLandingZone(flowname,
                                                         source_connection_id=sourceConn['id'],
                                                         target_connection_id=targetConn['id'],

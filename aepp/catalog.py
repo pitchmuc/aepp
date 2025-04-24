@@ -22,6 +22,7 @@ from itertools import zip_longest
 import re
 from .configs import ConnectObject
 
+
 @dataclass
 class _Data:
 
@@ -269,7 +270,7 @@ class Catalog:
             self.logger.debug(f"Starting getFailedBatchesDF")
         dict_failed = {}
         for batch in res:
-            if type(batch) == dict:
+            if type(batch) == str:
                 if res.get(batch,{}).get('relatedObjects',[{'type':'unknown'}])[0]['type'] == "dataSet":
                     datasetId = res[batch]['relatedObjects'][0]['id']
                 dict_failed[batch] = {

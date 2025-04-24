@@ -947,7 +947,7 @@ class Segmentation:
             audience = self.getAudience(audience)
         formatt = audience.get('expression',{}).get('format')
         if formatt == 'pql/text':
-            paths = re.findall('WHAT\((.+?)\.[^\.]+\(',audience.get('expression',{}).get('value'))
+            paths = re.findall(r'WHAT\((.+?)\.[^\.]+\(',audience.get('expression',{}).get('value'))
             return paths
         if formatt == 'pql/json':
             paths = self.__pqlJSONSegmentReader__(audience.get('expression',{}).get('value'))

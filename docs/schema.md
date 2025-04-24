@@ -265,7 +265,7 @@ Arguments:
 * full : OPTIONAL : True (default) will return the full schema.False just the relationships.
 * desc : OPTIONAL : If set to True, return the descriptors.
 * deprecated : OPTIONAL : Display the deprecated field from that schema (False by default)
-* xtype : OPTIONAL : either "xdm" (default) or "xed". 
+* type : OPTIONAL : either "xdm" (default) or "xed". 
 * version : OPTIONAL : the version of the class to retrieve.
 * save : OPTIONAL : To save the result of the request in a JSON file.
 

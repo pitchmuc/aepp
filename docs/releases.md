@@ -4,6 +4,11 @@ This page list all of the changes that came during the different release of the 
 
 ## version 0.3.10
 * refactor the `createPackage` and `updatePackage` methods ([documentation](./sandboxes.md#createPackage)).
+Patch:
+* fixing typo in `getFailedBatchesDF` method in catalog
+* change of default parameter `xtype` to `type` for getClass method. Should be backward compatible. No impact.
+* Preventing null assignment to some variable during init of classes.
+* Changing some string (`''`) to raw string (`r''`) for regex to avoid potential escape errors
 
 ## version 0.3.9
 
