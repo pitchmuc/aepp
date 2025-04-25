@@ -223,7 +223,7 @@ class DataPrep:
                     "sourceType": map["sourceType"],
                     "source": map["source"],
                     "destination": re.sub(
-                        "^_[\w]+\.", f"{tenantId}.", map["destination"]
+                        r"^_[\w]+\.", f"{tenantId}.", map["destination"]
                     ),
                 }
                 for map in mapping
@@ -237,7 +237,7 @@ class DataPrep:
                         "sourceType": map["sourceType"],
                         "source": map["source"],
                         "destination": re.sub(
-                            "^_[\w]+\.", f"{tenantId}.", map["destination"]
+                            r"^_[\w]+\.", f"{tenantId}.", map["destination"]
                         ),
                     }
                     for map in mappings
