@@ -355,5 +355,11 @@ class DataAccess:
         Argument:
             data : REQUIRED : The _io.BytesIO data format returned by the getFiles method. 
         """
-        df = pd.read_parquet(data)
+        try:## simple method
+            df = pd.read_parquet(data)
+        except: ## in case the data are not returned by the getFiles method, we need to decode the bytesIO object
+            import io, fastparquet
+            bytesIO = io.BytesIO(data)
+            tmpfile = fastparquet.ParquetFile(bytesIO)
+            df = tmpfile.to_pandas()
         return df
