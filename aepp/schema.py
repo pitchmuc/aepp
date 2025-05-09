@@ -1790,7 +1790,7 @@ class Schema:
             dataType : OPTIONAL : The data Type definition, the reference Id or nothing if you want to start from scratch.
         """
         from .datatypemanager import DataTypeManager
-        return DataTypeManager(dataType=dataType)
+        return DataTypeManager(dataType=dataType,schemaAPI=self)
 
     def compareDFschemas(self,df1,df2,**kwargs)->dict:
         """

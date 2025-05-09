@@ -18,6 +18,7 @@ import json
 from .configs import ConnectObject
 from .datatypemanager import DataTypeManager
 from aepp.schema import Schema
+from aepp import som
 
 class FieldGroupManager:
     """
@@ -50,6 +51,7 @@ class FieldGroupManager:
         self.STATE = "EXISTING"
         self.fieldGroup = {}
         self.dataTypes = {}
+        self.dataTypeManagers = {} 
         if schemaAPI is not None and type(schemaAPI) == Schema:
             self.schemaAPI = schemaAPI
         else:
@@ -66,8 +68,9 @@ class FieldGroupManager:
                                 dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
                                 for dt in dataTypes:
                                     dt_manager = self.schemaAPI.DataTypeManager(dt)
-                                    self.dataTypes[dt_manager.title] = dt_manager
-                                if full!=False:
+                                    self.dataTypes[dt_manager.id] = dt_manager.title
+                                    self.dataTypeManagers[dt_manager.title] = dt_manager
+                                if full:
                                     self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
                                 else:
                                     self.EDITABLE = True
@@ -89,8 +92,9 @@ class FieldGroupManager:
                         dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
                         for dt in dataTypes:
                             dt_manager = self.schemaAPI.DataTypeManager(dt)
-                            self.dataTypes[dt_manager.title] = dt_manager
-                        if full != False:
+                            self.dataTypes[dt_manager.id] = dt_manager.title
+                            self.dataTypeManagers[dt_manager.title] = dt_manager
+                        if full:
                             self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
                         else:
                             print("Full == False")
@@ -933,10 +937,16 @@ class FieldGroupManager:
         """
         definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
         data = self.__transformationDict__(definition,typed)
+        mySom = som.Som(data)
+        if len(self.dataTypes)>0:
+            paths = self.getDataTypePaths()
+            for path,dataElementId in paths.items():
+                dict_dataType = self.getDataTypeManager(dataElementId).to_dict()
+                mySom.assign(path,dict_dataType)
         if save:
             filename = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
-            aepp.saveFile(module='schema',file=data,filename=f"{filename}.json",type_file='json')
-        return data
+            aepp.saveFile(module='schema',file=mySom.to_dict(),filename=f"{filename}.json",type_file='json')
+        return mySom.to_dict()
 
     def to_dataframe(self,save:bool=False,queryPath:bool=False,description:bool=False,xdmType:bool=True,editable:bool=False,excludeObjects:bool=False)->pd.DataFrame:
         """
@@ -955,6 +965,13 @@ class FieldGroupManager:
         df = pd.DataFrame(data)
         df = df[~df.path.duplicated()].copy() ## dedup the paths
         df = df[~(df['path']==self.tenantId)].copy()## remove the root
+        if len(self.dataTypes)>0:
+            paths = self.getDataTypePaths()
+            for path,dataElementId in paths.items():
+                df_dataType = self.getDataTypeManager(dataElementId).to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType)
+                df_dataType['path'] = df_dataType['path'].apply(lambda x : f"{path}.{x}")
+                df = pd.concat([df,df_dataType],axis=0,ignore_index=True)
+        df = df.sort_values(by=['path'],ascending=[True]) ## sort the dataframe
         if editable:
             df['editable'] = self.EDITABLE
         if excludeObjects:
@@ -978,10 +995,22 @@ class FieldGroupManager:
         """
         if dataType is None:
             raise ValueError("Require a data type $id or name")
-        if dataType in self.dataTypes.keys():
-            return self.dataTypes[dataType]
-        if dataType in self.dataTypes.values():
-            return self.dataTypes[list(self.dataTypes.keys())[list(self.dataTypes.values()).index(dataType)]]
+        if dataType in self.dataTypeManagers.keys(): ## if a Title
+            return self.dataTypeManagers[dataType]
+        if dataType in self.dataTypes.keys():## if an ID
+            return self.dataTypeManagers[self.dataTypes[dataType]]
+        
+    def getDataTypePaths(self,)->dict:
+        """
+        Return a dictionary of the paths in the field groups and their associated data type reference.
+        """
+        dict_results = {}
+        for dt_id,dt_title in self.dataTypes.items():
+            results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
+            for res in results:
+                dict_results[res[list(res.keys())[0]]['queryPath']] = dt_id
+        return dict_results
+    
 
     def patchFieldGroup(self,operations:list=None)->dict:
         """

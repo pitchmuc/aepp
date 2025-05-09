@@ -425,6 +425,7 @@ class DataIngestion:
         data: dict = None,
         flowId: str = None,
         syncValidation: bool = False,
+        **kwargs,
     ) -> dict:
         """
         Send a dictionary to the connection for streaming ingestion.
@@ -434,8 +435,14 @@ class DataIngestion:
             flowId : OPTIONAL : The flow ID for the stream inlet.
             syncValidation : OPTIONAL : An optional query parameter, intended for development purposes.
                 If set to true, it can be used for immediate feedback to determine if the request was successfully sent.
+        Possible kwargs:
+            format : the format of the data send.(default 'json', possible values 'raw' or 'txt')
+            headers : private headers to be passed to the ingestion.
         """
-        privateHeader = deepcopy(self.header)
+        if kwargs.get('headers',None) is not None:
+            privateHeader = deepcopy(kwargs.get('headers'))
+        else:
+            privateHeader = deepcopy(self.header)
         if inletId is None:
             raise Exception("Require a connectionId to be present")
         if data is None and type(data) != dict:
@@ -446,9 +453,7 @@ class DataIngestion:
             self.logger.debug(f"Starting Streaming single message")
         params = {"syncValidation": syncValidation}
         path = f"/collection/{inletId}"
-        res = self.connector.postData(
-            self.endpoint_streaming + path, data=data, params=params, headers=privateHeader
-        )
+        res = self.connector.postData(self.endpoint_streaming + path, data=data, params=params, headers=privateHeader,format=kwargs.get('format'))
         return res
 
     def streamMessages(

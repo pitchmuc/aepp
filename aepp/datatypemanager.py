@@ -336,7 +336,7 @@ class DataTypeManager:
                         dictionary[key] = ""
         return dictionary 
 
-    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,description:bool=False,xdmType:bool=False)->dict:
+    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,description:bool=False,xdmType:bool=False,queryPath:bool=False)->dict:
         """
         Transform the current XDM schema to a dictionary.
         Arguments:
@@ -353,6 +353,8 @@ class DataTypeManager:
                 dictionary['description'] = []
             if xdmType:
                 dictionary['xdmType'] = []
+            if queryPath:
+                dictionary['queryPath'] = []
         else:
             dictionary = dictionary
         for key in mydict:
@@ -373,6 +375,8 @@ class DataTypeManager:
                             dictionary["description"].append(f"{mydict[key].get('description','')}")
                         if xdmType:
                             dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
+                        if queryPath:
+                            dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
                         self.__transformationDF__(properties,dictionary,tmp_path,description,xdmType)
@@ -390,6 +394,8 @@ class DataTypeManager:
                             dictionary["description"].append(mydict[key].get('description',''))
                         if xdmType:
                             dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
+                        if queryPath:
+                            dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         self.__transformationDF__(levelProperties,dictionary,tmp_path,description,xdmType)
                     else: ## simple arrays
                         finalpath = f"{path}.{key}[]"
@@ -400,6 +406,8 @@ class DataTypeManager:
                             dictionary["description"].append(mydict[key].get('description',''))
                         if xdmType:
                             dictionary["xdmType"].append(mydict[key]['items'].get('meta:xdmType',''))
+                        if queryPath:
+                            dictionary["querypath"].append(self.__cleanPath__(finalpath))
                 else:
                     if path is not None:
                         finalpath = f"{path}.{key}"
@@ -412,6 +420,8 @@ class DataTypeManager:
                         dictionary["description"].append(mydict[key].get('description',''))
                     if xdmType :
                         dictionary["xdmType"].append(mydict[key].get('meta:xdmType',''))
+                    if queryPath:
+                            dictionary["querypath"].append(self.__cleanPath__(finalpath))
 
         return dictionary
     
@@ -779,7 +789,7 @@ class DataTypeManager:
             aepp.saveFile(module='schema',file=data,filename=f"{filename}.json",type_file='json')
         return data
 
-    def to_dataframe(self,save:bool=False,description:bool=False,xdmType:bool=False)->pd.DataFrame:
+    def to_dataframe(self,save:bool=False,description:bool=False,xdmType:bool=True,queryPath:bool=False)->pd.DataFrame:
         """
         Generate a dataframe with the row representing each possible path.
         Arguments:
@@ -789,7 +799,7 @@ class DataTypeManager:
             xdmType : OPTIONAL : If you want to retrieve the xdm Data Type (default False)
         """
         definition = self.dataType.get('definitions',self.dataType.get('properties',{}))
-        data = self.__transformationDF__(definition,description=description,xdmType=xdmType)
+        data = self.__transformationDF__(definition,description=description,xdmType=xdmType,queryPath=queryPath)
         df = pd.DataFrame(data)
         if save:
             title = self.dataType.get('title',f'unknown_dataType_{str(int(time.time()))}')

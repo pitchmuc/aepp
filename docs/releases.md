@@ -2,6 +2,14 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.3.11
+* adding the better compatibility for data type in `FieldgroupManager`
+  * The new attributes `dataTypeManagers` is returning dict of `{'title':'__DataTypeManager__class'}`
+  * the attribute `dataTypes` is returning a dict of `{'id':'title'}`
+  * the new method `getDataTypePaths` path is returning a dict of `{'path':'dataType'}`
+  * the `to_dict` and `to_dataframe` methods are now resoving dependency on data type instead of querying the resolved field groups.
+* adding new capabilities to send data via `ingestion` module `streamMessage` method. 
+
 ## version 0.3.10
 * refactor the `createPackage` and `updatePackage` methods ([documentation](./sandboxes.md#createPackage)).
 Patch:

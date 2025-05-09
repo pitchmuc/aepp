@@ -873,6 +873,14 @@ class ObservableSchemaManager:
                         base[key] = append[key]
         return base
     
+    def __cleanPath__(self,string:str=None)->str:
+        """
+        An abstraction to clean the path string and remove the following characters : [,],{,}
+        Arguments:
+            string : REQUIRED : a string 
+        """
+        return deepcopy(string.replace('[','').replace(']','').replace("{",'').replace('}',''))
+    
     def __accessorAlgo__(self,mydict:dict,path:list=None)->dict:
         """
         recursive method to retrieve all the elements.
