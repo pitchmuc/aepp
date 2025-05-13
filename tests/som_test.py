@@ -203,6 +203,32 @@ class SomTest(unittest.TestCase):
         assert type(mysom.get('data.set1')) == tuple
         assert len(mysom.get('data.set1')) == 2
 
+    def test_som_remove(self):
+        mysom = Som({"data":{'path1':'value1','list1':['value1','value2','value3'],'set1':set(['value1','value2','value3']),'tuple1':tuple(['value1','value2','value3'])}})
+        assert mysom.get('data.path1') == 'value1'
+        mysom.remove('data.path1')
+        assert mysom.get('data.path1') is None
+        mysom.remove('data.list1.value2')
+        assert len(mysom.get('data.list1')) == 2
+        mysom.remove('data.list1.[0]')
+        assert len(mysom.get('data.list1')) == 1
+        mysom.remove('data.list1')
+        assert mysom.get('data.list1') is None
+        mysom.remove('data.set1.value1')
+        assert len(mysom.get('data.set1')) == 2
+        mysom.remove('data.set1')
+        assert mysom.get('data.set1') is None
+        mysom.remove('data.tuple1')
+        assert mysom.get('data.tuple1') is None
+
+    def test_clear(self):
+        mysom = Som({"data":{'path1':'value1','list1':['value1','value2','value3'],'set1':set(['value1','value2','value3']),'tuple1':tuple(['value1','value2','value3'])}})
+        assert mysom.get('data.path1') == 'value1'
+        mysom.clear()
+        assert mysom.get('data.path1') is None
+        assert mysom.get('data.list1') is None
+        assert mysom.get('data.set1') is None
+        assert mysom.get('data.tuple1') is None
 
     def test_dataframe(self):
         data = {"data":

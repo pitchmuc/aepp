@@ -316,6 +316,38 @@ mySom.merge('myTuple',(4,5,6))
 
 ```
 
+### remove
+Remove a key from the `Som` instance object.
+Return the result Som object.
+Argument: 
+* path : REQUIRED : Path with dot notation to remove the element.
+
+Examples:
+
+```py
+mysom = som.Som({'data':{'key':'value','foo':'bar'}})
+mysom.remove('data.key') ## new som will be {'data':{'foo':'bar'}}
+```
+
+For list
+```py
+mysom = som.Som({'data':{'list':['value1','value2','value3']}})
+mysom.remove('data.list.value2') ## new som will be {'data':{'list':['value1','value3']}}
+mysom.remove('data.list.[0]') ## new som will be {'data':{'list':['value3']}}
+```
+
+For set
+```py
+mysom = som.Som({'data':{'set':set(['value1','value2','value3'])}})
+mysom.remove('data.list.value2') ## new som will be {'data':{'set':{'value1','value3'}}}
+```
+
+**NOTE**: You can remove elements in a `set` or a `list` but elements in a tuple cannot be removed.
+
+### clear
+It completely reset the som internal dictionary to empty {}
+
+Example : `mysom.clear()`
 
 ### to_dict
 Return the data hosted in the Som instance as a deep copy dictionary.\

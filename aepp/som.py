@@ -1,3 +1,13 @@
+#  Copyright 2023 Adobe. All rights reserved.
+#  This file is licensed to you under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License. You may obtain a copy
+#  of the License at http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software distributed under
+#  the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+#  OF ANY KIND, either express or implied. See the License for the specific language
+#  governing permissions and limitations under the License.
+
 import json
 from typing import Union, Any
 from copy import deepcopy
@@ -399,6 +409,69 @@ class Som:
         res = self.__recursive_assignment__(list_nodes,data,value,override,datatype)
         return None
     
+    def __recursive_remove__(self,list_paths:list,data:dict=None)->None:
+        """
+        Remove the element from the data object
+        Arguments:
+            list_paths : path split into a list
+            data : the dictionary traverse 
+        """
+        for key in list_paths:
+            if key.startswith('[') and key.endswith(']'):
+                key = key[1:-1]
+            if type(data) == dict:
+                if key in data.keys():
+                    if len(list_paths) == 1:
+                        del data[key]
+                    else:
+                        self.__recursive_remove__(list_paths[1:],data[key])
+                else:
+                    return None
+            elif type(data) == list:
+                if key.isnumeric():
+                    if abs(int(key)) < len(data):
+                        if len(list_paths) == 1:
+                            data.remove(data[int(key)])
+                        else:
+                            self.__recursive_remove__(list_paths[1:],data[int(key)])
+                    else:
+                        return None
+                elif key in data:                    
+                    if len(list_paths) == 1:
+                        data.remove(key)
+                    else:
+                        self.__recursive_remove__(list_paths[1:],data[key])
+            elif type(data) == set:
+                if key in data:
+                    data.remove(key)
+            else:
+                return None
+    
+    def remove(self,path:str=None)->dict:
+        """
+        Remove the path from the object.
+        Arguments:
+            path : REQUIRED : The path to be removed
+        """
+        if path is None:
+            raise Exception("Require a path to be removed")
+        if type(self.stack) == list:
+            self.stack.append({'method' : 'remove', 'path':path})
+        o_data = self.__data__
+        list_path = path.split('.')
+        if len(list_path) == 1:
+            if list_path[0] in o_data.keys():
+                del o_data[list_path[0]]
+        else:
+            self.__recursive_remove__(list_path,o_data)
+        return o_data
+    
+    def clear(self)->None:
+        """
+        Reset the data object completely to an empty object.
+        """
+        self.__data__ = {}
+
     def __mergedata__(self,o_data:dict,data:dict)->dict:
         """
         merge the data provided to the existing data object
