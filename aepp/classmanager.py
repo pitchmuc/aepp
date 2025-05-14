@@ -85,6 +85,7 @@ class ClassManager:
             self.EDITABLE = False
     
     def __setAttributes__(self, aepclass:dict):
+        self.description = aepclass.get('description','')
         if aepclass.get('title'):
             self.title = aepclass.get('title')
         if aepclass.get('$id'):
@@ -131,12 +132,24 @@ class ClassManager:
         """
         Set a name for the class.
         Arguments:
-            title : REQUIRED : a string to be used for the title of the Schema
+            title : REQUIRED : a string to be used for the title of the class
         """
         if title is None:
             raise ValueError('title must be provided')
         self.aepclass['title'] = title
         self.title = title
+        return None
+    
+    def setDescription(self,description:str=None)->None:
+        """
+        Set a description for the class.
+        Arguments:
+            description : REQUIRED : a string to be used for the description of the class
+        """
+        if description is None:
+            raise ValueError('a description must be provided')
+        self.aepclass['description'] = description
+        self.description = description
         return None
     
     def __cleanPath__(self,string:str=None)->str:
@@ -780,6 +793,7 @@ class ClassManager:
         df = pd.DataFrame(data)
         df = df[~df.path.duplicated()].copy() ## dedup the paths
         df = df[~(df['path']==self.tenantId)].copy()## remove the root
+        df['origin'] = 'class'
         if editable:
             df['editable'] = self.EDITABLE
         if excludeObjects:

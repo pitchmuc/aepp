@@ -8,7 +8,12 @@ This page list all of the changes that came during the different release of the 
   * the attribute `dataTypes` is returning a dict of `{'id':'title'}`
   * the new method `getDataTypePaths` path is returning a dict of `{'path':'dataType'}`
   * the `to_dict` and `to_dataframe` methods are now resoving dependency on data type instead of querying the resolved field groups.
+  * Fixing issue on `addField` capacity on `DataTypeManager`
+  * Adding `importDataTypeDefinition` method on `DataTypeManager`
+  * Better support of legacy data type definition with `property`
+* adding the `classes_id` and `classes_altId` attributes in the `Schema` instance.
 * adding new capabilities to send data via `ingestion` module `streamMessage` method. 
+* adding the `remove` and `clear` method in `som`
 
 ## version 0.3.10
 * refactor the `createPackage` and `updatePackage` methods ([documentation](./sandboxes.md#createPackage)).

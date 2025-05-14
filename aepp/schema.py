@@ -46,6 +46,8 @@ class _Data:
         self.dataTypes_altId = {}
         self.dataTypesGlobal_id = {}
         self.dataTypesGlobal_altId = {}
+        self.classes_id = {}
+        self.classes_altId = {}
 
 class Schema:
     """
@@ -754,6 +756,8 @@ class Schema:
             )
             data += res["results"]
             page = res["_page"]
+        self.data.classes_id = {cl["title"]: cl["$id"] for cl in data}
+        self.data.classes_altId = {cl["title"]: cl["meta:altId"] for cl in data}
         if output=="df":
             df = pd.DataFrame(data)
             return df
@@ -1198,7 +1202,6 @@ class Schema:
             raise Exception("Require an ID")
         if fieldGroupId.startswith("https://"):
             from urllib import parse
-
             fieldGroupId = parse.quote_plus(fieldGroupId)
         if self.loggingEnabled:
             self.logger.debug(f"Starting deleteFieldGroup")
@@ -1482,6 +1485,23 @@ class Schema:
         path = f"/{self.container}/datatypes/{dataTypeId}"
         res = self.connector.putData(
             self.endpoint + path, data=dataTypeObj)
+        return res
+    
+    def deleteDataType(self, dataTypeId: str = None) -> str:
+        """
+        Delete a specific data type.
+        Arguments:
+            dataTypeId : REQUIRED : The Data Type ID to be deleted
+        """
+        if dataTypeId is None:
+            raise Exception("Require a data type ID")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteDataType")
+        if dataTypeId.startswith("https://"):
+            from urllib import parse
+            dataTypeId = parse.quote_plus(dataTypeId)
+        path = f"/{self.container}/datatypes/{dataTypeId}"
+        res = self.connector.deleteData(self.endpoint + path)
         return res
 
     def getDescriptors(

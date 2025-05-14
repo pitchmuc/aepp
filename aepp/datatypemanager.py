@@ -29,6 +29,7 @@ class DataTypeManager:
                 title:str=None,
                 schemaAPI:'Schema'=None,
                 config: Union[dict,ConnectObject] = aepp.config.config_object,
+                description:str="",
                 )->None:
         """
         Instantiate the DataType Manager Class.
@@ -38,6 +39,7 @@ class DataTypeManager:
             title : OPTIONAL : to set or override the title (default None, use the existing title or do not set one for new data type) 
             schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
             config : OPTIONAL : The config object in case you want to override the configuration.
+            description : OPTIONAL : The description of the data type. Default is empty string.
         """
         self.EDITABLE = False
         self.STATE = "EXISTING"
@@ -60,11 +62,17 @@ class DataTypeManager:
             self.EDITABLE = True
             self.dataType = {
                 "title" : "",
-                "description":"",
+                "description":description,
                 "type" : "object",
                 "definitions":{
-                    "customFields":{},
-                    "property":{}
+                    "customFields":{
+                        "type" : "object",
+                        "properties":{}
+                        },
+                    "property":
+                        {"type" : "object",
+                        "properties":{}
+                        }
                 },
                 'allOf': [{'$ref': '#/definitions/customFields',
                     'type': 'object',
@@ -83,11 +91,13 @@ class DataTypeManager:
     
     def __setAttributes__(self,datatype:dict)->None:
         uniqueId = datatype.get('id',str(int(time.time()*100))[-7:])
-        self.title = self.dataType.get('title',f'unknown:{uniqueId}')
-        if self.dataType.get('$id',False):
-            self.id = self.dataType.get('$id')
-        if self.dataType.get('meta:altId',False):
-            self.altId = self.dataType.get('meta:altId')
+        self.title = datatype.get('title',f'unknown:{uniqueId}')
+        self.description = datatype.get('description','')
+        if datatype.get('$id',False):
+            self.id = datatype.get('$id')
+        if datatype.get('meta:altId',False):
+            self.altId = datatype.get('meta:altId')
+            
 
     def __str__(self)->str:
         return json.dumps(self.dataType,indent=2)
@@ -398,7 +408,10 @@ class DataTypeManager:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         self.__transformationDF__(levelProperties,dictionary,tmp_path,description,xdmType)
                     else: ## simple arrays
-                        finalpath = f"{path}.{key}[]"
+                        if path is not None:
+                            finalpath = f"{path}.{key}[]"
+                        else:
+                            finalpath = f"{key}[]"
                         dictionary["path"].append(finalpath)
                         dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         dictionary["title"].append(f"{mydict[key].get('title')}")
@@ -422,7 +435,6 @@ class DataTypeManager:
                         dictionary["xdmType"].append(mydict[key].get('meta:xdmType',''))
                     if queryPath:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
-
         return dictionary
     
     def __setField__(self,completePathList:list=None,dataType:dict=None,newField:str=None,obj:dict=None)->dict:
@@ -508,13 +520,15 @@ class DataTypeManager:
         elif dataType == "date":
             obj['type'] = "string"
             obj['format'] = "date"
-        elif dataType == "DateTime":
+        elif dataType.lower() == "datetime" or dataType == "date-time":
             obj['type'] = "string"
             obj['format'] = "date-time"
         elif dataType == "byte":
             obj['type'] = "integer"
             obj['maximum'] = 128
             obj['minimum'] = -128
+        elif dataType == "int":
+            obj['type'] = "integer"
         else:
             obj['type'] = dataType
         return obj
@@ -537,6 +551,15 @@ class DataTypeManager:
             raise ValueError("Require a title")
         self.dataType['title'] = title
         self.title = title
+    
+    def setDescription(self,description:str=None)->None:
+        """
+        Set the description to the Data Type.
+        Argument:
+            description : REQUIRED : The description to be added
+        """
+        self.dataType['description'] = description
+        self.description = description
     
     def getField(self,path:str)->dict:
         """
@@ -613,7 +636,7 @@ class DataTypeManager:
             path : REQUIRED : path with dot notation where you want to create that new field.
                 In case of array of objects, use the "[]{}" notation
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
+                A type can be any of the following: "string","boolean","double","long","integer","int","short","byte","date","dateTime","boolean","object","array"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -626,9 +649,9 @@ class DataTypeManager:
         """
         if self.EDITABLE == False:
             raise Exception("The Data Type is not Editable via Data Type Manager")
-        typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
+        typeTyped = ["string","boolean","double","long","integer","int","short","byte","date","dateTime","boolean","object",'array']
         if dataType not in typeTyped:
-            raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object"')
+            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","integer","int","short","byte","date","dateTime","boolean","object". Got {dataType}')
         if dataType == 'object' and objectComponents is None:
             raise AttributeError('Require a dictionary providing the object component')       
         if title is None:
@@ -682,7 +705,7 @@ class DataTypeManager:
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"
+                A type can be any of the following: "string","boolean","double","long","int","integer","short","byte","date","datetime","date-time","boolean","object","array"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -692,16 +715,15 @@ class DataTypeManager:
             enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "customFields", possible alternative : "property"
+            description : if you want to add a description on your field
         """
         if self.EDITABLE == False:
             raise Exception("The Data Type is not Editable via Field Group Manager")
         if path is None:
             raise ValueError("path must provided")
-        typeTyped = ["string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object",'array']
+        typeTyped = ["string","boolean","double","long","int","integer","short","byte","date","datetime",'date-time',"boolean","object",'array']
         if dataType not in typeTyped:
-            raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","bytes"')
-        if dataType == 'object' and objectComponents is None:
-            raise AttributeError('Require a dictionary providing the object component')
+            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","integer","int","short","byte","date","datetime","date-time","boolean","object","bytes". Got {dataType}')
         if title is None:
             title = self.__cleanPath__(path.split('.').pop())
         if title == 'items' or title == 'properties':
@@ -710,18 +732,32 @@ class DataTypeManager:
         if pathSplit[0] == '':
             del pathSplit[0]
         newField = pathSplit.pop()
+        description = kwargs.get("description",'')
         obj = {}
         if dataType == 'object':
-            obj = { 'type':'object', 'title':title,
-                'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
-            }
-        elif dataType == 'array':
-            obj = { 'type':'array', 'title':title,
-                "items":{
-                    'type':'object',
+            if objectComponents is not None:
+                obj = { 'type':'object', 'title':title, "description":description,
                     'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
                 }
-            }
+            else:
+                obj = { 'type':'object', 'title':title, "description":description,
+                    'properties':{}
+                }
+        elif dataType == 'array':
+            if objectComponents is not None:
+                obj = { 'type':'array', 'title':title,"description":description,
+                    "items":{
+                        'type':'object',
+                        'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
+                    }
+                }
+            else:
+                obj = { 'type':'array', 'title':title,"description":description,
+                    "items":{
+                        'type':'object',
+                        'properties':{}
+                    }
+                }
         else:
             obj = self.__transformFieldType__(dataType)
             obj['title']= title
@@ -738,14 +774,14 @@ class DataTypeManager:
                 if enumType:
                     obj['items']['enum'] = list(enumValues.keys())
         completePath:list[str] = [kwargs.get('defaultPath','customFields')] + pathSplit
-        definitions,foundFlag = self.__setField__(completePath, self.dataType['definitions'],newField,obj)
+        definitions,foundFlag = self.__setField__(completePath, self.dataType.get('definitions',{}),newField,obj)
         if foundFlag == False:
             completePath:list[str] = ['property'] + pathSplit
-            definitions,foundFlag = self.__setField__(completePath, self.dataType['definitions'],newField,obj)
+            definitions,foundFlag = self.__setField__(completePath, self.dataType.get('property',{}),newField,obj)
             if foundFlag == False:
                 return False
             else:
-                self.dataType['definitions'] = definitions
+                self.dataType['property'] = definitions
                 return self.dataType
         else:
             self.dataType['definitions'] = definitions
@@ -782,7 +818,9 @@ class DataTypeManager:
             typed : OPTIONAL : If you want the type associated with the field group to be given.
             save : OPTIONAL : If you wish to save the dictionary in a JSON file
         """
-        definition = self.dataType.get('definitions',self.dataType.get('properties',{}))
+        definition = self.dataType.get('definitions',{})
+        if definition == {}:
+            definition = self.dataType.get('properties',{})
         data = self.__transformationDict__(definition,typed)
         if save:
             filename = self.dataType.get('title',f'unknown_dataType_{str(int(time.time()))}')
@@ -798,7 +836,9 @@ class DataTypeManager:
             description : OPTIONAL : If you want to have the description used (default False)
             xdmType : OPTIONAL : If you want to retrieve the xdm Data Type (default False)
         """
-        definition = self.dataType.get('definitions',self.dataType.get('properties',{}))
+        definition = self.dataType.get('definitions',{})
+        if definition == {}:
+            definition = self.dataType.get('properties',{})
         data = self.__transformationDF__(definition,description=description,xdmType=xdmType,queryPath=queryPath)
         df = pd.DataFrame(data)
         if save:
@@ -844,3 +884,47 @@ class DataTypeManager:
         self.STATE = "EXISTING"
         self.__setAttributes__(self.dataType)
         return res
+    
+    def importDataTypeDefinition(self,datatype:Union[pd.DataFrame,str],sep:str=',',sheet_name:str=None)->None:
+        """
+        Importing the flat representation of the data type. It could be a dataframe or a CSV file containing the data type element.
+        Argument:
+            datatype : REQUIRED : The dataframe or csv of the data type
+                It needs to contains the following columns : "path", "xdmType"
+            sep : OPTIONAL : In case your CSV is separated by something else than comma. Default (',')
+            sheet_name : OPTIONAL : In case you are uploading an Excel, you need to provide the sheet name
+        """
+        if self.EDITABLE != True:
+            raise Exception(f'The field group {self.title} cannot be edited (EDITABLE == False). Only Title and Description can be changed via descriptors on the schemas')
+        if type(datatype) == str:
+            if '.csv' in datatype:
+                df_import = pd.read_csv(datatype,sep=sep)
+            if '.xls' in datatype:
+                if sheet_name is None:
+                    raise ImportError("You need to pass a sheet name to use Excel")
+                df_import = pd.read_excel(datatype,sheet_name=sheet_name)
+        elif type(datatype) == pd.DataFrame:
+            df_import = datatype.copy()
+        if 'path' not in df_import.columns or 'xdmType' not in df_import.columns:
+            raise AttributeError("missing a column [xdmType, path] in your fieldgroup")
+        df_import = df_import[~(df_import.duplicated('path'))].copy() ## removing duplicated paths
+        df_import = df_import[~(df_import['path']==self.tenantId)].copy() ## removing tenant field
+        df_import = df_import.fillna('')
+        if 'title' not in df_import.columns:
+            df_import['title'] = df_import['path'].apply(lambda x : x.split('.')[-1])
+        if 'description' not in df_import.columns:
+            df_import['description'] = ""
+        df_import['pathDot'] = df_import['path'].str.count(r'\.')
+        df_import = df_import.sort_values(['pathDot'])##sorting creation of objects
+        for index, row in df_import.iterrows():
+            #if 'error' in res.keys():
+            path = row['path']
+            clean_path = self.__cleanPath__(row['path'])
+            typeElement = row['xdmType']
+            if path.endswith("[]"):
+                self.addField(clean_path,typeElement,title=row['title'],description=row['description'],array=True)
+            elif path.endswith("[]{}"):
+                self.addField(clean_path,'array',title=row['title'],description=row['description'])
+            else:
+                self.addField(clean_path,typeElement,title=row['title'],description=row['description'])
+        return self

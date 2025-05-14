@@ -97,7 +97,6 @@ class FieldGroupManager:
                         if full:
                             self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
                         else:
-                            print("Full == False")
                             self.EDITABLE = True
                     else:
                         self.EDITABLE = True
@@ -170,7 +169,8 @@ class FieldGroupManager:
     
     def __setAttributes__(self,fieldGroup:dict)->None:
         uniqueId = fieldGroup.get('id',str(int(time.time()*100))[-7:])
-        self.title = self.fieldGroup.get('title',f'unknown:{uniqueId}')
+        self.title = fieldGroup.get('title',f'unknown:{uniqueId}')
+        self.description = fieldGroup.get('description','')
         if self.fieldGroup.get('$id',False):
             self.id = self.fieldGroup.get('$id')
         if self.fieldGroup.get('meta:altId',False):
@@ -534,7 +534,7 @@ class FieldGroupManager:
                     else:
                         if newField in fieldGroup[key]['properties'].keys():
                             fieldGroup[key]['properties'][newField]['title'] = obj["title"]
-                            fieldGroup[key]['properties'][newField]['description'] = obj["description"]
+                            fieldGroup[key]['properties'][newField]['description'] = obj.get("description","")
                         else:
                             fieldGroup[key]['properties'][newField] = obj
                         foundFlag = True
@@ -603,13 +603,15 @@ class FieldGroupManager:
         elif dataType == "date":
             obj['type'] = "string"
             obj['format'] = "date"
-        elif dataType == "DateTime" or dataType == "dateTime":
+        elif dataType.lower() == "datetime" or dataType == "date-time":
             obj['type'] = "string"
             obj['format'] = "date-time"
         elif dataType == "byte":
             obj['type'] = "integer"
             obj['maximum'] = 128
             obj['minimum'] = -128
+        elif dataType == "int":
+            obj['type'] = "integer"
         else:
             obj['type'] = dataType
         return obj
@@ -633,6 +635,15 @@ class FieldGroupManager:
         self.fieldGroup['title'] = title
         self.title = title
         return None
+    
+    def setDescription(self,description:str=None)->None:
+        """
+        Set the description to the Field Group.
+        Argument:
+            description : REQUIRED : The description to be added
+        """
+        self.fieldGroup['description'] = description
+        self.description = description
 
     def getField(self,path:str)->dict:
         """
@@ -709,7 +720,7 @@ class FieldGroupManager:
             path : REQUIRED : path with dot notation where you want to create that new field.
                 In case of array of objects, use the "[]{}" notation
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array","dataType"
+                A type can be any of the following: "string","boolean","double","long","integer","int","number","short","byte","date","datetime","date-time","boolean","object","array","dataType"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -723,10 +734,10 @@ class FieldGroupManager:
         """
         if self.EDITABLE == False:
             raise Exception("The Field Group is not Editable via Field Group Manager")
-        typeTyped = ["string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array","dataType"]
+        typeTyped = ["string","boolean","double","long","integer","int","number","short","byte","date","datetime","date-time","boolean","object","array","dataType"]
         dataType = dataType.replace('[]','')
         if dataType not in typeTyped:
-            raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","dataType"')
+            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","int,"integer","short","byte","date","datetime","date-time","boolean","object","dataType". Got {dataType}')
         if dataType == "dataType" and ref is None:
             raise ValueError("Required a reference to be passed when selecting 'dataType' type of data.")
         if dataType == 'object' and objectComponents is None:
@@ -793,7 +804,7 @@ class FieldGroupManager:
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array","dataType"
+                A type can be any of the following: "string","boolean","double","long","integer","int","number","short","byte","date","datetime","date-time","boolean","object","array","dataType"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -811,9 +822,9 @@ class FieldGroupManager:
         if path is None:
             raise ValueError("path must provided")
         dataType = dataType.replace('[]','')
-        typeTyped = ["string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object",'array','dataType']
+        typeTyped = ["string","boolean","double","long","int","integer","number","short","byte","date","datetime",'date-time',"boolean","object",'array','dataType']
         if dataType not in typeTyped:
-            raise TypeError('Expecting one of the following type : "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","byte","dataType"')
+            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","int","integer","short","byte","date","datetime","date-time","boolean","object","byte","dataType". Got {dataType}')
         if dataType == "dataType" and ref is None:
             raise ValueError("Required a reference to be passed when selecting 'dataType' type of data.")
         if title is None:
@@ -852,6 +863,7 @@ class FieldGroupManager:
         elif dataType == "dataType":
             obj = {'$ref': ref,
                     'required': [],
+                    'description': description,
                     'type': 'object',
                     'title': title,
                     }
@@ -863,6 +875,8 @@ class FieldGroupManager:
                     "$ref" : ref,
                     "title":title
                 }
+            self.dataTypes[ref] = title
+            self.dataTypeManagers[ref] = DataTypeManager(dataType=ref,schemaAPI=self.schemaAPI)
         else:
             obj = self.__transformFieldType__(dataType)
             obj['title'] = title
@@ -884,17 +898,17 @@ class FieldGroupManager:
         completePath:list[str] = [kwargs.get('defaultPath','customFields')] + pathSplit
         if 'definitions' not in self.fieldGroup.keys():
             if 'properties' in self.fieldGroup.keys():
-                definition,foundFlag = self.__setField__(pathSplit, self.fieldGroup['properties'],newField,obj)
+                definition,foundFlag = self.__setField__(pathSplit, self.fieldGroup.get('properties',{}),newField,obj)
                 if foundFlag == False:
                     return False
                 else:
                     self.fieldGroup['properties'] = definition
                     return self.fieldGroup
         else:
-            definition,foundFlag = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
+            definition,foundFlag = self.__setField__(completePath, self.fieldGroup.get('definitions'),newField,obj)
         if foundFlag == False:
-            completePath:list[str] = ['customFields'] + pathSplit ## trying via customFields path
-            definition,foundFlag = self.__setField__(completePath, self.fieldGroup['definitions'],newField,obj)
+            completePath:list[str] = ['property'] + pathSplit ## trying via property
+            definition,foundFlag = self.__setField__(completePath, self.fieldGroup.get('property',{}),newField,obj)
             if foundFlag == False:
                 return False
             else:
@@ -965,11 +979,13 @@ class FieldGroupManager:
         df = pd.DataFrame(data)
         df = df[~df.path.duplicated()].copy() ## dedup the paths
         df = df[~(df['path']==self.tenantId)].copy()## remove the root
+        df['origin'] = 'fieldGroup'
         if len(self.dataTypes)>0:
             paths = self.getDataTypePaths()
             for path,dataElementId in paths.items():
                 df_dataType = self.getDataTypeManager(dataElementId).to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType)
                 df_dataType['path'] = df_dataType['path'].apply(lambda x : f"{path}.{x}")
+                df_dataType['origin'] = 'dataType'
                 df = pd.concat([df,df_dataType],axis=0,ignore_index=True)
         df = df.sort_values(by=['path'],ascending=[True]) ## sort the dataframe
         if editable:
@@ -1077,15 +1093,16 @@ class FieldGroupManager:
         self.STATE = "EXISTING"
         return res
 
-    def importFieldGroupDefinition(self,fieldgroup:Union[pd.DataFrame,str],sep:str=',',sheet_name:str=None)->None:
+    def importFieldGroupDefinition(self,fieldgroup:Union[pd.DataFrame,str],sep:str=',',sheet_name:str=None,title:str=None)->None:
         """
         Importing the flat representation of the field group. It could be a dataframe or a CSV file containing the field group element.
         The field group needs to be editable to be updated.
         Argument:
-            fieldGroup : REQUIRED : The dataframe or csv of the field
+            fieldGroup : REQUIRED : The dataframe or csv of the field group
                 It needs to contains the following columns : "path", "xdmType", "fieldGroup"
             sep : OPTIONAL : In case your CSV is separated by something else than comma. Default (',')
             sheet_name : OPTIONAL : In case you are uploading an Excel, you need to provide the sheet name
+            title : OPTIONAL : If you want to set a title for the field group. Default is the mode of the fieldGroup column.
         """
         if self.EDITABLE != True:
             raise Exception(f'The field group {self.title} cannot be edited (EDITABLE == False). Only Title and Description can be changed via descriptors on the schemas')
@@ -1097,9 +1114,9 @@ class FieldGroupManager:
                     raise ImportError("You need to pass a sheet name to use Excel")
                 df_import = pd.read_excel(fieldgroup,sheet_name=sheet_name)
         elif type(fieldgroup) == pd.DataFrame:
-            df_import = fieldgroup
+            df_import = fieldgroup.copy()
         if 'path' not in df_import.columns or 'xdmType' not in df_import.columns or 'fieldGroup' not in df_import.columns:
-            raise AttributeError("missing a column [type, path, or type] in your fieldgroup")
+            raise AttributeError("missing a column [xdmType, path, or fieldGroup] in your dataframe fieldgroup")
         df_import = df_import[~(df_import.duplicated('path'))].copy() ## removing duplicated paths
         df_import = df_import[~(df_import['path']==self.tenantId)].copy() ## removing tenant field
         df_import = df_import.fillna('')
@@ -1127,5 +1144,8 @@ class FieldGroupManager:
                 self.addField(clean_path,'array',title=row['title'],description=row['description'])
             else:
                 self.addField(clean_path,typeElement,title=row['title'],description=row['description'])
-        self.setTitle(df_import['fieldGroup'].mode()[0])
+        if title is not None:
+            self.setTitle(title)
+        else:
+            self.setTitle(df_import['fieldGroup'].mode().values[0])
         return self

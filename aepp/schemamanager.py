@@ -153,6 +153,7 @@ class SchemaManager:
         """
         Set some basic attributes
         """
+        self.description = schemaDef.get('description','')
         if schemaDef.get('title'):
             self.title = schemaDef.get('title')
         if schemaDef.get('$id'):
@@ -202,6 +203,18 @@ class SchemaManager:
             raise ValueError('title must be provided')
         self.schema['title'] = title
         self.title = title
+        return None
+    
+    def setDescription(self,description:str=None)->None:
+        """
+        Set a description for the schema.
+        Arguments:
+            description : REQUIRED : a string to be used for the title of the Schema
+        """
+        if description is None:
+            raise ValueError('description must be provided')
+        self.schema['description'] = description
+        self.description = description
         return None
 
     def searchField(self,string:str=None,partialMatch:bool=True,caseSensitive:bool=True)->list:
