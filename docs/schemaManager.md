@@ -127,10 +127,15 @@ The methods will be described below.
 
 ### setTitle
 
-This methods set a title to your schema, or override the existing one.
+This methods set a title to your schema, or override the existing one.\
 Arguments:
 * title : REQUIRED : a string to be used for the title of the Schema
 
+### setDescription
+
+Set the description to the Schema.\
+Argument:
+* description : REQUIRED : The description to be added
 
 ### searchField
 
@@ -202,6 +207,8 @@ Arguments:
 * xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
 * editable : OPTIONAL : If you can manipulate the structure of the field groups (default False). More details on [Editable concept](#editable-concept)
 * excludeObjects : OPTIONAL : Boolean that remove the lines that are defining objects/nodes. Default `False`.
+
+the `origin` column is automatically returned and is helping understanding if the field is related to the class, native in the field group or added to the field group via a dataType.  
 
 ### to_dict
 Return a dictionary of the whole schema. You need to have instanciated the Field Group Manager

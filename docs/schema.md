@@ -84,12 +84,14 @@ Once you have instantiated the `Schema` class, you will have access to the follo
 * PATCH_OBJ : An example of Patch operation payload
 * DESCRIPTOR_TYPES : A list of descriptor types
 * data : an object that contains the following information depending the methods used **previously**
-  * schemas_id : dictionary of {SchemaName:$id} when the `getSchemas` methods has been used
-  * schemas_altId : dictionary of {SchemaName:altId} when the `getSchemas` methods has been used
-  * fieldGroups_id : dictionary of {FieldGroupName:$id} when the `getFieldGroups` methods has been used
-  * fieldGroups_altId : dictionary of {FieldGroupName:altId} when the `getFieldGroups` methods has been used
-  * fieldGroupsGlobal_id : dictionary of Out of the box field groups such as {FieldGroupName:$id} when the `getFieldGroupsGlobal` methods has been used
+  * schemas_id : dictionary of `{SchemaName:$id}` when the `getSchemas` methods has been used
+  * schemas_altId : dictionary of `{SchemaName:altId}` when the `getSchemas` methods has been used
+  * fieldGroups_id : dictionary of `{FieldGroupName:$id}` when the `getFieldGroups` methods has been used
+  * fieldGroups_altId : dictionary of `{FieldGroupName:altId} `when the `getFieldGroups` methods has been used
+  * fieldGroupsGlobal_id : dictionary of Out of the box field groups such as `{FieldGroupName:$id}` when the `getFieldGroupsGlobal` methods has been used
   * fieldGroupsGlobal_altId : dictionary of Out of the box field groups such as {FieldGroupName:altId} when the `getFieldGroupsGlobal` methods has been used
+  * class_id : dictionary of the custom classes `{className:$id}` when the getClasses has been used.
+  * class_altId : dictionary of the custom classes `{className:altId}` when the getClasses has been used.
 
 ## Schema methods
 
@@ -449,6 +451,10 @@ Arguments:
 * dataTypeId : REQUIRED : The Data Type ID to be replaced
 * dataTypeObj : REQUIRED : The new Data Type definition.
 
+### deleteDataType
+Delete an existing data type based on its ID. 
+Argument:
+* dataTypeId : REQUIRED : The Data Type ID to be deleted
 
 ### getDescriptors
 Return a list of all descriptors contains in that tenant id.\

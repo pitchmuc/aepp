@@ -100,6 +100,11 @@ Set a name for the Field Group.\
 Arguments:
 * title : REQUIRED : a string to be used for the title of the FieldGroup
 
+### setDescription
+Set the description to the Field Group.\
+Argument:
+* description : REQUIRED : The description to be added
+
 ### getField
 Returns the field definition you want want to obtain.\
 Arguments:
@@ -152,7 +157,7 @@ Returns `False` when the field could not be inserted.\
 Arguments:
 * path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
 * dataType : REQUIRED : the field type you want to create
-    A type can be any of the following: "string","boolean","double","long","integer","number","short","byte","date","dateTime","boolean","object","array","dataType"
+    A type can be any of the following: "string","boolean","double","long","int","integer","number","short","byte","date","datetime","date-time","boolean","object","array","dataType"
     NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
 * title : OPTIONAL : if you want to have a custom title.
 * objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -189,6 +194,8 @@ Arguments:
 * editable : OPTIONAL : If you can manipulate the structure of the field groups (default False) -> see [Editable](#editable-concept)
 * excludeObjects : OPTIONAL : Boolean that remove the lines that are defining objects/nodes. Default `False`.
 
+the `origin` column is automatically returned and is helping understanding if the field is  native in the field group or added to the field group via a dataType.  
+
 ### to_xdm
 Return the fieldgroup definition as XDM
 
@@ -196,6 +203,10 @@ Return the fieldgroup definition as XDM
 Retrieve the Data Type Manager instance of custom data type\
 Argument:
 * dataType : REQUIRED : id or name of the data type.
+
+### getDataTypePaths
+Return a dictionary of the paths in the field groups and their associated data type reference.\
+Such as `{'id':'name-of-datatype'}`
 
 ### patchFieldGroup
 Patch the field group with the given operation.\

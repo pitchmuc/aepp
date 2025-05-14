@@ -80,12 +80,18 @@ dataTypeManager = datatypemanager.DataTypeManager(config=prod)
 The following methods are available on your `DataTypeManager` instance.
 
 ### setTitle
-Set the title on the Data Type description
+Set the title on the Data Type description\
 Argument:
 * title : REQUIRED : The title to be set
 
+### setDescription
+Set the description to the Data Type.\
+Argument:
+* description : REQUIRED : The description to be added
+
+
 ### getField
-Returns the field definition you want want to obtain.
+Returns the field definition you want want to obtain.\
 Arguments:
 * path : REQUIRED : path with dot notation to which field you want to access
 
@@ -135,7 +141,7 @@ Returns False when the field could not be inserted.\
 Arguments:
 * path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
 * dataType : REQUIRED : the field type you want to create\
-    A type can be any of the following: "string","boolean","double","long","integer","short","byte","date","dateTime","boolean","object","array"\
+    A type can be any of the following: "string","boolean","double","long","int","integer","short","byte","date","datetime","date-time","boolean","object","array"\
     NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
 * title : OPTIONAL : if you want to have a custom title.
 * objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.\
@@ -145,6 +151,7 @@ Arguments:
 * enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)\
 possible kwargs:
 * defaultPath : Define which path to take by default for adding new field on tenant. Default "property", possible alternative : "customFields"
+* description : The description of the field
 
 ### removeField
 Remove a field from the definition based on the path provided.\
