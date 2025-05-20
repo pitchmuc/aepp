@@ -416,8 +416,8 @@ class Catalog:
                     mergePolicy = profile.getMergePolicy(mergePolicyId)
                     data[snapshotId]['mergePolicyName'] = mergePolicy['name']
         return data
-
-    def createDataSets(self, 
+    
+    def createDataSet(self, 
                 data: dict = None,
                 name:str=None, 
                 schemaId:str=None, 
@@ -428,7 +428,7 @@ class Catalog:
                 systemLabels:list[str]=None,
                 **kwargs)-> dict:
         """
-        Create a new dataSets based either on preconfigured setup or by passing the full dictionary for creation.
+        Create a new dataSet based either on preconfigured setup or by passing the full dictionary for creation.
         Arguments:
             data : REQUIRED : If you want to pass the dataset object directly (not require the name and schemaId then)
                 more info: https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Datasets/postDataset
