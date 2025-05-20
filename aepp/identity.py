@@ -187,33 +187,32 @@ class Identity:
             dict_identity : OPTIONAL : you can use this to directly pass the dictionary.
         """
         creation_dict = {}
-        if name is None or code is None or idType is None:
-            raise Exception(
-                "Expecting that name, code and idType to be filled with value"
-            )
-        creation_dict["name"] = name
-        creation_dict["code"] = code
-        creation_dict["idType"] = idType
-        if description is not None:
-            creation_dict["description"] = description
-        if " " in code:
-            raise TypeError("code can only contain one word with letter and numbers")
-        if idType not in [
-            "COOKIE",
-            "CROSS_DEVICE",
-            "DEVICE",
-            "EMAIL",
-            "MOBILE",
-            "NON_PEOPLE",
-            "PHONE",
-        ]:
-            raise TypeError(
-                "idType could only be one of those : COOKIE, CROSS_DEVICE, DEVICE, EMAIL, MOBILE, NON_PEOPLE, PHONE"
-            )
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting createIdentity")
-        if dict_identity is not None:
-            creation_dict = dict_identity
+        if dict_identity is None:
+            if name is None or code is None or idType is None:
+                raise Exception("Expecting that name, code and idType to be filled with value")
+            creation_dict["name"] = name
+            creation_dict["code"] = code
+            creation_dict["idType"] = idType
+            if description is not None:
+                creation_dict["description"] = description
+            if " " in code:
+                raise TypeError("code can only contain one word with letter and numbers")
+            if idType not in [
+                "COOKIE",
+                "CROSS_DEVICE",
+                "DEVICE",
+                "EMAIL",
+                "MOBILE",
+                "NON_PEOPLE",
+                "PHONE",
+            ]:
+                raise TypeError(
+                    "idType could only be one of those : COOKIE, CROSS_DEVICE, DEVICE, EMAIL, MOBILE, NON_PEOPLE, PHONE"
+                )
+            if self.loggingEnabled:
+                self.logger.debug(f"Starting createIdentity")
+        else: ## if you want to pass the dictionary directly
+            creation_dict = deepcopy(dict_identity)
         path = "/idnamespace/identities"
         res = self.connector.postData(
             self.endpoint + path, headers=self.header, data=creation_dict
