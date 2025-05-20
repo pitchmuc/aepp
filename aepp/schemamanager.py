@@ -20,12 +20,13 @@ from .fieldgroupmanager import FieldGroupManager
 from .classmanager import ClassManager
 from .catalog import ObservableSchemaManager
 from aepp.schema import Schema
+from aepp import som
 
 class SchemaManager:
     """
     A class to handle the schema management.
     """
-    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity"]
+    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity","xdm:descriptorRelationship"]
 
     def __init__(self,
                 schema:Union[str,dict]=None,
@@ -356,6 +357,12 @@ class SchemaManager:
         for mydict in list_dict:
             result = self.__simpleDeepMerge__(result,mydict)
         return result
+    
+    def to_som(self)->'som.Som':
+        """
+        Generate a SOM object representing the Schema constitution
+        """
+        return som.Som(self.to_dict())
 
     def createSchema(self)->dict:
         """
@@ -402,10 +409,13 @@ class SchemaManager:
                                 identityPrimary:bool=False,
                                 alternateTitle:str="",
                                 alternateDescription:str=None,
-                                lookupSchema:str=None,
+                                targetSchema:str=None,
                                 targetCompletePath:str=None,
+                                targetNamespace:str=None,
+                                labels:list=None,
                                 timezone:str="UTC",
                                 granularity:str="day",
+                                cardinality:str="M:1",
                                 )->dict:
         """
         Create a descriptor object to be used in the createDescriptor.
@@ -413,18 +423,20 @@ class SchemaManager:
         https://experienceleague.adobe.com/docs/experience-platform/xdm/api/descriptors.html?lang=en#appendix
         Arguments:
             descType : REQUIRED : The type to be used.
-                it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity"
+                it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorLabel","xdm:descriptorTimeSeriesGranularity", "xdm:descriptorRelationship"
             completePath : REQUIRED : the dot path of the field you want to attach a descriptor to.
                 Example: '_tenant.tenantObject.field'
             identityNSCode : OPTIONAL : if the descriptor is identity related, the namespace CODE  used.
             identityPrimary : OPTIONAL : If the primary descriptor added is the primary identity.
             alternateTitle : OPTIONAL : if the descriptor is alternateDisplay, the alternate title to be used.
             alternateDescription : OPTIONAL if you wish to add a new description.
-            lookupSchema : OPTIONAL : The schema ID for the lookup if the descriptor is for lookup setup
-            targetCompletePath : OPTIONAL : if you have the complete path for the field in the target lookup schema.
-            idField : OPTIONAL : If it touches a specific Field ID
+            targetSchema : OPTIONAL : The schema ID for the destination (lookup, B2B lookup, relationship) if the descriptor is "descriptorRelationship" or "descriptorOneToOne".
+            targetCompletePath : OPTIONAL : if you have the complete path for the field in the target lookup schema, if the descriptor is "descriptorRelationship" or "descriptorOneToOne".
+            targetNamespace: OPTIONAL : if you have the namespace code for the target schema (used for "descriptorRelationship").
+            labels : OPTIONAL : list of labels, if your descriptor is a descriptorLabel.
             timezone : OPTIONAL : The proper timezone identifier value from the TZ identifier column (see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
-            granularity : OPTION : hour or day (default)
+            granularity : OPTION : hour or day (default),
+            cardinality : OPTIONAL : The cardinality of the relationship. default is "M:1"
         """
         if descType not in self.DESCRIPTOR_TYPES:
             raise Exception(f"The value provided ({descType}) is not supported by this method")
@@ -432,7 +444,8 @@ class SchemaManager:
             if completePath is None:
                 raise ValueError("Require a field complete path")
             else:
-                completePath = '/'+completePath.replace('.','/')
+                if completePath.startswith('/') == False:
+                    completePath = '/'+completePath.replace('.','/')
         if descType == "xdm:descriptorIdentity":
             obj = {
                 "@type": descType,
@@ -465,7 +478,7 @@ class SchemaManager:
                 "xdm:sourceSchema":self.id,
                 "xdm:sourceVersion": 1,
                 "xdm:sourceProperty":completePath,
-                "xdm:destinationSchema":lookupSchema,
+                "xdm:destinationSchema":targetSchema,
                 "xdm:destinationVersion": 1,
             }
             if targetCompletePath is not None:
@@ -484,7 +497,7 @@ class SchemaManager:
                 "xdm:sourceSchema": self.id,
                 "xdm:sourceVersion": 1,
                 "xdm:sourceProperty": completePath
-            }
+            }            
         elif descType == "xdm:descriptorTimeSeriesGranularity":
             obj = {
                 "@type": descType,
@@ -492,6 +505,18 @@ class SchemaManager:
                 "xdm:sourceVersion": 1,
                 "xdm:granularity": granularity,
                 "xdm:ianaTimezone":timezone
+            }
+        elif descType == "xdm:descriptorRelationship":##B2B
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:destinationSchema": targetSchema,
+                "xdm:destinationProperty": targetCompletePath,
+                "xdm:destinationNamespace": targetNamespace,
+                "xdm:destinationVersion": 1,
+                "xdm:cardinality": cardinality
             }
         return obj
     

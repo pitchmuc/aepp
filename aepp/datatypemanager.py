@@ -18,6 +18,7 @@ import json
 import re
 from .configs import ConnectObject
 from aepp.schema import Schema
+from aepp import som
 
 class DataTypeManager:
     """
@@ -826,6 +827,12 @@ class DataTypeManager:
             filename = self.dataType.get('title',f'unknown_dataType_{str(int(time.time()))}')
             aepp.saveFile(module='schema',file=data,filename=f"{filename}.json",type_file='json')
         return data
+    
+    def to_som(self)->'som.Som':
+        """
+        Generate a SOM object representing the Data Type constitution
+        """
+        return som.Som(self.to_dict())
 
     def to_dataframe(self,save:bool=False,description:bool=False,xdmType:bool=True,queryPath:bool=False)->pd.DataFrame:
         """

@@ -961,6 +961,12 @@ class FieldGroupManager:
             filename = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
             aepp.saveFile(module='schema',file=mySom.to_dict(),filename=f"{filename}.json",type_file='json')
         return mySom.to_dict()
+    
+    def to_som(self)->'som.Som':
+        """
+        Generate a SOM object representing the field group constitution
+        """
+        return som.Som(self.to_dict())
 
     def to_dataframe(self,save:bool=False,queryPath:bool=False,description:bool=False,xdmType:bool=True,editable:bool=False,excludeObjects:bool=False)->pd.DataFrame:
         """
@@ -1023,8 +1029,10 @@ class FieldGroupManager:
         dict_results = {}
         for dt_id,dt_title in self.dataTypes.items():
             results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
-            for res in results:
-                dict_results[res[list(res.keys())[0]]['queryPath']] = dt_id
+            paths = [res[list(res.keys())[0]]['path'] for res in results]
+            adapt_paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
+            for path in adapt_paths:
+                dict_results[path] = dt_id
         return dict_results
     
 
@@ -1149,3 +1157,40 @@ class FieldGroupManager:
         else:
             self.setTitle(df_import['fieldGroup'].mode().values[0])
         return self
+    
+    def createDescriptorOperation(self,descType:str=None,
+                                  completePath:str=None,
+                                  labels:list=None)->dict:
+        """
+        Support the creation of a descriptor operation for 'xdm:descriptorLabel' descriptor type. 
+        Arguments:
+            descType : REQUIRED : The type of descriptor to be created.
+            completePath : REQUIRED : The path to be used for the descriptor.
+            labels : OPTIONAL : A list of labels to be used for the descriptor.
+        """
+        if descType not in ['xdm:descriptorLabel']:
+            raise ValueError('Type of descriptor not supported by Field Group Manager')
+        if completePath is None:
+            raise ValueError('Require a path to be used for the descriptor')
+        if labels is None:
+            raise Warning('No label provided. The descriptor will be created without any label')
+        if descType == 'xdm:descriptorLabel':
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:labels": labels
+            }
+        return obj
+
+    def createDescriptor(self,descriptor:dict=None)->None:
+        """
+        Create a descriptor attached to that class bsaed on the creatorDescriptor operation provided. 
+        Arguments:
+            descriptor : REQUIRED : The operation to add a descriptor to the schema.
+        """
+        if descriptor is None:
+            raise ValueError('Require an operation to be used')
+        res = self.schemaAPI.createDescriptor(descriptor)
+        return res

@@ -230,7 +230,7 @@ You can see the type of descriptor available in the DESCRIPTOR_TYPES attribute a
 https://experienceleague.adobe.com/docs/experience-platform/xdm/api/descriptors.html?lang=en#appendix \
 Arguments:
 * descType : REQUIRED : The type to be used.\
-    it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated"
+    it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorLabel","xdm:descriptorRelationship"
 * completePath : REQUIRED : the dot path of the field you want to attach a descriptor to.\
     Example: '_tenant.tenantObject.field'
 * identityNSCode : OPTIONAL : if the descriptor is identity related, the namespace CODE  used.

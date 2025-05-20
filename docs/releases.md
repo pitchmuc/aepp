@@ -14,6 +14,12 @@ This page list all of the changes that came during the different release of the 
 * adding the `classes_id` and `classes_altId` attributes in the `Schema` instance.
 * adding new capabilities to send data via `ingestion` module `streamMessage` method. 
 * adding the `remove` and `clear` method in `som`
+* adding `targetSchema` and `xdm:descriptorRelationship` to the descriptor support
+* change the `createDataSets` to `createDataSet` to better reflect the behavior.
+* adding new `descriptors` supports on `SchemaManager` class.
+* better support on `createIdentity` method
+* supporting creation of descriptors on the `FieldGroupManager` to accomodate to `xdm:descriptorLabel`
+* adding the `to_som()` to `SchemaManager`, `FieldGroupManager` and `DataTypeManager`
 
 ## version 0.3.10
 * refactor the `createPackage` and `updatePackage` methods ([documentation](./sandboxes.md#createPackage)).

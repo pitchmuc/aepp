@@ -70,7 +70,7 @@ class Schema:
         "" :""
     }
     PATCH_OBJ = [{"op": "add", "path": "/meta:immutableTags-", "value": "union"}]
-    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity"]
+    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity",'xdm:descriptorLabel']
 
     def __init__(
         self,
