@@ -1022,16 +1022,19 @@ class FieldGroupManager:
         if dataType in self.dataTypes.keys():## if an ID
             return self.dataTypeManagers[self.dataTypes[dataType]]
         
-    def getDataTypePaths(self,)->dict:
+    def getDataTypePaths(self,**kwargs)->dict:
         """
         Return a dictionary of the paths in the field groups and their associated data type reference.
+        possible kwargs:
+        som_compatible: boolean. Default False.
         """
         dict_results = {}
         for dt_id,dt_title in self.dataTypes.items():
             results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
             paths = [res[list(res.keys())[0]]['path'] for res in results]
-            adapt_paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
-            for path in adapt_paths:
+            if kwargs.get('som_compatible',False):
+                paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
+            for path in paths:
                 dict_results[path] = dt_id
         return dict_results
     
