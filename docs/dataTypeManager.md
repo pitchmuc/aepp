@@ -165,6 +165,10 @@ Arguments:
 * typed : OPTIONAL : If you want the type associated with the field group to be given.
 * save : OPTIONAL : If you wish to save the dictionary in a JSON file
 
+### to_som
+Generate a Som instance of the dictionary. Helping the manipulation of the dictionary if needed. 
+Documentation on [SOM](./som.md)
+
 ### to_dataframe
 Generate a dataframe with the row representing each possible path.\
 Arguments:
@@ -183,3 +187,11 @@ It uses the PUT method, replacing previous definition.
 ### createDataType
 Use the POST method to create the Data Type in the organization.
 
+
+### importDataTypeDefinition 
+Importing the flat representation of the data type. It could be a dataframe or a CSV file containing the data type element.\
+Argument:
+* datatype : REQUIRED : The dataframe or csv of the data type\
+    It needs to contains the following columns : "path", "xdmType"
+* sep : OPTIONAL : In case your CSV is separated by something else than comma. Default (',')
+* sheet_name : OPTIONAL : In case you are uploading an Excel, you need to provide the sheet name

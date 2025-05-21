@@ -199,6 +199,10 @@ the `origin` column is automatically returned and is helping understanding if th
 ### to_xdm
 Return the fieldgroup definition as XDM
 
+### to_som
+Generate a Som instance of the dictionary. Helping the manipulation of the dictionary if needed. 
+Documentation on [SOM](./som.md)
+
 ### getDataTypeManager
 Retrieve the Data Type Manager instance of custom data type\
 Argument:
@@ -206,7 +210,7 @@ Argument:
 
 ### getDataTypePaths
 Return a dictionary of the paths in the field groups and their associated data type reference.\
-Such as `{'id':'name-of-datatype'}`
+Such as `{'path':'name-of-datatype'}`
 
 ### patchFieldGroup
 Patch the field group with the given operation.\
@@ -247,7 +251,21 @@ fgManager.updateFieldGroup() ## the new definition is sent to AEP
 ```
 
 ### createFieldGroup
-Use the POST method to create the field group in the organization.
+Use the POST method to create the field group in the organization schema repository.\
+This method push the local definition to Adobe Experience Platform, officially creating the field group in your sandbox.
+
+### createDescriptorOperation
+Support the creation of a descriptor operation for `'xdm:descriptorLabel'` descriptor type.\
+Arguments:
+* descType : REQUIRED : The type of descriptor to be created.
+* completePath : REQUIRED : The path to be used for the descriptor.
+* labels : OPTIONAL : A list of labels to be used for the descriptor.
+
+### createDescriptor
+Create a descriptor attached to that class bsaed on the creatorDescriptor operation provided.\
+Arguments:
+* descriptor : REQUIRED : The operation to add a descriptor to the schema.
+
 
 ### importFieldGroupDefinition
 Importing the flat representation of the field group. It could be a dataframe or a CSV file containing the field group element.\

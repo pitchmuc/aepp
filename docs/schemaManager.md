@@ -213,6 +213,10 @@ the `origin` column is automatically returned and is helping understanding if th
 ### to_dict
 Return a dictionary of the whole schema. You need to have instanciated the Field Group Manager
 
+### to_som
+Generate a Som instance of the dictionary. Helping the manipulation of the dictionary if needed. 
+Documentation on [SOM](./som.md)
+
 ### createSchema
 Send a createSchema request to AEP to create the schema.\
 It removes the "$id" if one was provided to avoid overriding existing ID.
