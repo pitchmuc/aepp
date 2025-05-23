@@ -207,6 +207,7 @@ Arguments:
 * xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
 * editable : OPTIONAL : If you can manipulate the structure of the field groups (default False). More details on [Editable concept](#editable-concept)
 * excludeObjects : OPTIONAL : Boolean that remove the lines that are defining objects/nodes. Default `False`.
+* required : OPTIONAL : Provide an extra column `required` to specify which fields are set as required 
 
 the `origin` column is automatically returned and is helping understanding if the field is related to the class, native in the field group or added to the field group via a dataType.  
 

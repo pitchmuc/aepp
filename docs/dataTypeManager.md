@@ -176,6 +176,8 @@ Arguments:
     save as csv with the title used. Not title, used "unknown_fieldGroup_" + timestamp.
 * description : OPTIONAL : If you want to have the description used (default False)
 * xdmType : OPTIONAL : If you want to retrieve the xdm Data Type (default False)
+* required : OPTIONAL : Provide an extra column `required` to specify which fields are set as required
+
 
 ### to_xdm
 Return the Data Type definition as XDM

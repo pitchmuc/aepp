@@ -193,6 +193,7 @@ Arguments:
 * xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
 * editable : OPTIONAL : If you can manipulate the structure of the field groups (default False) -> see [Editable](#editable-concept)
 * excludeObjects : OPTIONAL : Boolean that remove the lines that are defining objects/nodes. Default `False`.
+* required : OPTIONAL : Provide an extra column `required` to specify which fields are set as required
 
 the `origin` column is automatically returned and is helping understanding if the field is  native in the field group or added to the field group via a dataType.  
 
@@ -265,6 +266,12 @@ Arguments:
 Create a descriptor attached to that class bsaed on the creatorDescriptor operation provided.\
 Arguments:
 * descriptor : REQUIRED : The operation to add a descriptor to the schema.
+
+### UpdateDescriptor
+Update a descriptor with the put method. Wrap the putDescriptor method of the Schema class.\
+Arguments:
+* descriptorId : REQUIRED : The descriptor ID to be updated
+* descriptorObj : REQUIRED : The new definition of the descriptor as a dictionary.
 
 
 ### importFieldGroupDefinition
