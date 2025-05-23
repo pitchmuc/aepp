@@ -19,7 +19,11 @@ This page list all of the changes that came during the different release of the 
 * adding new `descriptors` supports on `SchemaManager` class.
 * better support on `createIdentity` method
 * supporting creation of descriptors on the `FieldGroupManager` to accomodate to `xdm:descriptorLabel`
-* adding the `to_som()` to `SchemaManager`, `FieldGroupManager` and `DataTypeManager`
+* adding the `to_som()` to `SchemaManager`, `FieldGroupManager` and `DataTypeManager`\
+Patch: 
+* fixing an issue on providing the dataframe for Schema, FieldGroup and DataType when objectArrays were not marked correctly on the path
+* improving the `to_dataframe` capability by providing the custom required fields.
+* better support for `getBehavior` method
 
 ## version 0.3.10
 * refactor the `createPackage` and `updatePackage` methods ([documentation](./sandboxes.md#createPackage)).

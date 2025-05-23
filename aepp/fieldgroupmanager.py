@@ -52,6 +52,7 @@ class FieldGroupManager:
         self.fieldGroup = {}
         self.dataTypes = {}
         self.dataTypeManagers = {} 
+        self.requiredFields = set()
         if schemaAPI is not None and type(schemaAPI) == Schema:
             self.schemaAPI = schemaAPI
         else:
@@ -423,7 +424,7 @@ class FieldGroupManager:
                         dictionary[key] = ""
         return dictionary 
 
-    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,queryPath:bool=False,description:bool=False,xdmType:bool=False)->dict:
+    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,queryPath:bool=False,description:bool=False,xdmType:bool=False,required:bool=False)->dict:
         """
         Transform the current XDM schema to a dictionary.
         Arguments:
@@ -433,6 +434,7 @@ class FieldGroupManager:
             queryPath: boolean to tell if we want to add the query path
             description : boolean to tell if you want to retrieve the description
             xdmType : boolean to know if you want to retrieve the xdm Type
+            required : boolean to know if you want to retrieve the required field
         """
         if dictionary is None:
             dictionary = {'path':[],'type':[],'title':[]}
@@ -464,14 +466,22 @@ class FieldGroupManager:
                             dictionary["description"].append(f"{mydict[key].get('description','')}")
                         if xdmType:
                             dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if tmp_path is not None:
+                                        tmp_reqPath = f"{tmp_path}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
-                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath,description,xdmType)
+                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath,description,xdmType,required)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None: ## array of objects
                         if path is None:
-                            tmp_path = key
+                            tmp_path = f"{key}[]{{}}"
                         else :
                             tmp_path = f"{path}.{key}[]{{}}"
                         dictionary["path"].append(tmp_path)
@@ -483,9 +493,20 @@ class FieldGroupManager:
                             dictionary["description"].append(mydict[key].get('description',''))
                         if xdmType:
                             dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
-                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,description,xdmType)
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if tmp_path is not None:
+                                        tmp_reqPath = f"{tmp_path}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
+                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,description,xdmType,required)
                     else: ## simple arrays
-                        finalpath = f"{path}.{key}[]"
+                        if path is None:
+                            finalpath = f"{key}[]"
+                        else:
+                            finalpath = f"{path}.{key}[]"
                         dictionary["path"].append(finalpath)
                         dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         dictionary["title"].append(f"{mydict[key].get('title')}")
@@ -495,6 +516,14 @@ class FieldGroupManager:
                             dictionary["description"].append(mydict[key].get('description',''))
                         if xdmType:
                             dictionary["xdmType"].append(mydict[key]['items'].get('meta:xdmType',''))
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if tmp_path is not None:
+                                        tmp_reqPath = f"{tmp_path}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
                 else:
                     if path is not None:
                         finalpath = f"{path}.{key}"
@@ -509,6 +538,14 @@ class FieldGroupManager:
                         dictionary["description"].append(mydict[key].get('description',''))
                     if xdmType :
                         dictionary["xdmType"].append(mydict[key].get('meta:xdmType',''))
+                    if required:
+                        if len(mydict[key].get('required',[])) > 0:
+                            for elRequired in mydict[key].get('required',[]):
+                                if finalpath is not None:
+                                    tmp_reqPath = f"{finalpath}.{elRequired}"
+                                else:
+                                    tmp_reqPath = f"{elRequired}"
+                                self.requiredFields.add(tmp_reqPath)
 
         return dictionary
     
@@ -968,7 +1005,14 @@ class FieldGroupManager:
         """
         return som.Som(self.to_dict())
 
-    def to_dataframe(self,save:bool=False,queryPath:bool=False,description:bool=False,xdmType:bool=True,editable:bool=False,excludeObjects:bool=False)->pd.DataFrame:
+    def to_dataframe(self,
+                     save:bool=False,
+                     queryPath:bool=False,
+                     description:bool=False,
+                     xdmType:bool=True,
+                     editable:bool=False,
+                     excludeObjects:bool=False,
+                     required:bool=False)->pd.DataFrame:
         """
         Generate a dataframe with the row representing each possible path.
         Arguments:
@@ -979,18 +1023,32 @@ class FieldGroupManager:
             xdmType : OPTIONAL : If you want to have the xdmType also returned (default True)
             editable : OPTIONAL : If you can manipulate the structure of the field groups (default False)
             excludeObjects : OPTIONAL : Remove the fields that are noted down as object so only fields containing data are returned.
+            required : OPTIONAL : If you want to have the required field in the dataframe (default False)
         """
         definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
-        data = self.__transformationDF__(definition,queryPath=queryPath,description=description,xdmType=xdmType)
+        data = self.__transformationDF__(definition,queryPath=queryPath,description=description,xdmType=xdmType,required=required)
         df = pd.DataFrame(data)
         df = df[~df.path.duplicated()].copy() ## dedup the paths
         df = df[~(df['path']==self.tenantId)].copy()## remove the root
+        if required:
+            if(len(self.requiredFields) > 0):
+                df['required'] = df['path'].isin(self.requiredFields)
+            else:
+                df['required'] = False
         df['origin'] = 'fieldGroup'
         if len(self.dataTypes)>0:
             paths = self.getDataTypePaths()
             for path,dataElementId in paths.items():
-                df_dataType = self.getDataTypeManager(dataElementId).to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType)
+                tmp_dtManager = self.getDataTypeManager(dataElementId)
+                df_dataType = tmp_dtManager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,required=required)
+                list_required = tmp_dtManager.requiredFields
                 df_dataType['path'] = df_dataType['path'].apply(lambda x : f"{path}.{x}")
+                if required:
+                    if len(list_required) > 0:
+                        list_required = [f"{path}.{x}" for x in list_required]
+                        df_dataType['required'] = df_dataType['path'].isin(list_required)
+                    else:
+                        df_dataType['required'] = False
                 df_dataType['origin'] = 'dataType'
                 df = pd.concat([df,df_dataType],axis=0,ignore_index=True)
         df = df.sort_values(by=['path'],ascending=[True]) ## sort the dataframe
@@ -1161,6 +1219,15 @@ class FieldGroupManager:
             self.setTitle(df_import['fieldGroup'].mode().values[0])
         return self
     
+    def getDescriptors(self)->list:
+        """
+        Get the descriptors of that schema
+        """
+        if self.STATE=="NEW" or self.id == "":
+            raise Exception("Schema does not exist yet, there can not be a descriptor")    
+        res = self.schemaAPI.getDescriptors(prop=f"xdm:sourceSchema=={self.id}")
+        return res
+
     def createDescriptorOperation(self,descType:str=None,
                                   completePath:str=None,
                                   labels:list=None)->dict:
@@ -1196,4 +1263,18 @@ class FieldGroupManager:
         if descriptor is None:
             raise ValueError('Require an operation to be used')
         res = self.schemaAPI.createDescriptor(descriptor)
+        return res
+    
+    def updateDescriptor(self,descriptorId:str=None,descriptorObj:dict=None)->dict:
+        """
+        Update a descriptor with the put method. Wrap the putDescriptor method of the Schema class.
+        Arguments:
+            descriptorId : REQUIRED : The descriptor ID to be updated
+            descriptorObj : REQUIRED : The new definition of the descriptor as a dictionary.
+        """
+        if descriptorId is None:
+            raise ValueError("Require a Descriptor ID")
+        if descriptorObj is None or type(descriptorObj) != dict:
+            raise ValueError("Require a dictionary for the new definition")
+        res = self.schemaAPI.putDescriptor(descriptorId, descriptorObj)
         return res

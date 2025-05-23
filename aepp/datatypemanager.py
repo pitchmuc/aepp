@@ -45,6 +45,7 @@ class DataTypeManager:
         self.EDITABLE = False
         self.STATE = "EXISTING"
         self.dataType = {}
+        self.requiredFields = set()
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
         else:
@@ -347,7 +348,14 @@ class DataTypeManager:
                         dictionary[key] = ""
         return dictionary 
 
-    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,description:bool=False,xdmType:bool=False,queryPath:bool=False)->dict:
+    def __transformationDF__(self,
+                             mydict:dict=None,
+                             dictionary:dict=None,
+                             path:str=None,
+                             description:bool=False,
+                             xdmType:bool=False,
+                             queryPath:bool=False,
+                             required:bool=False)->dict:
         """
         Transform the current XDM schema to a dictionary.
         Arguments:
@@ -357,6 +365,7 @@ class DataTypeManager:
             queryPath: boolean to tell if we want to add the query path
             description : boolean to tell if you want to retrieve the description
             xdmType : boolean to know if you want to retrieve the xdm Type
+            required : If you want to have the required field in the dataframe
         """
         if dictionary is None:
             dictionary = {'path':[],'type':[],'title':[]}
@@ -388,14 +397,22 @@ class DataTypeManager:
                             dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
                         if queryPath:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if tmp_path is not None:
+                                        tmp_reqPath = f"{tmp_path}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
-                        self.__transformationDF__(properties,dictionary,tmp_path,description,xdmType)
+                        self.__transformationDF__(properties,dictionary,tmp_path,description,xdmType,queryPath,required)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None: ## array of objects
                         if path is None:
-                            tmp_path = key
+                            tmp_path = f"{key}[]{{}}"
                         else :
                             tmp_path = f"{path}.{key}[]{{}}"
                         dictionary["path"].append(tmp_path)
@@ -407,7 +424,15 @@ class DataTypeManager:
                             dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
                         if queryPath:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
-                        self.__transformationDF__(levelProperties,dictionary,tmp_path,description,xdmType)
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if tmp_path is not None:
+                                        tmp_reqPath = f"{tmp_path}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
+                        self.__transformationDF__(levelProperties,dictionary,tmp_path,description,xdmType,queryPath,required)
                     else: ## simple arrays
                         if path is not None:
                             finalpath = f"{path}.{key}[]"
@@ -422,6 +447,14 @@ class DataTypeManager:
                             dictionary["xdmType"].append(mydict[key]['items'].get('meta:xdmType',''))
                         if queryPath:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if finalpath is not None:
+                                        tmp_reqPath = f"{finalpath}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
                 else:
                     if path is not None:
                         finalpath = f"{path}.{key}"
@@ -435,7 +468,15 @@ class DataTypeManager:
                     if xdmType :
                         dictionary["xdmType"].append(mydict[key].get('meta:xdmType',''))
                     if queryPath:
-                            dictionary["querypath"].append(self.__cleanPath__(finalpath))
+                        dictionary["querypath"].append(self.__cleanPath__(finalpath))
+                    if required:
+                        if len(mydict[key].get('required',[])) > 0:
+                            for elRequired in mydict[key].get('required',[]):
+                                if finalpath is not None:
+                                    tmp_reqPath = f"{finalpath}.{elRequired}"
+                                else:
+                                    tmp_reqPath = f"{elRequired}"
+                                self.requiredFields.add(tmp_reqPath)
         return dictionary
     
     def __setField__(self,completePathList:list=None,dataType:dict=None,newField:str=None,obj:dict=None)->dict:
@@ -834,7 +875,7 @@ class DataTypeManager:
         """
         return som.Som(self.to_dict())
 
-    def to_dataframe(self,save:bool=False,description:bool=False,xdmType:bool=True,queryPath:bool=False)->pd.DataFrame:
+    def to_dataframe(self,save:bool=False,description:bool=False,xdmType:bool=True,queryPath:bool=False,required:bool=False)->pd.DataFrame:
         """
         Generate a dataframe with the row representing each possible path.
         Arguments:
@@ -842,11 +883,12 @@ class DataTypeManager:
                 save as csv with the title used. Not title, used "unknown_fieldGroup_" + timestamp.
             description : OPTIONAL : If you want to have the description used (default False)
             xdmType : OPTIONAL : If you want to retrieve the xdm Data Type (default False)
+            required : OPTIONAL : If you want to have the required field in the dataframe (default False)
         """
         definition = self.dataType.get('definitions',{})
         if definition == {}:
             definition = self.dataType.get('properties',{})
-        data = self.__transformationDF__(definition,description=description,xdmType=xdmType,queryPath=queryPath)
+        data = self.__transformationDF__(definition,description=description,xdmType=xdmType,queryPath=queryPath,required=required)
         df = pd.DataFrame(data)
         if save:
             title = self.dataType.get('title',f'unknown_dataType_{str(int(time.time()))}')

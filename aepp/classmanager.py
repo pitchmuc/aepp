@@ -83,6 +83,7 @@ class ClassManager:
             self.EDITABLE = True
         else:
             self.EDITABLE = False
+        self.requiredFields = set()
     
     def __setAttributes__(self, aepclass:dict):
         self.description = aepclass.get('description','')
@@ -479,7 +480,13 @@ class ClassManager:
                         dictionary[key] = ""
         return dictionary
 
-    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,queryPath:bool=False,description:bool=False,xdmType:bool=False)->dict:
+    def __transformationDF__(self,mydict:dict=None,
+                             dictionary:dict=None,
+                             path:str=None,
+                             queryPath:bool=False,
+                             description:bool=False,
+                             xdmType:bool=False,
+                             required:bool=False)->dict:
         """
         Transform the current XDM schema to a dictionary.
         Arguments:
@@ -489,6 +496,7 @@ class ClassManager:
             queryPath: boolean to tell if we want to add the query path
             description : boolean to tell if you want to retrieve the description
             xdmType : boolean to know if you want to retrieve the xdm Type
+            required : boolean to know if you want to retrieve the required fields
         """
         if dictionary is None:
             dictionary = {'path':[],'type':[],'title':[]}
@@ -520,14 +528,22 @@ class ClassManager:
                             dictionary["description"].append(f"{mydict[key].get('description','')}")
                         if xdmType:
                             dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if tmp_path is not None:
+                                        tmp_reqPath = f"{tmp_path}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
-                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath,description,xdmType)
+                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath,description,xdmType,required)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None: ## array of objects
                         if path is None:
-                            tmp_path = key
+                            tmp_path = f"{key}[]{{}}"
                         else :
                             tmp_path = f"{path}.{key}[]{{}}"
                         dictionary["path"].append(tmp_path)
@@ -539,9 +555,20 @@ class ClassManager:
                             dictionary["description"].append(mydict[key].get('description',''))
                         if xdmType:
                             dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
-                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,description,xdmType)
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if tmp_path is not None:
+                                        tmp_reqPath = f"{tmp_path}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
+                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,description,xdmType,required)
                     else: ## simple arrays
-                        finalpath = f"{path}.{key}[]"
+                        if path is None:
+                            finalpath = f"{key}[]"
+                        else:
+                            finalpath = f"{path}.{key}[]"
                         dictionary["path"].append(finalpath)
                         dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         dictionary["title"].append(f"{mydict[key].get('title')}")
@@ -551,6 +578,11 @@ class ClassManager:
                             dictionary["description"].append(mydict[key].get('description',''))
                         if xdmType:
                             dictionary["xdmType"].append(mydict[key]['items'].get('meta:xdmType',''))
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    tmp_reqPath = f"{finalpath}.{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
                 else:
                     if path is not None:
                         finalpath = f"{path}.{key}"
@@ -565,6 +597,11 @@ class ClassManager:
                         dictionary["description"].append(mydict[key].get('description',''))
                     if xdmType :
                         dictionary["xdmType"].append(mydict[key].get('meta:xdmType',''))
+                    if required:
+                        if len(mydict[key].get('required',[])) > 0:
+                            for elRequired in mydict[key].get('required',[]):
+                                tmp_reqPath = f"{finalpath}.{elRequired}"
+                                self.requiredFields.add(tmp_reqPath)
         return dictionary
     
     def getField(self,path:str)->dict:
@@ -776,7 +813,14 @@ class ClassManager:
             success = self.__removeKey__(completePath,self.fieldGroup['definitions'])
         return success
 
-    def to_dataframe(self,save:bool=False,queryPath:bool=False,description:bool=False,xdmType:bool=True,editable:bool=False,excludeObjects:bool=False)->pd.DataFrame:
+    def to_dataframe(self,
+                     save:bool=False,
+                     queryPath:bool=False,
+                     description:bool=False,
+                     xdmType:bool=True,
+                     editable:bool=False,
+                     excludeObjects:bool=False,
+                     required:bool=False)->pd.DataFrame:
         """
         Generate a dataframe with the row representing each possible path.
         Arguments:
@@ -787,9 +831,10 @@ class ClassManager:
             xdmType : OPTIONAL : If you want to have the xdmType also returned (default True)
             editable : OPTIONAL : If you can manipulate the structure of the field groups (default False)
             excludeObjects : OPTIONAL : Remove the fields that are noted down as object so only fields containing data are returned.
+            required : OPTIONAL : If you want to have the required field in the dataframe (default False)
         """
         definition = self.aepclass.get('definitions',self.aepclass.get('properties',{}))
-        data = self.__transformationDF__(definition,queryPath=queryPath,description=description,xdmType=xdmType)
+        data = self.__transformationDF__(definition,queryPath=queryPath,description=description,xdmType=xdmType,required=required)
         df = pd.DataFrame(data)
         df = df[~df.path.duplicated()].copy() ## dedup the paths
         df = df[~(df['path']==self.tenantId)].copy()## remove the root

@@ -65,6 +65,7 @@ class SchemaManager:
         self.tenantId = f"_{self.schemaAPI.getTenantId()}"
         if type(schema) == dict:
             self.schema = schema
+            self.requiredFields = set([el.replace('@','_').replace('xdm:','') for el in self.schema.get('required',[])])
             self.__setAttributes__(self.schema)
             allOf = self.schema.get("allOf",[])
             if len(allOf) == 0:
@@ -94,7 +95,8 @@ class SchemaManager:
             if self.schemaAPI is None:
                 Warning("No schema instance has been passed or config file imported.\n Aborting the retrieveal of the Schema Definition")
             else:
-                self.schema = self.schemaAPI.getSchema(schema,full=False)
+                self.schema = self.schemaAPI.getSchema(schema,full=False,schema_type='xed')
+                self.requiredFields = set([el.replace('@','_').replace('xdm:','') for el in self.schema.get('required',[])])
                 self.__setAttributes__(self.schema)
                 allOf = self.schema.get("allOf",[])
                 self.fieldGroupIds = [obj.get('$ref','') for obj in allOf if ('/mixins/' in obj.get('$ref','') or '/experience/' in obj.get('$ref','') or '/context/' in obj.get('$ref','')) and obj.get('$ref','') != self.classId]
@@ -316,7 +318,8 @@ class SchemaManager:
                      description:bool = False,
                      xdmType:bool=False,
                      editable:bool=False,
-                     excludeObjects:bool=False)->pd.DataFrame:
+                     excludeObjects:bool=False,
+                     required:bool=False)->pd.DataFrame:
         """
         Extract the information from the Field Groups to a DataFrame. 
         Arguments:
@@ -327,17 +330,36 @@ class SchemaManager:
             xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
             editable : OPTIONAL : If you can manipulate the structure of the field groups
             excludeObjects : OPTIONAL : If you want to exclude object nodes and only get fields containing data.
+            required : OPTIONAL : If you want to have the required field in the dataframe (default False)
         """
         df = pd.DataFrame({'path':[],'type':[],'fieldGroup':[]})
         for clManager in list(self.classManagers.values()):
-            tmp_df = clManager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,editable=editable)
+            tmp_df = clManager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,editable=editable,required=required)
+            if required:
+                list_required = clManager.requiredFields
+                if len(list_required) > 0:
+                    tmp_df['required'] = tmp_df['path'].isin(list_required)
+                else:
+                    tmp_df['required'] = False
             tmp_df['fieldGroup'] = 'class'
             df = pd.concat([df,tmp_df],ignore_index=True)
         for fgmanager in list(self.fieldGroupsManagers.values()):
-            tmp_df = fgmanager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,editable=editable)
+            tmp_df = fgmanager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,editable=editable,required=required)
             tmp_df['fieldGroup'] = fgmanager.title
+            if required:
+                list_required = fgmanager.requiredFields
+                if len(list_required) > 0:
+                    tmp_df['required'] = tmp_df.apply(lambda x : True if x.path in list_required or x['required'] else False,axis=1)
+                else:
+                    tmp_df['required'] = tmp_df['required'].apply(lambda x: False if x != True else x)
             df = pd.concat([df,tmp_df],ignore_index=True)
         df = df[~df.duplicated(subset=['path','fieldGroup'])].reset_index(drop=True)
+        if required:
+            list_required = self.requiredFields
+            if len(list_required) > 0:
+                df['required'] = df.apply(lambda x : True if x.path in list_required or x['required'] else False,axis=1)
+            else:
+                df['required'] = df['required'].apply(lambda x: False if x != True else x)
         if excludeObjects:
             df = df[df['type'] != 'object'].copy()
         if save:
@@ -409,10 +431,10 @@ class SchemaManager:
                                 identityPrimary:bool=False,
                                 alternateTitle:str="",
                                 alternateDescription:str=None,
+                                alternateNote:str="",
                                 targetSchema:str=None,
                                 targetCompletePath:str=None,
                                 targetNamespace:str=None,
-                                labels:list=None,
                                 timezone:str="UTC",
                                 granularity:str="day",
                                 cardinality:str="M:1",
@@ -430,10 +452,10 @@ class SchemaManager:
             identityPrimary : OPTIONAL : If the primary descriptor added is the primary identity.
             alternateTitle : OPTIONAL : if the descriptor is alternateDisplay, the alternate title to be used.
             alternateDescription : OPTIONAL if you wish to add a new description.
+            alternateNote : OPTIONAL : if you wish to add a new note.
             targetSchema : OPTIONAL : The schema ID for the destination (lookup, B2B lookup, relationship) if the descriptor is "descriptorRelationship" or "descriptorOneToOne".
             targetCompletePath : OPTIONAL : if you have the complete path for the field in the target lookup schema, if the descriptor is "descriptorRelationship" or "descriptorOneToOne".
             targetNamespace: OPTIONAL : if you have the namespace code for the target schema (used for "descriptorRelationship").
-            labels : OPTIONAL : list of labels, if your descriptor is a descriptorLabel.
             timezone : OPTIONAL : The proper timezone identifier value from the TZ identifier column (see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
             granularity : OPTION : hour or day (default),
             cardinality : OPTIONAL : The cardinality of the relationship. default is "M:1"
@@ -464,13 +486,18 @@ class SchemaManager:
                 "xdm:sourceSchema": self.id,
                 "xdm:sourceVersion": 1,
                 "xdm:sourceProperty": completePath,
-                "xdm:title": {
-                    "en_us": alternateTitle
-                    }
+                }
+            if alternateTitle is not None:
+                obj["xdm:title"] = {
+                    "en_us":alternateTitle
                 }
             if alternateDescription is not None:
                 obj["xdm:description"] = {
                     "en_us":alternateDescription
+                }
+            if alternateNote is not None:
+                obj["xdm:note"] = {
+                    "en_us":alternateNote
                 }
         elif descType == "xdm:descriptorOneToOne":
             obj = {

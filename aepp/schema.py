@@ -231,16 +231,27 @@ class Schema:
         data = res.get("results",[])
         return data
 
-    def getBehavior(self,behaviorId:str=None)->dict:
+    def getBehavior(self,behaviorId:str=None,full=True,type:str='xdm',**kwargs)->dict:
         """
         Retrieve a specific behavior for class creation.
         Arguments:
             behaviorId : REQUIRED : the behavior ID to be retrieved.
+            full : OPTIONAL : True (default) will return the full schema.False just the relationships.
+            type : OPTIONAL : either "xdm" (default) or "xed".
         """
         if behaviorId is None:
             raise Exception("Require a behavior ID")
+        privateHeader = deepcopy(self.header)
+        if behaviorId.startswith("https://"):
+            from urllib import parse
+            behaviorId = parse.quote_plus(behaviorId)
+        if full:
+            update_full = "-full"
+        if kwargs.get('xtype', None) is not None and kwargs.get('xtype', None) != type:
+            type = kwargs.get('xtype', 'xdm')
+        privateHeader['Accept'] = f"application/vnd.adobe.{type}{update_full}+json; version=1.0"
         path = f"/global/behaviors/{behaviorId}"
-        res = self.connector.getData(self.endpoint + path)
+        res = self.connector.getData(self.endpoint + path,headers=privateHeader)
         return res
 
     def getSchemas(
