@@ -176,6 +176,7 @@ class FieldGroupManager:
             self.id = self.fieldGroup.get('$id')
         if self.fieldGroup.get('meta:altId',False):
             self.altId = self.fieldGroup.get('meta:altId')
+        self.classIds = self.fieldGroup.get('meta:intendedToExtend')
     
     def __str__(self)->str:
         return json.dumps(self.fieldGroup,indent=2)
@@ -681,6 +682,16 @@ class FieldGroupManager:
         """
         self.fieldGroup['description'] = description
         self.description = description
+
+    def updateClassSupported(self,classIds:list=None)->None:
+        """
+        Update the "meta:intendedToExtend" attribute of the Field Group definition.
+        Arguments: 
+            classIds : REQUIRED : A list of class ID to support for that field group
+        """
+        if classIds is None or type(classIds) != list:
+            raise ValueError("Require a list of class ids")
+        self.fieldGroup["meta:intendedToExtend"] = classIds
 
     def getField(self,path:str)->dict:
         """

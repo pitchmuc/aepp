@@ -6,6 +6,9 @@ from aepp.schema import Schema
 import pandas as pd
 from copy import deepcopy
 
+### NOTE : If want to do an importDefintion -> Require to handle when custom fields have been used in the class
+### the tenant is not automatically created in the empty definition, contrary to Field Group Manager
+
 class ClassManager:
     def __init__(self,
             aepclass:Union[str,dict]=None,
@@ -843,14 +846,15 @@ class ClassManager:
         definition = self.aepclass.get('definitions',self.aepclass.get('properties',{}))
         data = self.__transformationDF__(definition,queryPath=queryPath,description=description,xdmType=xdmType,required=required)
         df = pd.DataFrame(data)
+        df = df[~df.path.duplicated()].copy() ## dedup the paths
+        df = df[~(df['path']==self.tenantId)].copy()## remove the root
+        df['origin'] = 'class'
         if self.EDITABLE:
             behaviorDefinition = self.behaviorDefinition.get('properties')
             dataBehavior = self.__transformationDF__(behaviorDefinition,queryPath=queryPath,description=description,xdmType=xdmType,required=required)
             dfBehavior = pd.DataFrame(dataBehavior)
+            dfBehavior['origin'] = 'class behavior'
             df = pd.concat([df,dfBehavior],axis=0,ignore_index=True)
-        df = df[~df.path.duplicated()].copy() ## dedup the paths
-        df = df[~(df['path']==self.tenantId)].copy()## remove the root
-        df['origin'] = 'class'
         if editable:
             df['editable'] = self.EDITABLE
         if excludeObjects:
