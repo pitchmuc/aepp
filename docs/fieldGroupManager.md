@@ -110,6 +110,10 @@ Returns the field definition you want want to obtain.\
 Arguments:
 * path : REQUIRED : path with dot notation to which field you want to access
 
+### updateClassSupported
+Update the "meta:intendedToExtend" attribute of the Field Group definition.\
+Arguments: 
+* classIds : REQUIRED : A list of class ID to support for that field group
 
 ### searchField
 Search for a field name based the string passed.\
