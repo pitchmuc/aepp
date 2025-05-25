@@ -24,7 +24,8 @@ Patch:
 * fixing an issue on providing the dataframe for Schema, FieldGroup and DataType when objectArrays were not marked correctly on the path
 * improving the `to_dataframe` capability by providing the custom required fields.
 * better support for `getBehavior` method
-* adding `updateDescriptor` in `FieldGroupManager`.
+* adding `updateDescriptor` in `FieldGroupManager`
+* better handling of custom class in `ClassManager`
 
 ## version 0.3.10
 * refactor the `createPackage` and `updatePackage` methods ([documentation](./sandboxes.md#createPackage)).

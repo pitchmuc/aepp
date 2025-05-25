@@ -37,12 +37,14 @@ class ClassManager:
         if type(aepclass) == dict:
             if tenantNoUnderscore in aepclass['id']:
                 self.aepclass = self.schemaAPI.getClass(aepclass['id'],full=False,xtype='xed')
+                self.EDITABLE = True
             else:
                 self.aepclass = self.schemaAPI.getClass(aepclass['id'],full=True,xtype='xed')
             self.__setAttributes__(self.aepclass)
         elif type(aepclass) == str:
             if tenantNoUnderscore in aepclass:
                 self.aepclass = self.schemaAPI.getClass(aepclass,full=False,xtype='xed')
+                self.EDITABLE = True
             else:
                 self.aepclass = self.schemaAPI.getClass(aepclass,full=True,xtype='xed')
             self.__setAttributes__(self.aepclass)
@@ -58,8 +60,8 @@ class ClassManager:
                 "description":description,
                 "type" : "object",
                 "definitions":{
-                    "customFields":{},
-                    "property":{}
+                    "customFields":{"properties":{},"type" : "object"},
+                    "property":{"properties":{},"type" : "object"}
                 },
                 'allOf': [{'$ref': '#/definitions/customFields',
                     'type': 'object',
@@ -79,10 +81,15 @@ class ClassManager:
         else:
             self.title = self.aepclass['title']
         self.__setAttributes__(self.aepclass)
-        if self.tenantId in self.id:
-            self.EDITABLE = True
+        if hasattr(self,'id'):
+            if self.tenantId[1:] in self.id:
+                self.EDITABLE = True
+            else:
+                self.EDITABLE = False
         else:
-            self.EDITABLE = False
+            self.id = None
+            self.EDITABLE = True
+        self.behaviorDefinition = self.schemaAPI.getBehavior(self.aepclass.get('meta:extends')[0],full=True,xtype='xed')
         self.requiredFields = set()
     
     def __setAttributes__(self, aepclass:dict):
@@ -836,6 +843,11 @@ class ClassManager:
         definition = self.aepclass.get('definitions',self.aepclass.get('properties',{}))
         data = self.__transformationDF__(definition,queryPath=queryPath,description=description,xdmType=xdmType,required=required)
         df = pd.DataFrame(data)
+        if self.EDITABLE:
+            behaviorDefinition = self.behaviorDefinition.get('properties')
+            dataBehavior = self.__transformationDF__(behaviorDefinition,queryPath=queryPath,description=description,xdmType=xdmType,required=required)
+            dfBehavior = pd.DataFrame(dataBehavior)
+            df = pd.concat([df,dfBehavior],axis=0,ignore_index=True)
         df = df[~df.path.duplicated()].copy() ## dedup the paths
         df = df[~(df['path']==self.tenantId)].copy()## remove the root
         df['origin'] = 'class'
@@ -857,6 +869,10 @@ class ClassManager:
         """
         definition = self.aepclass.get('definitions',self.aepclass.get('properties',{}))
         data = self.__transformationDict__(definition,typed)
+        if self.EDITABLE:
+            behaviorDefinition = self.behaviorDefinition.get('properties')
+            dataBehavior = self.__transformationDict__(behaviorDefinition,typed,dictionary=data)
+            data = self.__simpleDeepMerge__(data,dataBehavior)
         if save:
             filename = self.aepclass.get('title',f'unknown_class_{str(int(time.time()))}')
             aepp.saveFile(module='schema',file=data,filename=f"{filename}.json",type_file='json')
@@ -874,7 +890,12 @@ class ClassManager:
         """
         if self.STATE != "NEW":
             raise ValueError("The class already exist and cannot be created")
-        path = "/tenant/classes"
         res = self.schemaAPI.createClass(self.aepclass)
+        if '$id' not in res.keys():
+            print(res)
+            raise Exception("The class could not be created. Please check the definition and try again.")
+        self.STATE = "EXISTING"
         self.aepclass = res
+        self.__setAttributes__(res)
         return res
+    

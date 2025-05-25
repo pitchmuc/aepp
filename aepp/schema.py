@@ -247,6 +247,8 @@ class Schema:
             behaviorId = parse.quote_plus(behaviorId)
         if full:
             update_full = "-full"
+        else:
+            update_full = ""
         if kwargs.get('xtype', None) is not None and kwargs.get('xtype', None) != type:
             type = kwargs.get('xtype', 'xdm')
         privateHeader['Accept'] = f"application/vnd.adobe.{type}{update_full}+json; version=1.0"
