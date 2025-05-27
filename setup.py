@@ -50,7 +50,7 @@ setuptools.setup(
         "Topic :: Software Development :: Libraries",
         "Development Status :: 2 - Pre-Alpha"
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.10',
     install_requires=['pandas', "requests",
                       "PyJWT", "pathlib2", "PyJWT[crypto]", "tenacity", "deprecation"],
 )
