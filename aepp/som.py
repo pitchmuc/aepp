@@ -447,7 +447,7 @@ class Som:
             else:
                 return None
     
-    def remove(self,path:str=None)->dict:
+    def remove(self,path:str=None)->None:
         """
         Remove the path from the object.
         Arguments:
@@ -459,12 +459,12 @@ class Som:
             self.stack.append({'method' : 'remove', 'path':path})
         o_data = self.__data__
         list_path = path.split('.')
-        if len(list_path) == 1:
+        if len(list_path) == 1: ## fast removal
             if list_path[0] in o_data.keys():
                 del o_data[list_path[0]]
-        else:
+        else: ## entering recursion
             self.__recursive_remove__(list_path,o_data)
-        return o_data
+        
     
     def clear(self)->None:
         """

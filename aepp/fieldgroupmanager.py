@@ -1004,7 +1004,8 @@ class FieldGroupManager:
             paths = self.getDataTypePaths()
             for path,dataElementId in paths.items():
                 dict_dataType = self.getDataTypeManager(dataElementId).to_dict()
-                mySom.assign(path,dict_dataType)
+                clean_path = path.replace('[]{}','.[0]')
+                mySom.assign(clean_path,dict_dataType)
         if save:
             filename = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
             aepp.saveFile(module='schema',file=mySom.to_dict(),filename=f"{filename}.json",type_file='json')

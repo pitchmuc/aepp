@@ -26,6 +26,7 @@ Patch:
 * better support for `getBehavior` method
 * adding `updateDescriptor` in `FieldGroupManager`
 * better handling of custom class in `ClassManager`
+* fix issue handling dataTypes for `to_dict()`and `to_som()` methods
 
 ## version 0.3.10
 * refactor the `createPackage` and `updatePackage` methods ([documentation](./sandboxes.md#createPackage)).
