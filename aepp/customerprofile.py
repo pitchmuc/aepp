@@ -133,9 +133,7 @@ class Profile:
             "mergePolicyId": mergePolicyId,
         }
         if schema_name == "_xdm.context.experienceevent":
-            params["relatedSchema.name"] = kwargs.get(
-                "relatedSchema_name", "_xdm.context.profile"
-            )
+            params["relatedSchema.name"] = kwargs.get("relatedSchema_name", "_xdm.context.profile")
             params["relatedEntityId"] = kwargs.get("relatedEntityId", entityId)
             params["relatedEntityIdNS"] = kwargs.get("relatedEntityIdNS", entityIdNS)
             params["limit"] = kwargs.get("limit", 1000)
