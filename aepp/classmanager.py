@@ -92,7 +92,7 @@ class ClassManager:
         else:
             self.id = None
             self.EDITABLE = True
-        self.behaviorDefinition = self.schemaAPI.getBehavior(self.aepclass.get('meta:extends')[0],full=True,xtype='xed')
+        self.behaviorDefinition = self.schemaAPI.getBehavior(self.aepclass.get('meta:extends',[])[0],full=True,xtype='xed')
         self.requiredFields = set()
     
     def __setAttributes__(self, aepclass:dict):
