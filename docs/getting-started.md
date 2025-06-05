@@ -4,7 +4,6 @@
 
 -   [Installing the module](#installing-the-module)
 -   [Create a Developer Project ](#create-a-developer-project)
-    - [JWT connection](#jwt-connection)
     - [Oauth Server-to-Server](#oauth-server-to-server)
     - [Oauth V1](#oauth-v1)
 -   [Using the module](#using-the-module)
@@ -32,24 +31,7 @@ You can use the upgrade argument when a release has been made.
 You will need to have a developer project that has access to the Adobe Experience Platform API.\
 When creating a project you have the possibility to use 2 authentication methods.
 
-* JWT-based authentication (**_LEGACY_**)
 * OAuth-based authentication
-
-### JWT connection
-
-Originally, the module create a connection to the API endpoints using a JWT integration.\
-**IMPORTANT**: This integration is now legacy and will be replaced by the oauth token integration. See [Oauth server part](#oauth-server-to-server).\
-
-In order to use it, you would need to create this JWT integration directly in developer.adobe.com.\
-Make sure you have developer rights and attaching the correct product profile to your integration.\
-Make sure to save the "private.key" file and write the information of your connection.
-
-To use the JWT integration, it requires the following information to be passed later on:
-- Client ID
-- Client secret
-- Technical Account ID
-- Private key (saved as a `private.key` file per example)
-- IMS Org
 
 ### Oauth Server-to-Server
 
@@ -92,31 +74,9 @@ The `createConfigFile` is the method directly available out of aepp module to he
 
 As explained above, there are 2 options:
 
-* JWT config file (Legacy)
-* Oauth V2 config file (New)
-* Oauth V1 config (internal Adobe)
+* Oauth V2 config file
+* Oauth V1 config (internal Adobe engineering)
 
-To create a config file for JWT, use the code below:
-
-```python
-import aepp
-aepp.createConfigFile(destination='template_config.json',auth_type='jwt')
-```
-
-This line of code will create a config file where you will enter the different information related to your JWT integration.\
-Normally your config file will look like this:
-
-```JSON
-{
-    "org_id": "<orgID>",
-    "client_id": "<client_id>",
-    "tech_id": "<something>@techacct.adobe.com",
-    "secret": "<YourSecret>",
-    "pathToKey": "<path/to/your/privatekey.key>",
-    "sandbox-name": "prod",
-    "environment": "prod"
-}
-```
 
 If you want to use OAuth-V2-based authentication, use the following code:
 
@@ -204,35 +164,7 @@ You can also use the configure method to setup the connection directly on the ae
 This approach is better if you don't want to use a file in your system.\
 In that case, you can directly pass the elements in the configure method.
 
-For a JWT connection, you can use this code:
-
-```python
-import aepp
-aepp.configure(
-    org_id=my_org_id,
-    tech_id=my_tech_id, 
-    secret=my_secret,
-    path_to_key=my_path_to_key,
-    client_id=my_client_id,
-    environment="prod"
-)
-```
-
-In case you do not want to use a private.key file, you can also provide the private key as a string.
-
-```python
-import aepp
-aepp.configure(
-    org_id=my_org_id,
-    tech_id=my_tech_id, 
-    secret=my_secret,
-    private_key=my_key_as_string,
-    client_id=my_client_id,
-    environment="prod"
-)
-```
-
-If you instead want to use OAuth-V2-based authentication, simply use different parameters when calling `configure`:
+If you want to use OAuth-V2-based authentication, simply use different parameters when calling `configure`:
 
 ```python
 import aepp
