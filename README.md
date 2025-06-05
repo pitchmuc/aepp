@@ -46,7 +46,7 @@ At the moment the current wrapper is containing the following sub modules:
   * [FieldGroupManager](./docs/fieldGroupManager.md)
   * [DataTypeManager](./docs/dataTypeManager.md)
   * [ClassManager](./docs/classManager.md)
-* [queryservice](./docs/queryservice.md)
+* [queryservice](./docs/queryservice.md) (see note below for Interactive Queries)
 * [identity](./docs/identity.md)
 * [sandboxes](./docs/sandboxes.md)
 * [dataaccess](./docs/dataaccess.md)
@@ -62,10 +62,11 @@ At the moment the current wrapper is containing the following sub modules:
 * [destination Instance](./docs/destinationinstanceservice.md)
 * [observability](./docs/observability.md)
 * [accesscontrol](./docs/accesscontrol.md)
-* [privacyservice](./docs/privacyservice.md) (see 2nd note below)
+* [privacyservice](./docs/privacyservice.md) (see note below)
 * [data hygiene](./docs/hygiene.md)
 * [edge](./docs/edge.md)
-* [som](./docs/som.md)
+* [som](./docs/som.md) (see note below)
+* [synchronizer](./docs/synchronizer.md)(BETA)
 
 Last but not least, the core methods are described here: [main](./docs/main.md)
 
@@ -84,7 +85,7 @@ The Simple Object Manager documentation is located here: [SOM documentation](./d
 
 ### InteractiveQuery  and InteractiveQuery2 classes
 
-These classes are implemented in the `queryservice` modulebased on the pyGreSQL and psycopg2 module for python.\
+These classes are implemented in the `queryservice` modulebased on the `pyGreSQL` and `psycopg2` module for python.\
 It provides you the capability to realize query directly from your local Jupyter notebook and returns a dataframe.
 In order to use these classes, you would need to install these module and a PSQL server.
 On top of that, you would need to the psql server accessible in the environment path.
