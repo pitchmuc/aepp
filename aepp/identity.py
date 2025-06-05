@@ -250,6 +250,14 @@ class Identity:
             "MOBILE",
             "NON_PEOPLE",
             "PHONE",
+            "B2B_OPPORTUNITY",
+            "B2B_OPPORTUNITY_PERSON",
+            "B2B_CAMPAIGN",
+            "B2B_CAMPAIGN_MEMBER",
+            "B2B_MARKETING_LIST",
+            "B2B_MARKETING_LIST_MEMBER",
+            "B2B_ACCOUNT_PERSON",
+            "B2B_ACCOUNT"
         ]:
             raise TypeError(
                 "idType could only be one of those : COOKIE, CROSS_DEVICE, DEVICE, EMAIL, MOBILE, NON_PEOPLE, PHONE"
@@ -466,3 +474,83 @@ class Identity:
             self.endpoint + path, data=list_body, headers=temp_header
         )
         return res
+
+    def createB2BIdentities(self)->list:
+        """
+        Create the following identities if they do not exist:
+            b2b_account
+            b2b_account_person_relation
+            b2b_marketing_list_member
+            b2b_marketing_list
+            b2b_campaign_member
+            b2b_campaign
+            b2b_opportunity_person_relation
+            b2b_opportunity
+            b2b_person
+
+        It will return the list of the new created identities
+        """
+        list_new_identities = [
+            {
+                'code': 'b2b_person',
+                'description': 'Namespace B2B Person created for B2B ingestion purpose',
+                'idType': 'CROSS_DEVICE',
+                'name': 'B2B Person',
+            },
+            {
+                'code': 'b2b_opportunity',
+                'description': 'Namespace B2B Opportunity created for B2B ingestion purpose',
+                'idType': 'B2B_OPPORTUNITY',
+                'name': 'B2B Opportunity',
+            },
+            {
+                'code': 'b2b_opportunity_person_relation',
+                'description': 'Namespace B2B Opportunity Person Relation created for B2B ingestion purpose',
+                'idType': 'B2B_OPPORTUNITY_PERSON',
+                'name': 'B2B Opportunity Person Relation',
+            },
+            {
+                'code': 'b2b_campaign',
+                'description': 'Namespace B2B Campaign created for B2B ingestion purpose',
+                'idType': 'B2B_CAMPAIGN',
+                'name': 'B2B Campaign',
+            },
+            {
+                'code': 'b2b_campaign_member',
+                'description': 'Namespace B2B Campaign Member created for B2B ingestion purpose',
+                'idType': 'B2B_CAMPAIGN_MEMBER',
+                'name': 'B2B Campaign Member',
+            },
+            {
+                'code': 'b2b_marketing_list',
+                'description': 'Namespace B2B Marketing List created for B2B ingestion purpose',
+                'idType': 'B2B_MARKETING_LIST',
+                'name': 'B2B Marketing List',
+            },
+            {
+                'code': 'b2b_marketing_list_member',
+                'description': 'Namespace B2B Marketing List Member created for B2B ingestion purpose',
+                'idType': 'B2B_MARKETING_LIST_MEMBER',
+                'name': 'B2B Marketing List Member',
+            },
+            {
+                'code': 'b2b_account_person_relation',
+                'description': 'Namespace B2B Account Person Relation created for B2B ingestion purpose',
+                'idType': 'B2B_ACCOUNT_PERSON',
+                'name': 'B2B Account Person Relation',
+            },
+            {
+                'code': 'b2b_account',
+                'description': 'Namespace B2B Account created for B2B ingestion purpose',
+                'idType': 'B2B_ACCOUNT',
+                'name': 'B2B Account',
+            }
+        ]
+        list_identities = self.getIdentities(only_custom=True)
+        list_code = [el['code'] for el in list_identities]
+        result_creation = []
+        for element in list_new_identities:
+            if element['code'] not in list_code:
+                res = self.createIdentity(dict_identity=element)
+                result_creation.append(res)
+        return result_creation
