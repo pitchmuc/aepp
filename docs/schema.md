@@ -584,6 +584,21 @@ Results:
     * df2_missing : tuple of the paths missing in df2 compare to df1
   * type_issues: list of all the paths that are not of the same type in both schemas.
 
+### createB2Bschemas
+This method will automatically create the following schemas if they have not yet been created before: 
+* B2B Account Person Relation
+* B2B Activity
+* B2B Marketing List Member
+* B2B Marketing List
+* B2B Campaign Member
+* B2B Campaign
+* B2B Opportunity Person Relation
+* B2B Opportunity
+* B2B Person
+* B2B Account
+The schemas are created with their descriptors (relationships and identities).\
+returns a dictionary of B2B schema name and their schemaManager instances\
+**NOTE**: You need to have created the associated identities before. See the `createB2BIdentities` method in the `identity` module.[documentation](./identity.md#createb2bidentities)
 
 ## Tips for schema requests
 

@@ -27,6 +27,9 @@ Patch:
 * adding `updateDescriptor` in `FieldGroupManager`
 * better handling of custom class in `ClassManager`
 * fix issue handling dataTypes for `to_dict()`and `to_som()` methods
+* Supporting B2B identities in `Identity` module
+* adding the `createB2Bschemas` method in `schema` module
+* release of the `synchronizer`(BETA version) [documentation](./synchronizer.md)
 
 ## version 0.3.10
 * refactor the `createPackage` and `updatePackage` methods ([documentation](./sandboxes.md#createPackage)).

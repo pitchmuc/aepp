@@ -1883,3 +1883,530 @@ class Schema:
             if df1[df1['path'] == path]['type'].values[0] != df2[df2['path'] == path]['type'].values[0]:
                 dict_result['type_issues'].append(path)
         return dict_result
+
+
+    def createB2Bschemas(self)->dict:
+        """
+        Create the B2B schemas for a sandbox with their different relationships if they do not exist.
+        Note: You need to have created the B2B identities before
+        Schema created:
+            - B2B Account Person Relation
+            - B2B Activity
+            - B2B Marketing List Member
+            - B2B Marketing List
+            - B2B Campaign Member
+            - B2B Campaign
+            - B2B Opportunity Person Relation
+            - B2B Opportunity
+            - B2B Person
+            - B2B Account
+        The schemas are created with their descriptors (relationships and identities)
+        returns a dictionary of B2B schema name and their schemaManager instances
+        """
+        list_existing_schemas = self.getSchemas()
+        existing_titles = [el['title'] for el in list_existing_schemas]
+        list_b2b_schema_names = ['B2B Account Person Relation',
+                                'B2B Activity',
+                                'B2B Marketing List Member',
+                                'B2B Marketing List',
+                                'B2B Campaign Member',
+                                'B2B Campaign',
+                                'B2B Opportunity Person Relation',
+                                'B2B Opportunity',
+                                'B2B Person',
+                                'B2B Account']
+        list_schema_manager = []
+        for schemaName in list_b2b_schema_names:
+            if schemaName not in existing_titles:
+                res = self.__createB2BSchema__(schemaName)
+                list_schema_manager.append(res)
+            else:
+                res = self.__createB2BSchema__(schemaName,schemaId=self.data.schemas_id[schemaName])
+                list_schema_manager.append(res)
+        dict_schema_id_name = {scManager.id:scManager.title for scManager in list_schema_manager}
+        dict_existing_descriptors = {}
+        for scManager in list_schema_manager:
+            tmp_list_descs = scManager.getDesriptors()
+            list_prepared_descriptors = []
+            for desc in tmp_list_descs: ## filtering for relationships only
+                if desc['@type'] == 'xdm:descriptorOneToOne':
+                    data = {
+                        '@type':desc['@type'],
+                        'xdm:sourceProperty':desc['xdm:sourceProperty'],
+                        'xdm:sourceSchema':dict_schema_id_name[desc['xdm:sourceSchema']],
+                        'xdm:destinationProperty': desc['xdm:destinationProperty'],
+                        'xdm:destinationSchema':dict_schema_id_name[desc['xdm:destinationSchema']],
+                        }
+                    list_prepared_descriptors.append(data)
+                elif desc['@type'] == 'xdm:descriptorRelationship':
+                    data = {
+                        '@type':desc['@type'],
+                        'xdm:sourceProperty':desc['xdm:sourceProperty'],
+                        'xdm:sourceSchema':dict_schema_id_name[desc['xdm:sourceSchema']],
+                        'xdm:destinationProperty': desc['xdm:destinationProperty'],
+                        'xdm:destinationSchema':dict_schema_id_name[desc['xdm:destinationSchema']],
+                        'xdm:cardinality': desc['xdm:cardinality'],
+                        'xdm:sourceToDestinationTitle': desc['xdm:sourceToDestinationTitle'],
+                        'xdm:destinationToSourceTitle': desc['xdm:destinationToSourceTitle'],
+                        }
+                    list_prepared_descriptors.append(data)
+            dict_existing_descriptors[scManager.title] = list_prepared_descriptors
+            dict_new_relationships = {}
+            for key,value in dict_existing_descriptors.items():
+                dict_new_relationships[key] = self.__createB2Brelationships__(schemaName=key,schemaDescriptors=value)
+        return {sc.title:sc for sc in list_schema_manager}
+    
+    def __createB2BSchema__(self,schemaName:str=None,schemaId:str=None)->dict:
+        """
+        Create a B2B schema.
+        Arguments:
+            * schema name : name of the schema
+            * schemaId : ID of the schema if it exists
+        """
+        from aepp import schemamanager
+        match schemaName:
+            case 'B2B Account Person Relation':
+                if schemaId is None:
+                    b2b_account_person = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/classes/account-person')
+                    b2b_account_person.addFieldGroup('https://ns.adobe.com/xdm/context/identitymap')
+                    resSchema = b2b_account_person.createSchema()
+                    list_descriptors = []
+                else:
+                    b2b_account_person = schemamanager.SchemaManager(schemaId,schemaAPI=self)
+                    list_descriptors = b2b_account_person.getDescriptors()
+                list_to_create = [
+                    {'@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/accountKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_account',
+                    'xdm:sourceSchema': b2b_account_person.id
+                    },
+                    {'@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/personKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_person',
+                    'xdm:sourceSchema': b2b_account_person.id
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/accountPersonKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_account_person_relation',
+                    'xdm:sourceSchema': b2b_account_person.id
+                    }
+                ]
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_account_person)
+                return b2b_account_person
+            case 'B2B Activity':
+                if schemaId is None:
+                    b2b_activity = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/context/experienceevent')
+                    list_fieldGroupsIds = ['https://ns.adobe.com/xdm/mixins/events/remove-from-list', 'https://ns.adobe.com/xdm/mixins/events/visit-webpage','https://ns.adobe.com/xdm/mixins/person-identifier', 'https://ns.adobe.com/xdm/mixins/events/new-lead', 'https://ns.adobe.com/xdm/mixins/events/convert-lead', 'https://ns.adobe.com/xdm/mixins/events/add-to-list', 'https://ns.adobe.com/xdm/mixins/events/add-to-opportunity', 'https://ns.adobe.com/xdm/mixins/events/remove-from-opportunity', 'https://ns.adobe.com/xdm/mixins/events/interesting-moment', 'https://ns.adobe.com/xdm/mixins/events/formfilledout', 'https://ns.adobe.com/xdm/mixins/events/linkclicks', 'https://ns.adobe.com/xdm/mixins/events/emaildelivered', 'https://ns.adobe.com/xdm/mixins/events/emailbounced',
+                                        'https://ns.adobe.com/xdm/mixins/events/emailunsubscribed', 'https://ns.adobe.com/xdm/mixins/events/emailopened', 'https://ns.adobe.com/xdm/mixins/events/emailclicked', 'https://ns.adobe.com/xdm/mixins/events/emailbouncedsoft', 'https://ns.adobe.com/xdm/mixins/events/scorechanged', 'https://ns.adobe.com/xdm/mixins/events/opportunityupdated', 'https://ns.adobe.com/xdm/mixins/events/statusincampaignprogressionchanged', 'https://ns.adobe.com/xdm/mixins/events/callwebhook', 'https://ns.adobe.com/xdm/mixins/events/change-campaign-cadence', 'https://ns.adobe.com/xdm/mixins/events/add-to-campaign', 'https://ns.adobe.com/xdm/mixins/events/change-campaign-stream', 'https://ns.adobe.com/xdm/mixins/events/revenueStageChanged', 'https://ns.adobe.com/xdm/mixins/events/emailsent', 'https://ns.adobe.com/xdm/mixins/events/merge-leads',
+                                        'https://ns.adobe.com/xdm/mixins/events/engaged-with-dialogue', 'https://ns.adobe.com/xdm/mixins/events/interacted-with-document-in-dialogue', 'https://ns.adobe.com/xdm/mixins/events/engaged-with-agent-in-dialog', 'https://ns.adobe.com/xdm/mixins/events/engaged-with-conversational-flow', 'https://ns.adobe.com/xdm/mixins/events/interacted-with-document-in-conversational-flow', 'https://ns.adobe.com/xdm/mixins/events/engaged-with-agent-in-conversational-flow', 'https://ns.adobe.com/xdm/mixins/events/responded-to-poll-in-webinar', 'https://ns.adobe.com/xdm/mixins/events/call-to-action-clicked-in-webinar', 'https://ns.adobe.com/xdm/mixins/events/asset-downloads-in-webinar', 'https://ns.adobe.com/xdm/mixins/events/asks-questions-in-webinar']
+                    for fg in list_fieldGroupsIds:
+                        b2b_activity.addFieldGroup(fg)
+                    resSchema = b2b_activity.createSchema()
+                    list_descriptors = [list_descriptors]
+                else: 
+                    b2b_activity = schemamanager.SchemaManager(schemaId,schemaAPI=self)
+                    list_descriptors = b2b_activity.getDescriptors()
+                list_to_create = [
+                    {'@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/leadOperation/campaignProgression/campaignKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_campaign',
+                    'xdm:sourceSchema': b2b_activity.id
+                    },
+                    {
+                    '@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/opportunityEvent/opportunityKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_opportunity',
+                    'xdm:sourceSchema': b2b_activity.id
+                    },
+                    {
+                    '@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/listOperations/listKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_marketing_list',
+                    'xdm:sourceSchema': b2b_activity.id
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/personKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_person',
+                    'xdm:sourceSchema': b2b_activity.id,
+                    'xdm:isPrimary': True
+                    }
+                ]
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_activity)
+                return b2b_activity
+            case 'B2B Marketing List Member':
+                if schemaId is None:
+                    b2b_marketing_member = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/classes/marketing-list-member')
+                    resSchema = b2b_marketing_member.createSchema()
+                    list_descriptors = []
+                else: 
+                    b2b_marketing_member = schemamanager.SchemaManager(schemaId,schemaAPI=self)
+                    list_descriptors = b2b_marketing_member.getDescriptors()
+                list_to_create = [
+                    {'@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/marketingListKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_marketing_list',
+                    'xdm:sourceSchema': b2b_marketing_member.id
+                    },
+                    {
+                    '@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/personKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_person',
+                    'xdm:sourceSchema': b2b_marketing_member.id
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/marketingListMemberKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_marketing_list_member',
+                    'xdm:sourceSchema': b2b_marketing_member.id,
+                    'xdm:isPrimary': True
+                    }
+                ]
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_marketing_member)
+                return b2b_marketing_member
+            case 'B2B Marketing List':
+                if schemaId is None:
+                    b2b_marketing_memberList = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/classes/marketing-list')
+                    resSchema = b2b_marketing_memberList.createSchema()
+                    list_descriptors = []
+                else: 
+                    b2b_marketing_memberList = schemamanager.SchemaManager(schemaId,schemaAPI=self)
+                    list_descriptors = b2b_marketing_memberList.getDescriptors()
+                list_to_create = [{
+                    '@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/marketingListKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_marketing_list',
+                    'xdm:sourceSchema': b2b_marketing_memberList.id,
+                    'xdm:isPrimary': True
+                }]
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_marketing_memberList)
+                return b2b_marketing_memberList
+            case 'B2B Campaign Member':
+                if schemaId is None:
+                    b2b_campaign_member = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/context/campaign-member')
+                    b2b_campaign_member.addFieldGroup('https://ns.adobe.com/xdm/context/campaign-member-details')
+                    resSchema = b2b_campaign_member.createSchema()
+                    list_descriptors = []
+                else:
+                    b2b_campaign_member = schemamanager.SchemaManager(schemaId,schemaAPI=self)
+                    list_descriptors = b2b_campaign_member.getDescriptors()
+                list_to_create = [
+                    {'@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/campaignKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_campaign',
+                    'xdm:sourceSchema': b2b_campaign_member.id
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_campaign_member',
+                    'xdm:sourceSchema': b2b_campaign_member.id,
+                    'xdm:isPrimary': False
+                    },
+                    {'@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/personKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_person',
+                    'xdm:sourceSchema': b2b_campaign_member.id
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/campaignMemberKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_campaign_member',
+                    'xdm:sourceSchema': b2b_campaign_member.id,
+                    'xdm:isPrimary': True
+                    }
+                ]
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_campaign_member)
+                return b2b_campaign_member
+            case 'B2B Campaign':
+                if schemaId is None:
+                    b2b_campaign = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/classes/campaign')
+                    b2b_campaign.addFieldGroup('https://ns.adobe.com/xdm/mixins/campaign-details')
+                    resSchema = b2b_campaign.createSchema()
+                    list_descriptors = []
+                else:
+                    b2b_campaign = schemamanager.SchemaManager(schemaId,schemaAPI=self)
+                    list_descriptors = b2b_campaign.getDescriptors()
+                list_to_create = [
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_campaign',
+                    'xdm:sourceSchema': b2b_campaign.id,
+                    'xdm:isPrimary': False
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/campaignKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_campaign',
+                    'xdm:sourceSchema': b2b_campaign.id,
+                    'xdm:isPrimary': True
+                    }
+                ]
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_campaign)
+                return b2b_campaign
+            case 'B2B Opportunity Person Relation':
+                if schemaId is None:
+                    b2b_opp_person = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/classes/opportunity-person')
+                    resSchema = b2b_opp_person.createSchema()
+                    list_descriptors = []
+                else:
+                    b2b_opp_person = schemamanager.SchemaManager(schemaId,schemaAPI=self)
+                    list_descriptors = b2b_opp_person.getDescriptors()
+                list_to_create = [
+                    {'@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/opportunityKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_opportunity',
+                    'xdm:sourceSchema': b2b_opp_person.id
+                    },
+                    {'@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/personKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_person',
+                    'xdm:sourceSchema': b2b_opp_person.id
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_opportunity_person_relation',
+                    'xdm:sourceSchema': b2b_opp_person.id,
+                    'xdm:isPrimary': False
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/opportunityPersonKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_opportunity_person_relation',
+                    'xdm:sourceSchema': b2b_opp_person.id,
+                    'xdm:isPrimary': True
+                    }
+                ]
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_opp_person)
+                return b2b_opp_person
+            case 'B2B Opportunity':
+                if schemaId is None:
+                    b2b_opportunity = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/context/opportunity')
+                    b2b_opportunity.addFieldGroup('https://ns.adobe.com/xdm/mixins/opportunity-details')
+                    resSchema = b2b_opportunity.createSchema()
+                    list_descriptors = []
+                else:
+                    b2b_opportunity = schemamanager.SchemaManager(schemaId,schemaAPI=self)
+                    list_descriptors = b2b_opportunity.getDescriptors()
+                list_to_create = [
+                    {'@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/accountKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_account',
+                    'xdm:sourceSchema': b2b_opportunity.id
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_opportunity',
+                    'xdm:sourceSchema': b2b_opportunity.id,
+                    'xdm:isPrimary': False
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/opportunityKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_opportunity',
+                    'xdm:sourceSchema': b2b_opportunity.id,
+                    'xdm:isPrimary': True
+                    }
+                ]
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_opportunity)
+                return b2b_opportunity
+            case 'B2B Person':
+                if schemaId is None:
+                    b2b_person = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/context/profile')
+                    b2b_person.addFieldGroup('https://ns.adobe.com/xdm/mixins/b2b-person-details')
+                    b2b_person.addFieldGroup('https://ns.adobe.com/xdm/mixins/b2b-person-components')
+                    b2b_person.addFieldGroup('https://ns.adobe.com/xdm/context/identitymap')
+                    b2b_person.addFieldGroup('https://ns.adobe.com/xdm/mixins/profile-consents')
+                    resSchema = b2b_person.createSchema()
+                    list_descriptors = []
+                else:
+                    b2b_person = schemamanager.SchemaManager(schemaId,schemaAPI=self)
+                    list_descriptors = b2b_person.getDescriptors()
+                list_to_create = [
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/workEmail/address',
+                    'xdm:identityNamespace': 'Email',
+                    'xdm:sourceSchema': b2b_person.id,
+                    'xdm:isPrimary': False
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_person',
+                    'xdm:sourceSchema': b2b_person.id,
+                    'xdm:isPrimary': False
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/b2b/personKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_person',
+                    'xdm:sourceSchema': b2b_person.id,
+                    'xdm:isPrimary': True
+                    }
+                ]
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_person)
+                return b2b_person
+            case 'B2B Account':
+                if schemaId is None:
+                    b2b_account = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/context/account')
+                    b2b_account.addFieldGroup('https://ns.adobe.com/xdm/mixins/account-details')
+                    resSchema = b2b_account.createSchema()
+                    list_descriptors = []
+                else:
+                    b2b_account = schemamanager.SchemaManager(schemaId,schemaAPI=self)
+                    list_descriptors = b2b_account.getDescriptors()
+                list_to_create = [
+                    {'@type': 'xdm:descriptorReferenceIdentity',
+                    'xdm:sourceProperty': '/accountParentKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_account',
+                    'xdm:sourceSchema': b2b_account.id,
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_account',
+                    'xdm:sourceSchema': b2b_account.id,
+                    'xdm:isPrimary': False,
+                    },
+                    {'@type': 'xdm:descriptorIdentity',
+                    'xdm:sourceProperty': '/accountKey/sourceKey',
+                    'xdm:identityNamespace': 'b2b_account',
+                    'xdm:sourceSchema': b2b_account.id,
+                    'xdm:isPrimary': True
+                    }
+                ]
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_account)
+                return b2b_account
+    
+    def __createIdentityDescriptors__(self,listToCreate:list=None,existingList:list=None,scManager:'SchemaManager'=None)->None:
+        """
+        Itirate over the element to create the related identities
+        Arguments:
+            listToCreate : list of dictionary of element to create
+            existingList : list of existing descriptors
+            scManager : SchemaManager associated with the schema
+        """
+        for elToCreate in listToCreate:
+            if existingList>0: ## comparing only if comparison possible
+                if elToCreate['xdm:sourceProperty'] not in [el.get('xdm:sourceProperty','') for el in existingList]:
+                    ## creating the missing identities
+                    scManager.createDescriptor(elToCreate)
+            else:
+                scManager.createDescriptor(elToCreate)
+
+
+    def __createB2Brelationships__(self,schemaName:str=None,schemaDescriptors:list=None)->list:
+        """
+        Create the relationship between the B2B schemas.
+        Arguments:
+            schemaName : name of the schema
+            schemaDescriptors : list of existing descriptors
+        """
+        dict_desc_to_create = {'B2B Account': [{'@type': 'xdm:descriptorOneToOne',
+            'xdm:sourceProperty': '/accountParentKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Account',
+            'xdm:destinationProperty': '/accountKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Account'}],
+        'B2B Person': [{'@type': 'xdm:descriptorRelationship',
+            'xdm:sourceProperty': '/personComponents[*]/sourceAccountKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Person',
+            'xdm:destinationProperty': '/accountKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Account',
+            'xdm:cardinality': 'M:1',
+            'xdm:sourceToDestinationTitle': 'Account',
+            'xdm:destinationToSourceTitle': 'People'}],
+        'B2B Opportunity': [{'@type': 'xdm:descriptorRelationship',
+            'xdm:sourceProperty': '/accountKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Opportunity',
+            'xdm:destinationProperty': '/accountKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Account',
+            'xdm:cardinality': 'M:1',
+            'xdm:sourceToDestinationTitle': 'Account',
+            'xdm:destinationToSourceTitle': 'Opportunities'}],
+        'B2B Opportunity Person Relation': [{'@type': 'xdm:descriptorRelationship',
+            'xdm:sourceProperty': '/opportunityKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Opportunity Person Relation',
+            'xdm:destinationProperty': '/opportunityKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Opportunity',
+            'xdm:cardinality': 'M:1',
+            'xdm:sourceToDestinationTitle': 'Opportunity',
+            'xdm:destinationToSourceTitle': 'People'},
+            {'@type': 'xdm:descriptorRelationship',
+            'xdm:sourceProperty': '/personKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Opportunity Person Relation',
+            'xdm:destinationProperty': '/b2b/personKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Person',
+            'xdm:cardinality': 'M:1',
+            'xdm:sourceToDestinationTitle': 'Person',
+            'xdm:destinationToSourceTitle': 'Opportunities'}],
+        'B2B Campaign': [],
+        'B2B Campaign Member': [{'@type': 'xdm:descriptorRelationship',
+            'xdm:sourceProperty': '/campaignKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Campaign Member',
+            'xdm:destinationProperty': '/campaignKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Campaign',
+            'xdm:cardinality': 'M:1',
+            'xdm:sourceToDestinationTitle': 'Campaign',
+            'xdm:destinationToSourceTitle': 'People'},
+            {'@type': 'xdm:descriptorRelationship',
+            'xdm:sourceProperty': '/personKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Campaign Member',
+            'xdm:destinationProperty': '/b2b/personKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Person',
+            'xdm:cardinality': 'M:1',
+            'xdm:sourceToDestinationTitle': 'Person',
+            'xdm:destinationToSourceTitle': 'Campaigns'}],
+        'B2B Marketing List': [],
+        'B2B Marketing List Member': [{'@type': 'xdm:descriptorRelationship',
+            'xdm:sourceProperty': '/marketingListKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Marketing List Member',
+            'xdm:destinationProperty': '/marketingListKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Marketing List',
+            'xdm:cardinality': 'M:1',
+            'xdm:sourceToDestinationTitle': 'List',
+            'xdm:destinationToSourceTitle': 'People'},
+            {'@type': 'xdm:descriptorRelationship',
+            'xdm:sourceProperty': '/personKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Marketing List Member',
+            'xdm:destinationProperty': '/b2b/personKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Person',
+            'xdm:cardinality': 'M:1',
+            'xdm:sourceToDestinationTitle': 'Person',
+            'xdm:destinationToSourceTitle': 'Lists'}],
+        'B2B Activity': [{'@type': 'xdm:descriptorOneToOne',
+            'xdm:sourceProperty': '/leadOperation/campaignProgression/campaignKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Activity',
+            'xdm:destinationProperty': '/campaignKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Campaign'},
+            {'@type': 'xdm:descriptorOneToOne',
+            'xdm:sourceProperty': '/opportunityEvent/opportunityKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Activity',
+            'xdm:destinationProperty': '/opportunityKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Opportunity'},
+            {'@type': 'xdm:descriptorOneToOne',
+            'xdm:sourceProperty': '/listOperations/listKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Activity',
+            'xdm:destinationProperty': '/marketingListKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Marketing List'}],
+        'B2B Account Person Relation': [{'@type': 'xdm:descriptorRelationship',
+            'xdm:sourceProperty': '/accountKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Account Person Relation',
+            'xdm:destinationProperty': '/accountKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Account',
+            'xdm:cardinality': 'M:1',
+            'xdm:sourceToDestinationTitle': 'Account',
+            'xdm:destinationToSourceTitle': 'Account-Person'},
+            {'@type': 'xdm:descriptorRelationship',
+            'xdm:sourceProperty': '/personKey/sourceKey',
+            'xdm:sourceSchema': 'B2B Account Person Relation',
+            'xdm:destinationProperty': '/b2b/personKey/sourceKey',
+            'xdm:destinationSchema': 'B2B Person',
+            'xdm:cardinality': 'M:1',
+            'xdm:sourceToDestinationTitle': 'Account-Person',
+            'xdm:destinationToSourceTitle': 'Account'}]
+        }
+        to_create = dict_desc_to_create[schemaName]
+        existing = schemaDescriptors
+        new_state_existing = []
+        for descriptor in to_create:
+            if descriptor['xdm:sourceProperty'] in [el['xdm:sourceProperty'] for el in existing]:
+                new_state_existing.append([el['xdm:sourceProperty'] for el in existing][0])
+            else:
+                descriptor['xdm:sourceSchema'] = self.data.schemas_id[descriptor['xdm:sourceSchema']] ## replacing name with ID
+                descriptor['xdm:destinationSchema'] = self.data.schemas_id[descriptor['xdm:destinationSchema']] ## replacing name with ID
+                res = self.createDescriptor(descriptorObj=descriptor)
+                new_state_existing.append(res)
+        return new_state_existing
+
+            
+    

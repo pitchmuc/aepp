@@ -488,7 +488,7 @@ class Identity:
             b2b_opportunity
             b2b_person
 
-        It will return the list of the new created identities
+        It will return the list of the newly created identities
         """
         list_new_identities = [
             {

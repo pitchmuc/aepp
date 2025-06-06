@@ -219,6 +219,19 @@ Arguments:
 * targetNs : REQUIRED : Target Namespace (default 411)
 * version : OPTIONAL : version of the mapping
 
+#### createB2BIdentities
+Create the following identities if they do not exist:
+* b2b_account
+* b2b_account_person_relation
+* b2b_marketing_list_member
+* b2b_marketing_list
+* b2b_campaign_member
+* b2b_campaign
+* b2b_opportunity_person_relation
+* b2b_opportunity
+* b2b_person
+
+It will return the list of the newly created identities
 
 
 ## Identity use-cases
