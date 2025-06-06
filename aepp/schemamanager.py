@@ -80,7 +80,7 @@ class SchemaManager:
                 Warning("No schema instance has been passed or config file imported.\n Aborting the creation of field Group Manager")
             else:
                 for ref in self.fieldGroupIds:
-                    if '/mixins/' in ref:
+                    if '/mixins/' in ref and self.tenantId[1:] in ref:
                         definition = self.schemaAPI.getFieldGroup(ref,full=False)
                         fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI)
                     else:
@@ -105,10 +105,8 @@ class SchemaManager:
                     Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
                 else:
                     for ref in self.fieldGroupIds:
-                        if '/mixins/' in ref:
+                        if '/mixins/' in ref and self.tenantId[1:] in ref:
                             definition = self.schemaAPI.getFieldGroup(ref,full=False)
-                        elif ref == '':
-                            pass
                         else:
                             ## if the fieldGroup is an OOTB one
                             definition = self.schemaAPI.getFieldGroup(ref,full=True)

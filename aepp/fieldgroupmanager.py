@@ -62,8 +62,9 @@ class FieldGroupManager:
             if type(fieldGroup) == dict:
                 if fieldGroup.get("meta:resourceType",None) == "mixins":
                     if fieldGroup.get('definitions',None) is not None:
-                        if 'mixins' in fieldGroup.get('$id'):
+                        if 'mixins' in fieldGroup.get('$id') and self.tenantId[1:] in fieldGroup.get('$id'):
                             self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
+
                             if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group
                                 dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
                                 dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
