@@ -56,14 +56,19 @@ It means that the **name** of the schema, class, field group, data type, dataset
 
 As of today, the synchronization will realize the following operation for the different artefacts: 
 
-Operation |Schema | Class | Field Groups | Data Type | Descriptors | Dataset | Identity |
---| -- | -- | -- | -- | -- | -- | -- |
-Create | Supported | Supported | Supported | Supported | Supported | Supported | Supported |
-Update | Supported | Supported | Supported | Supported | Suppported | - | - |
-Delete | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported |
+Operation |Schema | Class | Field Groups | Data Type | Descriptors | Dataset | Identity | Tags |
+--| -- | -- | -- | -- | -- | -- | -- | -- |
+Create | Supported | Supported | Supported | Supported | Supported | Supported | Supported | Planned |
+Update | Supported | Supported | Supported | Supported | Suppported | - | - | Planned |
+Delete | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not Supported |
 
-It is not supported to delete an artefact or delete a field in an Field Group or Data Type via the Synchronizer.
+It is not supported to delete an artefact or delete a field in an Field Group or Data Type via the Synchronizer.\
 The synchronizer only supports additive operations 
+
+The synchronizer will automatically resolve the dependency to create the elements require for the artefact used.\
+Example:\
+Synchronizing a dataset will automatically synchronize the underlying schema and the different field groups.\
+If the schema is in a relationship with another schema (lookup), the associated lookup schema will also be created and the associated created. (note: The dataset associated with the lookup schema won't be created)
 
 ### Create 
 
