@@ -1885,7 +1885,7 @@ class Schema:
         return dict_result
 
 
-    def createB2Bschemas(self)->dict:
+    def createB2Bschemas(self,**kwargs)->dict:
         """
         Create the B2B schemas for a sandbox with their different relationships if they do not exist.
         Note: You need to have created the B2B identities before
@@ -1902,7 +1902,10 @@ class Schema:
             - B2B Account
         The schemas are created with their descriptors (relationships and identities)
         returns a dictionary of B2B schema name and their schemaManager instances
+        possible kwargs:
+            debug : boolean to print statement while the script is working
         """
+        debug = kwargs.get('debug',False)
         list_existing_schemas = self.getSchemas()
         existing_titles = [el['title'] for el in list_existing_schemas]
         list_b2b_schema_names = ['B2B Account Person Relation',
@@ -1918,10 +1921,10 @@ class Schema:
         list_schema_manager = []
         for schemaName in list_b2b_schema_names:
             if schemaName not in existing_titles:
-                res = self.__createB2BSchema__(schemaName)
+                res = self.__createB2BSchema__(schemaName,debug=debug)
                 list_schema_manager.append(res)
             else:
-                res = self.__createB2BSchema__(schemaName,schemaId=self.data.schemas_id[schemaName])
+                res = self.__createB2BSchema__(schemaName,schemaId=self.data.schemas_id[schemaName],debug=debug)
                 list_schema_manager.append(res)
         dict_schema_id_name = {scManager.id:scManager.title for scManager in list_schema_manager}
         dict_existing_descriptors = {}
@@ -1951,12 +1954,13 @@ class Schema:
                         }
                     list_prepared_descriptors.append(data)
             dict_existing_descriptors[scManager.title] = list_prepared_descriptors
+        tmp_schemas = self.getSchemas() ## refresh the self.data.schema_id cache
         dict_new_relationships = {}
         for key,value in dict_existing_descriptors.items():
-            dict_new_relationships[key] = self.__createB2Brelationships__(schemaName=key,schemaDescriptors=value)
+            dict_new_relationships[key] = self.__createB2Brelationships__(schemaName=key,schemaDescriptors=value,debug=debug)
         return {sc.title:sc for sc in list_schema_manager}
     
-    def __createB2BSchema__(self,schemaName:str=None,schemaId:str=None)->dict:
+    def __createB2BSchema__(self,schemaName:str=None,schemaId:str=None,debug:bool=False)->dict:
         """
         Create a B2B schema.
         Arguments:
@@ -1966,6 +1970,8 @@ class Schema:
         from aepp import schemamanager
         match schemaName:
             case 'B2B Account Person Relation':
+                if debug:
+                    print(f"Handling : {schemaName}")
                 if schemaId is None:
                     b2b_account_person = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/classes/account-person')
                     b2b_account_person.addFieldGroup('https://ns.adobe.com/xdm/context/identitymap')
@@ -1995,9 +2001,11 @@ class Schema:
                     'xdm:sourceVersion': 1
                     }
                 ]
-                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_account_person)
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_account_person,debug=debug)
                 return b2b_account_person
             case 'B2B Activity':
+                if debug:
+                    print(f"Handling : {schemaName}")
                 if schemaId is None:
                     b2b_activity = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/context/experienceevent')
                     list_fieldGroupsIds = ['https://ns.adobe.com/xdm/mixins/events/remove-from-list', 'https://ns.adobe.com/xdm/mixins/events/visit-webpage','https://ns.adobe.com/xdm/mixins/person-identifier', 'https://ns.adobe.com/xdm/mixins/events/new-lead', 'https://ns.adobe.com/xdm/mixins/events/convert-lead', 'https://ns.adobe.com/xdm/mixins/events/add-to-list', 'https://ns.adobe.com/xdm/mixins/events/add-to-opportunity', 'https://ns.adobe.com/xdm/mixins/events/remove-from-opportunity', 'https://ns.adobe.com/xdm/mixins/events/interesting-moment', 'https://ns.adobe.com/xdm/mixins/events/formfilledout', 'https://ns.adobe.com/xdm/mixins/events/linkclicks', 'https://ns.adobe.com/xdm/mixins/events/emaildelivered', 'https://ns.adobe.com/xdm/mixins/events/emailbounced',
@@ -2040,9 +2048,11 @@ class Schema:
                     'xdm:sourceVersion': 1
                     }
                 ]
-                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_activity)
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_activity,debug=debug)
                 return b2b_activity
             case 'B2B Marketing List Member':
+                if debug:
+                    print(f"Handling : {schemaName}")
                 if schemaId is None:
                     b2b_marketing_member = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/classes/marketing-list-member')
                     resSchema = b2b_marketing_member.createSchema()
@@ -2073,9 +2083,11 @@ class Schema:
                     'xdm:sourceVersion': 1
                     }
                 ]
-                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_marketing_member)
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_marketing_member,debug=debug)
                 return b2b_marketing_member
             case 'B2B Marketing List':
+                if debug:
+                    print(f"Handling : {schemaName}")
                 if schemaId is None:
                     b2b_marketing_memberList = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/classes/marketing-list')
                     resSchema = b2b_marketing_memberList.createSchema()
@@ -2092,9 +2104,11 @@ class Schema:
                     'xdm:isPrimary': True,
                     'xdm:sourceVersion': 1
                 }]
-                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_marketing_memberList)
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_marketing_memberList,debug=debug)
                 return b2b_marketing_memberList
             case 'B2B Campaign Member':
+                if debug:
+                    print(f"Handling : {schemaName}")
                 if schemaId is None:
                     b2b_campaign_member = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/context/campaign-member')
                     b2b_campaign_member.addFieldGroup('https://ns.adobe.com/xdm/context/campaign-member-details')
@@ -2133,9 +2147,11 @@ class Schema:
                     'xdm:sourceVersion': 1
                     }
                 ]
-                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_campaign_member)
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_campaign_member,debug=debug)
                 return b2b_campaign_member
             case 'B2B Campaign':
+                if debug:
+                    print(f"Handling : {schemaName}")
                 if schemaId is None:
                     b2b_campaign = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/classes/campaign')
                     b2b_campaign.addFieldGroup('https://ns.adobe.com/xdm/mixins/campaign-details')
@@ -2162,9 +2178,11 @@ class Schema:
                     'xdm:sourceVersion': 1
                     }
                 ]
-                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_campaign)
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_campaign,debug=debug)
                 return b2b_campaign
             case 'B2B Opportunity Person Relation':
+                if debug:
+                    print(f"Handling : {schemaName}")
                 if schemaId is None:
                     b2b_opp_person = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/classes/opportunity-person')
                     resSchema = b2b_opp_person.createSchema()
@@ -2202,9 +2220,11 @@ class Schema:
                     'xdm:sourceVersion': 1
                     }
                 ]
-                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_opp_person)
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_opp_person,debug=debug)
                 return b2b_opp_person
             case 'B2B Opportunity':
+                if debug:
+                    print(f"Handling : {schemaName}")
                 if schemaId is None:
                     b2b_opportunity = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/context/opportunity')
                     b2b_opportunity.addFieldGroup('https://ns.adobe.com/xdm/mixins/opportunity-details')
@@ -2237,9 +2257,11 @@ class Schema:
                     'xdm:sourceVersion': 1
                     }
                 ]
-                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_opportunity)
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_opportunity,debug=debug)
                 return b2b_opportunity
             case 'B2B Person':
+                if debug:
+                    print(f"Handling : {schemaName}")
                 if schemaId is None:
                     b2b_person = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/context/profile')
                     b2b_person.addFieldGroup('https://ns.adobe.com/xdm/mixins/b2b-person-details')
@@ -2277,9 +2299,11 @@ class Schema:
                     'xdm:sourceVersion': 1
                     }
                 ]
-                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_person)
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_person,debug=debug)
                 return b2b_person
             case 'B2B Account':
+                if debug:
+                    print(f"Handling : {schemaName}")
                 if schemaId is None:
                     b2b_account = schemamanager.SchemaManager(title=schemaName,schemaAPI=self,schemaClass='https://ns.adobe.com/xdm/context/account')
                     b2b_account.addFieldGroup('https://ns.adobe.com/xdm/mixins/account-details')
@@ -2312,10 +2336,10 @@ class Schema:
                     'xdm:sourceVersion': 1
                     }
                 ]
-                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_account)
+                self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_account,debug=debug)
                 return b2b_account
     
-    def __createIdentityDescriptors__(self,listToCreate:list=None,existingList:list=None,scManager:'SchemaManager'=None)->None:
+    def __createIdentityDescriptors__(self,listToCreate:list=None,existingList:list=None,scManager:'SchemaManager'=None,debug:bool=False)->None:
         """
         Itirate over the element to create the related identities
         Arguments:
@@ -2324,14 +2348,17 @@ class Schema:
             scManager : SchemaManager associated with the schema
         """
         for elToCreate in listToCreate:
+            res = None
             if len(existingList)>0: ## comparing only if comparison possible
                 if elToCreate['xdm:sourceProperty'] not in [el.get('xdm:sourceProperty','') for el in existingList]:
                     ## creating the missing identities
                     res = scManager.createDescriptor(elToCreate)
             else:
                 res = scManager.createDescriptor(elToCreate)
+            if debug and res is not None:
+                print(res)
 
-    def __createB2Brelationships__(self,schemaName:str=None,schemaDescriptors:list=None)->list:
+    def __createB2Brelationships__(self,schemaName:str=None,schemaDescriptors:list=None,debug:bool=False)->list:
         """
         Create the relationship between the B2B schemas.
         Arguments:
@@ -2472,6 +2499,8 @@ class Schema:
         to_create = dict_desc_to_create[schemaName] ## select the correct descriptor based on the schema.
         existing = schemaDescriptors
         new_state_existing = []
+        if debug:
+            print(f'Handling relationships for {schemaName}')
         for descriptor in to_create:
             if len(existing)>0:
                 if descriptor['xdm:sourceProperty'] in [el.get('xdm:sourceProperty') for el in existing]:
@@ -2486,6 +2515,8 @@ class Schema:
                 descriptor['xdm:destinationSchema'] = self.data.schemas_id[descriptor['xdm:destinationSchema']] ## replacing name with ID
                 res = self.createDescriptor(descriptorObj=descriptor)
                 new_state_existing.append(res)
+        if debug:
+            print(f'Relationships for {schemaName} : {new_state_existing}')
         return new_state_existing
 
             
