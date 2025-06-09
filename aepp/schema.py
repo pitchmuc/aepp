@@ -1926,7 +1926,7 @@ class Schema:
         dict_schema_id_name = {scManager.id:scManager.title for scManager in list_schema_manager}
         dict_existing_descriptors = {}
         for scManager in list_schema_manager:
-            tmp_list_descs = scManager.getDesriptors()
+            tmp_list_descs = scManager.getDescriptors()
             list_prepared_descriptors = []
             for desc in tmp_list_descs: ## filtering for relationships only
                 if desc['@type'] == 'xdm:descriptorOneToOne':
@@ -1951,9 +1951,9 @@ class Schema:
                         }
                     list_prepared_descriptors.append(data)
             dict_existing_descriptors[scManager.title] = list_prepared_descriptors
-            dict_new_relationships = {}
-            for key,value in dict_existing_descriptors.items():
-                dict_new_relationships[key] = self.__createB2Brelationships__(schemaName=key,schemaDescriptors=value)
+        dict_new_relationships = {}
+        for key,value in dict_existing_descriptors.items():
+            dict_new_relationships[key] = self.__createB2Brelationships__(schemaName=key,schemaDescriptors=value)
         return {sc.title:sc for sc in list_schema_manager}
     
     def __createB2BSchema__(self,schemaName:str=None,schemaId:str=None)->dict:
@@ -1978,17 +1978,21 @@ class Schema:
                     {'@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/accountKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_account',
-                    'xdm:sourceSchema': b2b_account_person.id
+                    'xdm:sourceSchema': b2b_account_person.id,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/personKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_person',
-                    'xdm:sourceSchema': b2b_account_person.id
+                    'xdm:sourceSchema': b2b_account_person.id,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/accountPersonKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_account_person_relation',
-                    'xdm:sourceSchema': b2b_account_person.id
+                    'xdm:namespace': 'b2b_account_person_relation',
+                    'xdm:property': 'xdm:code',
+                    'xdm:sourceSchema': b2b_account_person.id,
+                    'xdm:sourceVersion': 1
                     }
                 ]
                 self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_account_person)
@@ -2002,7 +2006,7 @@ class Schema:
                     for fg in list_fieldGroupsIds:
                         b2b_activity.addFieldGroup(fg)
                     resSchema = b2b_activity.createSchema()
-                    list_descriptors = [list_descriptors]
+                    list_descriptors = []
                 else: 
                     b2b_activity = schemamanager.SchemaManager(schemaId,schemaAPI=self)
                     list_descriptors = b2b_activity.getDescriptors()
@@ -2010,25 +2014,30 @@ class Schema:
                     {'@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/leadOperation/campaignProgression/campaignKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_campaign',
-                    'xdm:sourceSchema': b2b_activity.id
+                    'xdm:sourceSchema': b2b_activity.id,
+                    'xdm:sourceVersion': 1
                     },
                     {
                     '@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/opportunityEvent/opportunityKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_opportunity',
-                    'xdm:sourceSchema': b2b_activity.id
+                    'xdm:sourceSchema': b2b_activity.id,
+                    'xdm:sourceVersion': 1
                     },
                     {
                     '@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/listOperations/listKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_marketing_list',
-                    'xdm:sourceSchema': b2b_activity.id
+                    'xdm:sourceSchema': b2b_activity.id,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/personKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_person',
+                    'xdm:namespace': 'b2b_person',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_activity.id,
-                    'xdm:isPrimary': True
+                    'xdm:isPrimary': True,
+                    'xdm:sourceVersion': 1
                     }
                 ]
                 self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_activity)
@@ -2045,19 +2054,23 @@ class Schema:
                     {'@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/marketingListKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_marketing_list',
-                    'xdm:sourceSchema': b2b_marketing_member.id
+                    'xdm:sourceSchema': b2b_marketing_member.id,
+                    'xdm:sourceVersion': 1
                     },
                     {
                     '@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/personKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_person',
-                    'xdm:sourceSchema': b2b_marketing_member.id
+                    'xdm:sourceSchema': b2b_marketing_member.id,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/marketingListMemberKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_marketing_list_member',
+                    'xdm:namespace': 'b2b_marketing_list_member',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_marketing_member.id,
-                    'xdm:isPrimary': True
+                    'xdm:isPrimary': True,
+                    'xdm:sourceVersion': 1
                     }
                 ]
                 self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_marketing_member)
@@ -2073,9 +2086,11 @@ class Schema:
                 list_to_create = [{
                     '@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/marketingListKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_marketing_list',
+                    'xdm:namespace': 'b2b_marketing_list',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_marketing_memberList.id,
-                    'xdm:isPrimary': True
+                    'xdm:isPrimary': True,
+                    'xdm:sourceVersion': 1
                 }]
                 self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_marketing_memberList)
                 return b2b_marketing_memberList
@@ -2092,24 +2107,30 @@ class Schema:
                     {'@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/campaignKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_campaign',
-                    'xdm:sourceSchema': b2b_campaign_member.id
+                    'xdm:sourceSchema': b2b_campaign_member.id,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_campaign_member',
+                    'xdm:namespace': 'b2b_campaign_member',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_campaign_member.id,
-                    'xdm:isPrimary': False
+                    'xdm:isPrimary': False,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/personKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_person',
-                    'xdm:sourceSchema': b2b_campaign_member.id
+                    'xdm:sourceSchema': b2b_campaign_member.id,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/campaignMemberKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_campaign_member',
+                    'xdm:namespace': 'b2b_campaign_member',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_campaign_member.id,
-                    'xdm:isPrimary': True
+                    'xdm:isPrimary': True,
+                    'xdm:sourceVersion': 1
                     }
                 ]
                 self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_campaign_member)
@@ -2126,15 +2147,19 @@ class Schema:
                 list_to_create = [
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_campaign',
+                    'xdm:namespace': 'b2b_campaign',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_campaign.id,
-                    'xdm:isPrimary': False
+                    'xdm:isPrimary': False,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/campaignKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_campaign',
+                    'xdm:namespace': 'b2b_campaign',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_campaign.id,
-                    'xdm:isPrimary': True
+                    'xdm:isPrimary': True,
+                    'xdm:sourceVersion': 1
                     }
                 ]
                 self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_campaign)
@@ -2151,24 +2176,30 @@ class Schema:
                     {'@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/opportunityKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_opportunity',
-                    'xdm:sourceSchema': b2b_opp_person.id
+                    'xdm:sourceSchema': b2b_opp_person.id,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/personKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_person',
-                    'xdm:sourceSchema': b2b_opp_person.id
+                    'xdm:sourceSchema': b2b_opp_person.id,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_opportunity_person_relation',
+                    'xdm:namespace': 'b2b_opportunity_person_relation',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_opp_person.id,
-                    'xdm:isPrimary': False
+                    'xdm:isPrimary': False,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/opportunityPersonKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_opportunity_person_relation',
+                    'xdm:namespace': 'b2b_opportunity_person_relation',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_opp_person.id,
-                    'xdm:isPrimary': True
+                    'xdm:isPrimary': True,
+                    'xdm:sourceVersion': 1
                     }
                 ]
                 self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_opp_person)
@@ -2186,19 +2217,24 @@ class Schema:
                     {'@type': 'xdm:descriptorReferenceIdentity',
                     'xdm:sourceProperty': '/accountKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_account',
-                    'xdm:sourceSchema': b2b_opportunity.id
+                    'xdm:sourceSchema': b2b_opportunity.id,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_opportunity',
+                    'xdm:namespace': 'b2b_opportunity',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_opportunity.id,
-                    'xdm:isPrimary': False
+                    'xdm:isPrimary': False,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/opportunityKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_opportunity',
+                    'xdm:namespace': 'b2b_opportunity',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_opportunity.id,
-                    'xdm:isPrimary': True
+                    'xdm:isPrimary': True,
+                    'xdm:sourceVersion': 1
                     }
                 ]
                 self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_opportunity)
@@ -2218,21 +2254,27 @@ class Schema:
                 list_to_create = [
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/workEmail/address',
-                    'xdm:identityNamespace': 'Email',
+                    'xdm:namespace': 'Email',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_person.id,
-                    'xdm:isPrimary': False
+                    'xdm:isPrimary': False,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_person',
+                    'xdm:namespace': 'b2b_person',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_person.id,
-                    'xdm:isPrimary': False
+                    'xdm:isPrimary': False,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/b2b/personKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_person',
+                    'xdm:namespace': 'b2b_person',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_person.id,
-                    'xdm:isPrimary': True
+                    'xdm:isPrimary': True,
+                    'xdm:sourceVersion': 1
                     }
                 ]
                 self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_person)
@@ -2251,18 +2293,23 @@ class Schema:
                     'xdm:sourceProperty': '/accountParentKey/sourceKey',
                     'xdm:identityNamespace': 'b2b_account',
                     'xdm:sourceSchema': b2b_account.id,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/extSourceSystemAudit/externalKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_account',
+                    'xdm:namespace': 'b2b_account',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_account.id,
                     'xdm:isPrimary': False,
+                    'xdm:sourceVersion': 1
                     },
                     {'@type': 'xdm:descriptorIdentity',
                     'xdm:sourceProperty': '/accountKey/sourceKey',
-                    'xdm:identityNamespace': 'b2b_account',
+                    'xdm:namespace': 'b2b_account',
+                    'xdm:property': 'xdm:code',
                     'xdm:sourceSchema': b2b_account.id,
-                    'xdm:isPrimary': True
+                    'xdm:isPrimary': True,
+                    'xdm:sourceVersion': 1
                     }
                 ]
                 self.__createIdentityDescriptors__(list_to_create,list_descriptors,b2b_account)
@@ -2277,13 +2324,12 @@ class Schema:
             scManager : SchemaManager associated with the schema
         """
         for elToCreate in listToCreate:
-            if existingList>0: ## comparing only if comparison possible
+            if len(existingList)>0: ## comparing only if comparison possible
                 if elToCreate['xdm:sourceProperty'] not in [el.get('xdm:sourceProperty','') for el in existingList]:
                     ## creating the missing identities
-                    scManager.createDescriptor(elToCreate)
+                    res = scManager.createDescriptor(elToCreate)
             else:
-                scManager.createDescriptor(elToCreate)
-
+                res = scManager.createDescriptor(elToCreate)
 
     def __createB2Brelationships__(self,schemaName:str=None,schemaDescriptors:list=None)->list:
         """
@@ -2295,37 +2341,47 @@ class Schema:
         dict_desc_to_create = {'B2B Account': [{'@type': 'xdm:descriptorOneToOne',
             'xdm:sourceProperty': '/accountParentKey/sourceKey',
             'xdm:sourceSchema': 'B2B Account',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/accountKey/sourceKey',
-            'xdm:destinationSchema': 'B2B Account'}],
+            'xdm:destinationSchema': 'B2B Account',
+            'xdm:destinationVersion':1,}],
         'B2B Person': [{'@type': 'xdm:descriptorRelationship',
             'xdm:sourceProperty': '/personComponents[*]/sourceAccountKey/sourceKey',
             'xdm:sourceSchema': 'B2B Person',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/accountKey/sourceKey',
             'xdm:destinationSchema': 'B2B Account',
+            'xdm:destinationVersion':1,
             'xdm:cardinality': 'M:1',
             'xdm:sourceToDestinationTitle': 'Account',
             'xdm:destinationToSourceTitle': 'People'}],
         'B2B Opportunity': [{'@type': 'xdm:descriptorRelationship',
             'xdm:sourceProperty': '/accountKey/sourceKey',
             'xdm:sourceSchema': 'B2B Opportunity',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/accountKey/sourceKey',
             'xdm:destinationSchema': 'B2B Account',
+            'xdm:destinationVersion':1,
             'xdm:cardinality': 'M:1',
             'xdm:sourceToDestinationTitle': 'Account',
             'xdm:destinationToSourceTitle': 'Opportunities'}],
         'B2B Opportunity Person Relation': [{'@type': 'xdm:descriptorRelationship',
             'xdm:sourceProperty': '/opportunityKey/sourceKey',
             'xdm:sourceSchema': 'B2B Opportunity Person Relation',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/opportunityKey/sourceKey',
             'xdm:destinationSchema': 'B2B Opportunity',
+            'xdm:destinationVersion':1,
             'xdm:cardinality': 'M:1',
             'xdm:sourceToDestinationTitle': 'Opportunity',
             'xdm:destinationToSourceTitle': 'People'},
             {'@type': 'xdm:descriptorRelationship',
             'xdm:sourceProperty': '/personKey/sourceKey',
+            'xdm:sourceVersion':1,
             'xdm:sourceSchema': 'B2B Opportunity Person Relation',
             'xdm:destinationProperty': '/b2b/personKey/sourceKey',
             'xdm:destinationSchema': 'B2B Person',
+            'xdm:destinationVersion':1,
             'xdm:cardinality': 'M:1',
             'xdm:sourceToDestinationTitle': 'Person',
             'xdm:destinationToSourceTitle': 'Opportunities'}],
@@ -2333,16 +2389,20 @@ class Schema:
         'B2B Campaign Member': [{'@type': 'xdm:descriptorRelationship',
             'xdm:sourceProperty': '/campaignKey/sourceKey',
             'xdm:sourceSchema': 'B2B Campaign Member',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/campaignKey/sourceKey',
             'xdm:destinationSchema': 'B2B Campaign',
+            'xdm:destinationVersion':1,
             'xdm:cardinality': 'M:1',
             'xdm:sourceToDestinationTitle': 'Campaign',
             'xdm:destinationToSourceTitle': 'People'},
             {'@type': 'xdm:descriptorRelationship',
             'xdm:sourceProperty': '/personKey/sourceKey',
             'xdm:sourceSchema': 'B2B Campaign Member',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/b2b/personKey/sourceKey',
             'xdm:destinationSchema': 'B2B Person',
+            'xdm:destinationVersion':1,
             'xdm:cardinality': 'M:1',
             'xdm:sourceToDestinationTitle': 'Person',
             'xdm:destinationToSourceTitle': 'Campaigns'}],
@@ -2350,57 +2410,77 @@ class Schema:
         'B2B Marketing List Member': [{'@type': 'xdm:descriptorRelationship',
             'xdm:sourceProperty': '/marketingListKey/sourceKey',
             'xdm:sourceSchema': 'B2B Marketing List Member',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/marketingListKey/sourceKey',
             'xdm:destinationSchema': 'B2B Marketing List',
+            'xdm:destinationVersion':1,
             'xdm:cardinality': 'M:1',
             'xdm:sourceToDestinationTitle': 'List',
             'xdm:destinationToSourceTitle': 'People'},
             {'@type': 'xdm:descriptorRelationship',
             'xdm:sourceProperty': '/personKey/sourceKey',
             'xdm:sourceSchema': 'B2B Marketing List Member',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/b2b/personKey/sourceKey',
             'xdm:destinationSchema': 'B2B Person',
             'xdm:cardinality': 'M:1',
             'xdm:sourceToDestinationTitle': 'Person',
-            'xdm:destinationToSourceTitle': 'Lists'}],
+            'xdm:destinationToSourceTitle': 'Lists',
+            'xdm:destinationVersion':1,}],
         'B2B Activity': [{'@type': 'xdm:descriptorOneToOne',
             'xdm:sourceProperty': '/leadOperation/campaignProgression/campaignKey/sourceKey',
             'xdm:sourceSchema': 'B2B Activity',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/campaignKey/sourceKey',
-            'xdm:destinationSchema': 'B2B Campaign'},
+            'xdm:destinationSchema': 'B2B Campaign',
+            'xdm:destinationVersion':1,},
             {'@type': 'xdm:descriptorOneToOne',
             'xdm:sourceProperty': '/opportunityEvent/opportunityKey/sourceKey',
             'xdm:sourceSchema': 'B2B Activity',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/opportunityKey/sourceKey',
-            'xdm:destinationSchema': 'B2B Opportunity'},
+            'xdm:destinationSchema': 'B2B Opportunity',
+            'xdm:destinationVersion':1,},
             {'@type': 'xdm:descriptorOneToOne',
             'xdm:sourceProperty': '/listOperations/listKey/sourceKey',
             'xdm:sourceSchema': 'B2B Activity',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/marketingListKey/sourceKey',
-            'xdm:destinationSchema': 'B2B Marketing List'}],
+            'xdm:destinationSchema': 'B2B Marketing List',
+            'xdm:destinationVersion':1,}],
         'B2B Account Person Relation': [{'@type': 'xdm:descriptorRelationship',
             'xdm:sourceProperty': '/accountKey/sourceKey',
             'xdm:sourceSchema': 'B2B Account Person Relation',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/accountKey/sourceKey',
             'xdm:destinationSchema': 'B2B Account',
+            'xdm:destinationVersion':1,
             'xdm:cardinality': 'M:1',
             'xdm:sourceToDestinationTitle': 'Account',
             'xdm:destinationToSourceTitle': 'Account-Person'},
             {'@type': 'xdm:descriptorRelationship',
             'xdm:sourceProperty': '/personKey/sourceKey',
             'xdm:sourceSchema': 'B2B Account Person Relation',
+            'xdm:sourceVersion':1,
             'xdm:destinationProperty': '/b2b/personKey/sourceKey',
             'xdm:destinationSchema': 'B2B Person',
+            'xdm:destinationVersion':1,
             'xdm:cardinality': 'M:1',
             'xdm:sourceToDestinationTitle': 'Account-Person',
             'xdm:destinationToSourceTitle': 'Account'}]
         }
-        to_create = dict_desc_to_create[schemaName]
+        to_create = dict_desc_to_create[schemaName] ## select the correct descriptor based on the schema.
         existing = schemaDescriptors
         new_state_existing = []
         for descriptor in to_create:
-            if descriptor['xdm:sourceProperty'] in [el['xdm:sourceProperty'] for el in existing]:
-                new_state_existing.append([el['xdm:sourceProperty'] for el in existing][0])
+            if len(existing)>0:
+                if descriptor['xdm:sourceProperty'] in [el.get('xdm:sourceProperty') for el in existing]:
+                    new_state_existing.append([el for el in existing if el.get('xdm:sourceProperty') == descriptor['xdm:sourceProperty']][0])
+                else: ### the descriptor sourceProperty does not exist in the list of descriptor
+                    descriptor['xdm:sourceSchema'] = self.data.schemas_id[descriptor['xdm:sourceSchema']] ## replacing name with ID
+                    descriptor['xdm:destinationSchema'] = self.data.schemas_id[descriptor['xdm:destinationSchema']] ## replacing name with ID
+                    res = self.createDescriptor(descriptorObj=descriptor)
+                    new_state_existing.append(res)
             else:
                 descriptor['xdm:sourceSchema'] = self.data.schemas_id[descriptor['xdm:sourceSchema']] ## replacing name with ID
                 descriptor['xdm:destinationSchema'] = self.data.schemas_id[descriptor['xdm:destinationSchema']] ## replacing name with ID
