@@ -138,3 +138,32 @@ Arguments:
 * n_results : OPTIONAL : Number of total event to retrieve per request.
 * prop : OPTIONAL : An array that contains one or more of a comma-separated list of properties (prop="action==create,assetType==Sandbox")
     If you want to filter results using multiple values for a single filter, pass in a comma-separated list of values. (prop="action==create,update")
+
+## extractSandboxArtefacts
+
+The `extractSandboxArtefacts` method is a way to extract the different artefacts that are available on your sandbox in a local folder.\
+This method is taking 2 arguments:
+* sandbox: REQUIRED: the instance of a ConnectObject that contains the sandbox information and connection.
+* localFolder: OPTIONAL: the local folder where to extract the sandbox. If not provided, it will use the current working directory and name the    folder the name of the sandbox.
+* region: OPTIONAL: the region of the sandbox (default: nld2). This is used to fetch the correct API endpoints for the identities. 
+    Possible values: "va7","aus5", "can2", "ind2"
+
+Example of usage: 
+
+```py
+import aepp
+
+prod = aepp.importConfigFile('myconfig.json',sandbox='prod',connectInstance=True)
+aepp.extractSandboxArtefacts(prod,localFolder='prodFolder',region='va7')
+```
+as of today, the following artefacts are exported:
+* behavior
+* class
+* schema
+* fieldgroup
+* datatype
+* descriptors
+* identities
+* datasets
+
+The reason to use that extractSandboxArtefacts methods is documented on [Local File Usage](./localfilesusage.md)
