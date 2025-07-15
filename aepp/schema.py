@@ -1414,7 +1414,6 @@ class Schema:
             raise Exception("Require a dataTypeId")
         if dataTypeId.startswith("https://"):
             from urllib import parse
-
             dataTypeId = parse.quote_plus(dataTypeId)
         if self.loggingEnabled:
             self.logger.debug(f"Starting getDataType")
