@@ -2,6 +2,14 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.3.12
+* adding the `extractSandboxArtefacts` methods in aepp module [documentation on methods](./main.md), [documentation on local file usage](./localfilesusage.md) 
+* refactoring `SchemaManager`, `FieldGroupManager`, `DataTypeManager` and `ClassManager` to support local file setup.
+* refactoring `addField` operation to support more type of DataType and Field Group. Removing some safeguard.
+* adding capabilities for `synchronizer` module to support local file setup.
+* refactoring the `to_dict` and `to_dataframe` to support extended OOTB Field Group
+* better support for `enum` and `map` in `to_dict` method
+
 ## version 0.3.11
 * adding the better compatibility for data type in `FieldgroupManager`
   * The new attributes `dataTypeManagers` is returning dict of `{'title':'__DataTypeManager__class'}`
@@ -28,7 +36,7 @@ Patch:
 * better handling of custom class in `ClassManager`
 * fix issue handling dataTypes for `to_dict()`and `to_som()` methods
 * Supporting B2B identities in `Identity` module
-* adding the `createB2Bschemas` method in `schema` module
+* adding the `createB2Bschemas` method in `schema` module [doc](./schema.md#createB2Bschemas)
 * release of the `synchronizer`(BETA version) [documentation](./synchronizer.md)
 
 ## version 0.3.10

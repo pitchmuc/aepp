@@ -5,6 +5,8 @@ from .configs import ConnectObject
 from aepp.schema import Schema
 import pandas as pd
 from copy import deepcopy
+from io import FileIO
+from pathlib import Path
 
 ### NOTE : If want to do an importDefintion -> Require to handle when custom fields have been used in the class
 ### the tenant is not automatically created in the empty definition, contrary to Field Group Manager
@@ -16,7 +18,10 @@ class ClassManager:
             behavior:str='https://ns.adobe.com/xdm/data/record',
             schemaAPI:'Schema'=None,
             config: Union[dict,ConnectObject] = aepp.config.config_object,
-            description: str = 'power by aepp'
+            description: str = 'power by aepp',
+            localFolder:str=None,
+            sandbox:str=None,
+            **kwargs
             )->None:
         """
         Instantiate the Schema Manager instance.
@@ -28,28 +33,87 @@ class ClassManager:
             schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
             config : OPTIONAL : The config object in case you want to override the configuration.
             description : OPTIONAL : If you want to add a description to your class
+            localFolder : OPTIONAL : If you want to use local storage to create all the connections between schema and field groups, classes and datatypes
+            sandbox : OPTIONAL : If you use localFolder, you can specific the sandbox.
         """
         self.EDITABLE = False
         self.STATE = "EXISTING"
+        self.localfolder = None
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
-        else:
+        elif config is not None and localFolder is None:
             self.schemaAPI = Schema(config=config)
-        tenantNoUnderscore = self.schemaAPI.getTenantId()
-        self.tenantId = f"_{tenantNoUnderscore}"
+        elif localFolder is not None:
+            self.localfolder = Path(localFolder)
+            if self.localfolder.exists() is False:
+                raise Exception(f"The local folder {self.localfolder} does not exist. Please create it and extract your sandbox before using it.")
+            self.schemaAPI = None
+            self.classFolder = self.localfolder / 'class'
+            self.behavFolder = self.localfolder / 'behaviour'
+            if self.classFolder.exists() is False:
+                raise Exception(f"The local folder {self.classFolder} does not exist. Please create it and extract your sandbox before using it.")
+        else:
+            raise Exception("You need to provide a schemaAPI instance or a config object to connect to the API or a local folder to use the local storage")
+        if self.schemaAPI is not None:
+            self.sandbox = self.schemaAPI.sandbox
+        elif sandbox is not None:
+            self.sandbox = sandbox
+        else:
+            self.sandbox = None
+        if self.schemaAPI is not None:
+            self.tenantId = f"_{self.schemaAPI.getTenantId()}"
+        elif kwargs.get('tenantId') is not None:
+            self.tenantId = kwargs.get('tenantId')
+        elif type(aepclass) == dict:
+            self.tenantId = aepclass.get('meta:tenantNamespace',"  ")
+        else:
+            self.tenantId = "  "
         if type(aepclass) == dict:
-            if tenantNoUnderscore in aepclass['id']:
-                self.aepclass = self.schemaAPI.getClass(aepclass['id'],full=False,xtype='xed')
-                self.EDITABLE = True
-            else:
-                self.aepclass = self.schemaAPI.getClass(aepclass['id'],full=True,xtype='xed')
+            if self.tenantId[1:] in aepclass['$id']:
+                if self.schemaAPI is not None:
+                    self.aepclass = self.schemaAPI.getClass(aepclass['$id'],full=False,xtype='xed')
+                    self.EDITABLE = True
+                elif self.localfolder is not None:
+                    for json_file in self.classFolder.glob('*.json'):
+                        tmp_def = json.load(FileIO(json_file))
+                        if tmp_def.get('$id') == aepclass['$id']:
+                            self.aepclass = tmp_def
+                            break
+                    self.EDITABLE = False
+            elif self.tenantId[1:] not in aepclass['$id']:
+                if self.schemaAPI is not None:
+                    self.aepclass = self.schemaAPI.getClass(aepclass['$id'],full=True,xtype='xed')
+                    self.EDITABLE = False
+                elif self.localfolder is not None:
+                    for json_file in self.classFolder.glob('*.json'):
+                        tmp_def = json.load(FileIO(json_file))
+                        if tmp_def.get('$id') == aepclass['$id']:
+                            self.aepclass = tmp_def
+                            break
+                    self.EDITABLE = False
             self.__setAttributes__(self.aepclass)
         elif type(aepclass) == str:
-            if tenantNoUnderscore in aepclass:
-                self.aepclass = self.schemaAPI.getClass(aepclass,full=False,xtype='xed')
-                self.EDITABLE = True
+            if self.tenantId[1:] in aepclass:
+                if self.schemaAPI is not None:
+                    self.aepclass = self.schemaAPI.getClass(aepclass,full=False,xtype='xed')
+                    self.EDITABLE = True
+                elif self.localfolder is not None:
+                    for json_file in self.classFolder.glob('*.json'):
+                        tmp_def = json.load(FileIO(json_file))
+                        if tmp_def.get('$id') == aepclass or tmp_def.get('meta:altId') == aepclass:
+                            self.aepclass = tmp_def
+                            break
+                    self.EDITABLE = False
             else:
-                self.aepclass = self.schemaAPI.getClass(aepclass,full=True,xtype='xed')
+                if self.schemaAPI is not None:
+                    self.aepclass = self.schemaAPI.getClass(aepclass,full=True,xtype='xed')
+                elif self.localfolder is not None:
+                    for json_file in self.classFolder.glob('*.json'):
+                        tmp_def = json.load(FileIO(json_file))
+                        if tmp_def.get('$id') == aepclass or tmp_def.get('meta:altId') == aepclass:
+                            self.aepclass = tmp_def
+                            break
+                self.EDITABLE = False
             self.__setAttributes__(self.aepclass)
         else:
             self.STATE = "NEW"
@@ -92,7 +156,15 @@ class ClassManager:
         else:
             self.id = None
             self.EDITABLE = True
-        self.behaviorDefinition = self.schemaAPI.getBehavior(self.aepclass.get('meta:extends',[])[0],full=True,xtype='xed')
+        behavId = [b for b in self.aepclass.get('meta:extends',[]) if b == 'https://ns.adobe.com/xdm/data/record' or b == 'https://ns.adobe.com/xdm/data/time-series' or b == 'https://ns.adobe.com/xdm/data/adhoc'][0]
+        if self.schemaAPI is not None:
+            self.behaviorDefinition = self.schemaAPI.getBehavior(behavId,full=True,xtype='xed')
+        elif self.localfolder is not None:
+            for json_file in self.behavFolder.glob('*.json'):
+                tmp_def = json.load(FileIO(json_file))
+                if tmp_def.get('$id') == behavId:
+                    self.behaviorDefinition = tmp_def
+                    break
         self.requiredFields = set()
     
     def __setAttributes__(self, aepclass:dict):
@@ -457,6 +529,9 @@ class ClassManager:
     def __transformationDict__(self,mydict:dict=None,typed:bool=False,dictionary:dict=None)->dict:
         """
         Transform the current XDM class to a dictionary.
+        mydict : the class definition to traverse
+        typed : boolean to know if you want to retrieve the type of the field or not
+        dictionary : the dictionary that gather the paths
         """
         if dictionary is None:
             dictionary = {}
@@ -464,7 +539,7 @@ class ClassManager:
             dictionary = dictionary
         for key in mydict:
             if type(mydict[key]) == dict:
-                if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys():
+                if mydict[key].get('type') == 'object' and 'properties' in mydict[key].keys():
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
                         if key != "property" and key != "customFields":
@@ -473,6 +548,13 @@ class ClassManager:
                             self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary[key])
                         else:
                             self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary)
+                elif mydict[key].get('type') == 'object' and 'additionalProperties' in mydict[key].keys():
+                    properties = mydict[key].get('additionalProperties',{})
+                    if properties.get('type') == 'array':
+                        items = properties.get('items',{}).get('properties',None)
+                        if items is not None:
+                            dictionary[key] = [{}]
+                            self.__transformationDict__(items,typed,dictionary=dictionary[key][0])
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
@@ -486,6 +568,8 @@ class ClassManager:
                 else:
                     if typed:
                         dictionary[key] = mydict[key].get('type','object')
+                        if mydict[key].get('enum',None) is not None:
+                            dictionary[key] = f"string enum: {mydict[key].get('enum',[])}"
                     else:
                         dictionary[key] = ""
         return dictionary

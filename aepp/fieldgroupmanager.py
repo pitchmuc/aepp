@@ -19,6 +19,8 @@ from .configs import ConnectObject
 from .datatypemanager import DataTypeManager
 from aepp.schema import Schema
 from aepp import som
+from pathlib import Path
+from io import FileIO
 
 class FieldGroupManager:
     """
@@ -33,6 +35,9 @@ class FieldGroupManager:
                 config: Union[dict,ConnectObject] = aepp.config.config_object,
                 description:str="powered by aepp",
                 full:bool=None,
+                localFolder:str=None,
+                sandbox:str=None,
+                **kwargs
                 )->None:
         """
         Instantiator for field group creation.
@@ -46,25 +51,90 @@ class FieldGroupManager:
             config : OPTIONAL : The config object in case you want to override the configuration.
             description : OPTIONAL : if you want to have a description.
             full : OPTIONAL : Capability to force the full definition to be downloaded or not
+            localFolder : OPTIONAL : If you want to use local storage to create all the connections between schema and field groups, classes and datatypes
+            sandbox : OPTIONAL : If you use localFolder, you can specific the sandbox.
         """
         self.EDITABLE = False
+        self.localfolder = None
         self.STATE = "EXISTING"
         self.fieldGroup = {}
         self.dataTypes = {}
         self.dataTypeManagers = {} 
         self.requiredFields = set()
+        self.metaExtend = None
         if schemaAPI is not None and type(schemaAPI) == Schema:
             self.schemaAPI = schemaAPI
-        else:
+        elif config is not None and localFolder is None:
             self.schemaAPI = Schema(config=config)
-        self.tenantId = f"_{self.schemaAPI.getTenantId()}"
+        elif localFolder is not None:
+            self.localfolder = Path(localFolder)
+            self.datatypeFolder = self.localfolder / 'datatype'
+            self.fieldgroupFolder = self.localfolder / 'fieldgroup'
+            self.descriptorFolder = self.localfolder / 'descriptor'
+            if self.localfolder.exists() is False:
+                raise Exception(f"The local folder {self.localfolder} does not exist. Please create it and extract your sandbox before using it.")
+            self.schemaAPI = None
+        if self.schemaAPI is not None:
+            self.sandbox = self.schemaAPI.sandbox
+        elif sandbox is not None:
+            self.sandbox = sandbox
+        else:
+            self.sandbox = None
+        self.tenantId = "  "
+        if self.schemaAPI is not None:
+            self.tenantId = f"_{self.schemaAPI.getTenantId()}"
+        elif kwargs.get('tenantId') is not None:
+            self.tenantId = kwargs.get('tenantId')
+        elif type(fieldGroup) == dict:
+            if fieldGroup.get('meta:tenantNamespace') is not None:
+                self.tenantId = fieldGroup.get('meta:tenantNamespace')
+        else:### Should not be a problem as the element without a tenantId are not supposed to change
+            self.tenantId = "  "
         if fieldGroup is not None:
             if type(fieldGroup) == dict:
                 if fieldGroup.get("meta:resourceType",None) == "mixins":
                     if fieldGroup.get('definitions',None) is not None:
-                        if 'mixins' in fieldGroup.get('$id') and self.tenantId[1:] in fieldGroup.get('$id'):
+                        if self.schemaAPI is not None:
+                            if 'mixins' in fieldGroup.get('$id') and self.tenantId[1:] in fieldGroup.get('$id'): ## customer mixin
+                                self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
+                                if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group
+                                    dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
+                                    dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
+                                    for dt in dataTypes:
+                                        dt_manager = self.schemaAPI.DataTypeManager(dt)
+                                        self.dataTypes[dt_manager.id] = dt_manager.title
+                                        self.dataTypeManagers[dt_manager.title] = dt_manager
+                                    if full:
+                                        self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
+                                    else:
+                                        self.EDITABLE = True
+                                else:
+                                    self.EDITABLE = True
+                            else: ## OOTB mixins
+                                tmp_def = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True) ## handling OOTB mixins
+                                tmp_def['definitions'] = tmp_def['properties']
+                                self.fieldGroup = tmp_def
+                                self.EDITABLE = False
+                        elif self.localfolder is not None:
+                            for json_file in self.fieldgroupFolder.glob('*.json'):
+                                tmp_def = json.load(FileIO(json_file))
+                                if tmp_def.get('$id') == fieldGroup['$id'] or tmp_def.get('meta:altId') == fieldGroup.get('meta:altId') or tmp_def.get('title') == fieldGroup.get('title'):
+                                    self.fieldGroup = tmp_def
+                                    if self.tenantId[1:] in self.fieldGroup.get('$id'): ## custom field group
+                                        if '/datatypes/' in str(self.fieldGroup):
+                                            dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
+                                            dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
+                                            for dt in dataTypes:
+                                                dt_manager = DataTypeManager(dt,localFolder=self.localfolder,sandbox=self.sandbox,tenantId=self.tenantId)
+                                                self.dataTypes[dt_manager.id] = dt_manager.title
+                                                self.dataTypeManagers[dt_manager.title] = dt_manager
+                                    else: ## OOTB field group
+                                        if 'properties' in self.fieldGroup.keys():
+                                            self.fieldGroup['definitions'] = self.fieldGroup['properties']
+                            self.EDITABLE = False
+                    else: ## if definitions not present, we assume it is a custom field group
+                        if self.schemaAPI is not None:
                             self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
-
                             if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group
                                 dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
                                 dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
@@ -74,37 +144,51 @@ class FieldGroupManager:
                                     self.dataTypeManagers[dt_manager.title] = dt_manager
                                 if full:
                                     self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
-                                else:
-                                    self.EDITABLE = True
+                                self.EDITABLE = True
+                        else:
+                            raise ValueError("The field group definition provided does not contains the 'definitions' key. Please check the field group.")
+                else:
+                    raise ValueError("The dictionary provided is not a field group definition.")
+            elif type(fieldGroup) == str:
+                if self.schemaAPI is None and self.localfolder is None:
+                    raise Exception("You try to retrieve the fieldGroup definition from the id, but no API or localFolder has been passed as a parameter.")
+                if self.schemaAPI is not None:
+                    self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
+                    self.tenantId = f"_{self.schemaAPI.getTenantId()}"
+                    if self.tenantId[1:] in self.fieldGroup.get('$id', ''): ## custom field group 
+                        if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Groupe
+                            dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
+                            dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
+                            for dt in dataTypes:
+                                dt_manager = self.schemaAPI.DataTypeManager(dt)
+                                self.dataTypes[dt_manager.id] = dt_manager.title
+                                self.dataTypeManagers[dt_manager.title] = dt_manager
+                            if full:
+                                self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
                             else:
                                 self.EDITABLE = True
                         else:
-                            tmp_def = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True) ## handling OOTB mixins
-                            tmp_def['definitions'] = tmp_def['properties']
-                            self.fieldGroup = tmp_def
-                    else:
-                        self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
-            elif type(fieldGroup) == str:
-                if self.schemaAPI is None:
-                    raise Exception("You try to retrieve the fieldGroup definition from the id, but no API has been passed in the schemaAPI parameter.")
-                if 'mixins' in fieldGroup and ((fieldGroup.startswith('https:') and self.tenantId[1:] in fieldGroup) or fieldGroup.startswith(f'{self.tenantId}.')):
-                    self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup,full=False)
-                    if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Groupe
-                        dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
-                        dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
-                        for dt in dataTypes:
-                            dt_manager = self.schemaAPI.DataTypeManager(dt)
-                            self.dataTypes[dt_manager.id] = dt_manager.title
-                            self.dataTypeManagers[dt_manager.title] = dt_manager
-                        if full:
-                            self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
-                        else:
                             self.EDITABLE = True
-                    else:
-                        self.EDITABLE = True
-                else: ## handling default mixins
-                    tmp_def = self.schemaAPI.getFieldGroup(fieldGroup,full=True) ## handling default mixins
-                    self.fieldGroup = tmp_def
+                    else: ## OOTB field group
+                        tmp_def = self.schemaAPI.getFieldGroup(fieldGroup,full=True)
+                        self.fieldGroup = tmp_def
+                        self.EDITABLE = False
+                elif self.localfolder is not None:
+                    for json_file in self.fieldgroupFolder.glob('*.json'):
+                        tmp_def = json.load(FileIO(json_file))
+                        if tmp_def.get('$id') == fieldGroup or tmp_def.get('meta:altId') == fieldGroup or tmp_def.get('title') == fieldGroup:
+                            self.fieldGroup = tmp_def
+                            if tmp_def.get('meta:tenantNamespace',None) is not None:
+                                self.tenantId = tmp_def.get('meta:tenantNamespace')
+                                if '/datatypes/' in str(self.fieldGroup):
+                                    dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
+                                    dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup.get('definitions')))
+                                    for file in self.datatypeFolder.glob('*.json'):
+                                        tmp_def = json.load(FileIO(file))
+                                        if tmp_def.get('$id') in dataTypes or tmp_def.get('meta:altId') in dataTypes:
+                                            dt_manager = DataTypeManager(tmp_def,localFolder=self.localfolder,sandbox=self.sandbox,tenantId=self.tenantId)
+                                            self.dataTypes[dt_manager.id] = dt_manager.title
+                                            self.dataTypeManagers[dt_manager.title] = dt_manager                                
             else:
                 raise ValueError("the element pass is not a field group definition")
         else:
@@ -119,19 +203,11 @@ class FieldGroupManager:
                     "customFields":{
                         "type" : "object",
                         "properties":{
-                            self.tenantId:{
-                                "properties":{},
-                                "type" : "object"
-                            },
                         }
                     },
                     "property":{
                         "type" : "object",
                         "properties":{
-                            self.tenantId:{
-                                "properties":{},
-                                "type" : "object"
-                            },
                         }
                     },
                 },
@@ -161,8 +237,7 @@ class FieldGroupManager:
             ### handling the custom field group based on existing ootb field groups
             for element in self.fieldGroup.get('allOf'):
                 if element.get('$ref') != '#/definitions/customFields' and element.get('$ref') != '#/definitions/property':
-                    additionalDefinition = self.schemaAPI.getFieldGroup(element.get('$ref'),full=True)
-                    self.fieldGroup['definitions'] = self.__simpleDeepMerge__(self.fieldGroup['definitions'],additionalDefinition.get('properties'))
+                    self.metaExtend = self.fieldGroup.get('meta:extends')
         self.__setAttributes__(self.fieldGroup)
         if title is not None:
             self.fieldGroup['title'] = title
@@ -422,6 +497,8 @@ class FieldGroupManager:
                 else:
                     if typed:
                         dictionary[key] = mydict[key].get('type','object')
+                        if mydict[key].get('enum',None) is not None:
+                            dictionary[key] = mydict[key].get('enum',[])
                     else:
                         dictionary[key] = ""
         return dictionary 
@@ -505,12 +582,19 @@ class FieldGroupManager:
                                     self.requiredFields.add(tmp_reqPath)
                         self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,description,xdmType,required)
                     else: ## simple arrays
-                        if path is None:
-                            finalpath = f"{key}[]"
+                        if '$ref' in mydict[key].get('items',{}).keys(): ## array of a datatype
+                            if path is None:
+                                finalpath = f"{key}[]{{}}"
+                            else:
+                                finalpath = f"{path}.{key}[]{{}}"
+                            dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]{{}}")
                         else:
-                            finalpath = f"{path}.{key}[]"
+                            if path is None:
+                                finalpath = f"{key}[]"
+                            else:
+                                finalpath = f"{path}.{key}[]"
+                            dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         dictionary["path"].append(finalpath)
-                        dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         dictionary["title"].append(f"{mydict[key].get('title')}")
                         if queryPath and finalpath is not None:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
@@ -565,10 +649,10 @@ class FieldGroupManager:
         fieldGroup = deepcopy(fieldGroup)
         for key in fieldGroup:
             level = fieldGroup.get(key,None)
-            if type(level) == dict and key in completePathList:
-                if 'properties' in level.keys():
+            if type(level) == dict and key == completePathList[0]:
+                if 'properties' in level.keys(): ## if we are in a properties object
                     if key != lastField:
-                        res,foundFlag = self.__setField__(completePathList,fieldGroup[key]['properties'],newField,obj)
+                        res,foundFlag = self.__setField__(completePathList[1:],fieldGroup[key]['properties'],newField,obj)
                         fieldGroup[key]['properties'] = res
                     else:
                         if newField in fieldGroup[key]['properties'].keys():
@@ -578,10 +662,10 @@ class FieldGroupManager:
                             fieldGroup[key]['properties'][newField] = obj
                         foundFlag = True
                         return fieldGroup,foundFlag
-                elif 'items' in level.keys():
+                elif 'items' in level.keys(): ## if we are in an array of objects
                     if 'properties' in  fieldGroup[key].get('items',{}).keys():
                         if key != lastField:
-                            res, foundFlag = self.__setField__(completePathList,fieldGroup[key]['items']['properties'],newField,obj)
+                            res, foundFlag = self.__setField__(completePathList[1:],fieldGroup[key]['items']['properties'],newField,obj)
                             fieldGroup[key]['items']['properties'] = res
                         else:
                             if newField in fieldGroup[key]['items']['properties'].keys():
@@ -693,6 +777,17 @@ class FieldGroupManager:
         if classIds is None or type(classIds) != list:
             raise ValueError("Require a list of class ids")
         self.fieldGroup["meta:intendedToExtend"] = classIds
+    
+    def extendFieldGroup(self,fieldGroupId:str=None)->None:
+        """
+        add element to the "meta:extends" attribute of the field group.
+        Arguments:
+            fieldGroupId : REQUIRED : a string with the field group ID to extend.
+        """
+        if self.fieldGroup.get('meta:extends',None) is None:
+            self.fieldGroup['meta:extends'] = []
+            self.metaExtend = self.fieldGroup['meta:extends']
+        self.fieldGroup["meta:extends"].append(fieldGroupId)
 
     def getField(self,path:str)->dict:
         """
@@ -823,8 +918,15 @@ class FieldGroupManager:
                 operation[0]['value'] = self.__transformFieldType__(dataType)
         else: 
             if dataType == "object":
-                operation[0]['value']['type'] = self.__transformFieldType__(dataType)
-                operation[0]['value']['properties'] = {key:self.__transformFieldType__(value) for key, value in zip(objectComponents.keys(),objectComponents.values())}
+                if array==False:
+                    operation[0]['value']['type'] = self.__transformFieldType__(dataType)
+                    operation[0]['value']['properties'] = {key:self.__transformFieldType__(value) for key, value in zip(objectComponents.keys(),objectComponents.values())}
+                else:
+                    operation[0]['value']['type'] = "array"
+                    operation[0]['value']['items'] = {
+                        'type': 'object',
+                        'properties': {key:self.__transformFieldType__(value) for key, value in zip(objectComponents.keys(),objectComponents.values())}
+                    }
             elif dataType == "dataType":
                 operation[0]['value']['type'] = "object"
                 operation[0]['value']['$ref'] = ref
@@ -853,7 +955,7 @@ class FieldGroupManager:
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","integer","int","number","short","byte","date","datetime","date-time","boolean","object","array","dataType"
+                A type can be any of the following: "string","boolean","double","long","integer","int","number","short","byte","date","datetime","date-time","boolean","object","array","dataType", "map"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -871,9 +973,9 @@ class FieldGroupManager:
         if path is None:
             raise ValueError("path must provided")
         dataType = dataType.replace('[]','')
-        typeTyped = ["string","boolean","double","long","int","integer","number","short","byte","date","datetime",'date-time',"boolean","object",'array','dataType']
+        typeTyped = ["string","boolean","double","long","int","integer","number","short","byte","date","datetime",'date-time',"boolean","object",'array','dataType','map']
         if dataType not in typeTyped:
-            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","int","integer","short","byte","date","datetime","date-time","boolean","object","byte","dataType". Got {dataType}')
+            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","int","integer","short","byte","date","datetime","date-time","boolean","object","byte","dataType", "map". Got {dataType}')
         if dataType == "dataType" and ref is None:
             raise ValueError("Required a reference to be passed when selecting 'dataType' type of data.")
         if title is None:
@@ -886,14 +988,30 @@ class FieldGroupManager:
         newField = pathSplit.pop()
         description = kwargs.get("description",'')
         if dataType == 'object':
-            if objectComponents is not None:
-                obj = { 'type':'object', 'title':title, "description":description,
-                    'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
-                }
+            if array==False:
+                if objectComponents is not None:
+                    obj = { 'type':'object', 'title':title, "description":description,
+                        'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
+                    }
+                else:
+                    obj = { 'type':'object', 'title':title, "description":description,
+                        'properties':{}
+                    }
             else:
-                obj = { 'type':'object', 'title':title, "description":description,
-                    'properties':{}
-                }
+                if objectComponents is not None:
+                    obj = { 'type':'array', 'title':title, "description":description,
+                        'items':{
+                            'type':'object',
+                            'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
+                        }
+                    }
+                else:
+                    obj = { 'type':'array', 'title':title, "description":description,
+                        'items':{
+                            'type':'object',
+                            'properties':{}
+                        }
+                    }
         elif dataType == 'array':
             if objectComponents is not None:
                 obj = { 'type':'array', 'title':title,"description":description,
@@ -925,7 +1043,7 @@ class FieldGroupManager:
                     "title":title
                 }
             self.dataTypes[ref] = title
-            self.dataTypeManagers[ref] = DataTypeManager(dataType=ref,schemaAPI=self.schemaAPI)
+            self.dataTypeManagers[ref] = DataTypeManager(dataType=ref,schemaAPI=self.schemaAPI,localFolder=self.localfolder,tenantId=self.tenantId,sandbox=self.sandbox)
         else:
             obj = self.__transformFieldType__(dataType)
             obj['title'] = title
@@ -1007,6 +1125,13 @@ class FieldGroupManager:
                 dict_dataType = self.getDataTypeManager(dataElementId).to_dict()
                 clean_path = path.replace('[]{}','.[0]')
                 mySom.assign(clean_path,dict_dataType)
+        if self.metaExtend is not None:
+            for fgId in self.metaExtend:
+                tmp_fgManager = FieldGroupManager(fgId,schemaAPI=self.schemaAPI,localFolder=self.localfolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                som_fg = tmp_fgManager.to_som()
+                flatten_struct = som_fg.to_dataframe().T
+                for index,val in flatten_struct.iterrows():
+                    mySom.assign(index,val[0])
         if save:
             filename = self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')
             aepp.saveFile(module='schema',file=mySom.to_dict(),filename=f"{filename}.json",type_file='json')
@@ -1042,7 +1167,6 @@ class FieldGroupManager:
         data = self.__transformationDF__(definition,queryPath=queryPath,description=description,xdmType=xdmType,required=required)
         df = pd.DataFrame(data)
         df = df[~df.path.duplicated()].copy() ## dedup the paths
-        df = df[~(df['path']==self.tenantId)].copy()## remove the root
         if required:
             if(len(self.requiredFields) > 0):
                 df['required'] = df['path'].isin(self.requiredFields)
@@ -1050,7 +1174,7 @@ class FieldGroupManager:
                 df['required'] = False
         df['origin'] = 'fieldGroup'
         if len(self.dataTypes)>0:
-            paths = self.getDataTypePaths()
+            paths = self.getDataTypePaths()          
             for path,dataElementId in paths.items():
                 tmp_dtManager = self.getDataTypeManager(dataElementId)
                 df_dataType = tmp_dtManager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,required=required)
@@ -1064,6 +1188,19 @@ class FieldGroupManager:
                         df_dataType['required'] = False
                 df_dataType['origin'] = 'dataType'
                 df = pd.concat([df,df_dataType],axis=0,ignore_index=True)
+        if self.metaExtend is not None:
+            for fgId in self.metaExtend:
+                tmp_fgManager = FieldGroupManager(fgId,schemaAPI=self.schemaAPI,localFolder=self.localfolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                df_fg = tmp_fgManager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,required=required)
+                df_fg['origin'] = f"fieldGroup - extended"
+                if required:
+                    if len(tmp_fgManager.requiredFields) > 0:
+                        list_required += tmp_fgManager.requiredFields
+                        df_fg['required'] = df_fg['path'].isin(list_required)
+                    else:
+                        df_fg['required'] = False
+                df = pd.concat([df,df_fg],axis=0,ignore_index=True)
+                df = df[~df.path.duplicated()].copy() ## dedup the paths
         df = df.sort_values(by=['path'],ascending=[True]) ## sort the dataframe
         if editable:
             df['editable'] = self.EDITABLE
@@ -1103,10 +1240,13 @@ class FieldGroupManager:
         for dt_id,dt_title in self.dataTypes.items():
             results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
             paths = [res[list(res.keys())[0]]['path'] for res in results]
+            for path in paths:
+                res = self.getField(path) ## to ensure the type of the path
+                if res['type'] == 'array':
+                    path = path +'[]{}'
+                dict_results[path] = dt_id
             if kwargs.get('som_compatible',False):
                 paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
-            for path in paths:
-                dict_results[path] = dt_id
         return dict_results
     
 
@@ -1200,15 +1340,15 @@ class FieldGroupManager:
         if 'path' not in df_import.columns or 'xdmType' not in df_import.columns or 'fieldGroup' not in df_import.columns:
             raise AttributeError("missing a column [xdmType, path, or fieldGroup] in your dataframe fieldgroup")
         df_import = df_import[~(df_import.duplicated('path'))].copy() ## removing duplicated paths
-        df_import = df_import[~(df_import['path']==self.tenantId)].copy() ## removing tenant field
         df_import = df_import.fillna('')
-        underscoreDF = df_import[df_import.path.str.contains(r'\._')].copy() ## special fields not supported
-        if len(underscoreDF)>0:
-            list_paths = underscoreDF['path'].to_list()
-            objectRoots = set([p.split('.')[-2] for p in list_paths]) ## removing all objects using these fields
-            print(f"{objectRoots} objects will not be supported in the field group manager setup. Handle them manually")
-            for tobject in objectRoots: ## excluding the 
-                df_import = df_import[~df_import.path.str.contains(tobject)].copy()
+        # underscoreDF = df_import[df_import.path.str.contains(r'\._')].copy() ## special fields not supported
+        # if len(underscoreDF)>0:
+        #     list_paths = underscoreDF['path'].to_list()
+        #     objectRoots = set([p.split('.')[-2] for p in list_paths]) ## removing all objects using these fields
+        #     print(f"{objectRoots} objects will not be supported in the field group manager setup. Handle them manually")
+        #     for tobject in objectRoots: ## excluding the objects that are not supported
+        #         tobject = tobject.replace('{}','').replace('[]','') ## removing the array of objects notation
+        #         df_import = df_import[~df_import.path.str.contains(tobject)].copy()
         if 'title' not in df_import.columns:
             df_import['title'] = df_import['path'].apply(lambda x : x.split('.')[-1])
         if 'description' not in df_import.columns:
@@ -1218,13 +1358,15 @@ class FieldGroupManager:
         for index, row in df_import.iterrows():
             #if 'error' in res.keys():
             path = row['path']
-            clean_path = self.__cleanPath__(row['path'])
             typeElement = row['xdmType']
             if path.endswith("[]"):
+                clean_path = self.__cleanPath__(row['path'])
                 self.addField(clean_path,typeElement,title=row['title'],description=row['description'],array=True)
             elif path.endswith("[]{}"):
+                clean_path = self.__cleanPath__(row['path'])
                 self.addField(clean_path,'array',title=row['title'],description=row['description'])
             else:
+                clean_path = self.__cleanPath__(row['path'])
                 self.addField(clean_path,typeElement,title=row['title'],description=row['description'])
         if title is not None:
             self.setTitle(title)
@@ -1237,8 +1379,17 @@ class FieldGroupManager:
         Get the descriptors of that schema
         """
         if self.STATE=="NEW" or self.id == "":
-            raise Exception("Schema does not exist yet, there can not be a descriptor")    
-        res = self.schemaAPI.getDescriptors(prop=f"xdm:sourceSchema=={self.id}")
+            raise Exception("Schema does not exist yet, there can not be a descriptor")
+        if self.schemaAPI is not None:
+            res = self.schemaAPI.getDescriptors(prop=f"xdm:sourceSchema=={self.id}")
+        elif self.localfolder is not None:
+            res = []
+            for json_file in self.descriptorFolder.glob('*.json'):
+                tmp_def = json.load(FileIO(json_file))
+                if tmp_def.get('xdm:sourceSchema') == self.id:
+                    res.append(tmp_def)
+        else:
+            raise Exception("Require a schema API connection or local folder. Pass the instance of a Schema class or import a configuration file.")
         return res
 
     def createDescriptorOperation(self,descType:str=None,
@@ -1257,6 +1408,8 @@ class FieldGroupManager:
             raise ValueError('Require a path to be used for the descriptor')
         if labels is None:
             raise Warning('No label provided. The descriptor will be created without any label')
+        if self.schemaAPI is None:
+            raise Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         if descType == 'xdm:descriptorLabel':
             obj = {
                 "@type": descType,
@@ -1275,6 +1428,8 @@ class FieldGroupManager:
         """
         if descriptor is None:
             raise ValueError('Require an operation to be used')
+        if self.schemaAPI is None:
+            raise Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.createDescriptor(descriptor)
         return res
     
@@ -1289,5 +1444,7 @@ class FieldGroupManager:
             raise ValueError("Require a Descriptor ID")
         if descriptorObj is None or type(descriptorObj) != dict:
             raise ValueError("Require a dictionary for the new definition")
+        if self.schemaAPI is None:
+            raise Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.putDescriptor(descriptorId, descriptorObj)
         return res

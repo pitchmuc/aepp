@@ -19,6 +19,8 @@ import re
 from .configs import ConnectObject
 from aepp.schema import Schema
 from aepp import som
+from pathlib import Path
+from io import FileIO
 
 class DataTypeManager:
     """
@@ -31,6 +33,9 @@ class DataTypeManager:
                 schemaAPI:'Schema'=None,
                 config: Union[dict,ConnectObject] = aepp.config.config_object,
                 description:str="",
+                localFolder:str=None,
+                sandbox:str=None,
+                **kwargs
                 )->None:
         """
         Instantiate the DataType Manager Class.
@@ -41,27 +46,101 @@ class DataTypeManager:
             schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
             config : OPTIONAL : The config object in case you want to override the configuration.
             description : OPTIONAL : The description of the data type. Default is empty string.
+            localFolder : OPTIONAL : If you want to use local storage to create all the connections between schema and field groups, classes and datatypes
+            sandbox : OPTIONAL : If you use localFolder, you can specific the sandbox.
         """
+        self.localfolder = None
         self.EDITABLE = False
         self.STATE = "EXISTING"
         self.dataType = {}
+        self.dataTypes = {}
+        self.dataTypeManagers = {}
+        self.id = None
         self.requiredFields = set()
-        if schemaAPI is not None:
+        if schemaAPI is not None and type(schemaAPI) == Schema:
             self.schemaAPI = schemaAPI
-        else:
+        elif config is not None and localFolder is None:
             self.schemaAPI = Schema(config=config)
-        self.tenantId = f"_{self.schemaAPI.getTenantId()}"
+        elif localFolder is not None:
+            self.localfolder = Path(localFolder)
+            self.datatypeFolder = self.localfolder / 'datatype'
+            if self.localfolder.exists() is False:
+                raise Exception(f"The local folder {self.localfolder} does not exist. Please create it and extract your sandbox before using it.")
+            self.schemaAPI = None
+        if self.schemaAPI is not None:
+            self.sandbox = self.schemaAPI.sandbox
+        elif sandbox is not None:
+            self.sandbox = sandbox
+        else:
+            self.sandbox = None
+        if kwargs.get('tenantId',None) is not None:
+            self.tenantId = kwargs.get('tenantId')
+        if self.schemaAPI is not None:
+            self.tenantId = f"_{self.schemaAPI.getTenantId()}"
+        elif type(dataType) == dict:
+            if dataType.get('meta:tenantNamespace') is not None:
+                self.tenantId = f"_{dataType.get('meta:tenantNamespace')}"
+        elif kwargs.get('tenantId',None) is not None:
+            self.tenantId = kwargs.get('tenantId')
+        else:
+            self.tenantId = "  "
         if type(dataType) == dict:
             self.dataType = dataType
             if self.tenantId[1:] in self.dataType['$id']:
-                self.EDITABLE = True
+                if self.schemaAPI is not None:
+                    self.dataType = self.schemaAPI.getDataType(dataType['$id'],full=False)
+                    self.EDITABLE = True
+                elif self.localfolder is not None:
+                    for dataTypeFile in self.datatypeFolder.glob(f"*.json"):
+                        tmp_def = json.load(FileIO(dataTypeFile))
+                        if tmp_def.get('$id') == dataType.get('$id') or tmp_def.get('meta:altId') == dataType.get('meta:altId'):
+                            self.dataType = tmp_def
+                    self.EDITABLE = False
+            else:
+                if self.schemaAPI is not None:
+                    self.dataType = self.schemaAPI.getDataType(dataType['$id'],full=True)
+                    self.EDITABLE = True
+                elif self.localfolder is not None:
+                    for dataTypeFile in self.datatypeFolder.glob("*.json"):
+                        tmp_def = json.load(FileIO(dataTypeFile))
+                        if tmp_def.get('$id') == dataType.get('$id') or tmp_def.get('meta:altId') == dataType.get('meta:altId') or tmp_def.get('title') == dataType.get('title'):   
+                            self.dataType = tmp_def
+                    self.EDITABLE = False
         elif type(dataType) == str:
-            if self.tenantId[1:0] in dataType:
-                self.EDITABLE = True
-            self.dataType = self.schemaAPI.getDataType(dataType,full=False)
+            if self.tenantId[1:] in dataType:
+                if self.schemaAPI is not None:
+                    self.dataType = self.schemaAPI.getDataType(dataType,full=False)
+                    if self.dataType is None:
+                        raise ValueError(f"Cannot find the data type with id {dataType} in the schema API.")
+                    self.EDITABLE = True
+                elif self.localfolder is not None:
+                    for dataTypeFile in self.datatypeFolder.glob("*.json"):
+                        tmp_def = json.load(FileIO(dataTypeFile))
+                        if tmp_def.get('$id') == dataType or tmp_def.get('meta:altId') == dataType or tmp_def.get('title') == dataType:
+                            self.dataType = tmp_def
+                    self.EDITABLE = False
+                else:
+                    raise Exception("You try to retrieve the datatype definition from the id, but no API or localFolder has been passed as a parameter.")
+            else:
+                if self.schemaAPI is not None:
+                    self.dataType = self.schemaAPI.getDataType(dataType,full=True)
+                    if self.dataType is None:
+                        raise ValueError(f"Cannot find the data type with id {dataType} in the schema API.")
+                    self.EDITABLE = True
+                elif self.localfolder is not None:
+                    for dataTypeFile in self.datatypeFolder.glob("*.json"):
+                        tmp_def = json.load(FileIO(dataTypeFile))
+                        if tmp_def.get('$id') == dataType or tmp_def.get('meta:altId') == dataType or tmp_def.get('title') == dataType:
+                            self.dataType = tmp_def
+                    self.EDITABLE = False
+                else:
+                    raise Exception("You try to retrieve the datatype definition from the id, but no API or localFolder has been passed as a parameter.")
         else:
             self.STATE = "NEW"
-            self.EDITABLE = True
+            if self.schemaAPI is not None:
+                self.EDITABLE = True
+            else:
+                self.EDITABLE = False
             self.dataType = {
                 "title" : "",
                 "description":description,
@@ -84,11 +163,27 @@ class DataTypeManager:
                     }],
                 'meta:tenantNamespace': self.tenantId
             }
+        if '/datatypes/' in str(self.dataType.get('definitions',{})): ## if custom datatype used in data types
+            dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
+            dataTypes = re.findall(dataTypeSearch,str(self.dataType.get('definitions',{})))
+            if self.schemaAPI is not None:
+                for dt in dataTypes:
+                    dt_manager = self.schemaAPI.DataTypeManager(dt)
+                    self.dataTypes[dt_manager.id] = dt_manager.title
+                    self.dataTypeManagers[dt_manager.title] = dt_manager
+            elif self.localfolder is not None:
+                for dt in dataTypes:
+                    for dataTypeFile in self.datatypeFolder.glob("*.json"):
+                        tmp_def = json.load(FileIO(dataTypeFile))
+                        if tmp_def.get('$id') == dt or tmp_def.get('meta:altId') == dt or tmp_def.get('title') == dt:
+                            dt_manager = DataTypeManager(dataType=tmp_def,localFolder=self.localfolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                            self.dataTypes[dt_manager.id] = dt_manager.title
+                            self.dataTypeManagers[dt_manager.title] = dt_manager
         if title is not None:
             self.dataType['title'] = title
             self.title = title
         else:
-            self.title = self.dataType['title']
+            self.title = self.dataType.get('title','unknown')
         self.__setAttributes__(self.dataType)
     
     def __setAttributes__(self,datatype:dict)->None:
@@ -100,7 +195,6 @@ class DataTypeManager:
         if datatype.get('meta:altId',False):
             self.altId = datatype.get('meta:altId')
             
-
     def __str__(self)->str:
         return json.dumps(self.dataType,indent=2)
     
@@ -434,12 +528,19 @@ class DataTypeManager:
                                     self.requiredFields.add(tmp_reqPath)
                         self.__transformationDF__(levelProperties,dictionary,tmp_path,description,xdmType,queryPath,required)
                     else: ## simple arrays
-                        if path is not None:
-                            finalpath = f"{path}.{key}[]"
+                        if '$ref' in mydict[key].get('items',{}).keys(): ## array of a datatype
+                            if path is None:
+                                finalpath = f"{key}[]{{}}"
+                            else:
+                                finalpath = f"{path}.{key}[]{{}}"
+                            dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]{{}}")
                         else:
-                            finalpath = f"{key}[]"
+                            if path is not None:
+                                finalpath = f"{path}.{key}[]"
+                            else:
+                                finalpath = f"{key}[]"
+                                dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         dictionary["path"].append(finalpath)
-                        dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         dictionary["title"].append(f"{mydict[key].get('title')}")
                         if description and finalpath is not None:
                             dictionary["description"].append(mydict[key].get('description',''))
@@ -613,6 +714,38 @@ class DataTypeManager:
         data = self.__accessorAlgo__(definition,path)
         return data
 
+    def getDataTypeManager(self,dataType:str=None)->'DataTypeManager':
+        """
+        Retrieve the Data Type Manager instance of custom data type
+        Argument:
+            dataType : REQUIRED : id or name of the data type.
+        """
+        if dataType is None:
+            raise ValueError("Require a data type $id or name")
+        if dataType in self.dataTypeManagers.keys(): ## if a Title
+            return self.dataTypeManagers[dataType]
+        if dataType in self.dataTypes.keys():## if an ID
+            return self.dataTypeManagers[self.dataTypes[dataType]]
+        
+    def getDataTypePaths(self,**kwargs)->dict:
+        """
+        Return a dictionary of the paths in the field groups and their associated data type reference.
+        possible kwargs:
+        som_compatible: boolean. Default False.
+        """
+        dict_results = {}
+        for dt_id,dt_title in self.dataTypes.items():
+            results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
+            paths = [res[list(res.keys())[0]]['path'] for res in results]
+            for path in paths:
+                res = self.getField(path) ## to ensure the type of the path
+                if res['type'] == 'array':
+                    path = path +'[]{}'
+                dict_results[path] = dt_id
+            if kwargs.get('som_compatible',False):
+                paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
+        return dict_results
+
     def searchField(self,string:str,partialMatch:bool=True,caseSensitive:bool=False)->list:
         """
         Search for a field name based the string passed.
@@ -671,14 +804,14 @@ class DataTypeManager:
         return list(result_combi)
 
         
-    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,**kwargs)->None:
+    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,ref:str=None,**kwargs)->None:
         """
         Return the operation to be used on the data type with the Patch method (patchDataType), based on the element passed in argument.
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field.
                 In case of array of objects, use the "[]{}" notation
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","integer","int","short","byte","date","dateTime","boolean","object","array"
+                A type can be any of the following: "string","boolean","double","long","integer","int","short","byte","date","dateTime","boolean","object","array","dataType"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -686,6 +819,7 @@ class DataTypeManager:
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
             enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
+            ref : OPTIONAL : If you have used "dataType" as a dataType, you can pass the reference to the Data Type there.
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "customFields", possible alternative : "property"
         """
@@ -728,6 +862,26 @@ class DataTypeManager:
             if dataType == "object":
                 operation[0]['value']['type'] = self.__transformFieldType__(dataType)
                 operation[0]['value']['properties'] = {key:self.__transformFieldType__(value) for key, value in zip(objectComponents.keys(),objectComponents.values())}
+            elif dataType == "array":
+                operation[0]['value']['type'] = 'array'
+                operation[0]['value']['items'] = {
+                    'type': 'object',
+                    'properties': {key:self.__transformFieldType__(value) for key, value in zip(objectComponents.keys(),objectComponents.values())}
+                }
+            elif dataType == "dataType":
+                operation[0]['value']['$ref'] = ref
+                operation[0]['value']['type'] = 'object'
+                operation[0]['value']['title'] = title
+                if array:
+                    operation[0]['value']['type'] = "array"
+                    del operation[0]['value']['$ref']
+                    operation[0]['value']['items'] = {
+                        'type':"object",
+                        "$ref" : ref,
+                        "title":title
+                    }
+                self.dataTypes[ref] = title
+                self.dataTypeManagers[ref] = DataTypeManager(dataType=ref,schemaAPI=self.schemaAPI)
         operation[0]['value']['title'] = title
         if enumValues is not None and type(enumValues) == dict:
             if array == False:
@@ -740,14 +894,14 @@ class DataTypeManager:
                     operation[0]['value']['items']['enum'] = list(enumValues.keys())
         return operation
 
-    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,**kwargs)->dict:
+    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,ref:str=None,**kwargs)->dict:
         """
         Add the field to the existing Data Type definition.
         Returns False when the field could not be inserted.
         Arguments:
             path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
             dataType : REQUIRED : the field type you want to create
-                A type can be any of the following: "string","boolean","double","long","int","integer","short","byte","date","datetime","date-time","boolean","object","array"
+                A type can be any of the following: "string","boolean","double","long","int","integer","number","short","byte","date","datetime","date-time","boolean","object","array","dataType", "map"
                 NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
             title : OPTIONAL : if you want to have a custom title.
             objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
@@ -755,6 +909,7 @@ class DataTypeManager:
             array : OPTIONAL : Boolean. If the element to create is an array. False by default.
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
             enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
+            ref : OPTIONAL : If you have used "dataType" as a dataType, you can pass the reference to the Data Type there.
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "customFields", possible alternative : "property"
             description : if you want to add a description on your field
@@ -763,9 +918,9 @@ class DataTypeManager:
             raise Exception("The Data Type is not Editable via Field Group Manager")
         if path is None:
             raise ValueError("path must provided")
-        typeTyped = ["string","boolean","double","long","int","integer","short","byte","date","datetime",'date-time',"boolean","object",'array']
+        typeTyped = ["string","boolean","double","long","int","integer", "number","short","byte","date","datetime",'date-time',"boolean","object",'array',"dataType", "map"]
         if dataType not in typeTyped:
-            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","integer","int","short","byte","date","datetime","date-time","boolean","object","bytes". Got {dataType}')
+            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","integer","number","int","short","byte","date","datetime","date-time","boolean","object","bytes", "array", "dataType", "map". Got {dataType}')
         if title is None:
             title = self.__cleanPath__(path.split('.').pop())
         if title == 'items' or title == 'properties':
@@ -800,6 +955,23 @@ class DataTypeManager:
                         'properties':{}
                     }
                 }
+        elif dataType == "dataType":
+            obj = {'$ref': ref,
+                    'required': [],
+                    'description': description,
+                    'type': 'object',
+                    'title': title,
+                    }
+            if array:
+                obj['type'] = "array"
+                del obj['$ref']
+                obj['items'] = {
+                    'type':"object",
+                    "$ref" : ref,
+                    "title":title
+                }
+            self.dataTypes[ref] = title
+            self.dataTypeManagers[ref] = DataTypeManager(dataType=ref,schemaAPI=self.schemaAPI)
         else:
             obj = self.__transformFieldType__(dataType)
             obj['title']= title
@@ -890,6 +1062,16 @@ class DataTypeManager:
             definition = self.dataType.get('properties',{})
         data = self.__transformationDF__(definition,description=description,xdmType=xdmType,queryPath=queryPath,required=required)
         df = pd.DataFrame(data)
+        df['origin'] = 'self'
+        if len(self.dataTypes)>0:
+            paths = self.getDataTypePaths()
+            for path,dataElementId in paths.items():
+                tmp_dtManager = self.getDataTypeManager(dataElementId)
+                df_dataType = tmp_dtManager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,required=required)
+                df_dataType['path'] = df_dataType['path'].apply(lambda x : f"{path}.{x}")
+                df_dataType['origin'] = 'external'
+                df = pd.concat([df,df_dataType],axis=0,ignore_index=True)
+        df = df.sort_values(by=['path'],ascending=[True]) ## sort the dataframe
         if save:
             title = self.dataType.get('title',f'unknown_dataType_{str(int(time.time()))}')
             df.to_csv(f"{title}.csv",index=False)
@@ -905,6 +1087,8 @@ class DataTypeManager:
         """
         Update the Data Type with the modification done before. 
         """
+        if self.schemaAPI is None:
+            raise Exception('Require a schema API connection. Pass the instance of a Schema class or import a configuration file.')
         res = self.schemaAPI.putDataType(self.dataType['meta:altId'],self.to_xdm())
         if 'status' in res.keys():
             if res['status'] == 400:
@@ -948,7 +1132,7 @@ class DataTypeManager:
         if type(datatype) == str:
             if '.csv' in datatype:
                 df_import = pd.read_csv(datatype,sep=sep)
-            if '.xls' in datatype:
+            if '.xlsx' in datatype:
                 if sheet_name is None:
                     raise ImportError("You need to pass a sheet name to use Excel")
                 df_import = pd.read_excel(datatype,sheet_name=sheet_name)
@@ -968,12 +1152,14 @@ class DataTypeManager:
         for index, row in df_import.iterrows():
             #if 'error' in res.keys():
             path = row['path']
-            clean_path = self.__cleanPath__(row['path'])
             typeElement = row['xdmType']
             if path.endswith("[]"):
+                clean_path = self.__cleanPath__(row['path'])
                 self.addField(clean_path,typeElement,title=row['title'],description=row['description'],array=True)
             elif path.endswith("[]{}"):
+                clean_path = self.__cleanPath__(row['path'])
                 self.addField(clean_path,'array',title=row['title'],description=row['description'])
             else:
+                clean_path = self.__cleanPath__(row['path'])
                 self.addField(clean_path,typeElement,title=row['title'],description=row['description'])
         return self

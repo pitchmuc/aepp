@@ -208,8 +208,8 @@ def extractSandboxArtefacts(
     for key,value in datasets.items():
         value['id'] = key
         with open(f"{datasetPath / key}.json",'w') as f:
-            json.dump(element,f,indent=2)
-    identities = ide.getIdentities(only_custom=True)
+            json.dump(value,f,indent=2)
+    identities = ide.getIdentities()
     for el in identities:
         with open(f"{identityPath / el['code']}.json",'w') as f:
-            json.dump(element,f,indent=2)
+            json.dump(el,f,indent=2)

@@ -8,13 +8,13 @@
 #  OF ANY KIND, either express or implied. See the License for the specific language
 #  governing permissions and limitations under the License.
 
-# Internal Library
 import aepp
 from copy import deepcopy
 from typing import Union
-import time
+import time, json
+from pathlib import Path
+from io import FileIO
 import pandas as pd
-import json
 from .configs import ConnectObject
 from .fieldgroupmanager import FieldGroupManager
 from .classmanager import ClassManager
@@ -35,13 +35,16 @@ class SchemaManager:
                 schemaAPI:'Schema'=None,
                 schemaClass:str="https://ns.adobe.com/xdm/context/profile",
                 config: Union[dict,ConnectObject] = aepp.config.config_object,
-                description : str = "powered by aepp"
+                description : str = "powered by aepp",
+                localFolder:str=None,
+                sandbox:str=None,
+                **kwargs
                 )->None:
         """
         Instantiate the Schema Manager instance.
         Arguments:
-            schemaId : OPTIONAL : Either a schemaId ($id or altId) or the schema dictionary itself.
-                If schemaId is passed, you need to provide the schemaAPI connection as well.
+            schemaId : OPTIONAL : Either a schemaId ($id or altId) or the schema definition itself (as a dictionary).
+                If a schemaId is passed, you need to provide the schemaAPI connection as well.
             fieldGroups : OPTIONAL : Possible to specify a list of fieldGroup. 
                 Either a list of fieldGroupIds (schemaAPI should be provided as well) or list of dictionary definition 
             title : OPTIONAL : If you wish to set up the title of your schema
@@ -50,7 +53,9 @@ class SchemaManager:
                 Default value is profile: "https://ns.adobe.com/xdm/context/profile", can be replaced with any class definition.
                 Possible default value: "https://ns.adobe.com/xdm/context/experienceevent", "https://ns.adobe.com/xdm/context/segmentdefinition"
             config : OPTIONAL : The config object in case you want to override the configuration.
-            description : OPTIONAL : To provide a description to your schema 
+            description : OPTIONAL : To provide a description to your schema
+            localFolder : OPTIONAL : If you want to use local storage to create all the connections between schema and field groups, classes and datatypes
+            sandbox : OPTIONAL : If you use localFolder, you can specific the sandbox.
         """
         self.fieldGroupIds=[]
         self.fieldGroupsManagers = {}
@@ -58,64 +63,146 @@ class SchemaManager:
         self.classManagers={}
         self.title = title
         self.STATE = "EXISTING"
+        self.localfolder = None
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
-        else:
+        elif config is not None and localFolder is None:
             self.schemaAPI = Schema(config=config)
-        self.tenantId = f"_{self.schemaAPI.getTenantId()}"
+        elif localFolder is not None:
+            self.localfolder = Path(localFolder)
+            if self.localfolder.exists() is False:
+                raise Exception(f"The local folder {self.localfolder} does not exist. Please create it and extract your sandbox before using it.")
+            self.schemaAPI = None
+            self.schemaFolder = self.localfolder / 'schema'
+            self.fieldgroupFolder = self.localfolder / 'fieldgroup'
+            self.classFolder = self.localfolder / 'class'
+            self.descriptorFolder = self.localfolder / 'descriptor'
+            if self.schemaFolder.exists() is False or self.fieldgroupFolder.exists() is False or self.classFolder.exists() is False:
+                raise Exception(f"{self.schemaFolder} or {self.fieldgroupFolder} or {self.classFolder} does not exist. Please create it and extract your sandbox before using it.")
+        else:
+            raise Exception("You need to provide a schemaAPI instance or a config object to connect to the API or a local folder to use the local storage")
+        if self.schemaAPI is not None:
+            self.sandbox = self.schemaAPI.sandbox
+        elif sandbox is not None:
+            self.sandbox = sandbox
+        else:
+            self.sandbox = None
+        if self.schemaAPI is not None:
+            self.tenantId = f"_{self.schemaAPI.getTenantId()}"
+        elif type(schema) == dict:
+            if schema.get('meta:tenantNamespace') is not None:
+                self.tenantId = f"_{schema.get('meta:tenantNamespace')}"
+        elif kwargs.get('tenantId') is not None:
+            self.tenantId = f"{kwargs.get('tenantId')}"
+        else: ### Should not be a problem as the element without a tenantId are not supposed to change
+            self.tenantId = "  "
         if type(schema) == dict:
             self.schema = schema
             self.requiredFields = set([el.replace('@','_').replace('xdm:','') for el in self.schema.get('required',[])])
             self.__setAttributes__(self.schema)
             allOf = self.schema.get("allOf",[])
             if len(allOf) == 0:
-                Warning("You have passed a schema with -full attribute, you should pass one referencing the fieldGroups.\n Using the meta:extends reference if possible")
-                self.fieldGroupIds = [ref for ref in self.schema['meta:extends'] if ('/mixins/' in ref or '/experience/' in ref or '/context/' in ref) and ref != self.classId]
-                self.schema['allOf'] = [{"$ref":ref} for ref in self.schema['meta:extends'] if ('/mixins/' in ref or 'xdm/class' in ref or 'xdm/context/' in ref) and ref != self.classId]
-                self.classIds = [self.classId]
-            else:
-                self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and obj['$ref'] != self.classId]
-                self.classIds = [self.classId]
-            if self.schemaAPI is None:
-                Warning("No schema instance has been passed or config file imported.\n Aborting the creation of field Group Manager")
-            else:
-                for ref in self.fieldGroupIds:
-                    if '/mixins/' in ref and self.tenantId[1:] in ref:
+                if self.schemaAPI is not None:
+                    self.schema = self.schemaAPI.getSchema(self.schema['$id'],full=False,schema_type='xed')
+                elif self.localfolder is not None:
+                    for json_file in self.schemaFolder.glob('*.json'):
+                        tmp_def = json.load(FileIO(json_file))
+                        if tmp_def.get('$id') == self.schema['$id'] or tmp_def.get('meta:altId') == self.schema.get('meta:altId') or tmp_def.get('title') == self.schema.get('title'):
+                            self.schema = tmp_def
+                            if self.schema.get('meta:tenantNamespace') is not None:
+                                self.tenantId = f"_{self.schema.get('meta:tenantNamespace')}"
+                            break
+            self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and obj['$ref'] != self.classId]
+            self.classIds = [self.classId]
+            for ref in self.fieldGroupIds:
+                if '/mixins/' in ref and self.tenantId[1:] in ref:
+                    if self.localfolder is not None:
+                        for json_file in self.fieldgroupFolder.glob('*.json'):
+                            tmp_def = json.load(FileIO(json_file))
+                            if tmp_def.get('$id') == ref:
+                                definition = tmp_def
+                                if definition.get('meta:tenantNamespace') is not None:
+                                    self.tenantId = definition.get('meta:tenantNamespace')
+                                break
+                    elif self.schemaAPI is not None:
                         definition = self.schemaAPI.getFieldGroup(ref,full=False)
-                        fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI)
-                    else:
-                        definition = self.schemaAPI.getFieldGroup(ref,full=True)
+                    fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                else:
+                    if self.localfolder is not None:
+                        for json_file in self.fieldgroupFolder.glob('*.json'):
+                            tmp_def = json.load(FileIO(json_file))
+                            if tmp_def.get('$id') == ref:
+                                definition = tmp_def
+                                if definition.get('meta:tenantNamespace') is not None:
+                                    self.tenantId = definition.get('meta:tenantNamespace')
+                                break
+                    elif self.schemaAPI is not None:
+                        definition = self.schemaAPI.getFieldGroup(ref,full=False)
+                    if 'properties' in definition.keys():
                         definition['definitions'] = definition['properties']
-                        fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI)
-                    self.fieldGroupsManagers[fgM.title] = fgM
-                for clas in self.classIds:
-                    clsM = ClassManager(clas,schemaAPI=self.schemaAPI)
-                    self.classManagers[clsM.title] = clsM
+                    fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                self.fieldGroupsManagers[fgM.title] = fgM
+            for clas in self.classIds:
+                clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                self.classManagers[clsM.title] = clsM
         elif type(schema) == str:
-            if self.schemaAPI is None:
-                Warning("No schema instance has been passed or config file imported.\n Aborting the retrieveal of the Schema Definition")
-            else:
+            if self.schemaAPI is not None:
                 self.schema = self.schemaAPI.getSchema(schema,full=False,schema_type='xed')
                 self.requiredFields = set([el.replace('@','_').replace('xdm:','') for el in self.schema.get('required',[])])
                 self.__setAttributes__(self.schema)
                 allOf = self.schema.get("allOf",[])
                 self.fieldGroupIds = [obj.get('$ref','') for obj in allOf if ('/mixins/' in obj.get('$ref','') or '/experience/' in obj.get('$ref','') or '/context/' in obj.get('$ref','')) and obj.get('$ref','') != self.classId]
                 self.classIds = [self.classId]
-                if self.schemaAPI is None:
-                    Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
+            elif localFolder is not None:
+                for json_file in self.schemaFolder.glob('*.json'):
+                    tmp_def = json.load(FileIO(json_file))
+                    if tmp_def.get('$id') == schema or tmp_def.get('meta:altId') == schema or schema == tmp_def.get('title'):
+                        self.schema = tmp_def
+                        self.requiredFields = set([el.replace('@','_').replace('xdm:','') for el in self.schema.get('required',[])])
+                        self.__setAttributes__(self.schema)
+                        allOf = self.schema.get("allOf",[])
+                        self.fieldGroupIds = [obj.get('$ref','') for obj in allOf if ('/mixins/' in obj.get('$ref','') or '/experience/' in obj.get('$ref','') or '/context/' in obj.get('$ref','')) and obj.get('$ref','') != self.classId]
+                        self.classIds = [self.classId]
+                        if self.schema.get('meta:tenantNamespace') is not None:
+                            self.tenantId = self.schema.get('meta:tenantNamespace')
+                        break
+            else:
+                raise Exception("You need to provide a schemaAPI instance or a localFolder to use the local storage")
+            for ref in self.fieldGroupIds:
+                if '/mixins/' in ref and self.tenantId[1:] in ref:
+                    if self.schemaAPI is not None:
+                        definition = self.schemaAPI.getFieldGroup(ref,full=False)
+                    elif self.localfolder is not None:
+                        for json_file in self.fieldgroupFolder.glob('*.json'):
+                            tmp_def = json.load(FileIO(json_file))
+                            if tmp_def.get('$id') == ref:
+                                definition = tmp_def
+                                break
                 else:
-                    for ref in self.fieldGroupIds:
-                        if '/mixins/' in ref and self.tenantId[1:] in ref:
-                            definition = self.schemaAPI.getFieldGroup(ref,full=False)
-                        else:
-                            ## if the fieldGroup is an OOTB one
-                            definition = self.schemaAPI.getFieldGroup(ref,full=True)
-                            definition['definitions'] = definition['properties']
-                        fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI)
-                        self.fieldGroupsManagers[fgM.title] = fgM
-                    for clas in self.classIds:
-                        clsM = ClassManager(clas,schemaAPI=self.schemaAPI)
-                        self.classManagers[clsM.title] = clsM
+                    if self.schemaAPI is not None:
+                        definition = self.schemaAPI.getFieldGroup(ref,full=False)
+                    elif self.localfolder is not None:
+                        for json_file in self.fieldgroupFolder.glob('*.json'):
+                            tmp_def = json.load(FileIO(json_file))
+                            if tmp_def.get('$id') == ref:
+                                definition = tmp_def
+                                break
+                if 'properties' in definition.keys():
+                    definition['definitions'] = definition['properties']
+                fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                self.fieldGroupsManagers[fgM.title] = fgM
+            for clas in self.classIds:
+                if self.localfolder is not None:
+                    for json_file in self.classFolder.glob('*.json'):
+                        tmp_def = json.load(FileIO(json_file))
+                        if tmp_def.get('$id') == clas:
+                            self.classId = tmp_def['$id']
+                            self.schemaClass = tmp_def['$id']
+                            clsM = ClassManager(tmp_def,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                            break
+                elif self.schemaAPI is not None:
+                    clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                self.classManagers[clsM.title] = clsM
         elif schema is None:
             self.STATE = "NEW"
             self.classId = schemaClass
@@ -130,21 +217,28 @@ class SchemaManager:
                         ]
                     }
             for clas in self.classIds:
-                clsM = ClassManager(clas,schemaAPI=self.schemaAPI)
+                clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
                 self.classManagers[clsM.title] = clsM
         if fieldGroups is not None and type(fieldGroups) == list:
             if fieldGroups[0] == str:
                 for fgId in fieldGroups:
-                    if self.schemaAPI is None:
-                        Warning("fgManager is set to True but no schema instance has been passed.\n Aborting the creation of field Group Manager")
-                    else:
+                    if self.schemaAPI is not None:
                         definition = self.schemaAPI.getFieldGroup(fgId,full=False)
-                        fgM = FieldGroupManager(definition,schemaAPI=self.schemaAPI)
-                        self.fieldGroupsManagers[fgM.title] = fgM
+                    elif self.localfolder is not None:
+                        fieldGroupPath = self.localfolder / 'fieldgroup'
+                        if fieldGroupPath.exists() is False:
+                            raise Exception(f"The local folder {fieldGroupPath} does not exist. Please create it and extract your sandbox before using it.")
+                        for json_file in fieldGroupPath.glob('*.json'):
+                            tmp_def = json.load(FileIO(json_file))
+                            if tmp_def.get('$id') == fgId:
+                                definition = tmp_def
+                                break
+                    fgM = FieldGroupManager(definition,schemaAPI=self.schemaAPI, localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                    self.fieldGroupsManagers[fgM.title] = fgM
             elif fieldGroups[0] == dict:
                 for fg in fieldGroups:
                     self.fieldGroupIds.append(fg.get('$id'))
-                    fgM = FieldGroupManager(fg,schemaAPI=self.schemaAPI)
+                    fgM = FieldGroupManager(fg,schemaAPI=self.schemaAPI, localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
                     self.fieldGroupsManagers[fgM.title] = fgM
         self.fieldGroupTitles= tuple(fg.title for fg in list(self.fieldGroupsManagers.values()))
         self.fieldGroups = {fg.id:fg.title for fg in list(self.fieldGroupsManagers.values())}
@@ -390,7 +484,7 @@ class SchemaManager:
         It removes the "$id" if one was provided to avoid overriding existing ID.
         """
         if self.schemaAPI is None:
-            raise Exception("Require a Schema instance to connect to the API")
+            raise Exception("The API connection is not set. You are using local storage.")
         if '$id' in self.schema.keys():
             del self.schema['$id']
         if 'meta:altId' in self.schema.keys():
@@ -411,7 +505,7 @@ class SchemaManager:
         Use the PUT method to replace the existing schema with the new definition.
         """
         if self.schemaAPI is None:
-            raise Exception("Require a Schema instance to connect to the API")
+            raise Exception("The API connection is not set. You are using local storage.")
         res = self.schemaAPI.putSchema(self.id,self.schema)
         if 'status' in res.keys():
             if res['status'] == 400:
@@ -551,6 +645,8 @@ class SchemaManager:
         Arguments:
             descriptor : REQUIRED : The operation to add a descriptor to the schema.
         """
+        if self.schemaAPI is None:
+            raise Exception("The API connection is not set. You are using local storage.")
         if descriptor is None:
             raise ValueError('Require an operation to be used')
         res = self.schemaAPI.createDescriptor(descriptor)
@@ -563,6 +659,8 @@ class SchemaManager:
             descriptorId : REQUIRED : The descriptor ID to be updated
             descriptorObj : REQUIRED : The new definition of the descriptor as a dictionary.
         """
+        if self.schemaAPI is None:
+            raise Exception("The API connection is not set. You are using local storage.")
         if descriptorId is None:
             raise ValueError("Require a Descriptor ID")
         if descriptorObj is None or type(descriptorObj) != dict:
@@ -629,8 +727,20 @@ class SchemaManager:
         Get the descriptors of that schema
         """
         if self.STATE=="NEW" or self.id == "":
-            raise Exception("Schema does not exist yet, there can not be a descriptor")    
-        res = self.schemaAPI.getDescriptors(prop=f"xdm:sourceSchema=={self.id}")
+            raise Exception("Schema does not exist yet, there can not be a descriptor")
+        if self.schemaAPI is not None: 
+            res = self.schemaAPI.getDescriptors(prop=f"xdm:sourceSchema=={self.id}")
+        elif self.localfolder is not None:
+            res = []
+            fieldGroupsIds = [fg.id for fg in list(self.fieldGroupsManagers.values())]
+            for json_file in self.descriptorFolder.glob('*.json'):
+                tmp_def = json.load(FileIO(json_file))
+                if tmp_def.get('xdm:sourceSchema') == self.id:
+                    res.append(tmp_def)
+                elif tmp_def.get('xdm:sourceSchema') in fieldGroupsIds:
+                    res.append(tmp_def)
+        else:
+            raise Exception("No API connection set and no local folder provided. No descriptors can be retrieved.")
         return res
 
 
@@ -706,6 +816,8 @@ class SchemaManager:
         NOTE: You will need to update the Schema in case of new field groups have been added. 
         Returns a dictionary such as {'fieldGroupName':'{object returned by the action}'}
         """
+        if self.schemaAPI is None:
+            raise Exception("The API connection is not set. You are using local storage.")
         dict_result = {}
         for key in self.dictFieldGroupWork.keys():
             myFG:Union[FieldGroupManager,list] = self.dictFieldGroupWork[key]
