@@ -553,8 +553,8 @@ class ClassManager:
                     if properties.get('type') == 'array':
                         items = properties.get('items',{}).get('properties',None)
                         if items is not None:
-                            dictionary[key] = [{}]
-                            self.__transformationDict__(items,typed,dictionary=dictionary[key][0])
+                            dictionary[key] = {'key':[{}]}
+                            self.__transformationDict__(items,typed,dictionary=dictionary[key]["key"][0])
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
@@ -569,7 +569,7 @@ class ClassManager:
                     if typed:
                         dictionary[key] = mydict[key].get('type','object')
                         if mydict[key].get('enum',None) is not None:
-                            dictionary[key] = f"string enum: {mydict[key].get('enum',[])}"
+                            dictionary[key] = f"{mydict[key].get('enum',[])}"
                     else:
                         dictionary[key] = ""
         return dictionary

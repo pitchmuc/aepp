@@ -8,7 +8,9 @@ This page list all of the changes that came during the different release of the 
 * refactoring `addField` operation to support more type of DataType and Field Group. Removing some safeguard.
 * adding capabilities for `synchronizer` module to support local file setup.
 * refactoring the `to_dict` and `to_dataframe` to support extended OOTB Field Group
-* better support for `enum` and `map` in `to_dict` method
+* better support for `enum` and `map` in `to_dict` method\
+Patch:
+* improve `map` representation in dict
 
 ## version 0.3.11
 * adding the better compatibility for data type in `FieldgroupManager`

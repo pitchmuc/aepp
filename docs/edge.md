@@ -10,7 +10,7 @@ Alternatively, you can use the docstring in the methods to have more information
 - [Importing the module](importing-edgeserverside)
 - [The Edge class](#instantiation)
   - [The Edge class attributes](#the-edge-class-attributes)
-  - [The Edge methods](#edge-methods)
+  - [The Edge methods](#the-edge-methods)
 - [The IdentityMapHelper class](#the-identitymaphelper-class)
 
 ## What is the edge module in aepp

@@ -21,7 +21,18 @@ The `Synchronizer` class is part of the `synchronizer` module and it takes the f
 * targets : REQUIRED : list of target sandboxes name as strings
 * config : REQUIRED : ConnectObject with the configuration. Make sure that the configuration of your API allows connection to all targeted sandboxes.
 * region : OPTIONAL : region of the sandboxes. default is 'nld2', possible values are: "va7" or "aus5 or "can2" or "ind2"
-* localEnvironment : OPTIONAL : if True, it will use the local environment. Default is False. ## WIP
+* localFolder : OPTIONAL : if provided, it will use the local environment as the base. Default is False.
+                If localFolder is provided, the baseSandbox and targets are not used, and the configuration is used to connect to the local environment.
+                configuration to use local environment is a folder with the name of your sandbox, inside that folder there must a folder for each base component:
+                - class
+                - schema
+                - fieldgroup
+                - datatype
+                - identity
+                - dataset
+                - descriptor
+
+For more details on localFolder, see [local files usage](./localfilesusage.md)
 
 ### Synchronizer attributes
 
@@ -56,11 +67,11 @@ It means that the **name** of the schema, class, field group, data type, dataset
 
 As of today, the synchronization will realize the following operation for the different artefacts: 
 
-Operation |Schema | Class | Field Groups | Data Type | Descriptors | Dataset | Identity | Tags |
---| -- | -- | -- | -- | -- | -- | -- | -- |
-Create | Supported | Supported | Supported | Supported | Supported | Supported | Supported | Planned |
-Update | Supported | Supported | Supported | Supported | Suppported | - | - | Planned |
-Delete | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not Supported |
+Operation |Schema | Class | Field Groups | Data Type | Descriptors | Dataset | Identity | Tags | Audiences
+--| -- | -- | -- | -- | -- | -- | -- | -- | -- |
+Create | Supported | Supported | Supported | Supported | Supported | Supported | Supported | Planned | Planned |
+Update | Supported | Supported | Supported | Supported | Suppported | - | - | Planned | Planned |
+Delete | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported |
 
 It is not supported to delete an artefact or delete a field in an Field Group or Data Type via the Synchronizer.\
 The synchronizer only supports additive operations 
@@ -90,7 +101,6 @@ It also supports the addition of a field group to a schema and replicate that ch
 
 * Tags (dataset)
 * Audiences
-* Local file system as source
 * Profile enabling capabilities
 
 

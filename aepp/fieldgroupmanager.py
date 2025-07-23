@@ -477,6 +477,7 @@ class FieldGroupManager:
             if type(mydict[key]) == dict:
                 if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys():
                     properties = mydict[key].get('properties',None)
+                    additionalProperties = mydict[key].get('additionalProperties',None)
                     if properties is not None:
                         if key != "property" and key != "customFields":
                             if key not in dictionary.keys():
@@ -484,6 +485,12 @@ class FieldGroupManager:
                             self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary[key])
                         else:
                             self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary)
+                    elif additionalProperties is not None:
+                        if additionalProperties.get('type') == 'array':
+                            items = additionalProperties.get('items',{}).get('properties',None)
+                            if items is not None:
+                                dictionary[key] = {'key':[{}]}
+                                self.__transformationDict__(items,typed,dictionary=dictionary[key]["key"][0])
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
@@ -498,7 +505,7 @@ class FieldGroupManager:
                     if typed:
                         dictionary[key] = mydict[key].get('type','object')
                         if mydict[key].get('enum',None) is not None:
-                            dictionary[key] = mydict[key].get('enum',[])
+                            dictionary[key] = f"{mydict[key].get('enum',[])}"
                     else:
                         dictionary[key] = ""
         return dictionary 
