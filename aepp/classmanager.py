@@ -569,7 +569,7 @@ class ClassManager:
                     if typed:
                         dictionary[key] = mydict[key].get('type','object')
                         if mydict[key].get('enum',None) is not None:
-                            dictionary[key] = f"{mydict[key].get('enum',[])}"
+                            dictionary[key] = f"{mydict[key].get('type')} enum: {','.join(mydict[key].get('enum',[]))}"
                     else:
                         dictionary[key] = ""
         return dictionary

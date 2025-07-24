@@ -490,7 +490,7 @@ class Synchronizer:
                 baseClassId = baseSchema.classId
                 tenantidId = baseSchema.tenantId
                 if tenantidId[1:] in baseClassId: ## custom class
-                    baseClassManager = classmanager.ClassManager(baseClassId,config=self.baseConfig,sandbox=target)
+                    baseClassManager = classmanager.ClassManager(baseClassId,config=self.baseConfig,sandbox=target,localFolder=self.localfolder,sandboxBase=self.baseSandbox,tenantidId=tenantidId)
                     self.__syncClass__(baseClassManager,verbose=verbose)
                     targetClassManager = self.dict_targetComponents[target]['class'][baseClassManager.title]
                     classId_toUse = targetClassManager.id
@@ -586,7 +586,7 @@ class Synchronizer:
                         if target_targetSchemaId not in [el['xdm:destinationSchema'] for el in target_OneToOne]: ## descriptor does not exist in target
                             new_desc = targetSchemaManager.createDescriptorOperation(descType=descType,
                                                                         completePath=baseDescriptor['xdm:sourceProperty'],
-                                                                        targetSchemaId=target_targetSchemaId)
+                                                                        targetSchema=target_targetSchemaId)
                             res = targetSchemaManager.createDescriptor(new_desc)
                         else:
                             res = [el for el in target_OneToOne if el['xdm:destinationSchema'] == target_targetSchemaId][0]
@@ -603,7 +603,7 @@ class Synchronizer:
                         target_targetSchemaId = self.dict_targetComponents[targetSchemaManager.sandbox]['schema'][base_targetSchemaName].id
                         new_desc = targetSchemaManager.createDescriptorOperation(descType=descType,
                                                                         completePath=baseDescriptor['xdm:sourceProperty'],
-                                                                        targetSchemaId=target_targetSchemaId)
+                                                                        targetSchema=target_targetSchemaId)
                         res = targetSchemaManager.createDescriptor(new_desc)
                     list_descriptors.append(res)
                 case "xdm:descriptorLabel":

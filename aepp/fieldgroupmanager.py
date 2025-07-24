@@ -479,12 +479,9 @@ class FieldGroupManager:
                     properties = mydict[key].get('properties',None)
                     additionalProperties = mydict[key].get('additionalProperties',None)
                     if properties is not None:
-                        if key != "property" and key != "customFields":
-                            if key not in dictionary.keys():
-                                dictionary[key] = {}
-                            self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary[key])
-                        else:
-                            self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary)
+                        if key not in dictionary.keys():
+                            dictionary[key] = {}
+                        self.__transformationDict__(mydict[key]['properties'],typed,dictionary=dictionary[key])
                     elif additionalProperties is not None:
                         if additionalProperties.get('type') == 'array':
                             items = additionalProperties.get('items',{}).get('properties',None)
@@ -505,7 +502,7 @@ class FieldGroupManager:
                     if typed:
                         dictionary[key] = mydict[key].get('type','object')
                         if mydict[key].get('enum',None) is not None:
-                            dictionary[key] = f"{mydict[key].get('enum',[])}"
+                            dictionary[key] = f"{mydict[key].get('type')} enum: {','.join(mydict[key].get('enum',[]))}"
                     else:
                         dictionary[key] = ""
         return dictionary 
@@ -536,10 +533,7 @@ class FieldGroupManager:
             if type(mydict[key]) == dict:
                 if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys():
                     if path is None:
-                        if key != "property" and key != "customFields":
-                            tmp_path = key
-                        else:
-                            tmp_path = None
+                        tmp_path = key
                     else:
                         tmp_path = f"{path}.{key}"
                     if tmp_path is not None:
@@ -1123,7 +1117,14 @@ class FieldGroupManager:
             typed : OPTIONAL : If you want the type associated with the field group to be given.
             save : OPTIONAL : If you wish to save the dictionary in a JSON file
         """
+        list_allOf_keys = [el['$ref'].split('/').pop() for el in self.fieldGroup.get('allOf',[])]
         definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
+        if len(list_allOf_keys) > 0:
+            definition_deep = {}
+            for key in list_allOf_keys:
+                if definition.get(key,None) is not None:
+                    definition_deep = self.__simpleDeepMerge__(definition_deep,definition[key]['properties'])
+            definition = definition_deep
         data = self.__transformationDict__(definition,typed)
         mySom = som.Som(data)
         if len(self.dataTypes)>0:
@@ -1170,7 +1171,14 @@ class FieldGroupManager:
             excludeObjects : OPTIONAL : Remove the fields that are noted down as object so only fields containing data are returned.
             required : OPTIONAL : If you want to have the required field in the dataframe (default False)
         """
+        list_allOf_keys = [el['$ref'].split('/').pop() for el in self.fieldGroup.get('allOf',[])]
         definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
+        if len(list_allOf_keys)> 0:
+            definition_deep = {}
+            for key in list_allOf_keys:
+                if definition.get(key,None) is not None:
+                    definition_deep = self.__simpleDeepMerge__(definition_deep,definition[key]['properties'])
+            definition = definition_deep
         data = self.__transformationDF__(definition,queryPath=queryPath,description=description,xdmType=xdmType,required=required)
         df = pd.DataFrame(data)
         df = df[~df.path.duplicated()].copy() ## dedup the paths

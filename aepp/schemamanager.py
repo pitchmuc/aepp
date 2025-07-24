@@ -445,7 +445,7 @@ class SchemaManager:
                 else:
                     tmp_df['required'] = tmp_df['required'].apply(lambda x: False if x != True else x)
             df = pd.concat([df,tmp_df],ignore_index=True)
-        df = df[~df.duplicated(subset=['path','fieldGroup'])].reset_index(drop=True)
+        df = df[~df.duplicated(subset=['path'])].reset_index(drop=True)
         if required:
             list_required = self.requiredFields
             if len(list_required) > 0:
