@@ -10,7 +10,10 @@ This page list all of the changes that came during the different release of the 
 * refactoring the `to_dict` and `to_dataframe` to support extended OOTB Field Group
 * better support for `enum` and `map` in `to_dict` method\
 Patch:
-* improve `map` representation in dict
+* improve `map` representation in dict for FieldGroupManager
+* improve `enum` export in dict for FieldGroupManager
+* support custom fieldgroups not following `customFields` setup
+* `synchronizer` fix for reference to localFolder setup
 
 ## version 0.3.11
 * adding the better compatibility for data type in `FieldgroupManager`
