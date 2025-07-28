@@ -1399,7 +1399,8 @@ class Schema:
         full: bool = True,
         type: str = 'xed',
         version: str = "1",
-        save: bool = False
+        save: bool = False,
+        **kwargs
     ):
         """
         Retrieve a specific data type id
@@ -1423,6 +1424,8 @@ class Schema:
             xfull = "-full"
         if full == False:
             xfull = ""
+        if kwargs.get('xtype',None) is not None and kwargs.get('xtype', None) != type:
+            type = kwargs.get('xtype')
         privateHeader.update(
             {"Accept": f"application/vnd.adobe.{type}{xfull}+json; version={version}"}
         )

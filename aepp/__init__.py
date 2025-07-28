@@ -19,6 +19,7 @@ from typing import Union
 from copy import deepcopy
 from pathlib import Path
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 connection = None
 
@@ -164,46 +165,63 @@ def extractSandboxArtefacts(
     myclasses = sch.getClasses()
     classesGlobal = sch.getClassesGlobal()
     behaviors = sch.getBehaviors()
-    for element in behaviors:
-        def_beh = sch.getBehavior(element['$id'],full=True,xtype='xed')
-        with open(f"{behavPath / def_beh['$id'].split('/').pop()}.json",'w') as f:
-            json.dump(def_beh,f,indent=2)
-    for element in myclasses:
-        def_cl = sch.getClass(element['$id'],full=False,xtype='xed')
-        with open(f"{classPath / def_cl['$id'].split("/").pop()}.json",'w') as f:
-            json.dump(def_cl,f,indent=2)
-    for element in classesGlobal:
-        def_cl = sch.getClass(element['$id'],full=True,xtype='xed')
-        with open(f"{classPath / def_cl['$id'].split("/").pop()}.json",'w') as f:
-            json.dump(def_cl,f,indent=2)
-    myschemas = sch.getSchemas()
-    for element in myschemas:
-        def_sc = sch.getSchema(element['$id'],full=False)
-        with open(f"{schemaPath / def_sc['$id'].split("/").pop()}.json",'w') as f:
-            json.dump(def_sc,f,indent=2)
-    myfgs = sch.getFieldGroups()
-    globalFgs = sch.getFieldGroupsGlobal()
-    for element in myfgs:
-        def_fg = sch.getFieldGroup(element['$id'],full=False)
-        with open(f"{fieldgroupPath / def_fg['$id'].split("/").pop()}.json",'w') as f:
-            json.dump(def_fg,f,indent=2)
-    for element in globalFgs:
-        def_fg = sch.getFieldGroup(element['$id'],full=True)
-        with open(f"{fieldgroupPath / def_fg['$id'].split('/').pop()}.json",'w') as f:
-            json.dump(def_fg,f,indent=2)
-    mydt = sch.getDataTypes()
-    globalDataTypes = sch.getDataTypesGlobal()
-    for element in mydt + globalDataTypes:
-        def_dt = sch.getDataType(element['meta:altId'],full=False)
+    def writingFullFile(tuple_element):
+        element,path,id_key,method = tuple_element
         try:
-            with open(f"{datatypePath / def_dt['$id'].split("/").pop()}.json",'w') as f:
-                json.dump(def_dt,f,indent=2)
-        except: ## not supporting geo data types with HTTP reference
+            if method is not None:
+                definition = method(element[id_key],full=True,xtype='xed')
+                with open(f"{path / definition[id_key].split('/').pop()}.json",'w') as f:
+                    json.dump(definition,f,indent=2)
+            else:
+                with open(f"{path / element[id_key]}.json",'w') as f:
+                    json.dump(element,f,indent=2)
+        except Exception as e: ### some geo data types are not available
             pass
+    def writingFalseFile(tuple_element):
+        element,path,id_key,method = tuple_element
+        try:
+            definition = method(element[id_key],full=False,xtype='xed')
+            with open(f"{path / definition[id_key].split('/').pop()}.json",'w') as f:
+                json.dump(definition,f,indent=2)
+        except Exception as e: ### some geo data types are not available
+            pass
+    behavElements = [(element, behavPath, '$id',sch.getBehavior) for element in behaviors]
+    with ThreadPoolExecutor(thread_name_prefix = 'behavior') as thread_pool:
+        results = thread_pool.map(writingFullFile, behavElements)
+    ## writing classes
+    classesElements = [(element, classPath, '$id',sch.getClass) for element in myclasses]
+    with ThreadPoolExecutor(thread_name_prefix = 'behavior') as thread_pool:
+        results = thread_pool.map(writingFalseFile, classesElements)
+    classGlobalElements = [(element, classPath, '$id',sch.getClass) for element in classesGlobal]
+    with ThreadPoolExecutor(thread_name_prefix = 'classGlobal') as thread_pool:
+        results = thread_pool.map(writingFullFile, classGlobalElements)
+    myschemas = sch.getSchemas()
+    schemaElement = [(element, schemaPath, '$id', sch.getSchema) for element in myschemas]
+    with ThreadPoolExecutor(thread_name_prefix = 'schema') as thread_pool:
+        results = thread_pool.map(writingFalseFile, schemaElement)
+    ## writing field groups
+    myfgs = sch.getFieldGroups()
+    fgsElements = [(element, fieldgroupPath, '$id', sch.getFieldGroup) for element in myfgs]
+    with ThreadPoolExecutor(thread_name_prefix = 'fieldgroup') as thread_pool:  
+        results = thread_pool.map(writingFalseFile, fgsElements)
+    globalFgs = sch.getFieldGroupsGlobal()
+    globalFgsElements = [(element, fieldgroupPath, '$id', sch.getFieldGroup) for element in globalFgs]
+    with ThreadPoolExecutor(thread_name_prefix = 'globalFieldgroup') as thread_pool:
+        results = thread_pool.map(writingFullFile, globalFgsElements)
+    ## writing data types
+    mydt = sch.getDataTypes()
+    datatypeElements = [(element, datatypePath, 'meta:altId', sch.getDataType) for element in mydt]
+    with ThreadPoolExecutor(thread_name_prefix = 'datatype') as thread_pool:
+        results = thread_pool.map(writingFalseFile, datatypeElements)
+    globalDataTypes = sch.getDataTypesGlobal()
+    globalDataTypesElements = [(element, datatypePath, 'meta:altId', sch.getDataType) for element in globalDataTypes]
+    with ThreadPoolExecutor(thread_name_prefix = 'globalDatatype') as thread_pool:
+        results = thread_pool.map(writingFalseFile, globalDataTypesElements)
+    ## writing descriptors
     descriptors = sch.getDescriptors()
-    for element in descriptors:
-        with open(f"{descriptorPath / element['@id']}.json",'w') as f:
-            json.dump(element,f,indent=2)
+    descriptorsElements = [(element,descriptorPath,'@id',None) for element in descriptors]
+    with ThreadPoolExecutor(thread_name_prefix = 'descriptors') as thread_pool:
+        results = thread_pool.map(writingFullFile, descriptorsElements)
     datasets = cat.getDataSets()
     for key,value in datasets.items():
         value['id'] = key
