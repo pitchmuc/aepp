@@ -14,6 +14,7 @@ Patch:
 * improve `enum` export in dict for FieldGroupManager
 * support custom fieldgroups not following `customFields` setup
 * `synchronizer` fix for reference to localFolder setup
+* patch creation of synchronizer without using the `localFolder` capability
 
 ## version 0.3.11
 * adding the better compatibility for data type in `FieldgroupManager`

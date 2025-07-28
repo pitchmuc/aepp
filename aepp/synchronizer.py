@@ -39,6 +39,7 @@ class Synchronizer:
                 - descriptor
         """
         self.baseSandbox = None
+        self.localfolder = None
         if targets is None:
             raise ValueError("a list of target sandboxes must be provided - at least one")
         if config is None or type(config) != aepp.ConnectObject:
