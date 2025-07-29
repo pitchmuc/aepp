@@ -1,0 +1,32 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["$id","meta:altId","title", "meta:resourceType"],
+    "$id": {"type": "string"},
+    "title": {"type": "string"},
+    "meta:resourceType": {
+                "type": "string",
+                "const": "behaviors"
+            },
+    "properties": {
+        "property": {
+            "title": {"type":"string"},
+            "type": {"type":"string","enum": [
+                                        "object",
+                                        "array",
+                                        "string",
+                                        "number",
+                                        "integer",
+                                        "boolean",
+                                        "date",
+                                        "date-time",
+                                        "null"
+                                    ]},
+            "format": {"type":"string"},
+            "description": {"type":"string"},
+            "meta:xdmType": {"type":"string"},
+            "meta:xdmField": {"type":"string"}
+            }
+    }
+        
+}

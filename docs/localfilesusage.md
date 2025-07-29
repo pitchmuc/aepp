@@ -22,12 +22,12 @@ In that case, we have defined a clear structure for the artefacts that are suppo
 The structure is as follow: 
 
 sandbox_folder\
-  \class
-  \schema
-  \fieldgroup
-  \datatype
-  \descriptor
-  \identity
+  \class\
+  \schema\
+  \fieldgroup\
+  \datatype\
+  \descriptor\
+  \identity\
   \dataset
 
 
@@ -55,6 +55,44 @@ import aepp
 prod = aepp.importConfigFile('myconfig.json',sandbox='prod',connectInstance=True)
 aepp.extractSandboxArtefacts(prod,localFolder='prodFolder',region='va7')
 ```
+
+## Setting up your own extractor
+
+It may be that you have your own pipeline to work on the extraction of the artefact from AEP.\
+If that is the case, you can refer to the different schema definition of the artefacts needed for the synchronizer to work.
+
+The schema definition provides the required fields and the format that you need to ensure having for the different tools define below to work.
+
+### Behavior schema
+
+You can find the definition of the behavior elements here: [behavior schema](behavior.json)
+
+
+### Class schema
+
+You can find the definition of the class elements here: [class schema](class.json)
+
+
+### Schema schema 
+
+The definition of the schema elements are here: [schema schema](schema.json)
+
+
+### Field Group schema
+
+The definition of the field group elements are here: [field group schema](fieldgroup.json)
+
+
+### Data Types schema 
+
+The definition of the data types elements are here: [data type schema](datatype.json)
+
+
+### Descriptor schema
+
+The descriptors schema needed for the resolution of dependency are defined here: [descriptor schema](descriptor.json) 
+
+
 
 ## Using the local storage
 
@@ -113,5 +151,6 @@ synchronizor = synchronizer.Synchronizer(targets=['target-sandbox1'],config=conf
 synchronizor.syncComponent('my-schema',componentType='schema',verbose=True)
 
 ```
+
 
 

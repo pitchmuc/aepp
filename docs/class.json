@@ -1,0 +1,196 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"required": [
+		"$id",
+		"meta:altId",
+		"title",
+		"meta:resourceType",
+		"allOf"
+	],
+	"$id": {
+		"type": "string"
+	},
+	"title": {
+		"type": "string"
+	},
+	"meta:resourceType": {
+		"type": "string",
+		"const": "class"
+	},
+	"properties": {
+		"property": {
+			"title": {
+				"type": "string"
+			},
+			"type": {
+				"type": "string",
+				"enum": [
+					"object",
+					"array",
+					"string",
+					"number",
+					"integer",
+					"boolean",
+					"date",
+					"date-time",
+					"null"
+				]
+			},
+			"format": {
+				"type": "string"
+			},
+			"description": {
+				"type": "string"
+			},
+			"meta:xdmType": {
+				"type": "string"
+			},
+			"meta:xdmField": {
+				"type": "string"
+			},
+			"properties": {
+				"$ref": "#/$defs"
+			},
+			"additionalProperties": true
+		},
+		"additionalProperties": true
+	},
+	"meta:extends": {
+		"type": "array",
+        "items":{
+            "type":"string"
+        }
+	},
+    "meta:tags": {
+        "type": "object"
+    },
+    "meta:tenantNamespace": {
+        "type": "string"
+    },
+	"$defs": {
+		"type": {
+			"type": "string"
+		},
+		"description": "A field definition that can represent object, array, or primitive.",
+		"properties": {
+			"type": {
+				"type": "string",
+				"enum": [
+					"object",
+					"array",
+					"string",
+					"number",
+					"integer",
+					"boolean",
+					"date",
+					"date-time",
+					"null"
+				]
+			},
+			"title": {
+				"type": "string"
+			},
+			"description": {
+				"type": "string"
+			},
+			"minimum": {
+				"type": "number"
+			},
+			"maximum": {
+				"type": "number"
+			},
+			"minLength": {
+				"type": "number"
+			},
+			"exclusiveMinimum": {
+				"type": "number"
+			},
+			"exclusiveMaximum": {
+				"type": "number"
+			},
+			"maxLength": {
+				"type": "number"
+			},
+			"minItems": {
+				"type": "number"
+			},
+			"maxItems": {
+				"type": "number"
+			},
+			"uniqueItems": {
+				"type": "boolean"
+			},
+			"default": {
+
+			},
+			"mapFieldType": {
+				"type": "string"
+			},
+			"format": {
+				"type": "string"
+			},
+			"pattern": {
+				"type": "string"
+			},
+			"enum": {
+				"type": "array",
+				"items": {
+					"type": "string"
+				}
+			},
+			"isRequired": {
+				"type": "boolean"
+			},
+			"required": {
+				"type": "array",
+				"items": {
+					"type": "string"
+				}
+			},
+			"meta:xdmType": {
+				"type": "string"
+			},
+			"meta:status": {
+				"type": "string"
+			},
+			"meta:enum": {
+				"type": "object",
+				"additionalProperties": true
+			},
+			"meta:ui": {
+				"type": "object",
+				"additionalProperties": true
+			},
+			"meta:referencedFrom": {
+				"type": "string"
+			},
+			"meta:xdmField": {
+				"type": "string"
+			},
+			"meta:immutable": {
+				"type": "boolean"
+			},
+			"meta:usereditable": {
+				"type": "boolean"
+			},
+			"meta:sourceSchema": {
+				"type": "array"
+			},
+			"meta:xedConverted": {
+				"type": "boolean"
+			},
+			"properties": {
+				"$ref": "#/$defs/fieldDefinition",
+				"additionalProperties": true
+			},
+			"items": {
+				"$ref": "#/$defs/fieldDefinition"
+			},
+			"note": {
+				"type": "string"
+			},
+			"additionalProperties": true
+		}
+	}
+}
