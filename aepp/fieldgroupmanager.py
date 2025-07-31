@@ -334,6 +334,7 @@ class FieldGroupManager:
             path : the path currently set
             completePath : the complete path from the start.
         """
+        list_allOf_keys = [el['$ref'].split('/').pop() for el in self.fieldGroup.get('allOf',[])]
         finalPath = None
         if results is None:
             results=[]
@@ -405,7 +406,7 @@ class FieldGroupManager:
                         tmp_completePath = f"{completePath}/{key}"
                     tmp_completePath += f"/properties"
                     if path is None:
-                        if key != "property" and key != "customFields" :
+                        if key not in list_allOf_keys:
                             tmp_path = key
                         else:
                             tmp_path = None
@@ -422,7 +423,7 @@ class FieldGroupManager:
                     tmp_completePath += f"/items/properties"
                     if levelProperties is not None:
                         if path is None:
-                            if key != "property" and key != "customFields":
+                            if key not in list_allOf_keys:
                                 tmp_path = key
                             else:
                                 tmp_path = None
@@ -1118,7 +1119,7 @@ class FieldGroupManager:
             save : OPTIONAL : If you wish to save the dictionary in a JSON file
         """
         list_allOf_keys = [el['$ref'].split('/').pop() for el in self.fieldGroup.get('allOf',[])]
-        definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
+        definition = deepcopy(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{})))
         if len(list_allOf_keys) > 0:
             definition_deep = {}
             for key in list_allOf_keys:
@@ -1172,7 +1173,7 @@ class FieldGroupManager:
             required : OPTIONAL : If you want to have the required field in the dataframe (default False)
         """
         list_allOf_keys = [el['$ref'].split('/').pop() for el in self.fieldGroup.get('allOf',[])]
-        definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
+        definition = deepcopy(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{})))
         if len(list_allOf_keys)> 0:
             definition_deep = {}
             for key in list_allOf_keys:

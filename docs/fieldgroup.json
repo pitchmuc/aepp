@@ -2,69 +2,59 @@
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
 	"type": "object",
 	"required": [
+		"title",
 		"$id",
 		"meta:altId",
-		"title",
-		"meta:resourceType",
-		"allOf"
+		"meta:intendedToExtend",
+		"meta:resourceType"
 	],
 	"$id": "string",
+	"meta:altId": "string",
 	"title": "string",
+	"description": "string",
 	"meta:resourceType": {
 		"type": "string",
-		"const": "class"
+		"const": "mixins"
 	},
-	"properties": {
-		"property": {
-			"title": {
-				"type": "string"
-			},
-			"type": {
-				"type": "string",
-				"enum": [
-					"object",
-					"array",
-					"string",
-					"number",
-					"integer",
-					"boolean",
-					"date",
-					"date-time",
-					"null"
-				]
-			},
-			"format": {
-				"type": "string"
-			},
-			"description": {
-				"type": "string"
-			},
-			"meta:xdmType": {
-				"type": "string"
-			},
-			"meta:xdmField": {
-				"type": "string"
-			},
+	"allOf": [{
+		"type": "array",
+		"items": {
+			"type": "object",
 			"properties": {
-				"$ref": "#/$defs"
-			},
-			"additionalProperties": true
-		},
-		"additionalProperties": true
+				"$ref": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			}
+		}
+	}],
+    "definitions":{
+        "type":"object",
+        "properties":{
+            "property":{
+                "type":"object",
+                "$ref":"#/$defs"
+            },
+            "propertyNames":{
+                "pattern":"[A-Za-z0-9_]"
+            }
+        }
+    },
+	"properties": {
+		"type": "object",
+        "$ref":"#/defs"
 	},
 	"meta:extends": {
-		"type": "array",
-        "items":{
-            "type":"string"
-        }
+		"type": "array"
 	},
-    "meta:tags": {
-        "type": "object"
-    },
-    "meta:tenantNamespace": {
-        "type": "string"
-    },
-	"$defs": {
+	"meta:tenantNamespace":"string",
+	"meta:intendedToExtend": {
+		"type": "array"
+	},
+	"version": "string",
+    "$defs":{
         "propertyNames":{
             "pattern":"[A-Za-z0-9_]"
         },
@@ -191,5 +181,6 @@
 			},
 			"additionalProperties": true
 		}
-	}
+	},
+	"additionalProperties": true
 }

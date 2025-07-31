@@ -460,7 +460,7 @@ class AdobeRequest:
                 print(f"status: {res.status_code}")
                 print(res.text)
             if res.status_code != 200:
-                res_header = res.headers()
+                res_header = res.headers
             else:
                 res_header = {}
         return res_header

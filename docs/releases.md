@@ -15,6 +15,9 @@ Patch:
 * support custom fieldgroups not following `customFields` setup
 * `synchronizer` fix for reference to localFolder setup
 * patch creation of synchronizer without using the `localFolder` capability
+* adding the `getDatasets` method in `schemaManager`
+* fixing issue on `to_dataframe` and `to_dict` `__simpleMerge__` usage
+* fixing issue on `searchField` for edge-case fieldgroup definitions
 
 ## version 0.3.11
 * adding the better compatibility for data type in `FieldgroupManager`

@@ -478,6 +478,17 @@ class SchemaManager:
         """
         return som.Som(self.to_dict())
 
+    def getDatasets(self)->dict:
+        """
+        Return the datasets that are using that schema
+        """
+        if self.schemaAPI is None:
+            raise Exception("require a schema API")
+        from aepp import catalog
+        cat = catalog.Catalog(config=self.schemaAPI.connector.config)
+        datasets = cat.getDataSets(property=f"schemaRef.id=={self.id}")
+        return datasets
+
     def createSchema(self)->dict:
         """
         Send a createSchema request to AEP to create the schema.

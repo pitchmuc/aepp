@@ -1,0 +1,30 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["title","$id","meta:altId","allOf","meta:class","meta:resourceType"],
+    "$id":"string",
+    "meta:altId":{"type":"string"},
+    "title":"string",
+    "description":"string",
+    "meta:resourceType": {
+		"type": "string",
+		"const": "schemas"
+	},
+    "allOf":[{
+        "type":"array",
+        "items":{
+            "type":"object",
+            "properties":{
+                "$ref":{"type":"string"},
+                "type":{
+                    "type":"string"
+                }
+            }
+        }
+    }],
+    "meta:extends":{"type":"array"},
+    "meta:tenantNamespace": {"type":"string"},
+    "meta:class":{"type":"string"},
+    "version":{"type":"string"},
+    "additionalProperties":true
+}
