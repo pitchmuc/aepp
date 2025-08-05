@@ -1,6 +1,67 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"type": "object",
+	"$id": "class-json",
+	"properties":{
+		"$id":{"type":"string"},
+		"type": "object",
+		"title":{ "type": "string"},
+		"meta:resourceType": {
+			"type": "string",
+			"const": "class"
+		},
+		"properties": {
+			"property": {
+				"title": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string",
+					"enum": [
+						"object",
+						"array",
+						"string",
+						"number",
+						"integer",
+						"boolean",
+						"date",
+						"date-time",
+						"null"
+					]
+				},
+				"format": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"meta:xdmType": {
+					"type": "string"
+				},
+				"meta:xdmField": {
+					"type": "string"
+				},
+				"properties": {
+					"$ref": "#/$defs"
+				},
+				"additionalProperties": true
+			},
+			"additionalProperties": true
+		},
+		"meta:extends": {
+			"type": "array",
+			"items":{
+				"type":"string"
+			}
+		},
+		"meta:tags": {
+			"type": "object"
+		},
+		"meta:tenantNamespace": {
+			"type": "string"
+    	},
+		"additionalProperties":true
+	},
+	
 	"required": [
 		"$id",
 		"meta:altId",
@@ -8,69 +69,11 @@
 		"meta:resourceType",
 		"allOf"
 	],
-	"$id": "string",
-	"title": "string",
-	"meta:resourceType": {
-		"type": "string",
-		"const": "class"
-	},
-	"properties": {
-		"property": {
-			"title": {
-				"type": "string"
-			},
-			"type": {
-				"type": "string",
-				"enum": [
-					"object",
-					"array",
-					"string",
-					"number",
-					"integer",
-					"boolean",
-					"date",
-					"date-time",
-					"null"
-				]
-			},
-			"format": {
-				"type": "string"
-			},
-			"description": {
-				"type": "string"
-			},
-			"meta:xdmType": {
-				"type": "string"
-			},
-			"meta:xdmField": {
-				"type": "string"
-			},
-			"properties": {
-				"$ref": "#/$defs"
-			},
-			"additionalProperties": true
-		},
-		"additionalProperties": true
-	},
-	"meta:extends": {
-		"type": "array",
-        "items":{
-            "type":"string"
-        }
-	},
-    "meta:tags": {
-        "type": "object"
-    },
-    "meta:tenantNamespace": {
-        "type": "string"
-    },
 	"$defs": {
         "propertyNames":{
             "pattern":"[A-Za-z0-9_]"
         },
-		"type": {
-			"type": "string"
-		},
+		"type": "object",
 		"description": "A field definition that can represent object, array, or primitive.",
 		"properties": {
 			"type": {

@@ -1,7 +1,7 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
 	"type": "object",
-	"$id":"fieldgroup-json",
+	"$id":"datatype-json",
 	"required": [
 		"title",
 		"$id",
@@ -16,7 +16,7 @@
 		"description": {"type":"string"},
 		"meta:resourceType": {
 			"type": "string",
-			"const": "mixins"
+			"const": "datatypes"
 		},
 		"meta:extends": {
 		"type": "array"
