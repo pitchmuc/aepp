@@ -169,6 +169,14 @@ Arguments:
 ### to_xdm
 Return the class definition as XDM
 
+### to_pydantic
+Generate a dictionary representing the field group constitution\
+Arguments:
+* save : OPTIONAL : If you wish to save the dictionary in a JSON file
+* origin : OPTIONAL : If you want to specify the origin of the class.\
+possible kwargs:
+* output_model_type : The model that is outputed, default PydanticV2BaseModel
+
 ### createClass
 Create the custom classs
 

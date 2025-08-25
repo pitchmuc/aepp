@@ -52,5 +52,5 @@ setuptools.setup(
     ],
     python_requires='>=3.10',
     install_requires=['pandas', "requests",
-                      "PyJWT", "pathlib2", "PyJWT[crypto]", "tenacity", "deprecation"],
+                      "PyJWT", "pathlib2", "PyJWT[crypto]", "tenacity", "deprecation","datamodel-code-generator"],
 )

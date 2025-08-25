@@ -21,6 +21,9 @@ from .classmanager import ClassManager
 from .catalog import ObservableSchemaManager
 from aepp.schema import Schema
 from aepp import som
+from tempfile import TemporaryDirectory
+from datamodel_code_generator import InputFileType, generate
+from datamodel_code_generator import DataModelType
 
 class SchemaManager:
     """
@@ -477,6 +480,44 @@ class SchemaManager:
         Generate a SOM object representing the Schema constitution
         """
         return som.Som(self.to_dict())
+
+    def to_pydantic(self,save:bool=False,**kwargs)->str:
+        """
+        Transform the schema into a compatible pydantic model.
+        Arguments:
+            save : OPTIONAL : If you want to save the pydantic model as a python file.
+        possible kwargs:
+            output_model_type : The model that is outputed, default PydanticV2BaseModel
+        """
+        list_pydantics = [fbm.to_pydantic(origin='schema') for fbm in list(self.fieldGroupsManagers.values())]
+        list_class_pydantics = [clm.to_pydantic(origin='schema') for clm in list(self.classManagers.values())]
+        result = {}
+        for mydict in list_class_pydantics:
+            result = self.__simpleDeepMerge__(result,mydict)
+        for mydict in list_pydantics:
+            result = self.__simpleDeepMerge__(result,mydict)
+        pydantic_schema = {}
+        pydantic_schema['title'] = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}')
+        pydantic_schema['description'] = self.schema.get('description','')
+        pydantic_schema['type'] = 'object'
+        pydantic_schema["$schema"] = "http://json-schema.org/draft-07/schema#"
+        pydantic_schema['properties'] = deepcopy(result)
+        modelTypeOutput = kwargs.get("output_model_type",DataModelType.PydanticV2BaseModel)
+        with TemporaryDirectory() as temporary_directory_name:
+            temporary_directory = Path(temporary_directory_name)
+            output = Path(temporary_directory / 'tmp_model.py')
+            generate(
+                json.dumps(pydantic_schema),
+                input_file_type=InputFileType.JsonSchema,
+                output=output,
+                output_model_type=modelTypeOutput,
+            )
+            mydata: str = output.read_text()
+        if save:
+            with open(f"pydantic_{self.schema.get('title',f'unknown_schema_{str(int(time.time()))}')}.py",'w') as f:
+                f.write(mydata)
+        return mydata
+
 
     def getDatasets(self)->dict:
         """

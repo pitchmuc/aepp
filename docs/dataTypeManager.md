@@ -178,6 +178,13 @@ Arguments:
 * xdmType : OPTIONAL : If you want to retrieve the xdm Data Type (default False)
 * required : OPTIONAL : Provide an extra column `required` to specify which fields are set as required
 
+### to_pydantic
+Generate a Pydantic model representing the Data Type constitution\
+Arguments:
+* save : OPTIONAL : If you wish to save it with the title used by the field group.
+  save as json with the title used. Not title, used "unknown_fieldGroup_" + timestamp.\
+possible kwargs:
+* output_model_type : The model that is outputed, default PydanticV2BaseModel
 
 ### to_xdm
 Return the Data Type definition as XDM

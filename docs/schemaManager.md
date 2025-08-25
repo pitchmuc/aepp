@@ -218,6 +218,13 @@ Return a dictionary of the whole schema. You need to have instanciated the Field
 Generate a Som instance of the dictionary. Helping the manipulation of the dictionary if needed. 
 Documentation on [SOM](./som.md)
 
+### to_pydantic
+Transform the schema into a compatible pydantic model.\
+Arguments:
+* save : OPTIONAL : If you want to save the pydantic model as a python file.\
+possible kwargs:
+* output_model_type : The model that is outputed, default PydanticV2BaseModel
+
 ### createSchema
 Send a createSchema request to AEP to create the schema.\
 It removes the "$id" if one was provided to avoid overriding existing ID.

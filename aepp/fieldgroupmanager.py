@@ -21,6 +21,9 @@ from aepp.schema import Schema
 from aepp import som
 from pathlib import Path
 from io import FileIO
+from tempfile import TemporaryDirectory
+from datamodel_code_generator import InputFileType, generate
+from datamodel_code_generator import DataModelType
 
 class FieldGroupManager:
     """
@@ -506,7 +509,52 @@ class FieldGroupManager:
                             dictionary[key] = f"{mydict[key].get('type')} enum: {','.join(mydict[key].get('enum',[]))}"
                     else:
                         dictionary[key] = ""
-        return dictionary 
+        return dictionary
+    
+    def __transformationPydantic__(self,mydict:dict=None,dictionary:dict=None)->dict:
+        """
+        Transform the current XDM class to a dictionary compatible with pydantic.
+        mydict : the class definition to traverse
+        dictionary : the dictionary that gather the paths
+        """
+        if dictionary is None:
+            dictionary = {
+                'properties':{},
+                'type':'object'
+            }
+            dictionary = dictionary['properties']
+        else:
+            dictionary = dictionary
+        for key in mydict:
+            if type(mydict[key]) == dict:
+                if mydict[key].get('type') == 'object' and 'properties' in mydict[key].keys():
+                    properties = mydict[key].get('properties',None)
+                    if properties is not None:
+                        if key != "property" and key != "customFields":
+                            if key not in dictionary.keys():
+                                dictionary[key] = {'properties':{},'type':'object'}
+                            self.__transformationPydantic__(mydict[key]['properties'],dictionary=dictionary[key]['properties'])
+                        else:
+                            self.__transformationPydantic__(mydict[key]['properties'],dictionary=dictionary[key]['properties'])
+                elif mydict[key].get('type') == 'object' and 'additionalProperties' in mydict[key].keys():
+                    properties = mydict[key].get('additionalProperties',{})
+                    if properties.get('type') == 'array':
+                        items = properties.get('items',{}).get('properties',None)
+                        if items is not None:
+                            dictionary[key] = {'properties':{'patternProperties':{"^.*$":{'items':{'properties':{},'type':'object'}, 'type':'array'}}},'type':'object'}
+                            self.__transformationPydantic__(items,dictionary=dictionary[key]['properties']['patternProperties']["^.*$"]['items']['properties'])
+                        else:
+                            dictionary[key] = {'properties':{'patternProperties':{"^.*$":{'properties':{'additionalProperties':True},'type':'object'}, 'type':'object'}}}
+                elif mydict[key].get('type') == 'array':
+                    levelProperties = mydict[key]['items'].get('properties',None)
+                    if levelProperties is not None:
+                        dictionary[key] = {'type':'array','items':{'properties':{},'type':'object'}}
+                        self.__transformationPydantic__(levelProperties,dictionary[key]['items']['properties'])
+                    else:
+                        dictionary[key] = {'type':'array','items':{'type':mydict[key].get('items',{}).get('type','object')}}
+                else:
+                    dictionary[key] = {'type':mydict[key].get('type','object')}
+        return dictionary
 
     def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,queryPath:bool=False,description:bool=False,xdmType:bool=False,required:bool=False)->dict:
         """
@@ -1131,7 +1179,7 @@ class FieldGroupManager:
         if len(self.dataTypes)>0:
             paths = self.getDataTypePaths()
             for path,dataElementId in paths.items():
-                dict_dataType = self.getDataTypeManager(dataElementId).to_dict()
+                dict_dataType = self.getDataTypeManager(dataElementId).to_dict(typed=typed)
                 clean_path = path.replace('[]{}','.[0]')
                 mySom.assign(clean_path,dict_dataType)
         if self.metaExtend is not None:
@@ -1151,6 +1199,67 @@ class FieldGroupManager:
         Generate a SOM object representing the field group constitution
         """
         return som.Som(self.to_dict())
+
+    def to_pydantic(self,save:bool=False,origin:str="self",**kwargs)->Union[str,dict]:
+        """
+        Generate a dictionary representing the field group constitution
+        Arguments:
+            save : OPTIONAL : If you wish to save the dictionary in a JSON file
+            origin : OPTIONAL : Needed to identify who is calling the method. Default is "self".
+        possible kwargs:
+            output_model_type : The model that is outputed, default PydanticV2BaseModel
+        """
+        list_allOf_keys = [el['$ref'].split('/').pop() for el in self.fieldGroup.get('allOf',[])]
+        definition = deepcopy(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{})))
+        if len(list_allOf_keys) > 0:
+            definition_deep = {}
+            for key in list_allOf_keys:
+                if definition.get(key,None) is not None:
+                    definition_deep = self.__simpleDeepMerge__(definition_deep,deepcopy(definition[key]['properties']))
+            definition = definition_deep
+        data = self.__transformationPydantic__(definition)
+        mySom = som.Som(data)
+        if len(self.dataTypes)>0:
+            paths = self.getDataTypePaths()
+            for path,dataElementId in paths.items():
+                dict_dataType = self.getDataTypeManager(dataElementId).to_pydantic(origin='fieldgroup')
+                clean_path = path.replace('.','.properties.').replace('[]{}','.items.properties.')
+                if clean_path.endswith('properties.') == False:
+                    clean_path = f"{clean_path}.properties"
+                mySom.assign(clean_path,dict_dataType)
+                if path.endswith('[]{}'):
+                    mySom.assign(f"{clean_path}.type",'array')
+                    mySom.assign(f"{clean_path}.items.type",'object')
+        data = mySom.to_dict()
+        if self.metaExtend is not None:
+            for fgId in self.metaExtend:
+                tmp_fgManager = FieldGroupManager(fgId,schemaAPI=self.schemaAPI,localFolder=self.localfolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                py_fg = tmp_fgManager.to_pydantic(origin='fieldgroup')
+                data = self.__simpleDeepMerge__(data,py_fg)
+        if origin == "self":
+            modelTypeOutput = kwargs.get("output_model_type",DataModelType.PydanticV2BaseModel)
+            pydantic_json = {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}'),
+                "description": self.fieldGroup.get('description',''),
+                "type": "object",
+                "properties": data
+            }
+            with TemporaryDirectory() as temporary_directory_name:
+                temporary_directory = Path(temporary_directory_name)
+                output = Path(temporary_directory / 'tmp_model.py')
+                generate(
+                    json.dumps(pydantic_json),
+                    input_file_type=InputFileType.JsonSchema,
+                    output=output,
+                    output_model_type=modelTypeOutput,
+                )
+                mydata: str = output.read_text()
+            if save:
+                with open(f"pydantic_{self.fieldGroup.get('title',f'unknown_fieldGroup_{str(int(time.time()))}')}.py",'w') as f:
+                    f.write(mydata)
+            return mydata
+        return data
 
     def to_dataframe(self,
                      save:bool=False,
@@ -1258,7 +1367,7 @@ class FieldGroupManager:
             paths = [res[list(res.keys())[0]]['path'] for res in results]
             for path in paths:
                 res = self.getField(path) ## to ensure the type of the path
-                if res['type'] == 'array':
+                if res.get('type') == 'array':
                     path = path +'[]{}'
                 dict_results[path] = dt_id
             if kwargs.get('som_compatible',False):

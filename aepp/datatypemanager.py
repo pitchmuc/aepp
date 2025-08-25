@@ -21,6 +21,9 @@ from aepp.schema import Schema
 from aepp import som
 from pathlib import Path
 from io import FileIO
+from tempfile import TemporaryDirectory
+from datamodel_code_generator import InputFileType, generate
+from datamodel_code_generator import DataModelType
 
 class DataTypeManager:
     """
@@ -440,7 +443,52 @@ class DataTypeManager:
                         dictionary[key] = mydict[key].get('type','object')
                     else:
                         dictionary[key] = ""
-        return dictionary 
+        return dictionary
+    
+    def __transformationPydantic__(self,mydict:dict=None,dictionary:dict=None)->dict:
+        """
+        Transform the current XDM class to a dictionary compatible with pydantic.
+        mydict : the class definition to traverse
+        dictionary : the dictionary that gather the paths
+        """
+        if dictionary is None:
+            dictionary = {
+                'properties':{},
+                'type':'object'
+            }
+            dictionary = dictionary['properties']
+        else:
+            dictionary = dictionary
+        for key in mydict:
+            if type(mydict[key]) == dict:
+                if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys():
+                    properties = mydict[key].get('properties',None)
+                    if properties is not None:
+                        if key != "property" and key != "customFields":
+                            if key not in dictionary.keys():
+                                dictionary[key] = {'properties':{}}
+                            self.__transformationPydantic__(mydict[key]['properties'],dictionary=dictionary[key]['properties'])
+                        else:
+                            self.__transformationPydantic__(mydict[key]['properties'],dictionary=dictionary)
+                elif mydict[key].get('type') == 'object' and 'additionalProperties' in mydict[key].keys():
+                    properties = mydict[key].get('additionalProperties',{})
+                    if properties.get('type') == 'array':
+                        items = properties.get('items',{}).get('properties',None)
+                        if items is not None:
+                            dictionary[key] = {'properties':{'patternProperties':{"^.*$":{'items':{'properties':{},'type':'object'}, 'type':'array'}}},'type':'object'}
+                            self.__transformationPydantic__(items,dictionary=dictionary[key]['properties']['patternProperties']["^.*$"]['items']['properties'])
+                        else:
+                            dictionary[key] = {'properties':{'patternProperties':{"^.*$":{'properties':{'additionalProperties':True},'type':'object'}, 'type':'object'}},'type':'object'}
+                elif mydict[key].get('type') == 'array':
+                    levelProperties = mydict[key]['items'].get('properties',None)
+                    if levelProperties is not None:
+                        dictionary[key] = {'type':'array','items':{'properties':{},'type':'object'}}
+                        self.__transformationPydantic__(levelProperties,dictionary[key]['items']['properties'])
+                    else:
+                        dictionary[key] = {'type':'array','items':{'type':mydict[key].get('items',{}).get('type','object')}}
+                else:
+                    dictionary[key] = {'type':mydict[key].get('type','object')}
+        return dictionary
 
     def __transformationDF__(self,
                              mydict:dict=None,
@@ -1032,13 +1080,74 @@ class DataTypeManager:
             typed : OPTIONAL : If you want the type associated with the field group to be given.
             save : OPTIONAL : If you wish to save the dictionary in a JSON file
         """
-        definition = self.dataType.get('definitions',{})
+        definition = deepcopy(self.dataType.get('definitions',{}))
         if definition == {}:
             definition = self.dataType.get('properties',{})
         data = self.__transformationDict__(definition,typed)
+        mysom = som.Som(data)
+        if len(self.dataTypes)>0:
+            paths = self.getDataTypePaths()
+            for path,dataElementId in paths.items():
+                tmp_dtManager = self.getDataTypeManager(dataElementId)
+                tmp_dict = tmp_dtManager.to_dict()
+                clean_path = path.replace('[]{}','.[0]')
+                mysom.assign(path,tmp_dict)
+        data = mysom.to_dict()
         if save:
             filename = self.dataType.get('title',f'unknown_dataType_{str(int(time.time()))}')
             aepp.saveFile(module='schema',file=data,filename=f"{filename}.json",type_file='json')
+        return data
+    
+    def to_pydantic(self,save:bool=False,origin:str='self',**kwargs)->Union[str,dict]:
+        """
+        Generate a Pydantic model representing the Data Type constitution
+        Arguments:
+            save : OPTIONAL : If you wish to save it with the title used by the field group.
+                save as json with the title used. Not title, used "unknown_fieldGroup_" + timestamp.
+        possible kwargs:
+            output_model_type : The model that is outputed, default PydanticV2BaseModel
+        """
+        definition = deepcopy(self.dataType.get('definitions',{}))
+        if definition == {}:
+            definition = deepcopy(self.dataType.get('properties',{}))
+        data = self.__transformationPydantic__(definition)
+        mysom = som.Som(data)
+        if len(self.dataTypes)>0:
+            paths = self.getDataTypePaths()
+            for path,dataElementId in paths.items():
+                tmp_dtManager = self.getDataTypeManager(dataElementId)
+                tmp_pydantic = tmp_dtManager.to_pydantic(origin="dataType")
+                clean_path = path.replace('.','.properties.').replace('[]{}','.items.properties.')
+                if clean_path.endswith('properties.') == False:
+                    clean_path = f"{clean_path}.properties"
+                mysom.assign(path,tmp_pydantic)
+                if path.endswith('[]{}'):
+                    mySom.assign(f"{clean_path}.type",'array')
+                    mySom.assign(f"{clean_path}.items.type",'object')
+        data = mysom.to_dict()
+        if origin == 'self':
+            modelTypeOutput = kwargs.get("output_model_type",DataModelType.PydanticV2BaseModel)
+            pydantic_json = {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": self.dataType.get('title',f'unknown_dataType_{str(int(time.time()))}'),
+                "description": self.dataType.get('description',''),
+                "type": "object",
+                "properties": data
+            }
+            with TemporaryDirectory() as temporary_directory_name:
+                temporary_directory = Path(temporary_directory_name)
+                output = Path(temporary_directory / 'tmp_model.py')
+                generate(
+                    json.dumps(pydantic_json),
+                    input_file_type=InputFileType.JsonSchema,
+                    output=output,
+                    output_model_type=modelTypeOutput,
+                )
+                mydata: str = output.read_text()
+            if save:
+                with open(f"pydantic_{self.dataType.get('title',f'unknown_dataType_{str(int(time.time()))}')}.py",'w') as f:
+                    f.write(mydata)
+            return mydata
         return data
     
     def to_som(self)->'som.Som':

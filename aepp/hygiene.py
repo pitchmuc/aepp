@@ -176,6 +176,35 @@ class Hygiene:
         }
         res = self.connector.putData(self.endpoint+path,data=data)
         return res
+
+    def getWorkOrders(self,**kwargs)->list:
+        """
+        Get the list of work orders.
+        Possible kwargs:
+            search : Search for work orders by name or description. (ex: search=acme)
+            type : Filter by work order type. (ex: type=identity-delete)
+            status : Filter by work order status. Possible values: "received" "validated" "submitted" "ingested" "completed" "failed" (ex: status=validated,ingested,failed)
+            displayName : Filter by work order display name. (ex: displayName=acme)
+            workorderId : workorderId=DI-1729d091-b08b-47f4-923f-6a4af52c93ac
+            sandboxName : sandboxName=dev1
+            limit : The maximum number of results to return. (ex: limit=50)
+        """
+        params = {**kwargs}
+        params['page'] = kwargs.get('page',0)
+        params['limit'] = kwargs.get('limit',50)
+        path = "/workorder"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getWorkOrders")
+        res = self.connector.getData(self.endpoint+path,params=params)
+        data = res.get('results',[])
+        nextPage = res.get('_links',{}).get('next',{}).get('href',None)
+        while nextPage is not None:
+            params['page'] += 1
+            res = self.connector.getData(self.endpoint+path,params=params)
+            data += res.get('results',[])
+            nextPage = res.get('_links',{}).get('next',{}).get('href',None)
+        return data
+
     
     def deleteDatasetExpiration(self,ttlId:str=None)->dict:
         """

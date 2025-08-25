@@ -7,6 +7,9 @@ import pandas as pd
 from copy import deepcopy
 from io import FileIO
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from datamodel_code_generator import InputFileType, generate
+from datamodel_code_generator import DataModelType
 
 ### NOTE : If want to do an importDefintion -> Require to handle when custom fields have been used in the class
 ### the tenant is not automatically created in the empty definition, contrary to Field Group Manager
@@ -574,6 +577,50 @@ class ClassManager:
                         dictionary[key] = ""
         return dictionary
 
+    def __transformationPydantic__(self,mydict:dict=None,dictionary:dict=None)->Union[str,dict]:
+        """
+        Transform the current XDM class to a dictionary compatible with pydantic.
+        mydict : the class definition to traverse
+        dictionary : the dictionary that gather the paths
+        """
+        if dictionary is None:
+            dictionary = {
+                'properties':{},
+                'type':'object'
+            }
+            dictionary = dictionary['properties']
+        else:
+            dictionary = dictionary
+        for key in mydict:
+            if type(mydict[key]) == dict:
+                if mydict[key].get('type') == 'object' and 'properties' in mydict[key].keys():
+                    properties = mydict[key].get('properties',None)
+                    if properties is not None:
+                        if key != "property" and key != "customFields":
+                            if key not in dictionary.keys():
+                                dictionary[key] = {'properties':{},'type':'object'}
+                            self.__transformationPydantic__(mydict[key]['properties'],dictionary=dictionary[key]['properties'])
+                        else:
+                            self.__transformationPydantic__(mydict[key]['properties'],dictionary=dictionary[key]['properties'])
+                elif mydict[key].get('type') == 'object' and 'additionalProperties' in mydict[key].keys():
+                    properties = mydict[key].get('additionalProperties',{})
+                    if properties.get('type') == 'array':
+                        items = properties.get('items',{}).get('properties',None)
+                        if items is not None:
+                            dictionary[key] = {'properties':{'patternProperties':{"^.*$":{'items':{'properties':{},'type':'object'}, 'type':'array'}}},'type':'object'}
+                            self.__transformationPydantic__(items,dictionary=dictionary[key]['properties']['patternProperties']["^.*$"]['items']['properties'])
+                elif mydict[key].get('type') == 'array':
+                    levelProperties = mydict[key]['items'].get('properties',None)
+                    if levelProperties is not None:
+                        dictionary[key] = {'type':'array','items':{'properties':{},'type':'object'}}
+                        self.__transformationPydantic__(levelProperties,dictionary[key]['items']['properties'])
+                    else:
+                        dictionary[key] = {'type':'array','items':{'type':mydict[key].get('items',{}).get('type','object')}}
+                else:
+                    dictionary[key] = {'type':mydict[key].get('type','object')}
+        return dictionary
+        
+
     def __transformationDF__(self,mydict:dict=None,
                              dictionary:dict=None,
                              path:str=None,
@@ -971,6 +1018,42 @@ class ClassManager:
         Return the Data Type definition as XDM
         """
         return self.aepclass
+    
+    def to_pydantic(self,save:bool=False,origin:str="self",**kwargs)->str:
+        """
+        Generate a dictionary representing the field group constitution
+        Arguments:
+            save : OPTIONAL : If you wish to save the dictionary in a JSON file
+            origin : OPTIONAL : If you want to specify the origin of the class.
+        possible kwargs:
+            output_model_type : The model that is outputed, default PydanticV2BaseModel
+        """
+        definition = deepcopy(self.aepclass.get('definitions',self.aepclass.get('properties',{})))
+        data = self.__transformationPydantic__(definition)
+        if origin == "self":
+            modelTypeOutput = kwargs.get("output_model_type",DataModelType.PydanticV2BaseModel)
+            pydantic_json = {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": self.aepClass.get('title',f'unknown_class_{str(int(time.time()))}'),
+                "description": self.aepClass.get('description',''),
+                "type": "object",
+                "properties": data
+            }
+            with TemporaryDirectory() as temporary_directory_name:
+                temporary_directory = Path(temporary_directory_name)
+                output = Path(temporary_directory / 'tmp_model.py')
+                generate(
+                    json.dumps(pydantic_json),
+                    input_file_type=InputFileType.JsonSchema,
+                    output=output,
+                    output_model_type=modelTypeOutput,
+                )
+                mydata: str = output.read_text()
+            if save:
+                with open(f"pydantic_{self.dataType.get('title',f'unknown_class_{str(int(time.time()))}')}.py",'w') as f:
+                    f.write(mydata)
+            return mydata
+        return data
     
     def createClass(self)->dict:
         """

@@ -2,6 +2,12 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+
+## version 0.3.13
+* adding `getWorkOrders` on the `hygiene` module
+* enable to output pydantic data on managers. The `to_pydantic` method is now available.
+  * building dependency with `datamodel-code-generator` module
+
 ## version 0.3.12
 * adding the `extractSandboxArtefacts` methods in aepp module [documentation on methods](./main.md), [documentation on local file usage](./localfilesusage.md) 
 * refactoring `SchemaManager`, `FieldGroupManager`, `DataTypeManager` and `ClassManager` to support local file setup.

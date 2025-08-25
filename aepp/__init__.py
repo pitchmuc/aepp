@@ -146,6 +146,12 @@ def extractSandboxArtefacts(
     ide = identity.Identity(config=sandbox,region=region)
     mypath = Path('./')
     completePath.mkdir(exist_ok=True)
+    globalConfig = {
+        "imsOrgId":sandbox.org_id,
+        "tenantId":f"_{sch.getTenantId()}"
+    }
+    with open(f'{completePath}/config.json') as f:
+        json.dumps(globalConfig,f,indent=2)
     behavPath = completePath / 'behaviour'
     behavPath.mkdir(exist_ok=True)
     classPath = completePath / 'class'
@@ -154,8 +160,12 @@ def extractSandboxArtefacts(
     schemaPath.mkdir(exist_ok=True)
     fieldgroupPath = completePath / 'fieldgroup'
     fieldgroupPath.mkdir(exist_ok=True)
+    fieldgroupPathGlobale = fieldgroupPath / 'global'
+    fieldgroupPathGlobale.mkdir(exist_ok=True)
     datatypePath = completePath / 'datatype'
     datatypePath.mkdir(exist_ok=True)
+    datatypePathGlobal = datatypePath / 'global'
+    datatypePathGlobal.mkdir(exist_ok=True)
     descriptorPath = completePath / 'descriptor'
     descriptorPath.mkdir(exist_ok=True)
     identityPath = completePath / 'identity'
@@ -205,7 +215,7 @@ def extractSandboxArtefacts(
     with ThreadPoolExecutor(thread_name_prefix = 'fieldgroup') as thread_pool:  
         results = thread_pool.map(writingFalseFile, fgsElements)
     globalFgs = sch.getFieldGroupsGlobal()
-    globalFgsElements = [(element, fieldgroupPath, '$id', sch.getFieldGroup) for element in globalFgs]
+    globalFgsElements = [(element, fieldgroupPathGlobale, '$id', sch.getFieldGroup) for element in globalFgs]
     with ThreadPoolExecutor(thread_name_prefix = 'globalFieldgroup') as thread_pool:
         results = thread_pool.map(writingFullFile, globalFgsElements)
     ## writing data types
@@ -214,7 +224,7 @@ def extractSandboxArtefacts(
     with ThreadPoolExecutor(thread_name_prefix = 'datatype') as thread_pool:
         results = thread_pool.map(writingFalseFile, datatypeElements)
     globalDataTypes = sch.getDataTypesGlobal()
-    globalDataTypesElements = [(element, datatypePath, 'meta:altId', sch.getDataType) for element in globalDataTypes]
+    globalDataTypesElements = [(element, datatypePathGlobal, 'meta:altId', sch.getDataType) for element in globalDataTypes]
     with ThreadPoolExecutor(thread_name_prefix = 'globalDatatype') as thread_pool:
         results = thread_pool.map(writingFalseFile, globalDataTypesElements)
     ## writing descriptors

@@ -208,6 +208,14 @@ Return the fieldgroup definition as XDM
 Generate a Som instance of the dictionary. Helping the manipulation of the dictionary if needed. 
 Documentation on [SOM](./som.md)
 
+### to_pydantic
+Generate a dictionary representing the field group constitution
+Arguments:
+* save : OPTIONAL : If you wish to save the dictionary in a JSON file
+* origin : OPTIONAL : Needed to identify who is calling the method. Default is "self".\
+possible kwargs:
+* output_model_type : The model that is outputed, default PydanticV2BaseModel
+
 ### getDataTypeManager
 Retrieve the Data Type Manager instance of custom data type\
 Argument:
