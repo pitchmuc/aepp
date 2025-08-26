@@ -551,7 +551,10 @@ class FieldGroupManager:
                         dictionary[key] = {'type':'array','items':{'properties':{},'type':'object'}}
                         self.__transformationPydantic__(levelProperties,dictionary[key]['items']['properties'])
                     else:
-                        dictionary[key] = {'type':'array','items':{'type':mydict[key].get('items',{}).get('type','object')}}
+                        if '$ref' in mydict[key]['items'].keys():
+                            dictionary[key] = {'type':'array','items':{'properties':{},'type':'object'}}
+                        else:
+                            dictionary[key] = {'type':'array','items':{'type':mydict[key].get('items',{}).get('type','object')}}
                 else:
                     dictionary[key] = {'type':mydict[key].get('type','object')}
         return dictionary
@@ -1222,14 +1225,13 @@ class FieldGroupManager:
         if len(self.dataTypes)>0:
             paths = self.getDataTypePaths()
             for path,dataElementId in paths.items():
-                dict_dataType = self.getDataTypeManager(dataElementId).to_pydantic(origin='fieldgroup')
-                clean_path = path.replace('.','.properties.').replace('[]{}','.items.properties.')
-                if clean_path.endswith('properties.') == False:
+                dict_dataType = self.getDataTypeManager(dataElementId).to_pydantic(origin='fieldgroup') 
+                clean_path = path.replace('.','.properties.').replace('[]{}','.items')
+                if clean_path.endswith('.'):
+                    clean_path = clean_path[:-1]
+                if clean_path.endswith('properties') == False:
                     clean_path = f"{clean_path}.properties"
                 mySom.assign(clean_path,dict_dataType)
-                if path.endswith('[]{}'):
-                    mySom.assign(f"{clean_path}.type",'array')
-                    mySom.assign(f"{clean_path}.items.type",'object')
         data = mySom.to_dict()
         if self.metaExtend is not None:
             for fgId in self.metaExtend:

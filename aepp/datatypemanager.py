@@ -485,7 +485,10 @@ class DataTypeManager:
                         dictionary[key] = {'type':'array','items':{'properties':{},'type':'object'}}
                         self.__transformationPydantic__(levelProperties,dictionary[key]['items']['properties'])
                     else:
-                        dictionary[key] = {'type':'array','items':{'type':mydict[key].get('items',{}).get('type','object')}}
+                        if '$ref' in mydict[key]['items'].keys():
+                            dictionary[key] = {'type':'array','items':{'properties':{},'type':'object'}}
+                        else:
+                            dictionary[key] = {'type':'array','items':{'type':mydict[key].get('items',{}).get('type','object')}}
                 else:
                     dictionary[key] = {'type':mydict[key].get('type','object')}
         return dictionary
@@ -1117,13 +1120,12 @@ class DataTypeManager:
             for path,dataElementId in paths.items():
                 tmp_dtManager = self.getDataTypeManager(dataElementId)
                 tmp_pydantic = tmp_dtManager.to_pydantic(origin="dataType")
-                clean_path = path.replace('.','.properties.').replace('[]{}','.items.properties.')
-                if clean_path.endswith('properties.') == False:
+                clean_path = path.replace('.','.properties.').replace('[]{}','.items')
+                if clean_path.endswith('.'):
+                    clean_path = clean_path[:-1]
+                if clean_path.endswith('properties') == False:
                     clean_path = f"{clean_path}.properties"
                 mysom.assign(path,tmp_pydantic)
-                if path.endswith('[]{}'):
-                    mySom.assign(f"{clean_path}.type",'array')
-                    mySom.assign(f"{clean_path}.items.type",'object')
         data = mysom.to_dict()
         if origin == 'self':
             modelTypeOutput = kwargs.get("output_model_type",DataModelType.PydanticV2BaseModel)
