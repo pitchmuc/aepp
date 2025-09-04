@@ -786,7 +786,7 @@ class Segmentation:
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getAudiences")
-        params = {"limit":limit,"withMetrics":"true"}
+        params = {"limit":limit,"withMetrics":True}
         path = "/audiences"
         if name is not None:
             params['name'] = name

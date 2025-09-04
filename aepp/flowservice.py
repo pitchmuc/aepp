@@ -467,6 +467,137 @@ class FlowService:
                         filteredItems.append(item)
             items = filteredItems
         return items
+    
+    def getUPSFlows(self,resolveSourceDataset:bool=False)->list:
+        """
+        Returns the flows that are uploading data from datasets to UPS.
+        Retuns a list of flows.
+        Arguments:
+            resolveSourceDataset : OPTIONAL : Use the catalog API to resolve the name of the dataset used in that Flow.
+                Adding attributes in the flow "datasetName" and "datasetId". Adding "unknown" for unresolved datasetName.
+        """
+        myflows = self.getFlows()
+        upsFlows = [fl for fl in myflows if fl['inheritedAttributes']['targetConnections'][0]['connectionSpec']['id'] == '8a9c3494-9708-43d7-ae3f-cda01e5030e1']
+        if resolveSourceDataset:
+            from aepp import catalog
+            cat = catalog.Catalog(config=self.connector.config)
+            datasets = cat.getDataSets()
+            for flw in upsFlows:
+                source = self.getSourceConnection(flw['sourceConnectionIds'][0])
+                sourceDatasetId = source.get('params',{}).get('dataSetId')
+                flw['datasetName'] = datasets.get(sourceDatasetId,{}).get('name','unknown')
+                flw['datasetId'] = sourceDatasetId
+        return upsFlows
+    
+    def getUISFlows(self,resolveSourceDataset:bool=False)->list:
+        """
+        Returns the flows that are uploading data from dataset to UIS.
+        Returns a list of flows
+        Arguments:
+            resolveSourceDataset : OPTIONAL : Use the catalog API to resolve the name of the dataset used in that Flow
+                Adding attributes in the flow "datasetName" and "datasetId". Adding "unknown" for unresolved datasetName.
+        """
+        myflows = self.getFlows()
+        upsFlows = [fl for fl in myflows if fl['inheritedAttributes']['targetConnections'][0]['connectionSpec']['id'] == '8a9c3494-9708-43d7-ae3f-cda01e5030e1']
+        if resolveSourceDataset:
+            from aepp import catalog
+            cat = catalog.Catalog(config=self.connector.config)
+            datasets = cat.getDataSets()
+            for flw in upsFlows:
+                source = self.getSourceConnection(flw['sourceConnectionIds'][0])
+                sourceDatasetId = source.get('params',{}).get('dataSetId')
+                flw['datasetName'] = datasets.get(sourceDatasetId,{}).get('name','unknown')
+                flw['datasetId'] = sourceDatasetId
+        return upsFlows
+    
+    def getUPSFlow(self,datasetId:str=None,datasetName:str=None)->dict:
+        """
+        Return the UPS Flow for a specific dataset ID or name.
+        Required at least a datasetId or datasetName.
+        Argument: 
+            datasetId : OPTIONAL : datasetId to check
+            datasetName : OPTIONAL : dataset name to check
+        """
+        if datasetId is None and datasetName is None:
+            raise Exception("Require at least a datasetId or datasetName")
+        upsflows = self.getUPSFlows(resolveSourceDataset=True)
+        if datasetId is not None:
+            myFlow = [fl for fl in upsflows if fl['datasetId'] == datasetId]
+        elif datasetName is not None:
+            myFlow = [fl for fl in upsflows if fl['datasetName'] == datasetName]
+        if len(myFlow)>=1:
+            return myFlow[0]
+        return {'error':'not found'}
+
+
+    
+    def getUISFlow(self,datasetId:str=None,datasetName:str=None)->dict:
+        """
+        Return the UIS Flow for a specific dataset ID or name.
+        Required at least a datasetId or datasetName.
+        Argument: 
+            datasetId : OPTIONAL : datasetId to check
+            datasetName : OPTIONAL : dataset name to check
+        """
+        if datasetId is None and datasetName is None:
+            raise Exception("Require at least a datasetId or datasetName")
+        uisflows = self.getUISFlows(resolveSourceDataset=True)
+        if datasetId is not None:
+            myFlow = [fl for fl in uisflows if fl['datasetId'] == datasetId]
+        elif datasetName is not None:
+            myFlow = [fl for fl in uisflows if fl['datasetName'] == datasetName]
+        if len(myFlow)>=1:
+            return myFlow[0]
+        return {'error':'not found'}
+    
+    def getUPSFlowRuns(self,datasetId:str=None,datasetName:str=None,state:str=None)->list:
+        """
+        Returns a list of UPS runs for a specific dataset. You can also refine by state.
+        Required at least a datasetId or datasetName.
+        Arguments:
+            datasetId : OPTIONAL : datasetId to check
+            datasetName : OPTIONAL : dataset name to check 
+            state : OPTIONAL : the state of the flow runs (possible values : "failed","success")
+        """
+        if datasetId is None and datasetName is None:
+            raise Exception("Require at least a datasetId or datasetName")
+        flow = self.getUPSFlow(datasetId=datasetId,datasetName=datasetName)
+        flowId = flow.get('id',None)
+        if flowId is not None:
+            propParam = [f"flowId=={flowId}"]
+            if state is not None:
+                if state == "success":
+                    propParam.append("metrics.statusSummary.status==success")
+                elif state == "failed":
+                    propParam.append("metrics.statusSummary.status==failed")
+            runs = self.getRuns(prop=propParam)
+            return runs
+        raise Exception("Could not find any flow runs")
+
+
+    def getUISFlowRuns(self,datasetId:str=None,datasetName:str=None,state:str=None)->list:
+        """
+        Returns a list of UIS runs for a specific dataset. You can also refine by state.
+        Required at least a datasetId or datasetName.
+        Arguments:
+            datasetId : OPTIONAL : datasetId to check
+            datasetName : OPTIONAL : dataset name to check
+            state : OPTIONAL : the state of the flow runs (possible values : "failed","success") 
+        """
+        if datasetId is None and datasetName is None:
+            raise Exception("Require at least a datasetId or datasetName")
+        flow = self.getUISFlow(datasetId=datasetId,datasetName=datasetName)
+        flowId = flow.get('id',None)
+        if flowId is not None:
+            propParam = [f"flowId=={flowId}"]
+            if state is not None:
+                if state == "success":
+                    propParam.append("metrics.statusSummary.status==success")
+                elif state == "failed":
+                    propParam.append("metrics.statusSummary.status==failed")
+            runs = self.getRuns(prop=propParam)
+            return runs
+        raise Exception("Could not find any flow runs")
 
     def getFlow(self, flowId: str = None) -> dict:
         """
@@ -887,7 +1018,7 @@ class FlowService:
         res: dict = self.connector.postData(self.endpoint + path, data=obj)
         return res
 
-    def getRun(self, runId: str = None) -> dict:
+    def getRun(self, runId: str = None) -> Union[dict,list]:
         """
         Return a specific runId.
         Arguments:
@@ -899,6 +1030,8 @@ class FlowService:
             self.logger.debug(f"Starting getRun")
         path: str = f"/runs/{runId}"
         res: dict = self.connector.getData(self.endpoint + path)
+        if 'items' in res.keys():
+            return res['items']
         return res
 
     def getSourceConnections(self, n_results: int = 100, **kwargs) -> list:

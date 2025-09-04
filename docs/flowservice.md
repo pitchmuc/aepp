@@ -262,6 +262,50 @@ Return the detail of a specific flow ID Spec\
 Arguments:
 * flowSpecId : REQUIRED : The flow ID spec to be checked
 
+#### getUPSFlows
+Returns the flows that are uploading data from datasets to UPS.\
+Retuns a list of flows.\
+Arguments:
+* resolveSourceDataset : OPTIONAL : Use the catalog API to resolve the name of the dataset used in that Flow.\
+    Adding attributes in the flow "datasetName" and "datasetId". Adding "unknown" for unresolved datasetName.
+
+#### getUISFlows
+Returns the flows that are uploading data from dataset to UIS.\
+Returns a list of flows\
+Arguments:
+* resolveSourceDataset : OPTIONAL : Use the catalog API to resolve the name of the dataset used in that Flow\
+  Adding attributes in the flow "datasetName" and "datasetId". Adding "unknown" for unresolved datasetName.
+
+#### getUPSFlow
+Return the UPS Flow for a specific dataset ID or name.\
+Required at least a datasetId or datasetName.\
+Argument: 
+* datasetId : OPTIONAL : datasetId to check
+* datasetName : OPTIONAL : dataset name to check
+
+#### getUISFlow
+Return the UIS Flow for a specific dataset ID or name.\
+Required at least a datasetId or datasetName.\
+Argument: 
+* datasetId : OPTIONAL : datasetId to check
+* datasetName : OPTIONAL : dataset name to check
+
+#### getUPSFlowRuns
+Returns a list of UPS runs for a specific dataset. You can also refine by state.\
+Required at least a datasetId or datasetName.\
+Arguments:
+* datasetId : OPTIONAL : datasetId to check
+* datasetName : OPTIONAL : dataset name to check 
+* state : OPTIONAL : the state of the flow runs (possible values : "failed","success")
+
+#### getUISFlowRuns
+Returns a list of UIS runs for a specific dataset. You can also refine by state.\
+Required at least a datasetId or datasetName.\
+Arguments:
+* datasetId : OPTIONAL : datasetId to check
+* datasetName : OPTIONAL : dataset name to check
+* state : OPTIONAL : the state of the flow runs (possible values : "failed","success")
+
 
 #### getRuns
 Returns the list of runs. Runs are instances of a flow execution.\

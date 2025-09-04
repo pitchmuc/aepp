@@ -1179,7 +1179,15 @@ class Schema:
                 del obj["definitions"]["property"]["properties"][oldTenant]
             elif 'customFields' in obj["definitions"].keys():
                 obj["definitions"]["customFields"]["properties"][tenantId] = obj["definitions"]["customFields"]["properties"][oldTenant]
-                del obj["definitions"]["customFields"]["properties"][oldTenant]
+                if tenantId in obj["definitions"]["customFields"]["properties"].keys():
+                    obj["definitions"]["customFields"]["properties"][tenantId] = obj["definitions"]["customFields"]["properties"][oldTenant]
+                    del obj["definitions"]["customFields"]["properties"][oldTenant]
+                else:
+                    for c_item in obj["definitions"]["customFields"]["properties"].keys():
+                        child_obj = obj["definitions"]["customFields"]["properties"][c_item]
+                        if oldTenant in child_obj["properties"].keys():
+                            obj["definitions"]["customFields"]["properties"][c_item]["properties"][tenantId] = obj["definitions"]["customFields"]["properties"][c_item]["properties"][oldTenant]
+                            del obj["definitions"]["customFields"]["properties"][c_item]["properties"][oldTenant]
         return obj
 
     def createFieldGroup(self, fieldGroup_obj: dict = None) -> dict:

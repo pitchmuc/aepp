@@ -9,6 +9,9 @@ This page list all of the changes that came during the different release of the 
   * building dependency with `datamodel-code-generator` module\
 Patch:
 * Fix pydantic references when using data type as array
+* Fix `getAudiences` method that had a typo 
+* Patch `copyFieldGroup` based on mdonke Fork to support customized OOTB field groups
+* adding the `getUPSFlows`,`getUISFlows`, `getUPSFlow`,`getUISFlow`,`getUPSFlowRuns`,`getUISFlowRuns`. [see documentation](./flowservice.md#getUPSFlows)
 
 ## version 0.3.12
 * adding the `extractSandboxArtefacts` methods in aepp module [documentation on methods](./main.md), [documentation on local file usage](./localfilesusage.md) 
