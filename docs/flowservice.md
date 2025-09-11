@@ -136,6 +136,26 @@ Returns a specific connection object.\
 Argument:
 * connectionId : REQUIRED : The ID of the connection you wish to retrieve.
 
+#### patchConnection
+Patch an existing connection with the operations\
+Arguments:
+* connectionId : REQUIRED : The connection ID to Patch. 
+* operations : REQUIRED : A list of operation to apply
+    example: 
+    ```JSON
+    [
+        {
+            "op": "remove",
+            "path": "/auth/params",
+            "value": {
+                "accessId": "exampleAccessId",
+                "secretKey": "exampleSecretKey"
+            }
+        }
+    ]
+    ```
+    possible op: `"add"`,`"replace"`,`"remove"`
+
 
 #### connectionTest
 Test a specific connection ID.\

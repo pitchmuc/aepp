@@ -314,7 +314,7 @@ class FlowService:
             self.logger.debug(f"Starting getConnection")
         path = f"/connections/{connectionId}"
         res = self.connector.getData(self.endpoint + path)
-        return res
+        return res.get('items',[{}])[0]
 
     def connectionTest(self, connectionId: str = None) -> dict:
         """
@@ -343,6 +343,39 @@ class FlowService:
         path: str = f"/connections/{connectionId}"
         res: dict = self.connector.deleteData(self.endpoint + path)
         return res
+    
+    def patchConnection(self,connectionId: str = None,operations:list=None)->dict:
+        """
+        Patch an existing connection with the operations
+        Arguments:
+            connectionId : REQUIRED : The connection ID to Patch. 
+            operations : REQUIRED : A list of operation to apply
+                example: 
+                [
+                    {
+                        "op": "remove",
+                        "path": "/auth/params",
+                        "value": {
+                            "accessId": "exampleAccessId",
+                            "secretKey": "exampleSecretKey"
+                        }
+                    }
+                ]
+                possible op: "add" "replace" "remove"
+        """
+        if connectionId is None:
+            raise Exception("Require a connectionId to be present")
+        if operations is None:
+            raise Exception("Require a list of operation")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting deleteConnection")
+        path: str = f"/connections/{connectionId}"
+        connDef = self.getConnection(connectionId)
+        privateHeader = deepcopy(self.header)
+        privateHeader["If-Match"] = connDef.get('etag')
+        res = self.connector.patchData(self.endpoint+path,data=operations,headers=privateHeader)
+        return res
+
 
     def getConnectionSpecs(self) -> list:
         """
@@ -379,7 +412,7 @@ class FlowService:
             self.logger.debug(f"Starting getConnectionSpec")
         path: str = f"/connectionSpecs/{specId}"
         res: dict = self.connector.getData(self.endpoint + path)
-        return res.get('items',[{}])[0]
+        return res
 
     def getConnectionSpecIdFromName(self, name: str = None) -> int:
         """
