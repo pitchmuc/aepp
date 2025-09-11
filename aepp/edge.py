@@ -115,7 +115,7 @@ class Edge:
             for key, value in params.items():
                 privateParams[key] = value
         if assuranceToken is not None:
-            params['adobeAepValidationToken'] = assuranceToken
+            privateParams['adobeAepValidationToken'] = assuranceToken
         if payload is not None:
             dataPayload = payload
         else:
