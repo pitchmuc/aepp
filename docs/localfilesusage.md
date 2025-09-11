@@ -25,7 +25,9 @@ sandbox_folder\
   \class\
   \schema\
   \fieldgroup\
+    \global\ for OOTB field Groups
   \datatype\
+    \global\ for OOTB data type
   \descriptor\
   \identity\
   \dataset
@@ -34,6 +36,22 @@ sandbox_folder\
 You could technically mixed different sandbox in one folder and the elements will be just appended to folder as their type is definde (schema in schema), however, it is not a best practice approach as sandbox environment should be kept different.
 
 The creation of clearly defined structure is making the dependency between elements able to be handled in the different tools that `aepp` is providing (`SchemaManager`, `ClassManager`, `FieldGroupManager`, `DataTypeManager`, `Synchronizer`).
+
+### Config File
+
+In order to simplify the reading of the artefact when local folder is used, we are storing a `config.json` file in the main folder.\
+This config is a dictionary that may evolve in the future, when more dependencies are built.\
+Check the page regularly if additional information are set as requirement.
+
+Current config setup: 
+```JSON
+{
+  "imsOrgId":"your IMS Org ID",
+  "tenantId":"your tenant ID starting with _"
+
+}
+```
+
 
 ## Extracting the artefacts
 
