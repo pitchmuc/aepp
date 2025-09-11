@@ -147,6 +147,7 @@ This method is taking 2 arguments:
 * localFolder: OPTIONAL: the local folder where to extract the sandbox. If not provided, it will use the current working directory and name the    folder the name of the sandbox.
 * region: OPTIONAL: the region of the sandbox (default: nld2). This is used to fetch the correct API endpoints for the identities. 
     Possible values: "va7","aus5", "can2", "ind2"
+* ootb : OPTIONAL : If you want to also download the OOTB elements
 
 Example of usage: 
 

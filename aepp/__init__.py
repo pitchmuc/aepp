@@ -123,7 +123,7 @@ def extractSandboxArtefacts(
     sandbox: 'ConnectInConnectObjectstance' = None, 
     localFolder: Union[str, Path] = None,
     region: str = "nld2",
-
+    ootb: bool = False,
 ):
     """
     Extract the sandbox in the local folder.
@@ -132,6 +132,7 @@ def extractSandboxArtefacts(
         localFolder: OPTIONAL: the local folder where to extract the sandbox. If not provided, it will use the current working directory and name the folder the name of the sandbox.
         region: OPTIONAL: the region of the sandbox (default: nld2). This is used to fetch the correct API endpoints for the identities. 
             Possible values: "va7","aus5", "can2", "ind2"
+        ootb : OPTIONAL : If you want to also download the OOTB elements
     """
     if sandbox is None:
         raise ValueError("You need to provide a ConnectObject instance with the sandbox information")
@@ -150,8 +151,8 @@ def extractSandboxArtefacts(
         "imsOrgId":sandbox.org_id,
         "tenantId":f"_{sch.getTenantId()}"
     }
-    with open(f'{completePath}/config.json') as f:
-        json.dumps(globalConfig,f,indent=2)
+    with open(f'{completePath}/config.json','w') as f:
+        json.dump(globalConfig,f,indent=2)
     behavPath = completePath / 'behaviour'
     behavPath.mkdir(exist_ok=True)
     classPath = completePath / 'class'
@@ -214,19 +215,21 @@ def extractSandboxArtefacts(
     fgsElements = [(element, fieldgroupPath, '$id', sch.getFieldGroup) for element in myfgs]
     with ThreadPoolExecutor(thread_name_prefix = 'fieldgroup') as thread_pool:  
         results = thread_pool.map(writingFalseFile, fgsElements)
-    globalFgs = sch.getFieldGroupsGlobal()
-    globalFgsElements = [(element, fieldgroupPathGlobale, '$id', sch.getFieldGroup) for element in globalFgs]
-    with ThreadPoolExecutor(thread_name_prefix = 'globalFieldgroup') as thread_pool:
-        results = thread_pool.map(writingFullFile, globalFgsElements)
+    if ootb:
+        globalFgs = sch.getFieldGroupsGlobal()
+        globalFgsElements = [(element, fieldgroupPathGlobale, '$id', sch.getFieldGroup) for element in globalFgs]
+        with ThreadPoolExecutor(thread_name_prefix = 'globalFieldgroup') as thread_pool:
+            results = thread_pool.map(writingFullFile, globalFgsElements)
     ## writing data types
     mydt = sch.getDataTypes()
     datatypeElements = [(element, datatypePath, 'meta:altId', sch.getDataType) for element in mydt]
     with ThreadPoolExecutor(thread_name_prefix = 'datatype') as thread_pool:
         results = thread_pool.map(writingFalseFile, datatypeElements)
-    globalDataTypes = sch.getDataTypesGlobal()
-    globalDataTypesElements = [(element, datatypePathGlobal, 'meta:altId', sch.getDataType) for element in globalDataTypes]
-    with ThreadPoolExecutor(thread_name_prefix = 'globalDatatype') as thread_pool:
-        results = thread_pool.map(writingFalseFile, globalDataTypesElements)
+    if ootb:
+        globalDataTypes = sch.getDataTypesGlobal()
+        globalDataTypesElements = [(element, datatypePathGlobal, 'meta:altId', sch.getDataType) for element in globalDataTypes]
+        with ThreadPoolExecutor(thread_name_prefix = 'globalDatatype') as thread_pool:
+            results = thread_pool.map(writingFalseFile, globalDataTypesElements)
     ## writing descriptors
     descriptors = sch.getDescriptors()
     descriptorsElements = [(element,descriptorPath,'@id',None) for element in descriptors]
