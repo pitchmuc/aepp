@@ -30,6 +30,7 @@ class _Data:
         self.table_names = {}
         self.schema_ref = {}
         self.ids = {}
+        self.infos = pd.DataFrame()
 
 
 class Catalog:
@@ -121,6 +122,29 @@ class Catalog:
             else:
                 print("element is an object. Output is unclear. No save made.\nPlease save this element manually")
         return res
+
+    def getResourceToFile(self,endpoint:str=None,filename:str=None)->None:
+        """
+        Use subprocess and CURL request to get the resource and save it to a file.
+        Arguments:
+            endpoint : REQUIRED : The URL to GET
+            file : REQUIRED : The file name to save the content to.
+        """
+        if endpoint is None:
+            raise ValueError("Require an endpoint")
+        if filename is None:
+            raise ValueError("Require a filename")
+        from subprocess import call
+        call(["curl", url, 
+            '-H', 'Connection: keep-alive',
+            '-H', 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36', 
+            '-H', 'Accept: application/json', 
+            '-H', f'x-api-key: {self.connector.config.get("client_id")}', 
+            '-H', f'Authorization: Bearer {self.connector.token}',
+            '-H', 'Accept-Encoding: gzip, deflate, br', 
+            '-H', f'x-gw-ims-org-id: {self.connector.config.get("org_id")}', 
+            '-H', f'x-sandbox-name: {self.sandbox}', 
+            '--compressed', '--output', filename])
     
     def decodeStreamBatch(self,message:str)->dict:
         """
@@ -346,7 +370,7 @@ class Catalog:
         Return a list of a datasets.
         Arguments:
             limit : REQUIRED : amount of dataset to be retrieved per call. 
-            output : OPTIONAL : Default is "raw", other option is "df" for dataframe output
+            output : OPTIONAL : Default is "raw", other options are "df" (for dataframe) or "list"
         Possible kwargs:
             state : The state related to a dataset.
             created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
@@ -388,10 +412,49 @@ class Catalog:
                 self.logger.warning(f"Error caching results : {e}")
             print(e)
             print("Couldn't populate the data object from the instance.")
+        myList = []
+        for key,el in data.items():
+            el['id'] = key
+            myList.append(el)
+        self.getDatasetsInfos(caching=myList) ## populating the infos dataframe
         if output == "df":
             df = pd.DataFrame(data).T
             return df
+        elif output == "list":
+            return myList
         return data
+    
+    def getDatasetsInfos(self,**kwargs)->pd.DataFrame:
+        """
+        Extract the datasets information from the data attribute and return a dataframe.
+        """
+        if kwargs.get('caching',None) is None:
+            list_datasets = self.getDataSets(output="list")
+        else:
+            list_datasets = kwargs.get('caching')
+        list_data = []
+        for el in list_datasets:
+            obj = {}
+            obj['id'] = el['id']
+            obj['name'] = el['name']
+            obj['dataBehavior'] = el['classification'].get('dataBehavior')
+            obj['profileEnabled'] = [True for ding in el['tags'].get('unifiedProfile',[]) if 'enabled:true' in ding] or False
+            if type(obj['profileEnabled']) == list:
+                obj['profileEnabled'] = obj['profileEnabled'][0]
+            obj['datalake_rows'] = el.get('extensions',{}).get('adobe_lakeHouse',{}).get('metrics',{}).get('rowCount',0)
+            obj['datalake_storageSize'] = el.get('extensions',{}).get('adobe_lakeHouse',{}).get('metrics',{}).get('storageSize',0)
+            obj['datalake_files'] = el.get('extensions',{}).get('adobe_lakeHouse',{}).get('tableHealthMetrics',{}).get('noOfFilesTotal',0)
+            obj['datalake_partitions'] = el.get('extensions',{}).get('adobe_lakeHouse',{}).get('tableHealthMetrics',{}).get('noOfPartitionsTotal',0)
+            obj['ups_rows'] = el.get('extensions',{}).get('adobe_unifiedProfile',{}).get('metrics',{}).get('rowCount',0)
+            obj['ups_storageSize'] = el.get('extensions',{}).get('adobe_unifiedProfile',{}).get('metrics',{}).get('storageSize',0)
+            obj['schemaId'] = el.get('schemaRef',{}).get('id')
+            obj['tableFormat'] = el['tags'].get('adobe/siphon/table/format',[None])[0]
+            obj['fileFormat'] = el.get('fileDescription',{}).get('format')
+            obj['qs_table'] = el.get('tags',{}).get('adobe/pqs/table',[None])[0]
+            list_data.append(obj)
+        df = pd.DataFrame(list_data)
+        self.data.infos = df
+        return df
     
     def getProfileSnapshotDatasets(self,explicitMergePolicy:bool=False)->dict:
         """
@@ -413,7 +476,8 @@ class Catalog:
                     mergePolicyId = mergePolicy.split(':')[1]
                     from aepp import customerprofile
                     profile = customerprofile.Profile(self.connector.config)
-                    mergePolicy = profile.getMergePolicy(mergePolicyId)
+                    mergePolicyList:list = profile.getMergePolicies()
+                    mergePolicy = [el for el in mergePolicyList if el['id'] == mergePolicyId][0]
                     data[snapshotId]['mergePolicyName'] = mergePolicy['name']
         return data
     
