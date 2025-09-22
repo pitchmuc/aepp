@@ -375,9 +375,20 @@ class Profile:
             raise Exception("Missing the policy id")
         if self.loggingEnabled:
             self.logger.debug(f"Starting getMergePolicy")
+        privateHeader = deepcopy(self.header)
+        privateHeader["Accept"] = "application/json"
         path = f"/config/mergePolicies/{policy_id}"
-        res = self.connector.getData(self.endpoint + path, headers=self.header)
+        res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         return res
+    
+    def getMergePolicyActiveOnEdge(self)->dict:
+        """
+        Returns the Merge Policy currently active on edge.
+        """
+        mergePolicies = self.getMergePolicies()
+        for policy in mergePolicies:
+            if policy.get('isActiveOnEdge',False):
+                return policy
 
     def createMergePolicy(self, policy: dict = None) -> dict:
         """

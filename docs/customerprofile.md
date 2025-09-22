@@ -205,6 +205,9 @@ Return a specific merge policy.\
 Arguments:
 * policy_id : REQUIRED : id of the the policy id to be returned.
 
+#### getMergePolicyActiveOnEdge
+Returns the Merge Policy currently active on edge.
+
 #### createMergePolicy
 Create a Merge Policy.\
 Arguments:
