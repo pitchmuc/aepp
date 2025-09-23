@@ -67,6 +67,7 @@ class DataTypeManager:
         elif localFolder is not None:
             self.localfolder = Path(localFolder)
             self.datatypeFolder = self.localfolder / 'datatype'
+            self.datatypeGlobalFolder = self.datatypeFolder / 'global'
             if self.localfolder.exists() is False:
                 raise Exception(f"The local folder {self.localfolder} does not exist. Please create it and extract your sandbox before using it.")
             self.schemaAPI = None
@@ -85,6 +86,10 @@ class DataTypeManager:
                 self.tenantId = f"_{dataType.get('meta:tenantNamespace')}"
         elif kwargs.get('tenantId',None) is not None:
             self.tenantId = kwargs.get('tenantId')
+        elif self.localfolder is not None:
+            config_json = json.load(FileIO(self.localfolder / 'config.json'))
+            if config_json.get('tenantId',None) is not None:
+                self.tenantId = config_json.get('tenantId')
         else:
             self.tenantId = "  "
         if type(dataType) == dict:
@@ -104,7 +109,7 @@ class DataTypeManager:
                     self.dataType = self.schemaAPI.getDataType(dataType['$id'],full=True)
                     self.EDITABLE = True
                 elif self.localfolder is not None:
-                    for dataTypeFile in self.datatypeFolder.glob("*.json"):
+                    for dataTypeFile in self.datatypeGlobalFolder.glob("*.json"):
                         tmp_def = json.load(FileIO(dataTypeFile))
                         if tmp_def.get('$id') == dataType.get('$id') or tmp_def.get('meta:altId') == dataType.get('meta:altId') or tmp_def.get('title') == dataType.get('title'):   
                             self.dataType = tmp_def
@@ -131,7 +136,7 @@ class DataTypeManager:
                         raise ValueError(f"Cannot find the data type with id {dataType} in the schema API.")
                     self.EDITABLE = True
                 elif self.localfolder is not None:
-                    for dataTypeFile in self.datatypeFolder.glob("*.json"):
+                    for dataTypeFile in self.datatypeGlobalFolder.glob("*.json"):
                         tmp_def = json.load(FileIO(dataTypeFile))
                         if tmp_def.get('$id') == dataType or tmp_def.get('meta:altId') == dataType or tmp_def.get('title') == dataType:
                             self.dataType = tmp_def
@@ -175,7 +180,7 @@ class DataTypeManager:
                     self.dataTypes[dt_manager.id] = dt_manager.title
                     self.dataTypeManagers[dt_manager.title] = dt_manager
             elif self.localfolder is not None:
-                for dt in dataTypes:
+                for dt in dataTypes: ## today only searching custom data types in local folder
                     for dataTypeFile in self.datatypeFolder.glob("*.json"):
                         tmp_def = json.load(FileIO(dataTypeFile))
                         if tmp_def.get('$id') == dt or tmp_def.get('meta:altId') == dt or tmp_def.get('title') == dt:
@@ -490,7 +495,27 @@ class DataTypeManager:
                         else:
                             dictionary[key] = {'type':'array','items':{'type':mydict[key].get('items',{}).get('type','object')}}
                 else:
-                    dictionary[key] = {'type':mydict[key].get('type','object')}
+                    myformat = None
+                    mytype = mydict[key].get('type','object')
+                    if mytype == "string":
+                        if mydict[key].get('format',None) == 'date-time':
+                            myformat = 'date-time'
+                        elif mydict[key].get('format',None) == 'date':
+                            myformat = 'date'
+                        elif mydict[key].get('format',None) == 'uri-reference':
+                            myformat = 'uri-reference'
+                        elif mydict[key].get('format',None) == 'ipv4' or mydict[key].get('format',None) == 'ipv6':
+                            myformat = mydict[key].get('format',None)
+                    dictionary[key] = {'type':mytype}
+                    if myformat is not None:
+                        dictionary[key]['format'] = myformat
+                    if mydict[key].get('enum',None) is not None:
+                        dictionary[key]['enum'] = mydict[key].get('enum',None)
+                    if mydict[key].get('minimum',None) is not None and mydict[key].get('maximum',None) is not None:
+                        dictionary[key]['minimum'] = mydict[key].get('minimum')
+                        dictionary[key]['maximum'] = mydict[key].get('maximum')
+                    if mydict[key].get('pattern',None) is not None:
+                        dictionary[key]['pattern'] = mydict[key].get('pattern')
         return dictionary
 
     def __transformationDF__(self,

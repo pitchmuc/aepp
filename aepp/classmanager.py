@@ -69,6 +69,10 @@ class ClassManager:
             self.tenantId = kwargs.get('tenantId')
         elif type(aepclass) == dict:
             self.tenantId = aepclass.get('meta:tenantNamespace',"  ")
+        elif self.localfolder is not None:
+            config_json = json.load(FileIO(self.localfolder / 'config.json'))
+            if config_json.get('tenantId',None) is not None:
+                self.tenantId = config_json.get('tenantId')
         else:
             self.tenantId = "  "
         if type(aepclass) == dict:
@@ -607,8 +611,10 @@ class ClassManager:
                     if properties.get('type') == 'array':
                         items = properties.get('items',{}).get('properties',None)
                         if items is not None:
-                            dictionary[key] = {'properties':{'patternProperties':{"^.*$":{'items':{'properties':{},'type':'object'}, 'type':'array'}}},'type':'object'}
-                            self.__transformationPydantic__(items,dictionary=dictionary[key]['properties']['patternProperties']["^.*$"]['items']['properties'])
+                            dictionary[key] = {'properties':{'key':{'items':{'properties':{},'type':'object'},'type':'array'}}, 'type':'object'}
+                            self.__transformationPydantic__(items,dictionary=dictionary[key]['properties']['key']['items']['properties'])
+                        else:
+                            dictionary[key] = {'properties':{'key':{'items':{'properties':{'additionalProperties':True},'type':'object'}, 'type':'array'}}, 'type':'object'}
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
@@ -617,7 +623,27 @@ class ClassManager:
                     else:
                         dictionary[key] = {'type':'array','items':{'type':mydict[key].get('items',{}).get('type','object')}}
                 else:
-                    dictionary[key] = {'type':mydict[key].get('type','object')}
+                    myformat = None
+                    mytype = mydict[key].get('type','object')
+                    if mytype == "string":
+                        if mydict[key].get('format',None) == 'date-time':
+                            myformat = 'date-time'
+                        elif mydict[key].get('format',None) == 'date':
+                            myformat = 'date'
+                        elif mydict[key].get('format',None) == 'uri-reference':
+                            myformat = 'uri-reference'
+                        elif mydict[key].get('format',None) == 'ipv4' or mydict[key].get('format',None) == 'ipv6':
+                            myformat = mydict[key].get('format',None)
+                    dictionary[key] = {'type':mytype}
+                    if myformat is not None:
+                        dictionary[key]['format'] = myformat
+                    if mydict[key].get('enum',None) is not None:
+                        dictionary[key]['enum'] = mydict[key].get('enum',None)
+                    if mydict[key].get('minimum',None) is not None and mydict[key].get('maximum',None) is not None:
+                        dictionary[key]['minimum'] = mydict[key].get('minimum')
+                        dictionary[key]['maximum'] = mydict[key].get('maximum')
+                    if mydict[key].get('pattern',None) is not None:
+                        dictionary[key]['pattern'] = mydict[key].get('pattern')
         return dictionary
         
 
@@ -1034,8 +1060,8 @@ class ClassManager:
             modelTypeOutput = kwargs.get("output_model_type",DataModelType.PydanticV2BaseModel)
             pydantic_json = {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "title": self.aepClass.get('title',f'unknown_class_{str(int(time.time()))}'),
-                "description": self.aepClass.get('description',''),
+                "title": self.aepclass.get('title',f'unknown_class_{str(int(time.time()))}'),
+                "description": self.aepclass.get('description',''),
                 "type": "object",
                 "properties": data
             }
@@ -1050,7 +1076,7 @@ class ClassManager:
                 )
                 mydata: str = output.read_text()
             if save:
-                with open(f"pydantic_{self.dataType.get('title',f'unknown_class_{str(int(time.time()))}')}.py",'w') as f:
+                with open(f"pydantic_{self.aepclass.get('title',f'unknown_class_{str(int(time.time()))}')}.py",'w') as f:
                     f.write(mydata)
             return mydata
         return data

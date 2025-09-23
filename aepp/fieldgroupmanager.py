@@ -72,7 +72,9 @@ class FieldGroupManager:
         elif localFolder is not None:
             self.localfolder = Path(localFolder)
             self.datatypeFolder = self.localfolder / 'datatype'
+            self.datatypeGlobalFolder = self.datatypeFolder / 'global'
             self.fieldgroupFolder = self.localfolder / 'fieldgroup'
+            self.fieldgroupGlobalFolder = self.fieldgroupFolder / 'global'
             self.descriptorFolder = self.localfolder / 'descriptor'
             if self.localfolder.exists() is False:
                 raise Exception(f"The local folder {self.localfolder} does not exist. Please create it and extract your sandbox before using it.")
@@ -91,6 +93,10 @@ class FieldGroupManager:
         elif type(fieldGroup) == dict:
             if fieldGroup.get('meta:tenantNamespace') is not None:
                 self.tenantId = fieldGroup.get('meta:tenantNamespace')
+        elif self.localfolder is not None:
+            config_json = json.load(FileIO(self.localfolder / 'config.json'))
+            if config_json.get('tenantId',None) is not None:
+                self.tenantId = config_json.get('tenantId')
         else:### Should not be a problem as the element without a tenantId are not supposed to change
             self.tenantId = "  "
         if fieldGroup is not None:
@@ -134,8 +140,18 @@ class FieldGroupManager:
                                     else: ## OOTB field group
                                         if 'properties' in self.fieldGroup.keys():
                                             self.fieldGroup['definitions'] = self.fieldGroup['properties']
+                            if self.fieldGroup == {}:
+                                for json_file in self.fieldgroupGlobalFolder.glob('*.json'):
+                                    tmp_def = json.load(FileIO(json_file))
+                                    if tmp_def.get('$id') == fieldGroup['$id'] or tmp_def.get('meta:altId') == fieldGroup.get('meta:altId') or tmp_def.get('title') == fieldGroup.get('title'):
+                                        self.fieldGroup = tmp_def
+                                        if 'properties' in self.fieldGroup.keys():
+                                            self.fieldGroup['definitions'] = self.fieldGroup['properties']
                             self.EDITABLE = False
-                    else: ## if definitions not present, we assume it is a custom field group
+                    else: ## if definitions key not present
+                        if 'properties' in self.fieldGroup.keys():
+                            self.fieldGroup['definitions'] = self.fieldGroup['properties']
+                            del self.fieldGroup['properties']
                         if self.schemaAPI is not None:
                             self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
                             if '/datatypes/' in str(self.fieldGroup): ## if custom datatype used in Field Group
@@ -148,6 +164,20 @@ class FieldGroupManager:
                                 if full:
                                     self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
                                 self.EDITABLE = True
+                        elif self.localfolder is not None: ## looking into local folder
+                            for json_file in self.fieldgroupFolder.glob('*.json'): ## only custom Field groups: TO DO check for OOTB FG without definition
+                                tmp_def = json.load(FileIO(json_file))
+                                if tmp_def.get('$id') == fieldGroup['$id'] or tmp_def.get('meta:altId') == fieldGroup.get('meta:altId') or tmp_def.get('title') == fieldGroup.get('title'):
+                                    self.fieldGroup = tmp_def
+                                    if self.tenantId[1:] in self.fieldGroup.get('$id'): ## custom field group
+                                        if '/datatypes/' in str(self.fieldGroup):
+                                            dataTypeSearch = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
+                                            dataTypes = re.findall(dataTypeSearch,str(self.fieldGroup))
+                                            for dt in dataTypes:
+                                                dt_manager = DataTypeManager(dt,localFolder=self.localfolder,sandbox=self.sandbox,tenantId=self.tenantId)
+                                                self.dataTypes[dt_manager.id] = dt_manager.title
+                                                self.dataTypeManagers[dt_manager.title] = dt_manager
+                                    
                         else:
                             raise ValueError("The field group definition provided does not contains the 'definitions' key. Please check the field group.")
                 else:
@@ -191,7 +221,12 @@ class FieldGroupManager:
                                         if tmp_def.get('$id') in dataTypes or tmp_def.get('meta:altId') in dataTypes:
                                             dt_manager = DataTypeManager(tmp_def,localFolder=self.localfolder,sandbox=self.sandbox,tenantId=self.tenantId)
                                             self.dataTypes[dt_manager.id] = dt_manager.title
-                                            self.dataTypeManagers[dt_manager.title] = dt_manager                                
+                                            self.dataTypeManagers[dt_manager.title] = dt_manager
+                    if self.fieldGroup == {}: ## looking into the global folder
+                        for json_file in self.fieldgroupGlobalFolder.glob('*.json'):
+                            tmp_def = json.load(FileIO(json_file))
+                            if tmp_def.get('$id') == fieldGroup or tmp_def.get('meta:altId') == fieldGroup or tmp_def.get('title') == fieldGroup:
+                                self.fieldGroup = tmp_def              
             else:
                 raise ValueError("the element pass is not a field group definition")
         else:
@@ -541,10 +576,10 @@ class FieldGroupManager:
                     if properties.get('type') == 'array':
                         items = properties.get('items',{}).get('properties',None)
                         if items is not None:
-                            dictionary[key] = {'properties':{'patternProperties':{"^.*$":{'items':{'properties':{},'type':'object'}, 'type':'array'}}},'type':'object'}
-                            self.__transformationPydantic__(items,dictionary=dictionary[key]['properties']['patternProperties']["^.*$"]['items']['properties'])
+                            dictionary[key] = {'properties':{'key':{'items':{'properties':{},'type':'object'},'type':'array'}}, 'type':'object'}
+                            self.__transformationPydantic__(items,dictionary=dictionary[key]['properties']['key']['items']['properties'])
                         else:
-                            dictionary[key] = {'properties':{'patternProperties':{"^.*$":{'properties':{'additionalProperties':True},'type':'object'}, 'type':'object'}}}
+                            dictionary[key] = {'properties':{'key':{'items':{'properties':{'additionalProperties':True},'type':'object'}, 'type':'array'}}, 'type':'object'}
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None:
@@ -556,7 +591,27 @@ class FieldGroupManager:
                         else:
                             dictionary[key] = {'type':'array','items':{'type':mydict[key].get('items',{}).get('type','object')}}
                 else:
-                    dictionary[key] = {'type':mydict[key].get('type','object')}
+                    myformat = None
+                    mytype = mydict[key].get('type','object')
+                    if mytype == "string":
+                        if mydict[key].get('format',None) == 'date-time':
+                            myformat = 'date-time'
+                        elif mydict[key].get('format',None) == 'date':
+                            myformat = 'date'
+                        elif mydict[key].get('format',None) == 'uri-reference':
+                            myformat = 'uri-reference'
+                        elif mydict[key].get('format',None) == 'ipv4' or mydict[key].get('format',None) == 'ipv6':
+                            myformat = mydict[key].get('format',None)
+                    dictionary[key] = {'type':mytype}
+                    if myformat is not None:
+                        dictionary[key]['format'] = myformat
+                    if mydict[key].get('enum',None) is not None:
+                        dictionary[key]['enum'] = mydict[key].get('enum',None)
+                    if mydict[key].get('minimum',None) is not None and mydict[key].get('maximum',None) is not None:
+                        dictionary[key]['minimum'] = mydict[key].get('minimum')
+                        dictionary[key]['maximum'] = mydict[key].get('maximum')
+                    if mydict[key].get('pattern',None) is not None:
+                        dictionary[key]['pattern'] = mydict[key].get('pattern')
         return dictionary
 
     def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,queryPath:bool=False,description:bool=False,xdmType:bool=False,required:bool=False)->dict:

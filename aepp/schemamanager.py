@@ -78,6 +78,7 @@ class SchemaManager:
             self.schemaAPI = None
             self.schemaFolder = self.localfolder / 'schema'
             self.fieldgroupFolder = self.localfolder / 'fieldgroup'
+            self.fieldgroupGlobalFolder = self.fieldgroupFolder / 'global'
             self.classFolder = self.localfolder / 'class'
             self.descriptorFolder = self.localfolder / 'descriptor'
             if self.schemaFolder.exists() is False or self.fieldgroupFolder.exists() is False or self.classFolder.exists() is False:
@@ -94,9 +95,13 @@ class SchemaManager:
             self.tenantId = f"_{self.schemaAPI.getTenantId()}"
         elif type(schema) == dict:
             if schema.get('meta:tenantNamespace') is not None:
-                self.tenantId = f"_{schema.get('meta:tenantNamespace')}"
+                self.tenantId = schema.get('meta:tenantNamespace')
         elif kwargs.get('tenantId') is not None:
             self.tenantId = f"{kwargs.get('tenantId')}"
+        elif self.localfolder is not None:
+            config_json = json.load(FileIO(self.localfolder / 'config.json'))
+            if config_json.get('tenantId',None) is not None:
+                self.tenantId = config_json.get('tenantId')
         else: ### Should not be a problem as the element without a tenantId are not supposed to change
             self.tenantId = "  "
         if type(schema) == dict:
@@ -117,27 +122,26 @@ class SchemaManager:
                             break
             self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref']) and obj['$ref'] != self.classId]
             self.classIds = [self.classId]
+            print(self.tenantId)
             for ref in self.fieldGroupIds:
+                print(ref)
                 if '/mixins/' in ref and self.tenantId[1:] in ref:
                     if self.localfolder is not None:
                         for json_file in self.fieldgroupFolder.glob('*.json'):
                             tmp_def = json.load(FileIO(json_file))
                             if tmp_def.get('$id') == ref:
                                 definition = tmp_def
-                                if definition.get('meta:tenantNamespace') is not None:
-                                    self.tenantId = definition.get('meta:tenantNamespace')
                                 break
                     elif self.schemaAPI is not None:
                         definition = self.schemaAPI.getFieldGroup(ref,full=False)
+                    print(definition.get('title'))
                     fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
                 else:
                     if self.localfolder is not None:
-                        for json_file in self.fieldgroupFolder.glob('*.json'):
+                        for json_file in self.fieldgroupGlobalFolder.glob('*.json'):
                             tmp_def = json.load(FileIO(json_file))
                             if tmp_def.get('$id') == ref:
                                 definition = tmp_def
-                                if definition.get('meta:tenantNamespace') is not None:
-                                    self.tenantId = definition.get('meta:tenantNamespace')
                                 break
                     elif self.schemaAPI is not None:
                         definition = self.schemaAPI.getFieldGroup(ref,full=False)
@@ -172,6 +176,7 @@ class SchemaManager:
             else:
                 raise Exception("You need to provide a schemaAPI instance or a localFolder to use the local storage")
             for ref in self.fieldGroupIds:
+                definition = None
                 if '/mixins/' in ref and self.tenantId[1:] in ref:
                     if self.schemaAPI is not None:
                         definition = self.schemaAPI.getFieldGroup(ref,full=False)
@@ -181,6 +186,12 @@ class SchemaManager:
                             if tmp_def.get('$id') == ref:
                                 definition = tmp_def
                                 break
+                        if definition is None:
+                            for json_file in self.fieldgroupGlobalFolder.glob('*.json'):
+                                tmp_def = json.load(FileIO(json_file))
+                                if tmp_def.get('$id') == ref:
+                                    definition = tmp_def
+                                    break
                 else:
                     if self.schemaAPI is not None:
                         definition = self.schemaAPI.getFieldGroup(ref,full=False)
@@ -190,6 +201,13 @@ class SchemaManager:
                             if tmp_def.get('$id') == ref:
                                 definition = tmp_def
                                 break
+                        if definition is None:
+                            for json_file in self.fieldgroupGlobalFolder.glob('*.json'):
+                                tmp_def = json.load(FileIO(json_file))
+                                if tmp_def.get('$id') == ref:
+                                    definition = tmp_def
+                                    print(definition.get('title'))
+                                    break
                 if 'properties' in definition.keys():
                     definition['definitions'] = definition['properties']
                 fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
@@ -228,6 +246,7 @@ class SchemaManager:
                     if self.schemaAPI is not None:
                         definition = self.schemaAPI.getFieldGroup(fgId,full=False)
                     elif self.localfolder is not None:
+                        definition = None
                         fieldGroupPath = self.localfolder / 'fieldgroup'
                         if fieldGroupPath.exists() is False:
                             raise Exception(f"The local folder {fieldGroupPath} does not exist. Please create it and extract your sandbox before using it.")
@@ -236,6 +255,13 @@ class SchemaManager:
                             if tmp_def.get('$id') == fgId:
                                 definition = tmp_def
                                 break
+                        if definition is None:
+                           for json_file in self.fieldgroupGlobalFolder.glob('*.json'):
+                                tmp_def = json.load(FileIO(json_file))
+                                if tmp_def.get('$id') == ref:
+                                    definition = tmp_def
+                                    print(definition.get('title'))
+                                    break 
                     fgM = FieldGroupManager(definition,schemaAPI=self.schemaAPI, localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
                     self.fieldGroupsManagers[fgM.title] = fgM
             elif fieldGroups[0] == dict:

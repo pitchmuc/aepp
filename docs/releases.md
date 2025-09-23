@@ -12,6 +12,17 @@ Patch:
 * Fix `getAudiences` method that had a typo 
 * Patch `copyFieldGroup` based on mdonke Fork to support customized OOTB field groups
 * adding the `getUPSFlows`,`getUISFlows`, `getUPSFlow`,`getUISFlow`,`getUPSFlowRuns`,`getUISFlowRuns`. [see documentation](./flowservice.md#getUPSFlows)
+* adding parameter for the OOTB artefacts from the `extractSandbox` method.
+* changing the OOTB artefacts in their own folder for extractSandbox method and support in different classes (`Synchronizer`, `ClassManager`, `SchemaManager`, `FieldGroupManager`, `DataTypeManager`)   
+* adding the `patchConnection` method in the `flowservice` module
+* changing the output of `getConnection` to return the item directly.
+* fixing the `params` setup for `interact` method in Edge module
+* fixing reference to `getProfileSnapshotDatasets` due to API issue on AEP.
+* adding a new method to download a resource URL directly to a file using CURL command in Python. (see [getResourceToFile](./catalog.md#getResourceToFile))
+* adding the `getDatasetsInfos` in the `catalog` module
+* adding the `getMergePolicyActiveOnEdge` in the `customerprofile` module
+* better support of `datetime` and `enum` in pydantic
+
 
 ## version 0.3.12
 * adding the `extractSandboxArtefacts` methods in aepp module [documentation on methods](./main.md), [documentation on local file usage](./localfilesusage.md) 

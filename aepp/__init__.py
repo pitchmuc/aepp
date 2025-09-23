@@ -123,7 +123,7 @@ def extractSandboxArtefacts(
     sandbox: 'ConnectInConnectObjectstance' = None, 
     localFolder: Union[str, Path] = None,
     region: str = "nld2",
-    ootb: bool = False,
+    ootb: bool = True,
 ):
     """
     Extract the sandbox in the local folder.
