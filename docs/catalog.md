@@ -103,6 +103,7 @@ This data attribute contains 3 dictionaries:
 * table_names : represent the following mapping `{ 'datasetName' : 'QueryServiceTableName' }`
 * schema_ref : represent the following mapping `{ 'datasetName' : 'schemaRefId' }`
 * ids : represent the following mapping `{ 'datasetName' : 'datasetId' }`
+* infos : dataframe representing the output of the [`getDatasetsInfos` method](#getdatasetsinfos)
 
 To enable it, just do the following: 
 
@@ -131,6 +132,12 @@ Arguments:
   * json : default
   * txt : text file
   * raw : a response object from the requests module
+
+#### getResourceToFile
+Use subprocess and CURL request to get the resource and save it to a file.\
+Arguments:
+* endpoint : REQUIRED : The URL to GET
+* file : REQUIRED : The file name to save the content to.
 
 
 #### decodeStreamBatch
@@ -225,7 +232,7 @@ Possible kwargs:
 Return a list of a datasets.\
 Arguments:
 * limit : REQUIRED : amount of dataset to be retrieved per call. 
-* output : OPTIONAL : Default is "raw", other option is "df" for dataframe output\
+* output : OPTIONAL : Default is "raw", other options are "df" for dataframe and "list"\
 Possible kwargs:
 * state : The state related to a dataset.
 * created : Filter by the Unix timestamp (in milliseconds) when this object was persisted.
@@ -242,6 +249,22 @@ Return a dictionary of Profile Snapshot datasetId, containing the information re
 Arguments:
   * explicitMergePolicy : OPTIONAL : Provide a mergePolicyName attribute for the dataset to explain.
 
+#### getDatasetsInfos
+Extract the datasets information from the data attribute and return a dataframe.\
+Elements returned:
+* id
+* name
+* data behavior (timestamp, record, adhoc)
+* datalake_rows : number of rows in datalake
+* datalake_storageSize : size in Octet in datalake
+* datalake_files : number of files in datalake
+* datalake_partition : number of partitions in datalake
+* ups_rows : number of rows in UPS
+* ups_storageSize : storage size in UPS
+* schemaId : the schema ID of the dataset
+* tableFOrmat : format of datalake
+* fileFormat : file format of the datalake
+* qs_table : the table name for query service
 
 #### createDataSets
 Create a new dataSets based either on preconfigured setup or by passing the full dictionary for creation.\
