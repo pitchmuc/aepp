@@ -59,7 +59,9 @@ class Synchronizer:
             self.classFolder = self.localfolder / 'class'
             self.schemaFolder = self.localfolder / 'schema'
             self.fieldgroupFolder = self.localfolder / 'fieldgroup'
+            self.fieldgroupGlobalFolder = self.fieldgroupFolder / 'global'
             self.datatypeFolder = self.localfolder / 'datatype'
+            self.datatypeGlobalFolder = self.datatypeFolder / 'global'
             self.identityFolder = self.localfolder / 'identity'
             self.datasetFolder = self.localfolder / 'dataset'
             self.descriptorFolder = self.localfolder / 'descriptor'
@@ -459,10 +461,16 @@ class Synchronizer:
                 new_fieldgroups = [fg for fg in base_field_groups_names if fg not in t_schema.fieldGroups.values()]
                 existing_fieldgroups = [fg for fg in base_field_groups_names if fg in t_schema.fieldGroups.values()]
                 if len(new_fieldgroups) > 0: ## if new field groups
+                    if verbose:
+                        print('found new field groups to add to the schema')
                     for new_fieldgroup in new_fieldgroups:
-                        if baseSchema.tenantId[1:] not in dict_base_fg_name_id[new_fieldgroups]: ## ootb field group
-                            t_schema.addFieldGroup(dict_base_fg_name_id[new_fieldgroups])
+                        if baseSchema.tenantId[1:] not in dict_base_fg_name_id[new_fieldgroup]: ## ootb field group
+                            if verbose:
+                                print(f"field group '{new_fieldgroup}' is a OOTB field group, using it")
+                            self.dict_targetComponents[target]['fieldgroup'][fg_name] = fieldgroupmanager.FieldGroupManager(dict_base_fg_name_id[new_fieldgroup],config=self.dict_targetsConfig[target],sandbox=target)
                         else:
+                            if verbose:
+                                print(f"field group '{new_fieldgroup}' is a custom field group, syncing it")
                             tmp_FieldGroup = baseSchema.getFieldGroupManager(new_fieldgroup)
                             self.__syncFieldGroup__(tmp_FieldGroup,verbose=verbose)
                             t_schema.addFieldGroup(self.dict_targetComponents[target]['fieldgroup'][new_fieldgroup].id)
