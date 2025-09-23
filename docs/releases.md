@@ -21,7 +21,7 @@ Patch:
 * adding a new method to download a resource URL directly to a file using CURL command in Python. (see [getResourceToFile](./catalog.md#getResourceToFile))
 * adding the `getDatasetsInfos` in the `catalog` module
 * adding the `getMergePolicyActiveOnEdge` in the `customerprofile` module
-* better support of `datetime` and `enum` in pydantic
+* better support of `datetime`, `pattern` and `enum` in pydantic
 
 
 ## version 0.3.12

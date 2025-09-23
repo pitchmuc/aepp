@@ -467,7 +467,8 @@ class Synchronizer:
                         if baseSchema.tenantId[1:] not in dict_base_fg_name_id[new_fieldgroup]: ## ootb field group
                             if verbose:
                                 print(f"field group '{new_fieldgroup}' is a OOTB field group, using it")
-                            self.dict_targetComponents[target]['fieldgroup'][fg_name] = fieldgroupmanager.FieldGroupManager(dict_base_fg_name_id[new_fieldgroup],config=self.dict_targetsConfig[target],sandbox=target)
+                            self.dict_targetComponents[target]['fieldgroup'][new_fieldgroup] = fieldgroupmanager.FieldGroupManager(dict_base_fg_name_id[new_fieldgroup],config=self.dict_targetsConfig[target],sandbox=target)
+                            t_schema.addFieldGroup(self.dict_targetComponents[target]['fieldgroup'][new_fieldgroup].id)
                         else:
                             if verbose:
                                 print(f"field group '{new_fieldgroup}' is a custom field group, syncing it")
