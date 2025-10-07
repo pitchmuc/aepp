@@ -22,6 +22,8 @@ Patch:
 * adding the `getDatasetsInfos` in the `catalog` module
 * adding the `getMergePolicyActiveOnEdge` in the `customerprofile` module
 * better support of `datetime`, `pattern` and `enum` in pydantic
+* adding several methods in `catalog` module regarding patch and put dataset
+* fixing the `getParquetFilesToDataFrame` in `dataaccess` module
 
 
 ## version 0.3.12

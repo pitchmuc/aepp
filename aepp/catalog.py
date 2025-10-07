@@ -731,6 +731,61 @@ class Catalog:
         res = self.connector.patchData(self.endpoint+path, data=data,headers=privateHeader)
         return res
     
+    def patchDataset(self,datasetId:str=None,data:dict=None)->dict:
+        """
+        Patch the dataset with the operation provided in the data argument.
+        Arguments:
+            datasetId : REQUIRED : Dataset ID to be patched
+            data : REQUIRED : The patch operation to be performed on the dataset.
+                see reference here: https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Datasets/patchDataset
+        """
+        if datasetId is None:
+            raise ValueError("Require a datasetId")
+        if data is None or isinstance(data,dict) == False:
+            raise ValueError("Require a data argument with the patch operation to be performed.")
+        path = f"/dataSets/{datasetId}"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting patchDataSet for datasetId: {datasetId}")
+        res = self.connector.patchData(self.endpoint+path, data=data)
+        return res
+    
+    def patchDatasetV2(self,datasetId:str=None,data:dict=None)->dict:
+        """
+        Patch the dataset with the operation provided in the data argument using the v2 endpoint.
+        Arguments:
+            datasetId : REQUIRED : Dataset ID to be patched
+            data : REQUIRED : The patch operation to be performed on the dataset.
+                see reference here: https://developer.adobe.com/experience-platform-apis/references/catalog/#operation/patchDataSetV2
+        """
+        if datasetId is None:
+            raise ValueError("Require a datasetId")
+        if data is None or isinstance(data,dict) == False:
+            raise ValueError("Require a data argument with the patch operation to be performed.")
+        path = f"/v2/dataSets/{datasetId}"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting patchDataSetV2 for datasetId: {datasetId}")
+        res = self.connector.patchData(self.endpoint+path, data=data)
+        return res
+    
+    def putDataset(self,datasetId:str=None,data:dict=None)->dict:
+        """
+        Replace the dataset definition with the new value provided.
+        Arguments:
+            datasetId : REQUIRED : Dataset ID to be replaced
+            data : REQUIRED : The new definition of the dataset.
+                see reference here: https://developer.adobe.com/experience-platform-apis/references/catalog/#operation/putDataset
+        """
+        if datasetId is None:
+            raise ValueError("Require a datasetId")
+        if data is None or isinstance(data,dict) == False:
+            raise ValueError("Require a data argument with the new definition of the dataset.")
+        path = f"/dataSets/{datasetId}"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting putDataSet for datasetId: {datasetId}")
+        res = self.connector.putData(self.endpoint+path, data=data)
+        return res
+
+    
     def disableDatasetProfile(self,datasetId: str = None)->dict:
         """
         Disable the dataset for Profile ingestion.

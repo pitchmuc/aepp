@@ -243,6 +243,27 @@ Possible kwargs:
 * property : Regex used to filter objects in the response. Ex. property=name~^test.\
   /Datasets/get_data_sets, more possibilities : https://www.adobe.io/apis/experienceplatform/home/api-reference.html
 
+#### patchDataset
+Patch the dataset with the operation provided in the data argument.\
+Arguments:
+* datasetId : REQUIRED : Dataset ID to be patched
+* data : REQUIRED : The patch operation to be performed on the dataset.\
+see reference here: https://www.adobe.io/apis/experienceplatform/home/api-reference.html#/Datasets/patchDataset
+
+#### patchDatasetV2
+Patch the dataset with the operation provided in the data argument using the v2 endpoint.\
+Arguments:
+* datasetId : REQUIRED : Dataset ID to be patched
+* data : REQUIRED : The patch operation to be performed on the dataset.\
+see reference here: https://developer.adobe.com/experience-platform-apis/references/catalog/#operation/patchDataSetV2
+
+#### putDataset
+Replace the dataset definition with the new value provided.\
+Arguments:
+* datasetId : REQUIRED : Dataset ID to be replaced
+* data : REQUIRED : The new definition of the dataset.\
+see reference here: https://developer.adobe.com/experience-platform-apis/references/catalog/#operation/putDataset
+
 
 #### getProfileSnapshotDatasets
 Return a dictionary of Profile Snapshot datasetId, containing the information related to them.\

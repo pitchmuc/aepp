@@ -344,7 +344,7 @@ class DataAccess:
             list_res += self.getFiles(dataSetFileId,path=file)
         list_df = []
         for data in list_res:
-            list_df += pd.DataFrame(data)
+            list_df += pd.read_parquet(data)
         full_df = pd.concat(list_df,ignore_index=True)
         return full_df
         
