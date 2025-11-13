@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Union
 from .configs import ConnectObject
 import datetime
+import random
 
 @dataclass
 class _Data:
@@ -262,7 +263,7 @@ class FlowService:
         It requires a mapping file to be provided in the flow.
         Arguments:
             name : REQUIRED : Name of the Connection.
-            sourceId : REQUIRED : The ID of the streaming connection you want to create (random string possible).
+            sourceId : REQUIRED : The ID of the streaming connection you want to create (random string possible). Needs to be unique.
             dataType : REQUIRED : The type of data to ingest (default "xdm") possible value: "raw".
             paramName : REQUIRED : The name of the streaming connection you want to create.
             description : OPTIONAL : if you want to add a description
@@ -775,27 +776,60 @@ class FlowService:
                             description: str = "power by aepp",
                             source_connection_id: str = None,
                             target_connection_id: str = None,
+                            datasetId: str = None,
                             transformation : bool = False,
                             transformation_mapping_id: str = None,
                             transformation_name: str = None,
                             transformation_version: int = 0,
+                            authenticationRequired:bool=False
                             )-> dict:
         """
         Create a streaming flow with or without transformation
-            name : REQUIRED : The name of the Data Flow.
+            name : REQUIRED : The name of the Data Flow (Optional if you are just passing a datasetId).
             description : OPTIONAL : description of the Flow
-            source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake.
-            target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone.
+            source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake (Optional if you are just passing a datasetId).
+            target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone (Optional if you are just passing a datasetId).
+            datasetId : OPTIONAL : The ID of the dataset to be used in the flow.
             transformation : OPTIONAL : if it is using transformation step. If Optional, set to True.
             transformation_mapping_id : OPTIONAL : If a transformation is required, its mapping ID.
             transformation_name : OPTIONAL : If a transformation is required, its name.
             transformation_version : OPTIONAL : If a transformation is required, its version.
+            authenticationRequired : OPTIONAL : If the streaming connection requires authentication (default False).
         """
         if transformation:
             flowSpecId = 'c1a19761-d2c7-4702-b9fa-fe91f0613e81'
         else:
             flowSpecId = 'd8a6f005-7eaf-4153-983e-e8574508b877'
-        return self.createFlow(
+        if datasetId is not None and source_connection_id is None and target_connection_id is None and name is None:
+            if self.loggingEnabled:
+                self.logger.info(f"Creating streaming flow for dataset {dataset.get('name','unknown')}")
+            from aepp import catalog
+            cat = catalog.Catalog(config=self.connector.config)
+            dataset = cat.getDataSet(datasetId)
+            datasetInfo = dataset[list(dataset.keys())[0]]
+            schemaRef = datasetInfo.get('schemaRef',{}).get('id',None)
+            name = f"{datasetInfo.get('name','unknown')} Stream"
+            random_suffix = f"{random.randint(1, 9999)}" ## making the sourceId unique
+            if self.loggingEnabled:
+                self.logger.info(f"Creating streaming flow for dataset {datasetInfo.get('name','unknown')} with name {name}")
+            base_connection = self.createConnectionStreaming(name=f"{name} Account",sourceId=f"base_{datasetId}_{random_suffix}",paramName=f"{name}_account",dataType="xdm",authenticationRequired=authenticationRequired)
+            if base_connection.get('status',200) >= 400:
+                raise Exception(f"Issue creating base streaming connection: {base_connection}")
+            base_connection_id = base_connection.get('id','issue base Connection')
+            source_connection = self.createSourceConnectionStreaming(connectionId=base_connection_id,name=f"{name}_source_connection",format='json')
+            if source_connection.get('status',200) >= 400:
+                raise Exception(f"Issue creating source streaming connection: {source_connection_id}")
+            source_connection_id = source_connection.get('id','issue source Connection')
+            target_connection = self.createTargetConnectionDataLake(name=f"{name} Data Lake Target",datasetId=datasetId,schemaId=schemaRef,format='json')
+            if target_connection.get('status',200) >= 400:
+                raise Exception(f"Issue creating target data lake connection: {target_connection}")
+            target_connection_id = target_connection.get('id','issue target Connection')
+        else:
+            if self.loggingEnabled:
+                self.logger.info(f"Creating streaming flow for source connection {source_connection_id} and target connection {target_connection_id}")
+        source_connection = self.getSourceConnection(source_connection_id)
+        target_connection = self.getTargetConnection(target_connection_id)
+        resFlow = self.createFlow(
             flow_spec_id=flowSpecId,
             name=name,
             description=description,
@@ -805,6 +839,12 @@ class FlowService:
             transformation_name=transformation_name,
             transformation_version=transformation_version,
         )
+        response = {
+            "flow": resFlow,
+            "source_connection_id": source_connection,
+            "target_connection_id": target_connection
+        }
+        return response
 
     def createFlowDataLakeToDataLandingZone(
         self,
@@ -1144,7 +1184,8 @@ class FlowService:
         format: str = "delimited",
         description: str = "Streaming Source powered by aepp",
         providerId:str = "521eee4d-8cbe-4906-bb48-fb6bd4450033",
-        spec_name: str = "Streaming Connection"
+        spec_name: str = "Streaming Connection",
+        spec_id: str = "bc7b00d6-623a-4dfc-9fdb-f1240aeadaeb"
     ) -> dict:
         """
         Create a source connection based on streaming connection created.
@@ -1155,14 +1196,15 @@ class FlowService:
             description : REQUIRED : Description of of the Connection Source.
             providerId : OPTIONAL : By default using the 521eee4d-8cbe-4906-bb48-fb6bd4450033 provider ID from 'Streaming Connection' connection Specification. 
             spec_name : OPTIONAL : The name of the source specification corresponding used to get the providerId, if you decide to change from the default provider ID specified by default.
+            spec_id : OPTIONAL : The specification ID to be used if you do not want to use the providerId or spec_name.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createSourceConnectionStreaming")
-        spec_id = None
         if providerId is None:
             if spec_name is None:
                 raise ValueError("spec_name is required if you did not want the default provider ID")
             spec_id = self.getConnectionSpecIdFromName(spec_name)
+            providerId = self.getConnectionSpec(spec_id).get("items",[{}])[0].get('providerId',None)
         if spec_id is None:
             raise Exception("Require a specId to be present")
         obj = {
