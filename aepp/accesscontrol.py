@@ -125,15 +125,15 @@ class AccessControl:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getRoles")
         res = self.connector.getData(self.endpoint+path)
-        data = res.get('roles',[])
+        data = res.get('items',[])
         nextPage = res.get('_links',{}).get('next',{}).get('href','')
         while nextPage != "":
             path_addition = nextPage.split('roles')[1]
             newPath = path + path_addition
             res = self.connector.getData(self.endpoint+newPath)
-            data += res.get('roles',[])
+            data += res.get('items',[])
             nextPage = res.get('_links',{}).get('next',{}).get('href','')
-            if len(res.get('roles',[])) == 0:
+            if len(res.get('items',[])) == 0:
                 nextPage = ""
         return data
     
@@ -266,7 +266,7 @@ class AccessControl:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getPolicies")
         res = self.connector.getData(self.endpoint+path)
-        data = res.get('policies',[])
+        data = res.get('items',[])
         return data
     
     def getPolicy(self,policyId:str)->dict:
