@@ -13,7 +13,7 @@ To import the module you can use the import statement with the `destination` key
 
 ```python
 import aepp
-aepp.importConfigFile('myConfig_file.json')
+sandbox = aepp.importConfigFile('myConfig_file.json',sandbox='mysandbox', connectedInstance=True)
 
 from aepp import destination
 ```
@@ -28,8 +28,8 @@ This class can be instantiated by calling the `Authoring()` from the `destinatio
 
 Following the previous method described above, you can realize this:
 
-```python
-mySDK = destination.Authoring()
+```py
+mySDK = destination.Authoring(config=sandbox)
 ```
 
 3 parameters are possible for the instantiation of the class:

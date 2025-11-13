@@ -550,14 +550,16 @@ Arguments:
 #### createFlowStreaming
 Create a streaming flow with or without transformation\
 Arguments:
-* name : REQUIRED : The name of the Data Flow.
+* name : REQUIRED : The name of the Data Flow. (Optional if you are just passing a datasetId)
 * description : OPTIONAL : description of the Flow
-* source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake.
-* target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone.
+* source_connection_id : REQUIRED : The ID of the source connection tied to Data Lake. (Optional if you are just passing a datasetId)
+* target_connection_id : REQUIRED : The ID of the target connection tied to Data Landing Zone. (Optional if you are just passing a datasetId)
+* datasetId : OPTIONAL : If you want to create a full flow for a specific dataset. The ID of the dataset to be used in the flow.
 * transformation : OPTIONAL : if it is using transformation step. If Optional, set to True.
 * transformation_mapping_id : OPTIONAL : If a transformation is required, its mapping ID.
 * transformation_name : OPTIONAL : If a transformation is required, its name.
 * transformation_version : OPTIONAL : If a transformation is required, its version.
+* authenticationRequired : OPTIONAL : If you are using the  datasetId to create the whole flow, specify here if it is authenticated (default `False`)
 
 #### createTargetConnectionDatasetToDataLandingZone
 Create a target connection to the Data Landing Zone\
