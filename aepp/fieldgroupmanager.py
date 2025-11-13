@@ -1519,18 +1519,10 @@ class FieldGroupManager:
                 df_import = pd.read_excel(fieldgroup,sheet_name=sheet_name)
         elif type(fieldgroup) == pd.DataFrame:
             df_import = fieldgroup.copy()
-        if 'path' not in df_import.columns or 'xdmType' not in df_import.columns or 'fieldGroup' not in df_import.columns:
+        if 'path' not in df_import.columns or 'xdmType' not in df_import.columns or ('fieldGroup' not in df_import.columns and 'unknown' in self.title):
             raise AttributeError("missing a column [xdmType, path, or fieldGroup] in your dataframe fieldgroup")
         df_import = df_import[~(df_import.duplicated('path'))].copy() ## removing duplicated paths
         df_import = df_import.fillna('')
-        # underscoreDF = df_import[df_import.path.str.contains(r'\._')].copy() ## special fields not supported
-        # if len(underscoreDF)>0:
-        #     list_paths = underscoreDF['path'].to_list()
-        #     objectRoots = set([p.split('.')[-2] for p in list_paths]) ## removing all objects using these fields
-        #     print(f"{objectRoots} objects will not be supported in the field group manager setup. Handle them manually")
-        #     for tobject in objectRoots: ## excluding the objects that are not supported
-        #         tobject = tobject.replace('{}','').replace('[]','') ## removing the array of objects notation
-        #         df_import = df_import[~df_import.path.str.contains(tobject)].copy()
         if 'title' not in df_import.columns:
             df_import['title'] = df_import['path'].apply(lambda x : x.split('.')[-1])
         if 'description' not in df_import.columns:
@@ -1552,7 +1544,7 @@ class FieldGroupManager:
                 self.addField(clean_path,typeElement,title=row['title'],description=row['description'])
         if title is not None:
             self.setTitle(title)
-        else:
+        elif 'fieldGroup' in df_import.columns:
             self.setTitle(df_import['fieldGroup'].mode().values[0])
         return self
     
