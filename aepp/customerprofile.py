@@ -18,6 +18,7 @@ from typing import Union
 from .configs import ConnectObject
 from urllib import parse
 import json
+from aepp import som
 
 class Profile:
     """
@@ -163,8 +164,93 @@ class Profile:
                 if len(children)>= n_events:
                     nextPage = ""
             return children
-                
         return res
+    
+    def getEntityEvents(
+        self,
+        entityId: str = None,
+        entityIdNS: str = None,
+        mergePolicyId: str = None,
+        eventFilter: list = None,
+        eventFilterOperator: str = "OR",
+        n_events : int = 1000,
+        **kwargs,
+    ) -> dict:
+        """
+        Returns an entity by ID or Namespace.
+        Arguments:
+            schema_name : REQUIRED : class name of the schema to be retrieved. default : _xdm.context.profile
+            entityId : OPTIONAL : identity ID
+            entityIdNS : OPTIONAL : Identity Namespace code. Required if entityId is used (except for native identity)
+            mergePolicyId : OPTIONAL : Id of the merge policy.
+            eventFilter : OPTIONAL : Filter to apply on the events. List of string such as ["eventType=='click'","eventType=='view'"]
+            eventFilterOperator : OPTIONAL : Operator to apply on the eventFilter. Either "AND" or "OR". Default "OR"
+            n_events : OPTIONAL : Maximum number of event returned
+        Possible kwargs:
+            fields : path of the elements to be retrieved, separated by comma. Ex : "person.name.firstName,person.name.lastName"
+            relatedSchema_name : If schema.name is "_xdm.context.experienceevent", this value must specify the schema for the profile entity that the time series events are related to.
+            relatedEntityId : ID of the entity that the ExperienceEvents are associated with. Used when looking up ExperienceEvents. For Native XID lookup, use relatedEntityId=<XID> and leave relatedEntityIdNS absent;
+            For ID:NS lookup, use both relatedEntityId and relatedEntityIdNS fields.
+            relatedEntityIdNS : Identity Namespace code of the related entity ID of ExperienceEvent. Used when looking up ExperienceEvents. If this field is used, entityId cannot be empty.
+            startTime : Start time of Time range filter for ExperienceEvents. Should be at millisecond granularity. Included. Default: From beginning.
+            endTime : End time of Time range filter for ExperienceEvents. Should be at millisecond granularity. Excluded. Default: To the end.
+            limit : Number of records to return from the result. Only for time-series objects. Default: 1000
+        """
+        schema_name = "_xdm.context.experienceevent"
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getEntityEvents")
+        path = "/access/entities"
+        params = {
+            "schema.name": schema_name,
+            "entityId": entityId,
+            "entityIdNS": entityIdNS,
+            "mergePolicyId": mergePolicyId,
+        }
+        params["relatedSchema.name"] = kwargs.get("relatedSchema_name", "_xdm.context.profile")
+        params["relatedEntityId"] = kwargs.get("relatedEntityId", entityId)
+        params["relatedEntityIdNS"] = kwargs.get("relatedEntityIdNS", entityIdNS)
+        params["limit"] = kwargs.get("limit", 1000)
+        params["startTime"] = kwargs.get("startTime", None)
+        params["endTime"] = kwargs.get("endTime", None)                             
+        params["fields"] = kwargs.get("fields", None)
+        res = self.connector.getData(
+            self.endpoint + path, params=params, headers=self.header
+        )
+        children = res.get('children',[])
+        nextPage = res.get('_links',{}).get('next',{}).get('href','')
+        if len(children)>= n_events:
+            nextPage = ""
+        while nextPage != "":
+            parsedNext = parse.urlparse(nextPage)
+            queries = parse.parse_qs(parsedNext.query)
+            offsets = queries.get('offsets',[''])[0]
+            params['offsets'] = offsets
+            res = self.connector.getData(
+                self.endpoint + path, params=params, headers=self.header
+            )
+            children += res.get('children',[])
+            nextPage = res.get('_links',{}).get('next',{}).get('href','')
+            if len(children)>= n_events:
+                nextPage = ""
+        if eventFilter is not None and type(eventFilter) == list and len(eventFilter)>0:
+            if eventFilterOperator not in ['AND','OR']:
+                eventFilterOperator = "OR"
+            filteredChildren = []
+            list_filters = []
+            for index, child in enumerate(children):
+                expressions = [{element.split('==')[0]:element.split('==')[1]} for element in eventFilter]
+                myTempSom = som.Som(data=child)
+                for expression,value in expressions.items():
+                    if myTempSom.get(expression) == value:
+                        list_filters.append(index)
+            if eventFilterOperator == "OR":
+                list_filters = list(set(list_filters))
+                filteredChildren = [children[i] for i in list_filters]
+            elif eventFilterOperator == "AND":
+                list_filters = [item for item, count in pd.Series(list_filters).value_counts().items() if count == len(eventFilter)]
+                filteredChildren = [children[i] for i in list_filters]
+            return filteredChildren
+        return children
 
     def getEntities(self, request_data: dict = None) -> dict:
         """
