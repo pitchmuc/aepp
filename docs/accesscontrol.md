@@ -8,8 +8,26 @@ Alternatively, you can use the docstring in the methods to have more information
 - [Access Control module in aepp](#access-control-module-in-aepp)
   - [Menu](#menu)
   - [Importing the module](#importing-the-module)
-  - [The AccessControl Class](#the-accesscontrol-class)
-  - [AccessControl methods](accesscontrol-methods)
+  - [The AccessControl class](#the-accesscontrol-class)
+  - [AccessControl methods](#accesscontrol-methods)
+    - [getPermissions](#getpermissions)
+    - [getEffectivePolicies](#geteffectivepolicies)
+    - [getRoles](#getroles)
+    - [getRole](#getrole)
+    - [deleteRole](#deleterole)
+    - [patchRole](#patchrole)
+    - [putRole](#putrole)
+    - [getSubjects](#getsubjects)
+    - [patchSubjects](#patchsubjects)
+    - [getPolicies](#getpolicies)
+    - [getPolicy](#getpolicy)
+    - [deletePolicy](#deletepolicy)
+    - [createPolicy](#createpolicy)
+    - [putPolicy](#putpolicy)
+    - [patchPolicy](#patchpolicy)
+    - [getProducts](#getproducts)
+    - [getPermissionCategories](#getpermissioncategories)
+    - [getPermissionSets](#getpermissionsets)
 
 ## Importing the module
 
@@ -19,7 +37,7 @@ To import the module you can use the import statement with the `destination` key
 
 ```python
 import aepp
-aepp.importConfigFile('myConfig_file.json')
+sandbox = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='my-sandbox')
 
 from aepp import accesscontrol
 ```

@@ -2,6 +2,14 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.3.14
+* adding the `deletion` module [documentation](./deletion.md)
+* adding some parameters to make possible to create a HTTP Stream Flow for a dataset based on the `datasetId` [documentation](./flowservice.md#createflowstreaming)
+* update the handling of responses for Access Control API
+* adding `getEntityEvents` to the `customerprofile` module [documentation](./customerprofile.md)
+* better handling of fieldgroup definition imported via `importFieldGroupDefinition`
+* Update file name outputs used for `extractSandboxArtefacts` method
+* adding `extractSandboxArtefact` method
 
 ## version 0.3.13
 * adding `getWorkOrders` on the `hygiene` module

@@ -168,3 +168,15 @@ as of today, the following artefacts are exported:
 * datasets
 
 The reason to use that extractSandboxArtefacts methods is documented on [Local File Usage](./localfilesusage.md)
+
+## extractSandboxArtefact
+Export a single artefact and its dependencies from the sandbox.\
+Arguments:
+* sandbox: REQUIRED: the instance of a ConnectObject that contains the sandbox information and connection.
+* localFolder: OPTIONAL: the local folder where to extract the sandbox. If not provided, it will use the current working directory and name the * folder the name of the sandbox.
+* artefact: REQUIRED: the id or the name of the artefact to export.
+* artefactType: REQUIRED: the type of artefact to export. Possible values are: 'class','schema','fieldgroup','datatype','descriptor','dataset','identity'
+* region: OPTIONAL: the region of the sandbox (default: nld2). This is used to fetch the correct API endpoints for the identities. 
+    Possible values: "va7","aus5", "can2", "ind2"
+
+The reason to use that extractSandboxArtefacts methods is documented on [Local File Usage](./localfilesusage.md)
