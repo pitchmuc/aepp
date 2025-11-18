@@ -96,8 +96,8 @@ The FlowManager is part of the `flowservice` module and allows you to group ever
 
 ### PrivacyService module
 
-The privacy service module is part of the AEP python wrapper (`aepp`) but requires a different JWT connection in console.adobe.io.
-Be careful that your JWT connection has the correct setup to access this API endpoints.
+The privacy service module is part of the AEP python wrapper (`aepp`) but requires a different API connection in console.adobe.io.
+Be careful that your developer project has the correct setup to access this API endpoints.
 
 ## Releases
 

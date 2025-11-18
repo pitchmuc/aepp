@@ -60,8 +60,8 @@ privacy = privacyservice.Privacy()
 
 2 parameters are possible for the instantiation of the class:
 
-* privacyScope : REQUIRED : set the connection retrieved process with the Privacy JWT scope (default True)
-* aepScope : OPTIONAL : set the connection retrieved process with the AEP JWT scope if set to True (default False)
+* privacyScope : REQUIRED : set the connection retrieved process with the Privacy scope (default True)
+* aepScope : OPTIONAL : set the connection retrieved process with the AEP scope if set to True (default False)
 * config : OPTIONAL : config object in the config module. (example : aepp.config.config_object)
 * header : OPTIONAL : header object  in the config module. (example: aepp.config.header)
 

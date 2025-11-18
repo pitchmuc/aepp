@@ -12,7 +12,7 @@ Arguments:
 * destination : OPTIONAL : if you wish to save the file at a specific location.
 * sandbox : OPTIONAL : You can directly set your sandbox name in this parameter. Default : `prod`
 * environment : OPTIONAL : This element is only for AEP core developer. **NOT TO BE CHANGED BY CLIENTS**.
-* auth_type : OPTIONAL : Default is OauthV2, but you can still use JWT (Deprecated in 2025) or OauthV1 (**for Internal only!**)
+* auth_type : OPTIONAL : Default is OauthV2, but you can also use OauthV1 (**for Internal only!**)
 * verbose : OPTIONAL : set to true, gives you a print statement where is the location.
 
 The JSON file is having this structure:
@@ -69,10 +69,8 @@ Arguments:
 * org_id : REQUIRED : Organization ID
 * tech_id : REQUIRED : Technical Account ID
 * secret : REQUIRED : secret generated for your connection
-* client_id : REQUIRED : The client_id (old api_key) provided by the JWT connection.
+* client_id : REQUIRED : The client_id (old api_key).
 * scopes : REQUIRED : The scope used in the OauthV2 connection.
-* path_to_key : REQUIRED : If you have a file containing your private key value. (JWT connection only, deprecated in 2025)
-* private_key : REQUIRED : If you do not use a file but pass a variable directly.(JWT connection only, deprecated in 2025)
 * sandbox : OPTIONAL : If not provided, default to prod
 * connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class (default False)
 * environment : OPTIONAL : If not provided, default to prod

@@ -81,7 +81,7 @@ class Privacy:
         Instanciate the class for Privacy Service call.
         Arguments:
             privacyScope : REQUIRED : set the connection retrieved process with the Privacy scope (default True).
-            aepScope : OPTIONAL : set the connection retrieved process with the AEP JWT scope if set to True (default False).
+            aepScope : OPTIONAL : set the connection retrieved process with the AEP API scope if set to True (default False).
             config : OPTIONAL : config object in the config module.
             header : OPTIONAL : header object  in the config module.
         kwargs:

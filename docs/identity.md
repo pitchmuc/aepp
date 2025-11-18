@@ -109,7 +109,7 @@ The different regions available are:
 ### Using kwargs
 
 Any additional keywords parameters used will update the header used within the requests with new parameter.
-It can be useful when you want to connect to multiple sandboxes with the same JWT authentication.\
+It can be useful when you want to connect to multiple sandboxes with the same authentication.\
 In that case, the 2 instances will be created as such:
 
 ```python

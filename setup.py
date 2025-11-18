@@ -51,6 +51,5 @@ setuptools.setup(
         "Development Status :: 2 - Pre-Alpha"
     ],
     python_requires='>=3.10',
-    install_requires=['pandas', "requests",
-                      "PyJWT", "pathlib2", "PyJWT[crypto]", "tenacity", "deprecation","datamodel-code-generator"],
+    install_requires=['pandas', "requests", "pathlib2", "tenacity", "deprecation","datamodel-code-generator"],
 )

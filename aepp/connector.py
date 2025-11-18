@@ -21,7 +21,6 @@ import time
 import requests
 from requests import Response
 from pathlib import Path
-import jwt
 
 @dataclass
 class TokenInfo:
@@ -82,16 +81,7 @@ class AdobeRequest:
                 if self.config["token"] != "":
                     self.token = self.config["token"]
             if self.config["token"] == "" or time.time() > self.config["date_limit"]:
-                if self.config["private_key"] is not None or self.config["pathToKey"] is not None:
-                    self.connectionType = 'jwt'
-                    self.config['connectionType'] = self.connectionType
-                    token_info = self.get_jwt_token_and_expiry_for_config(
-                        config=self.config,
-                        verbose=verbose,
-                        aepScope=kwargs.get("aepScope"),
-                        privacyScope=kwargs.get("privacyScope"),
-                    )
-                elif self.config["scopes"] is not None:
+                if self.config["scopes"] is not None:
                     self.connectionType = 'oauthV2'
                     self.config['connectionType'] = self.connectionType
                     token_info = self.get_oauth_token_and_expiry_for_config(
@@ -112,13 +102,7 @@ class AdobeRequest:
                         self.token = self.config["token"]
                 self.token = token_info.token
                 self.config["token"] = self.token
-                if self.connectionType == 'jwt':
-                    timeScale = 1000 ## jwt returns milliseconds expiry
-                elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
-                    timeScale = 1 ## oauth returns seconds expiry
-                self.config["date_limit"] = (
-                    time.time() + token_info.expiry / timeScale - 500
-                )
+                self.config["date_limit"] = (time.time() + token_info.expiry - 500)
                 self.header.update({"Authorization": f"Bearer {self.token}"})
             else:
                 self.token = self.config["token"]
@@ -191,53 +175,6 @@ class AdobeRequest:
             )
         return self._token_postprocess(response=response, verbose=verbose, save=save)
 
-    def get_jwt_token_and_expiry_for_config(
-        self,
-        config: Union[dict,configs.ConnectObject],
-        verbose: bool = False,
-        save: bool = False,
-        **kwargs
-    ) -> TokenInfo:
-        """
-        Retrieve the access token by using the JWT information provided by the user
-        during the import importConfigFile function.
-        Arguments :
-            config : REQUIRED : Configuration object.
-            verbose : OPTIONAL : Default False. If set to True, print information.
-            save : OPTIONAL : Default False. If set to True, save the toke in the .
-        """
-        if type(config) != dict:
-            config = config.getConfigObject()
-        private_key = configs.get_private_key_from_config(config)
-        header_jwt = {
-            "cache-control": "no-cache",
-            "content-type": "application/x-www-form-urlencoded",
-        }
-        now_plus_24h = int(time.time()) + 24 * 60 * 60
-        jwt_payload = {
-            "exp": now_plus_24h,
-            "iss": config["org_id"],
-            "sub": config["tech_id"],
-            f"{self.config['imsEndpoint']}/s/ent_dataservices_sdk": True,
-            "aud": f'{self.config["imsEndpoint"]}/c/{config["client_id"]}',
-        }
-        # privacy topic
-        if kwargs.get("privacyScope", False):
-            jwt_payload[f"{self.config['imsEndpoint']}/s/ent_gdpr_sdk"] = True
-        if kwargs.get("aepScope", True) is False:
-            del jwt_payload[f"{self.config['imsEndpoint']}/s/ent_dataservices_sdk"]
-        encoded_jwt = self._get_jwt(payload=jwt_payload, private_key=private_key)
-
-        payload = {
-            "client_id": config["client_id"],
-            "client_secret": config["secret"],
-            "jwt_token": encoded_jwt,
-        }
-        response = requests.post(
-            config["jwtTokenEndpoint"], headers=header_jwt, data=payload, verify=False
-        )
-        return self._token_postprocess(response=response, verbose=verbose, save=save)
-
     def _token_postprocess(
         self,
         response: Response,
@@ -273,15 +210,6 @@ class AdobeRequest:
             )
         return TokenInfo(token=self.token, expiry=expiry)
 
-    def _get_jwt(self, payload: dict, private_key: str) -> str:
-        """
-        Ensure that jwt enconding return the same type (str) as versions < 2.0.0 returned bytes and >2.0.0 return strings.
-        """
-        token: Union[str, bytes] = jwt.encode(payload, private_key, algorithm="RS256")
-        if isinstance(token, bytes):
-            return token.decode("utf-8")
-        return token
-
     def _checkingDate(self) -> None:
         """
         Checking if the token is still valid
@@ -291,22 +219,14 @@ class AdobeRequest:
             if now > self.config["date_limit"]:
                 if self.loggingEnabled:
                     self.logger.warning("token expired. Trying to retrieve a new token")
-                if self.connectionType == 'jwt':
-                    token_with_expiry = self.get_jwt_token_and_expiry_for_config(config=self.config)
-                elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
+                if self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
                     token_with_expiry = self.get_oauth_token_and_expiry_for_config(config=self.config)
                 self.token = token_with_expiry.token
                 self.config["token"] = self.token
                 if self.loggingEnabled:
                     self.logger.info("new token retrieved : {self.token}")
                 self.header.update({"Authorization": f"Bearer {self.token}"})
-                if self.connectionType == 'jwt':
-                    timeScale = 1000 ## jwt returns milliseconds expiry
-                elif self.connectionType == 'oauthV1' or self.connectionType == 'oauthV2':
-                    timeScale = 1 ## oauth returns seconds expiry
-                self.config["date_limit"] = (
-                    time.time() + token_with_expiry.expiry / timeScale - 500
-                )
+                self.config["date_limit"] = (time.time() + token_with_expiry.expiry - 500)
 
     def updateSandbox(self, sandbox: str) -> None:
         """

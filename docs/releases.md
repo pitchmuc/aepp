@@ -2,6 +2,9 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.4.0
+* removing the dependency to pyJWT and all references to JWT integration
+
 ## version 0.3.14
 * adding the `deletion` module [documentation](./deletion.md)
 * adding some parameters to make possible to create a HTTP Stream Flow for a dataset based on the `datasetId` [documentation](./flowservice.md#createflowstreaming)

@@ -103,7 +103,6 @@ class ExportDatasetToDataLandingZoneTest(unittest.TestCase):
         "sandbox": "prod",
         "environment": "stage",
         "token": "token",
-        "jwtTokenEndpoint": "https://ims-na1.adobelogin.com/ims/exchange/jwt/",
         "oauthTokenEndpoint": "",
         "imsEndpoint": "https://ims-na1-stg1.adobelogin.com",
         "private_key": ""

@@ -1,8 +1,7 @@
 pytest
 requests
 pandas
-PyJWT[crypto]>=1.7.1
-PyJWT>=1.7.1
 tenacity
 deprecation
 datamodel-code-generator
+pathlib

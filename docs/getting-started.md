@@ -2,18 +2,20 @@
 
 ## Menu
 
--   [Installing the module](#installing-the-module)
--   [Create a Developer Project ](#create-a-developer-project)
+- [Getting started with aepp](#getting-started-with-aepp)
+  - [Menu](#menu)
+  - [Installing the module](#installing-the-module)
+  - [Create a Developer Project](#create-a-developer-project)
     - [Oauth Server-to-Server](#oauth-server-to-server)
     - [Oauth V1](#oauth-v1)
--   [Using the module](#using-the-module)
-    - [Create a Config file](#create-a-config-file)
+  - [Using the module](#using-the-module)
+    - [Create a config file](#create-a-config-file)
     - [Environments](#environments)
     - [Importing the config file](#importing-the-config-file)
     - [Alternative method for cloud configuration](#alternative-method-for-cloud-configuration)
     - [The ConnectInstance parameter](#the-connectinstance-parameter)
--   [Importing a sub module to work with](#importing-a-sub-module-to-work-with)
--   [Help](#help)
+  - [Importing a sub module to work with](#importing-a-sub-module-to-work-with)
+  - [Help](#help)
 
 ## Installing the module
 
@@ -128,7 +130,7 @@ Parameter for `createConfigFile` method:
 
 * destination : OPTIONAL : The name of the file to be created (with a dedicated path if needed)
 * sandbox : OPTIONAL : You can directly set your sandbox name in this parameter.
-* auth_type : OPTIONAL : type of authentication, either "jwt" or "oauthV2" or "oauthV1" (default oauthV2)
+* auth_type : OPTIONAL : type of authentication, either "oauthV2" or "oauthV1" (default oauthV2)
 * verbose : OPTIONAL : set to true, gives you a print stateent where is the location.
 
 
@@ -147,12 +149,12 @@ import aepp
 aepp.importConfigFile('myConfig_file.json')
 ```
 
-The type of authentication will be automatically determined based on the keys provided by the JSON config file. Be careful to not mix JWT and Oauth on the same config file.\
+The type of authentication will be automatically determined based on the keys provided by the JSON config file.
 
 Parameter for `importConfigFile` method:
 * path: REQUIRED : path to the configuration file. Can be either a fully-qualified or relative.
 * connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class
-* auth_type : OPTIONAL : type of authentication, either "jwt" or "oauth". Detected based on keys present in config file.
+* auth_type : OPTIONAL : type of authentication, either "oauthV2" (default) or "oauthV1". Detected based on keys present in config file.
 * sandbox : OPTIONAL : The sandbox to connect it.
 
 The `connectInstance` parameter is described below. see [Tip for multi sandbox work](#tip-for-multi-sandbox-work)\
@@ -190,23 +192,9 @@ aepp.configure(
 )
 ```
 
-**NOTE** : In both case, I didn't provide a `sandbox` parameter but this parameter does exist and can be used to setup a specific sandbox.\
-By default, the `prod` sandbox will be used. To use that, use the code below (for JWT):
+**NOTE** : In both case, I didn't provide a `sandbox` parameter but this parameter does exist and can be used to setup a specific sandbox. If not used, it will default to `prod`.\
 
-```python
-import aepp
-aepp.configure(
-    org_id=my_org_id,
-    tech_id=my_tech_id, 
-    secret=my_secret,
-    private_key=my_key_as_string,
-    client_id=my_client_id,
-    environment="prod",
-    sandbox=my_sandbox
-)
-```
-
-**NOTE** The `environment` parameter is optional and defaults to "prod".
+**NOTE** The `environment` parameter is optional and defaults to "prod". DO NOT confuse environment and sandbox. 
 
 ### The ConnectInstance parameter
 
