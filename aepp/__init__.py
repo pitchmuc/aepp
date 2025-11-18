@@ -298,13 +298,13 @@ def extractSandboxArtefact(
     if artefactType == 'class':
         __extractClass__(artefact,completePath,sandbox)
     elif artefactType == 'schema':
-        __extractSchema__(artefact,completePath,sandbox)
+        __extractSchema__(artefact,completePath,sandbox,region)
     elif artefactType == 'fieldgroup':
         __extractFieldGroup__(artefact,completePath,sandbox)
     elif artefactType == 'datatype':
         __extractDataType__(artefact,completePath,sandbox)
     elif artefactType == 'dataset':
-        __extractDataset__(artefact,completePath,sandbox)
+        __extractDataset__(artefact,completePath,sandbox,region)
     elif artefactType == 'identity':
         __extractIdentity__(artefact,region,completePath,sandbox)
     else:
@@ -401,7 +401,7 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
             with open(f"{descriptorPath / descriptor['@id']}.json",'w') as f:
                 json.dump(descriptor,f,indent=2)
 
-def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None):
+def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,region:str=None):
     schemaPath = Path(folder) / 'schema'
     schemaPath.mkdir(exist_ok=True)
     from aepp import schema, schemamanager
@@ -432,19 +432,23 @@ def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'Co
         for descriptor in descriptors:
             with open(f"{descriptorPath / descriptor['@id']}.json",'w') as f:
                 json.dump(descriptor,f,indent=2)
+            if descriptor.get('@type','') == 'xdm:descriptorIdentity':
+                namespace = descriptor['xdm:namespace']
+                __extractIdentity__(namespace,region,folder,sandbox)
 
-def __extractIdentity__(identity: str,region:str=None,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None):
+
+def __extractIdentity__(identityStr: str,region:str=None,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None):
     from aepp import identity
     ide = identity.Identity(config=sandbox,region=region)
     identities = ide.getIdentities()
-    myIdentity = [el for el in identities if el.get('code','') == identity or el.get('name','') == identity][0]
+    myIdentity = [el for el in identities if el.get('code','') == identityStr or el.get('name','') == identityStr][0]
     identityPath = Path(folder) / 'identity'
     identityPath.mkdir(exist_ok=True)
     file_name = __titleSafe__(myIdentity.get('code',myIdentity.get('name','unknown')))
     with open(f"{identityPath / file_name}.json",'w') as f:
         json.dump(myIdentity,f,indent=2)
 
-def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None):
+def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None, region:str=None):
     from aepp import catalog
     cat = catalog.Catalog(config=sandbox)
     datasets = cat.getDataSets()
@@ -462,4 +466,4 @@ def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'Co
         json.dump(myDataset,f,indent=2)
     schema = myDataset.get('schemaRef',{}).get('id',None)
     if schema is not None:
-        __extractSchema__(schema,folder,sandbox)
+        __extractSchema__(schema,folder,sandbox,region)

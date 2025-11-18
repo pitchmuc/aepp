@@ -42,7 +42,7 @@ endpoints = {
     "catalog": "/data/foundation/catalog",
     "segmentation": "/data/core/ups",
     "export": "/data/foundation/export",
-    "identity": "/data/core/",
+    "identity": "/data/core",
     "sandboxes": "/data/foundation/sandbox-management",
     "sandboxTooling" : "/data/foundation/exim",
     "sensei": "/data/sensei",
