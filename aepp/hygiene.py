@@ -220,35 +220,49 @@ class Hygiene:
         res = self.connector.deleteData(self.endpoint+path)
         return res
 
-    def createRecordDeleteRequest(self,datasetId:str="ALL",name:str=None,identities:list=None,description:str="")->dict:
+    def createRecordDeleteRequest(self,datasetId:str="ALL",name:str=None,namespacesIdentities:list=None,description:str="",recordDeletionDict:dict=None)->dict:
         """
         Delete records from a specific identity.
         NOTE : You should use the maximum number of identities in one request. Max is 100 K identities in the list.
         Argument:
             datasetId : REQUIRED : default "ALL" for all dataset, otherwise a specific datasetId.
             name : REQUIRED : Name of the deletion request job
-            identities : REQUIRED : list of namespace code and id to be deleted.
+            namespacesIdentities : REQUIRED : list of namespace code and id to be deleted.
                 example : 
-                [{"namespace": {
+                [
+                    {
+                        "namespace": {
                         "code": "email"
-                        },
-                    "id": "poul.anderson@example.com"
-                }],
+                    },
+                    "IDs": [
+                        "alice.smith@acmecorp.com",
+                        "bob.jones@acmecorp.com",
+                        "charlie.brown@acmecorp.com"
+                        ]
+                    }
+                ]
             description : OPTIONAL : Description of the job
+            recordDeletionDict : OPTIONAL : dictionary containing the full deletion request payload. (not passing other arguments)
         """
-        if datasetId is None:
-            raise ValueError("datasetId is required")
-        if identities is None:
-            raise ValueError("list of identities is required")
+        path = "/workorder"
+        if recordDeletionDict is not None and type(recordDeletionDict) == dict:
+            datasetId = recordDeletionDict.get('datasetId','ALL')
+            name = recordDeletionDict.get('displayName',None)
+            description = recordDeletionDict.get('description',"")
+            namespacesIdentities = recordDeletionDict.get('namespacesIdentities',None)
+        else:
+            if datasetId is None:
+                raise ValueError("datasetId is required")
+            if namespacesIdentities is None:
+                raise ValueError("list of identities is required")
         if self.loggingEnabled:
             self.logger.debug(f"Starting createRecordDeleteRequest, datasetId: {datasetId}")
-        path = "/workorder"
         data = {
             "action": "delete_identity",
             "datasetId": datasetId,
             "displayName": name,
             "description": description,
-            "identities":identities
+            "namespacesIdentities":namespacesIdentities
         }
         res = self.connector.postData(self.endpoint+path,data=data)
         return res

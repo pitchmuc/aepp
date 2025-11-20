@@ -10,9 +10,19 @@ Contact your adobe representative to know what can be used in your organization.
 ## Menu
 
 - [Data Hygiene in AEP](#data-hygiene-in-aep)
-- [Importing the module](importing-the-module)
-- [Generating a Hygiene instance](#generating-a-hygiene-instance)
+  - [Menu](#menu)
+  - [Importing the module](#importing-the-module)
+  - [Generating a Hygiene instance](#generating-a-hygiene-instance)
+    - [Using different ConnectObject for different sandboxes](#using-different-connectobject-for-different-sandboxes)
   - [Data Hygiene Methods](#data-hygiene-methods)
+    - [getQuotas](#getquotas)
+    - [getDatasetsExpirations](#getdatasetsexpirations)
+    - [getDatasetExpiration](#getdatasetexpiration)
+    - [createDatasetExpiration](#createdatasetexpiration)
+    - [deleteDatasetExpiration](#deletedatasetexpiration)
+    - [createRecordDeleteRequest](#createrecorddeleterequest)
+    - [getWorkOrderStatus](#getworkorderstatus)
+    - [updateWorkOrder](#updateworkorder)
 
 
 ## Importing the module
@@ -129,16 +139,24 @@ Delete records from a specific identity.\
 Argument:
 * datasetId : REQUIRED : default "ALL" for all dataset, otherwise a specific datasetId.
 * name : REQUIRED : Name of the deletion request job
-* identities : REQUIRED : list of namespace code and id to be deleted.\
+* namespacesIdentities : REQUIRED : list of namespace code and id to be deleted.\
     example :
-    ```python 
-    [{"namespace": {
+    ```py
+    [
+        {
+            "namespace": {
             "code": "email"
-            },
-        "id": "poul.anderson@example.com"
-    }],
-    ```
+        },
+        "IDs": [
+            "alice.smith@acmecorp.com",
+            "bob.jones@acmecorp.com",
+            "charlie.brown@acmecorp.com"
+            ]
+        }
+    ]
+    ``` 
 * description : OPTIONAL : Description of the job
+* recordDeletionDict : OPTIONAL : dictionary containing the full deletion request payload (not passing other arguments)
 
 ### getWorkOrderStatus
 
