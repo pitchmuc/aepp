@@ -218,6 +218,36 @@ class Identity:
             self.endpoint + path, headers=self.header, data=creation_dict
         )
         return res
+    
+    def getLinkedIdentities(self,xids:dict|list=None,projectionType:str="set",aam:bool=False,edgeMeta:bool=False,**kwargs)->dict:
+        """
+        Given set of identities, returns all linked identities in the graph corresponding to each identity.
+        Arguments:
+            xids : REQUIRED : A single or a list of xid composite such as: 
+                {'nsid':'mynsid','id':'myid','ns':'mynamespace'}
+            projectionType : OPTIONAL : This define the format returned. Default is "set". Possible : "graph"
+            aam : OPTIONAL : Boolean that cannot be used with graph type. Default False.
+            edgeMeta : OPTIONAL : This is and optional field that is used to add edge meta data in the response, such as dataset_ids and batch_ids. 
+                    It will only apply if the requested projection_type is graph.
+        """
+        if xids is None:
+            raise Exception("Cannot process the request without Xid")
+        if type(xids) == str:
+            xids = list(xids)
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting getLinkedIdentities")
+        path = "/identity/v2/graph"
+        data = {}
+        data["composite_xid"] = xids
+        data['projection_type'] = projectionType
+        data['aam_properties'] = {'return_data_sources':aam}
+        data['require_edge_meta_data'] = edgeMeta
+        if len(kwargs)>0:
+            for key, value in kwargs.items():
+                if key in ['graph_type','traverse','filter']:
+                    data[key] = value
+        res = self.connector.postData(self.endpoint+path, data=data)
+        return res
 
     def updateIdentity(
         self,
@@ -290,117 +320,6 @@ class Identity:
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         return res
 
-    def getClustersMembers(
-        self,
-        xid: str = None,
-        nsid: str = "411",
-        namespace: str = "adcloud",
-        id_value: str = None,
-        graphType: str = "private",
-    ) -> dict:
-        """
-        Given an XID return all XIDs, in the same or other namespaces, that are linked to it by the device graph type.
-        The related XIDs are considered to be part of the same cluster.
-        It is required to pass either xid or (namespace/nsid & id) pair to get cluster members.
-        Arguments:
-            xid : REQUIRED : Identity string returns by the getIdentity method.
-            nsid : OPTIONAL : namespace id (default : 411)
-            namespace : OPTIONAL : namespace code. (default : adcloud)
-            id_value : OPTIONAL : ID of the customer in given namespace.
-            graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
-        """
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting getClustersMembers")
-        temp_header = deepcopy(self.header)
-        temp_header["Accept"] = "application/json"
-        temp_header["x-uis-cst-ctx"] = "stub"
-        path = "/identity/cluster/members"
-        params = {}
-        if xid is not None:
-            params["xid"] = xid
-            params["graph-type"] = graphType
-            res = self.connector.getData(
-                self.endpoint + path, params=params, headers=temp_header
-            )
-            return res
-        elif xid is None and id_value is not None:
-            params["nsid"] = nsid
-            params["namespace"] = namespace
-            params["id"] = id_value
-            params["graph-type"] = graphType
-            res = self.connector.getData(
-                self.endpoint + path, params=params, headers=temp_header
-            )
-            return res
-
-    def postClustersMembers(
-        self, xids: list = None, version: float = 1.0, graphType: str = "private"
-    ) -> dict:
-        """
-        Given set of identities, returns all linked identities in cluster corresponding to each identity.
-        Arguments:
-            xids : REQUIRED : list of identity as returned by getIdentity method.
-            version : OPTIONAL : Version of the clusterMembers (default 1.0)
-            graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
-        """
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting postClustersMembers")
-        temp_header = deepcopy(self.header)
-        temp_header["Accept"] = "application/vnd.adobe.identity+json;version=1.2"
-        temp_header["x-uis-cst-ctx"] = "stub"
-        path = "/identity/cluster/members"
-        if type(xids) != list:
-            raise TypeError("xids must be of type list")
-        list_body = [
-            {"xid": [{"xid": xid}], "graph-type": graphType, "version": version}
-            for xid in xids
-        ]
-        res = self.connector.postData(
-            self.endpoint + path, data=list_body, headers=temp_header
-        )
-        return res
-
-    def getClusterHistory(
-        self,
-        xid: str = None,
-        nsid: int = 411,
-        namespace: str = "adcloud",
-        id_value: str = None,
-        graphType: str = "private",
-    ) -> dict:
-        """
-        Given an XID, return all cluster associations with that XID.
-        It is required to pass either xid or (namespace/nsid & id) pair to get cluster history.
-        Arguments:
-            xid : REQUIRED : Identity string returns by the getIdentity method.
-            nsid : OPTIONAL : namespace id (default : 411)
-            namespace : OPTIONAL : namespace code. (default : adcloud)
-            id_value : OPTIONAL : ID of the customer in given namespace.
-            graphType : OPTIONAL : Graph type (output type) you want to get the cluster from. (default private)
-        """
-        if self.loggingEnabled:
-            self.logger.debug(f"Starting getClusterHistory")
-        temp_header = deepcopy(self.header)
-        temp_header["Accept"] = "application/vnd.adobe.identity+json;version=1.2"
-        temp_header["x-uis-cst-ctx"] = "stub"
-        path = "/identity/cluster/history"
-        params = {}
-        if xid is not None:
-            params["xid"] = xid
-            params["graph-type"] = graphType
-            res = aepp._getData(
-                self.endpoint + path, params=params, headers=temp_header
-            )
-            return res
-        elif xid is None and id_value is not None:
-            params["nsid"] = nsid
-            params["namespace"] = namespace
-            params["id"] = id_value
-            params["graph-type"] = graphType
-            res = self.connector.getData(
-                self.endpoint + path, params=params, headers=temp_header
-            )
-            return res
 
     def getIdentityMapping(
         self,

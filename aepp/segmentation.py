@@ -771,6 +771,7 @@ class Segmentation:
         limit:int=100,
         name:str=None,
         sort:str=None,
+        entityType:str="_xdm.context.profile",
         prop:str=None,
         description:str=None,
         **kwargs)->list:
@@ -780,13 +781,14 @@ class Segmentation:
             name : OPTIONAL : Filter audiences that contains that string in the name, case unsensitive.
             limit : OPTIONAL : The number of audiences to be returned by pages (default: 100)
             sort : OPTIONAL : If you want to sort by a specific attribute (ex: "updateTime:desc")
+            entityType : OPTIONAL : The type of entity available, default "_xdm.context.profile".
             prop : If you want to test a specific property of the result to filter the data.
                     Ex: "audienceId==mytestAudienceId"
             description : OPTIONAL : Filter audiences that contains that string in the description, case unsensitive.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getAudiences")
-        params = {"limit":limit,"withMetrics":True}
+        params = {"limit":limit}
         path = "/audiences"
         if name is not None:
             params['name'] = name
@@ -796,8 +798,6 @@ class Segmentation:
             params['property'] = prop
         if description is not None:
             params['description'] = description
-        if kwargs.get('start',0) is not None:
-            params['start'] = kwargs.get('start')
         res = self.connector.getData(self.endpoint+path, params=params)
         data = res.get('children',[])
         nextStart = res.get('_page',{}).get('next',0)

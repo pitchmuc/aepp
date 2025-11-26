@@ -935,7 +935,7 @@ class InteractiveQuery:
     loggingEnabled = False
     logger = None
 
-    def __init__(self, conn_object: dict = None, loggingObject: dict = None):
+    def __init__(self, conn_object: dict = None, loggingObject: dict = None,config:ConnectObject=None):
         """
         Importing the pg (PyGreSQL) library and instantiating the connection via the conn_object pass over the instantiation method.
         Arguments:
@@ -946,6 +946,7 @@ class InteractiveQuery:
             raise AttributeError(
                 "You are missing the conn_object. Use the QueryService to retrieve the object."
             )
+        self.config = None
         self.dbname = conn_object["dbName"]
         self.host = conn_object["host"]
         self.port = conn_object["port"]
@@ -975,6 +976,17 @@ class InteractiveQuery:
                 streamHandler = logging.StreamHandler()
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
+        if config is not None:
+            self.config = config
+            from aepp import catalog, segmentation
+            self.mycat = catalog.Catalog(config=self.config)
+            self.myseg = segmentation.Segmentation(config=self.config)
+
+    def addConfig(self,config:ConnectObject)->None:
+        self.config = config
+        from aepp import catalog,segmentation
+        self.mycat = catalog.Catalog(config=self.config)
+        self.myseg = segmentation.Segmentation(config=self.config)
 
     def query(
         self, sql: str = None, output: str = "dataframe"
@@ -1003,6 +1015,57 @@ class InteractiveQuery:
             return df
         else:
             raise KeyError("You didn't specify a correct value.")
+    
+    def querySegmentPopulation(self,segmentId:str|list,extraFields:str|list=None,count:bool=False)->pd.DataFrame|object:
+        """
+        Retrieve the identities in the identityMap that are qualified to the segment ID passed. 
+        Arguments:
+            segmentId : REQUIRED : Single or list of segment Ids
+            extraFields : OPTIONAL : If you want to add more fields that are not in the IdentityMap
+            count : OPTIONAL : If you just want to get the count of the profiles and no details
+        """
+        if self.config is None:
+            raise Exception('Require to have a config available. Use addConfig method to add a configuration')
+        if type(extraFields) == str:
+            extraFields = [extraFields]
+        if type(segmentId) == list:
+            result = pd.DataFrame()
+            for segId in segmentId:
+                data = self.querySegmentPopulation(segId,count=count)
+                if result.empty:
+                    result = data.copy()
+                else:
+                    result = pd.concat([result,data],ignore_index=True)
+            return result
+        mysegment = self.myseg.getSegment(segmentId)
+        mergePolicyId = mysegment.get('mergePolicyId')
+        myProfileSnaphots = self.mycat.getProfileSnapshotDatasets()
+        table = None
+        for key, item in myProfileSnaphots.items():
+            tmp_ds_mergePolicyId = item['tags']['unifiedProfile']
+            if f"mergePolicyId:{mergePolicyId}" in tmp_ds_mergePolicyId:
+                table = item['tags']['adobe/pqs/table'][0]
+        if count == False:
+            strIdentity = ""
+            commaIdentity = ""
+            strIdentityFinal = ""
+            if extraFields is not None:
+                commaFields = ","
+                strFields = ','.join(extraFields)
+                minifyFields = [el.split('.').pop() for el in extraFields]
+                strFieldsFinal = ','.join(minifyFields)
+            queryTemplate = f"""
+                SELECT key, inline(value), '{segmentId}' segmentId {commaFields} {strFieldsFinal} FROM 
+                    (SELECT explode(identityMap) {commaFields} {strFields}
+                    FROM {table}
+                    WHERE segmentMembership['ups']['{segmentId}'].status = 'realized') LIMIT 0 
+            """
+            res = self.query(queryTemplate)
+            return res
+        else:
+            dict_data = [{'count':mysegment.get('metrics',{}).get('data',{}).get('totalProfiles','No Data Yet'),'segmentId':segmentId}]
+            df = pd.DataFrame(dict_data)
+            return df
 
     def transformToDataFrame(self, query: object = None) -> pd.DataFrame:
         """
@@ -1091,7 +1154,7 @@ class InteractiveQuery2:
     loggingEnabled = False
     logger = None
 
-    def __init__(self, conn_object: dict = None, loggingObject: dict = None,sslmode:str="allow"):
+    def __init__(self, conn_object: dict = None, loggingObject: dict = None,sslmode:str="allow",config:ConnectObject=None):
         """
         Importing the psycopg2 library and instantiating the connection via the conn_object pass over the instantiation method.
         Arguments:
@@ -1102,6 +1165,7 @@ class InteractiveQuery2:
             raise AttributeError(
                 "You are missing the conn_object. Use the QueryService to retrieve the object."
             )
+        self.config = None
         self.dbname = conn_object["dbName"]
         self.host = conn_object["host"]
         self.port = conn_object["port"]
@@ -1131,6 +1195,17 @@ class InteractiveQuery2:
                 streamHandler = logging.StreamHandler()
                 streamHandler.setFormatter(formatter)
                 self.logger.addHandler(streamHandler)
+        if config is not None:
+            self.config = config
+            from aepp import catalog, segmentation
+            self.mycat = catalog.Catalog(config=self.config)
+            self.myseg = segmentation.Segmentation(config=self.config)
+    
+    def addConfig(self,config:ConnectObject)->None:
+        self.config = config
+        from aepp import catalog,segmentation
+        self.mycat = catalog.Catalog(config=self.config)
+        self.myseg = segmentation.Segmentation(config=self.config)
 
     def query(
         self, sql: str = None, output: str = "dataframe"
@@ -1159,6 +1234,58 @@ class InteractiveQuery2:
             return df
         else:
             raise KeyError("You didn't specify a correct value.")
+
+    def querySegmentPopulation(self,segmentId:str|list,extraFields:str|list=None,count:bool=False)->pd.DataFrame|object:
+        """
+        Retrieve the identities in the identityMap that are qualified to the segment ID passed.
+        Arguments:
+            segmentId : REQUIRED : Single or list of segment Ids
+            extraFields : OPTIONAL : If you want to add more identities that are not in the IdentityMap
+            count : OPTIONAL : If you just want to get the population count of the segment IDs
+        """
+        if self.config is None:
+            raise Exception('Require to have a config available. Use addConfig method to add a configuration')
+        if type(extraFields) == str:
+            extraFields = [extraFields]
+        if type(segmentId) == list:
+            result = pd.DataFrame()
+            for segId in segmentId:
+                data = self.querySegmentPopulation(segId,count=count)
+                if result.empty:
+                    result = data.copy()
+                else:
+                    result = pd.concat([result,data],ignore_index=True)
+            return result
+        mysegment = self.myseg.getSegment(segmentId)
+        mergePolicyId = mysegment.get('mergePolicyId')
+        myProfileSnaphots = self.mycat.getProfileSnapshotDatasets()
+        table = None
+        for key, item in myProfileSnaphots.items():
+            tmp_ds_mergePolicyId = item['tags']['unifiedProfile']
+            if f"mergePolicyId:{mergePolicyId}" in tmp_ds_mergePolicyId:
+                table = item['tags']['adobe/pqs/table'][0]
+        if count == False:
+            strIdentity = ""
+            commaIdentity = ""
+            strIdentityFinal = ""
+            if extraFields is not None:
+                commaField = ","
+                strFields = ','.join(extraFields)
+                minifyFields = [el.split('.').pop() for el in extraFields]
+                strFieldsFinal = ','.join(minifyFields)
+            queryTemplate = f"""
+                SELECT key, inline(value), '{segmentId}' segmentId {commaField} {strFieldsFinal} FROM 
+                    (SELECT explode(identityMap) {commaField} {strFields}
+                    FROM {table}
+                    WHERE segmentMembership['ups']['{segmentId}'].status = 'realized') LIMIT 0 
+            """
+            res = self.query(queryTemplate)
+            return res
+        else:
+            dict_data = [{'count':mysegment.get('metrics',{}).get('data',{}).get('totalProfiles','No Data Yet'),'segmentId':segmentId}]
+            df = pd.DataFrame(dict_data)
+            return df
+
 
     def transformToDataFrame(self, query: object = None) -> pd.DataFrame:
         """

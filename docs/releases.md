@@ -5,7 +5,10 @@ This page list all of the changes that came during the different release of the 
 ## version 0.4.0
 * removing the dependency to pyJWT and all references to JWT integration\
 Patch:
-* Adapt to the change of the Data Hygiene API requirement.
+* adapt to the change of the Data Hygiene API requirement.
+* adding `getLinkedIdentities` in the Identity API
+* adding `querySegmentPopulation` in the `InteractiveQueryService` instances
+* fixing `getAudiences` method. 
 
 ## version 0.3.14
 * adding the `deletion` module [documentation](./deletion.md)

@@ -44,7 +44,7 @@ setuptools.setup(
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
-        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+        "License :: OSI Approved :: Apache Software License",
         "Topic :: Utilities",
         "Topic :: Internet",
         "Topic :: Software Development :: Libraries",
