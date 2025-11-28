@@ -330,7 +330,8 @@ class AdobeRequest:
         endpoint = f"{self.endpoints['global']}{self.endpoints['sandboxes']}/sandboxes/{sandbox}"
         res = self.getData(endpoint)
         if "id" not in res:
-            raise Exception("sandbox Id not found")
+            error_message = res.get("message", "sandbox Id not found")
+            raise Exception(error_message)
         sandbox_id = res["id"]
         self.header["x-sandbox-id"] = sandbox_id
 
