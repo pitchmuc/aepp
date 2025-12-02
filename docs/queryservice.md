@@ -47,6 +47,7 @@ Alternatively, you can use the docstring in the methods to have more information
     - [Differences between InteractiveQuery and InteractiveQuery2](#differences-between-interactivequery-and-interactivequery2)
       - [Instantiation of interactive query](#instantiation-of-interactive-query)
     - [Methods of Interactive Query](#methods-of-interactive-query)
+      - [addConfig](#addconfig)
       - [query](#query)
       - [transformToDataFrame](#transformtodataframe)
       - [querySegmentPopulation](#querysegmentpopulation)
@@ -516,6 +517,11 @@ The parameter that you can pass during instantiation are:
 From the InteractiveQuery instances you can directly pass SQL query and receive either:
 * dataframe
 * object from the different module (`pyGreSQL` or `psycopg2`)
+
+#### addConfig
+Possibly to attach a configuration sandbox after the instantiation of the object.
+Arguments:
+* config : REQUIRED : Configuration object from aepp ConnectObject instance.
 
 #### query
 Query the database and return different type of data, depending the format parameters.\

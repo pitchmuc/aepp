@@ -1205,6 +1205,11 @@ class InteractiveQuery2:
             self.myseg = segmentation.Segmentation(config=self.config)
     
     def addConfig(self,config:ConnectObject)->None:
+        """
+        Possibly to attach a configuration sandbox after the instantiation of the object.
+        Arguments:
+            config : REQUIRED : Configuration object from aepp ConnectObject instance.
+        """
         self.config = config
         from aepp import catalog,segmentation
         self.mycat = catalog.Catalog(config=self.config)
