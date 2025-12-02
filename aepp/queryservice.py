@@ -1154,11 +1154,14 @@ class InteractiveQuery2:
     loggingEnabled = False
     logger = None
 
-    def __init__(self, conn_object: dict = None, loggingObject: dict = None,sslmode:str="allow",config:ConnectObject=None):
+    def __init__(self, conn_object: dict = None,config:ConnectObject=None, loggingObject: dict = None,sslmode:str="allow"):
         """
         Importing the psycopg2 library and instantiating the connection via the conn_object pass over the instantiation method.
         Arguments:
             conn_object : REQUIRED : The dictionary returned via the queryservice api "connection"
+            config : OPTIONAL : Configuration object from aepp ConnectObject instance.
+            loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements.
+            sslmode : OPTIONAL : The sslmode to use when connecting to the database. Default to "allow".
         """
         import psycopg2
         if conn_object is None:

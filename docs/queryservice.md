@@ -10,12 +10,47 @@ Alternatively, you can use the docstring in the methods to have more information
   - [Menu](#menu)
   - [Importing the module](#importing-the-module)
   - [Generating a QueryService instance](#generating-a-queryservice-instance)
-  - [QueryService attributes](#queryservice-attributes)
-  - [QueryService methods](#queryservice-methods)
-  - [Use Cases](#use-cases)
+    - [QueryService attributes](#queryservice-attributes)
+    - [QueryService methods](#queryservice-methods)
+      - [getResource](#getresource)
+      - [connection](#connection)
+      - [getQueries](#getqueries)
+      - [createQuery](#createquery)
+      - [postQueries](#postqueries)
+      - [getQuery](#getquery)
+      - [cancelQuery](#cancelquery)
+    - [deleteQuery](#deletequery)
+      - [getSchedules](#getschedules)
+      - [getSchedule](#getschedule)
+      - [getScheduleRuns](#getscheduleruns)
+      - [getScheduleRun](#getschedulerun)
+      - [createSchedule](#createschedule)
+      - [deleteSchedule](#deleteschedule)
+      - [disableSchedule](#disableschedule)
+      - [enableSchedule](#enableschedule)
+      - [updateSchedule](#updateschedule)
+      - [getTemplates](#gettemplates)
+      - [getTemplate](#gettemplate)
+      - [deleteTemplate](#deletetemplate)
+      - [createQueryTemplate](#createquerytemplate)
+      - [getDatasetStatistics](#getdatasetstatistics)
+      - [getAlertSubscriptions](#getalertsubscriptions)
+      - [createAlertSubscription](#createalertsubscription)
+      - [deleteAlertSubscription](#deletealertsubscription)
+      - [getAlertSubscriptionsTypeId](#getalertsubscriptionstypeid)
+      - [patchAlert](#patchalert)
+      - [getUserAlerts](#getuseralerts)
+      - [createAcceleratedQuery](#createacceleratedquery)
+    - [Query Service use-cases](#query-service-use-cases)
+    - [Query Service tips](#query-service-tips)
   - [InteractiveQuery and InteractiveQuery2](#interactivequery-and-interactivequery2)
     - [Differences between InteractiveQuery and InteractiveQuery2](#differences-between-interactivequery-and-interactivequery2)
+      - [Instantiation of interactive query](#instantiation-of-interactive-query)
     - [Methods of Interactive Query](#methods-of-interactive-query)
+      - [query](#query)
+      - [transformToDataFrame](#transformtodataframe)
+      - [querySegmentPopulation](#querysegmentpopulation)
+      - [queryIdentity](#queryidentity)
     - [Tips for Interactive Query](#tips-for-interactive-query)
 
 ## Importing the module
@@ -445,29 +480,42 @@ You can generate the instance of this class by passing the `connection()` result
 
 ```python
 import aepp
-aepp.importConfigFile('myConfig_file.json')
+mysandbox = aepp.importConfigFile('myConfig_file.json',sandbox='mysandbox',connectInstance=True)
 
 from aepp import queryservice
 qs = queryservice.QueryService()
 conn = qs.connection()
 
-intQuery = queryservice.InteractiveQuery(conn)
+intQuery = queryservice.InteractiveQuery(conn,config=mysandbox)
 
 #or
 
-intQuery2 = queryservice.InteractiveQuery2(conn)
+intQuery2 = queryservice.InteractiveQuery2(conn,config=mysandbox)
 ```
 
 ### Differences between InteractiveQuery and InteractiveQuery2
 
-The `InteractiveQuery` class is using the `PyGreSQL` python module in the background.\
+The `InteractiveQuery` class is using the `PyGreSQL` python module in the background. **This class will be deprecated in the future.**\
 The `InteractiveQuery2` class is using the `psycopg2` python module in the background.
 
 Except for that change in the engine used in the background, all of the methods described below can be applied to either `InteractiveQuery` or `InteractiveQuery2` instances.
 
+#### Instantiation of interactive query
+
+Both class can be instantiated via the same method presented above.\
+We recommend using `InteractiveQuery2` as it seems to be the more stable one.\
+
+The parameter that you can pass during instantiation are: 
+* conn_object : REQUIRED : The connection object you have generated via `QueryService` instance `connection` method.
+* config : OPTIONAL : Configuration object from aepp ConnectObject instance. Requires if you want to use some advanced methods. 
+* loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements, see [logging documentation](./logging.md)
+* sslmode : OPTIONAL : The sslmode to use when connecting to the database. Default to "allow".
+
 ### Methods of Interactive Query
 
 From the InteractiveQuery instances you can directly pass SQL query and receive either:
+* dataframe
+* object from the different module (`pyGreSQL` or `psycopg2`)
 
 #### query
 Query the database and return different type of data, depending the format parameters.\
@@ -503,6 +551,30 @@ Argument:
 ```python
 mydf = intQuery.transformToDataFrame(result)
 ```
+
+#### querySegmentPopulation
+Retrieve the identities in the identityMap that are qualified to the segment ID passed.\
+Arguments:
+* segmentId : REQUIRED : Single or list of segment Ids
+* extraFields : OPTIONAL : If you want to add more identities that are not in the IdentityMap
+* count : OPTIONAL : If you just want to get the population count of the segment IDs, default `False`
+
+This method will return a dataframe and will realize the following operations: 
+1. Get the segments/audiences Id Profile Merge Policy ID 
+2. Retrieve the profile snapshot specific for that merge policy
+3. Query the identityMap and explode it, it will also add any additional fields that you have provided
+4. Returns the result in a dataframe 
+
+**Note**:\
+If you specify `True` for the `count` parameter, the result will be a dataframe with the segments/audiences and the total profile population as reported via the Segmentation API. It will not do the calculation via Query Service but the UPS result. 
+
+**Understanding the output**\
+The returned dataframe may not have a similar count of rows as the profile population specified within the audience interface.\
+As each identity contained in the identityMap is exploded, it creates additional row for each identities.\
+In order to achieve the same count, you would need to deduplicate the rows by identities.\
+This method is used to investigate and do advanced verification of segmentation population.\
+This method is mostly using the Profile Snapshot for exporting data, which means that Real Time or Edge Segments population may not be represented correctly due to the asynchronous nature of the Profile Snapshot vs Profile Store. 
+
 
 #### queryIdentity
 Return the elements that you have passed in field list and return the output selected.\
