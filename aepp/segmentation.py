@@ -157,11 +157,12 @@ class Segmentation:
         res = self.connector.getData(endpoint, headers=myPrivateHeader,params=parameters)
         return res
 
-    def getSegments(self, onlyRealTime: bool = False, **kwargs) -> list:
+    def getSegments(self, onlyRealTime: bool = False, retry:int=0,**kwargs) -> list:
         """
         Return segment definitions in your experience platfom instance.
         Arguments:
             onlyRealTime : OPTIONAL : If you wish to retrieve only real time compatible segment. (default False)
+            retry: OPTIONAL : number of retry in case of error (default 0). A 2 seconds wait between each retry.
         Possible arguments:
             - limit : number of segment returned per page
         """
@@ -175,7 +176,12 @@ class Segmentation:
         if "segments" in res.keys():
             data = res.get("segments",[])
         else:
-            data = []
+            countDone = 0
+            while countDone < retry and 'segments' not in res.keys():
+                time.sleep(2)
+                res = self.connector.getData(self.endpoint+path, params=params)
+                data = res.get('segments',[])
+                countDone += 1  
         total_pages = res.get("page",{}).get("totalPages",0)
         if total_pages > 1:
             max_workers = min((total_pages, 5))
@@ -774,6 +780,7 @@ class Segmentation:
         entityType:str="_xdm.context.profile",
         prop:str=None,
         description:str=None,
+        retry:int=0,
         **kwargs)->list:
         """
         Get the audiences list.
@@ -785,6 +792,7 @@ class Segmentation:
             prop : If you want to test a specific property of the result to filter the data.
                     Ex: "audienceId==mytestAudienceId"
             description : OPTIONAL : Filter audiences that contains that string in the description, case unsensitive.
+            retry : OPTIONAL : number of retry in case of error (default 0). a 2 seconds wait between each retry.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getAudiences")
@@ -798,8 +806,17 @@ class Segmentation:
             params['property'] = prop
         if description is not None:
             params['description'] = description
+        if entityType is not None:
+            params['entityType'] = entityType
         res = self.connector.getData(self.endpoint+path, params=params)
         data = res.get('children',[])
+        if len(data) == 0:
+            countDone = 0
+            while countDone < retry and len(data) == 0:
+                time.sleep(2)
+                res = self.connector.getData(self.endpoint+path, params=params)
+                data = res.get('children',[])
+                countDone += 1  
         nextStart = res.get('_page',{}).get('next',0)
         while nextStart != 0:
             params['start'] = nextStart

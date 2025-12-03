@@ -13,13 +13,30 @@ Alternatively, you can use the docstring in the methods to have more information
   - [The Segmentation class](#the-segmentation-class)
   - [Segmentation attributes](#segmentation-attributes)
   - [Segmentation methods](#segmentation-methods)
-  - [Segmentation use-cases](#segmentation-use-cases)
-    - [1. List all of your segments and their definitions](#list-all-of-your-segments-and-their-definitions)
-    - [2. List all of your Real-Time Segments](#list-all-of-your-real-time-segments)
-    - [3. Get Preview](#get-preview)
-    - [4. Create Segments Jobs](#create-segments-jobs)
-    - [5. Segment Export](#segment-export)
-    - [6. Create Schedule Jobs](#create-schedule-jobs)
+    - [getSegments](#getsegments)
+    - [getSegment](#getsegment)
+    - [createSegment](#createsegment)
+    - [deleteSegment](#deletesegment)
+    - [updateSegment](#updatesegment)
+    - [getMultipleSegments](#getmultiplesegments)
+    - [convertSegmentDef](#convertsegmentdef)
+    - [getExportJobs](#getexportjobs)
+    - [createExport](#createexport)
+    - [getExport](#getexport)
+    - [deleteExport](#deleteexport)
+    - [searchNamespaces](#searchnamespaces)
+    - [searchEntities](#searchentities)
+    - [getSchedules](#getschedules)
+    - [getSchedules](#getschedules-1)
+    - [createSchedule](#createschedule)
+    - [getSchedule](#getschedule)
+    - [deleteSchedule](#deleteschedule)
+    - [updateSchedule](#updateschedule)
+    - [List all of your Real-Time Segments](#list-all-of-your-real-time-segments)
+    - [Get Preview](#get-preview)
+    - [Create Segments Jobs](#create-segments-jobs)
+    - [Segment Export](#segment-export)
+    - [Create Schedule Jobs](#create-schedule-jobs)
 
 ## What is the segmentation capability in AEP
 
@@ -91,7 +108,8 @@ Once you have instantiated the `Segmentation` class, you have access to some att
 ### getSegments
 Return segment definitions in your experience platfom instance.\
 Arguments:
-* onlyRealTime : OPTIONAL : If you wish to retrieve only real time compatible segment. (default False)\
+* onlyRealTime : OPTIONAL : If you wish to retrieve only real time compatible segment. (default False)
+* retry : OPTIONAL : A parameter to try getting the audiences again if it returns an empty array. Define how many time to try. A buffer of 2 seconds is applied between each request.\
 Possible arguments:
 * limit : number of segment returned per page
 
@@ -136,6 +154,7 @@ Arguments:
 * name : REQUIRED : The name of the segment. It should be unique.
 * expression : REQUIRED : the expriession regarding the transformation.
         A dictionary such as
+
         ```python
         {
             "type" : "PQL" (or "ARL"),
@@ -296,6 +315,7 @@ Arguments:
 * prop : If you want to test a specific property of the result to filter the data.
             Ex: "audienceId==mytestAudienceId"
 * description : OPTIONAL : Filter audiences that contains that string in the description, case unsensitive.
+* retry : OPTIONAL : A parameter to try getting the audiences again if it returns an empty array. Define how many time to try. A buffer of 2 seconds is applied between each request.
 
 ### getAudience
 Retrieve a specific audience id.\
@@ -377,7 +397,7 @@ dev = aepp.importConfigFile('myConfig_file.json',connectInstance=True,sandbox='d
 from aepp import segmentation
 devSegs = segmentation.Segmentation(config=dev)
 
-mySegments = devSegs.getSegments()
+mySegments = devSegs.getSegments(retry=2)
 ```
 
 ### List all of your Real-Time Segments
