@@ -251,6 +251,8 @@ class AdobeRequest:
         res = self.getData(endpoint)
         if "id" not in res:
             error_message = res.get("message", "sandbox Id not found")
+            if self.loggingEnabled:
+                self.logger.error(f"sandbox id '{sandbox}' retrieval failed: {error_message}")
             raise Exception(error_message)
         sandbox_id = res["id"]
         self.header["x-sandbox-id"] = sandbox_id
