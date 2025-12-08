@@ -2,6 +2,16 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.4.1
+* extending support to export more elements from schemaManager, FieldGroupManager and DataTypeManager
+  * Supporting Map capability for `addField` method
+  * Support `minimum` and `maximum` for `integrer`
+  * Supporting `minLength`, `maxLength`, `default` and `pattern` for `string`
+  * Supporting the different options in synchronizer and in `importFieldGroupDefinition` and `importDataTypeDefinition` 
+* establishing a `retry` parameter to try getting the Segments and Audiences a number of time if it returns empty.
+  * Adding support for entityType for `getAudiences`
+* Surfacing issue with `sandboxId` in an Error and in logs.
+
 ## version 0.4.0
 * removing the dependency to pyJWT and all references to JWT integration\
 Patch:
