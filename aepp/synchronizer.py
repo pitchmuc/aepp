@@ -244,8 +244,8 @@ class Synchronizer:
                     print(f"datatype '{name_base_datatype}' already exists in target {target}, checking it")
                 if t_datatype is None: ## if need toe create the DataTypeManager
                     t_datatype = datatypemanager.DataTypeManager(targetSchema.data.dataTypes_altId[name_base_datatype],config=self.dict_targetsConfig[target],sandbox=target)
-                df_base = baseDataType.to_dataframe(description=True)
-                df_target = t_datatype.to_dataframe(description=True)
+                df_base = baseDataType.to_dataframe(full=True)
+                df_target = t_datatype.to_dataframe(full=True)
                 base_paths = df_base['path'].tolist()
                 target_paths = df_target['path'].tolist()
                 diff_paths = list(set(base_paths) - set(target_paths))
@@ -279,7 +279,7 @@ class Synchronizer:
             else:## datatype does not exist in target
                 if verbose:
                     print(f"datatype '{name_base_datatype}' does not exist in target {target}, creating it")
-                df_base = baseDataType.to_dataframe()
+                df_base = baseDataType.to_dataframe(full=True)
                 new_datatype = datatypemanager.DataTypeManager(title=name_base_datatype,config=self.dict_targetsConfig[target],sandbox=target)
                 base_datatypes_paths = baseDataType.getDataTypePaths()
                 df_base_limited = df_base[df_base['origin'] == 'self'].copy() ## exclude field group native fields
@@ -340,8 +340,8 @@ class Synchronizer:
                     print(f"field group '{name_base_fieldgroup}' already exists in target {target}, checking it")
                 if t_fieldgroup is None: ## if need to create the FieldGroupManager
                     t_fieldgroup = fieldgroupmanager.FieldGroupManager(targetSchema.data.fieldGroups_altId[name_base_fieldgroup],config=self.dict_targetsConfig[target],sandbox=target)
-                df_base = baseFieldGroup.to_dataframe(description=True)
-                df_target = t_fieldgroup.to_dataframe(description=True)
+                df_base = baseFieldGroup.to_dataframe(full=True)
+                df_target = t_fieldgroup.to_dataframe(full=True)
                 base_paths = df_base['path'].tolist()
                 target_paths = df_target['path'].tolist()
                 diff_paths = [path for path in base_paths if path not in target_paths]
@@ -396,7 +396,7 @@ class Synchronizer:
             else: ## field group does not exist in target
                 if verbose:
                     print(f"field group '{name_base_fieldgroup}' does not exist in target {target}, creating it")
-                df_base = baseFieldGroup.to_dataframe()
+                df_base = baseFieldGroup.to_dataframe(full=True)
                 new_fieldgroup = fieldgroupmanager.FieldGroupManager(title=name_base_fieldgroup,config=self.dict_targetsConfig[target],fg_class=fg_class_ids,sandbox=target)
                 base_datatypes_paths = baseFieldGroup.getDataTypePaths(som_compatible=True)
                 ## handling field group native field

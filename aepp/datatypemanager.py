@@ -14,8 +14,8 @@ from copy import deepcopy
 from typing import Union
 import time
 import pandas as pd
-import json
-import re
+import json, re
+import numpy as np
 from .configs import ConnectObject
 from aepp.schema import Schema
 from aepp import som
@@ -522,10 +522,9 @@ class DataTypeManager:
                              mydict:dict=None,
                              dictionary:dict=None,
                              path:str=None,
-                             description:bool=False,
-                             xdmType:bool=False,
                              queryPath:bool=False,
-                             required:bool=False)->dict:
+                             required:bool=False,
+                             full:bool=False)->dict:
         """
         Transform the current XDM schema to a dictionary.
         Arguments:
@@ -533,18 +532,22 @@ class DataTypeManager:
             dictionary : the dictionary that gather the paths
             path : path that is currently being developed
             queryPath: boolean to tell if we want to add the query path
-            description : boolean to tell if you want to retrieve the description
-            xdmType : boolean to know if you want to retrieve the xdm Type
             required : If you want to have the required field in the dataframe
+            full : boolean to know if you want to retrieve all the information (minLength, etc)
         """
         if dictionary is None:
-            dictionary = {'path':[],'type':[],'title':[]}
-            if description:
-                dictionary['description'] = []
-            if xdmType:
-                dictionary['xdmType'] = []
-            if queryPath:
-                dictionary['queryPath'] = []
+            dictionary = {'path':[],'type':[],'title':[],'description':[],'xdmType':[],'mapType':[]}
+            if queryPath or full:
+                dictionary['querypath'] = []
+            if full:
+                dictionary['minLength'] = []
+                dictionary['maxLength'] = []
+                dictionary['minimum'] = []
+                dictionary['maximum'] = []
+                dictionary['pattern'] = []
+                dictionary['enumValues'] = []
+                dictionary['enum'] = []
+                dictionary['default'] = []
         else:
             dictionary = dictionary
         for key in mydict:
@@ -559,14 +562,29 @@ class DataTypeManager:
                         tmp_path = f"{path}.{key}"
                     if tmp_path is not None:
                         dictionary["path"].append(tmp_path)
-                        dictionary["type"].append(f"{mydict[key].get('type')}")
-                        dictionary["title"].append(f"{mydict[key].get('title')}")
-                        if description:
-                            dictionary["description"].append(f"{mydict[key].get('description','')}")
-                        if xdmType:
-                            dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
-                        if queryPath:
+                        dictionary["type"].append(f"{mydict[key].get('type','')}")
+                        dictionary["title"].append(f"{mydict[key].get('title','')}")
+                        dictionary["description"].append(f"{mydict[key].get('description','')}")
+                        dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType','')}")
+                        if mydict[key].get('meta:xdmType') == 'map':
+                            dictionary["mapType"].append(f"{mydict[key].get('additionalProperties',{}).get('type','string')}")
+                        else:
+                            dictionary["mapType"].append(pd.NA)
+                        if queryPath or full:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
+                        if full:
+                            dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
+                            dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
+                            dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
+                            dictionary['maximum'].append(mydict[key].get('maximum',np.nan))
+                            dictionary['pattern'].append(mydict[key].get('pattern',pd.NA))
+                            dictionary['default'].append(mydict[key].get('default',pd.NA))
+                            enumValues = mydict[key].get('meta:enum',pd.NA)
+                            dictionary['enumValues'].append(enumValues)
+                            if len(mydict[key].get('enum',[])) > 0:
+                                dictionary['enum'].append(True)
+                            else:
+                                dictionary['enum'].append(False)
                         if required:
                             if len(mydict[key].get('required',[])) > 0:
                                 for elRequired in mydict[key].get('required',[]):
@@ -577,7 +595,7 @@ class DataTypeManager:
                                     self.requiredFields.add(tmp_reqPath)
                     properties = mydict[key].get('properties',None)
                     if properties is not None:
-                        self.__transformationDF__(properties,dictionary,tmp_path,description,xdmType,queryPath,required)
+                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath,required,full=full)
                 elif mydict[key].get('type') == 'array':
                     levelProperties = mydict[key]['items'].get('properties',None)
                     if levelProperties is not None: ## array of objects
@@ -586,14 +604,29 @@ class DataTypeManager:
                         else :
                             tmp_path = f"{path}.{key}[]{{}}"
                         dictionary["path"].append(tmp_path)
-                        dictionary["type"].append(f"{mydict[key].get('type')}")
-                        dictionary["title"].append(f"{mydict[key].get('title')}")
-                        if description and tmp_path is not None:
-                            dictionary["description"].append(mydict[key].get('description',''))
-                        if xdmType:
-                            dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
-                        if queryPath:
+                        dictionary["type"].append(f"{mydict[key].get('type','')}")
+                        dictionary["title"].append(f"{mydict[key].get('title','')}")
+                        dictionary["description"].append(mydict[key].get('description',''))
+                        dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType','')}")
+                        if mydict[key].get('meta:xdmType') == 'map':
+                            dictionary["mapType"].append(f"{mydict[key].get('additionalProperties',{}).get('type','string')}")
+                        else:
+                            dictionary["mapType"].append(pd.NA)
+                        if queryPath or full:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
+                        if full:
+                            dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
+                            dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
+                            dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
+                            dictionary['maximum'].append(mydict[key].get('maximum',np.nan))
+                            dictionary['pattern'].append(mydict[key].get('pattern',pd.NA))
+                            dictionary['default'].append(mydict[key].get('default',pd.NA))
+                            enumValues = mydict[key].get('meta:enum',pd.NA)
+                            dictionary['enumValues'].append(enumValues)
+                            if len(mydict[key].get('enum',[])) > 0:
+                                dictionary['enum'].append(True)
+                            else:
+                                dictionary['enum'].append(False)
                         if required:
                             if len(mydict[key].get('required',[])) > 0:
                                 for elRequired in mydict[key].get('required',[]):
@@ -602,7 +635,7 @@ class DataTypeManager:
                                     else:
                                         tmp_reqPath = f"{elRequired}"
                                     self.requiredFields.add(tmp_reqPath)
-                        self.__transformationDF__(levelProperties,dictionary,tmp_path,description,xdmType,queryPath,required)
+                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,required,full=full)
                     else: ## simple arrays
                         if '$ref' in mydict[key].get('items',{}).keys(): ## array of a datatype
                             if path is None:
@@ -617,13 +650,28 @@ class DataTypeManager:
                                 finalpath = f"{key}[]"
                                 dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         dictionary["path"].append(finalpath)
-                        dictionary["title"].append(f"{mydict[key].get('title')}")
-                        if description and finalpath is not None:
-                            dictionary["description"].append(mydict[key].get('description',''))
-                        if xdmType:
-                            dictionary["xdmType"].append(mydict[key]['items'].get('meta:xdmType',''))
-                        if queryPath:
+                        dictionary["title"].append(f"{mydict[key].get('title','')}")
+                        dictionary["description"].append(mydict[key].get('description',''))
+                        dictionary["xdmType"].append(mydict[key]['items'].get('meta:xdmType',''))
+                        if mydict[key]['items'].get('meta:xdmType') == 'map':
+                            dictionary["mapType"].append(f"{mydict[key]['items'].get('additionalProperties',{}).get('type','string')}")
+                        else:
+                            dictionary["mapType"].append(pd.NA)
+                        if queryPath or full:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
+                        if full:
+                            dictionary['minLength'].append(mydict[key]['items'].get('minLength',np.nan))
+                            dictionary['maxLength'].append(mydict[key]['items'].get('maxLength',np.nan))
+                            dictionary['minimum'].append(mydict[key]['items'].get('minimum',np.nan))
+                            dictionary['maximum'].append(mydict[key]['items'].get('maximum',np.nan))
+                            dictionary['pattern'].append(mydict[key]['items'].get('pattern',pd.NA))
+                            dictionary['default'].append(mydict[key]['items'].get('default',pd.NA))
+                            enumValues = mydict[key]['items'].get('meta:enum',pd.NA)
+                            dictionary['enumValues'].append(enumValues)
+                            if len(mydict[key]['items'].get('enum',[])) > 0:
+                                dictionary['enum'].append(True)
+                            else:
+                                dictionary['enum'].append(False)
                         if required:
                             if len(mydict[key].get('required',[])) > 0:
                                 for elRequired in mydict[key].get('required',[]):
@@ -640,12 +688,27 @@ class DataTypeManager:
                     dictionary["path"].append(finalpath)
                     dictionary["type"].append(mydict[key].get('type','object'))
                     dictionary["title"].append(mydict[key].get('title',''))
-                    if description :
-                        dictionary["description"].append(mydict[key].get('description',''))
-                    if xdmType :
-                        dictionary["xdmType"].append(mydict[key].get('meta:xdmType',''))
-                    if queryPath:
+                    dictionary["description"].append(mydict[key].get('description',''))
+                    dictionary["xdmType"].append(mydict[key].get('meta:xdmType',''))
+                    if mydict[key].get('meta:xdmType') == 'map':
+                        dictionary["mapType"].append(f"{mydict[key].get('additionalProperties',{}).get('type','string')}")
+                    else:
+                        dictionary["mapType"].append(pd.NA)
+                    if queryPath or full:
                         dictionary["querypath"].append(self.__cleanPath__(finalpath))
+                    if full:
+                        dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
+                        dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
+                        dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
+                        dictionary['maximum'].append(mydict[key].get('maximum',np.nan))
+                        dictionary['pattern'].append(mydict[key].get('pattern',pd.NA))
+                        dictionary['default'].append(mydict[key].get('default',pd.NA))
+                        enumValues = mydict[key].get('meta:enum',pd.NA)
+                        dictionary['enumValues'].append(enumValues)
+                        if len(mydict[key].get('enum',[])) > 0:
+                                dictionary['enum'].append(True)
+                        else:
+                            dictionary['enum'].append(False)
                     if required:
                         if len(mydict[key].get('required',[])) > 0:
                             for elRequired in mydict[key].get('required',[]):
@@ -721,9 +784,16 @@ class DataTypeManager:
                             return success
         return success 
 
-    def __transformFieldType__(self,dataType:str=None)->dict:
+    def __transformFieldType__(self,dataType:str=None,**kwargs)->dict:
         """
         return the object with the type and possible meta attribute.
+        possible kwargs:
+            minimum : minimum value for number/integer
+            maximum : maximum value for number/integer
+            pattern : pattern for string
+            minLength : minimum length for string
+            maxLength : maximum length for string
+            default : default value for the field
         """
         obj = {}
         if dataType == 'double':
@@ -750,6 +820,11 @@ class DataTypeManager:
             obj['type'] = "integer"
         else:
             obj['type'] = dataType
+        list_possible_kwargs = ['minimum','maximum','pattern','minLength','maxLength','enum','default']
+        for kw in kwargs:
+            if kw in list_possible_kwargs:
+                if kwargs[kw] is not None:
+                    obj[kw] = kwargs[kw]
         return obj
 
     def __cleanPath__(self,string:str=None)->str:
@@ -880,7 +955,7 @@ class DataTypeManager:
         return list(result_combi)
 
         
-    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,ref:str=None,**kwargs)->None:
+    def addFieldOperation(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,ref:str=None,mapType:str="string",**kwargs)->None:
         """
         Return the operation to be used on the data type with the Patch method (patchDataType), based on the element passed in argument.
         Arguments:
@@ -896,8 +971,16 @@ class DataTypeManager:
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
             enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
             ref : OPTIONAL : If you have used "dataType" as a dataType, you can pass the reference to the Data Type there.
+            mapType : OPTIONAL : If you have used "map" as a dataType, you can pass the type of the map value there. Default is "string", possible alternate value is "integer"
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "customFields", possible alternative : "property"
+            description : if you want to add a description on your field
+            maximum : if you want to add a maximum value for numeric field
+            minimum : if you want to add a minimum value for numeric field
+            pattern : if you want to add a pattern for string field
+            minLength : if you want to add a minimum length for string field
+            maxLength : if you want to add a maximum length for string field
+            default : if you want to add a default value for the field
         """
         if self.EDITABLE == False:
             raise Exception("The Data Type is not Editable via Data Type Manager")
@@ -914,6 +997,7 @@ class DataTypeManager:
         if pathSplit[0] == '':
             del pathSplit[0]
         completePath = ['definitions',kwargs.get('defaultPath','customFields')]
+        description = kwargs.get("description",'')
         for p in pathSplit:
             if '[]{}' in p:
                 completePath.append(self.__cleanPath__(p))
@@ -931,15 +1015,19 @@ class DataTypeManager:
         if dataType != 'object' and dataType != "array":
             if array: # array argument set to true
                 operation[0]['value']['type'] = 'array'
+                operation[0]['value']['description'] = description
                 operation[0]['value']['items'] = self.__transformFieldType__(dataType)
             else:
                 operation[0]['value'] = self.__transformFieldType__(dataType)
+                operation[0]['value']['description'] = description
         else: 
             if dataType == "object":
                 operation[0]['value']['type'] = self.__transformFieldType__(dataType)
                 operation[0]['value']['properties'] = {key:self.__transformFieldType__(value) for key, value in zip(objectComponents.keys(),objectComponents.values())}
+                operation[0]['value']['description'] = description
             elif dataType == "array":
                 operation[0]['value']['type'] = 'array'
+                operation[0]['value']['description'] = description
                 operation[0]['value']['items'] = {
                     'type': 'object',
                     'properties': {key:self.__transformFieldType__(value) for key, value in zip(objectComponents.keys(),objectComponents.values())}
@@ -948,6 +1036,7 @@ class DataTypeManager:
                 operation[0]['value']['$ref'] = ref
                 operation[0]['value']['type'] = 'object'
                 operation[0]['value']['title'] = title
+                operation[0]['value']['description'] = description
                 if array:
                     operation[0]['value']['type'] = "array"
                     del operation[0]['value']['$ref']
@@ -958,6 +1047,20 @@ class DataTypeManager:
                     }
                 self.dataTypes[ref] = title
                 self.dataTypeManagers[ref] = DataTypeManager(dataType=ref,schemaAPI=self.schemaAPI)
+            elif dataType == "map":
+                operation[0]['value'] = {'additionalProperties': {'type': mapType,
+                    'meta:xdmType': mapType},
+                    'required': [],
+                    'note': '',
+                    'mapFieldType': mapType,
+                    'type': 'object',
+                    'description': description,
+                    'title': title,
+                    'meta:xdmType': 'map'}
+                if mapType == "integer":
+                    operation[0]['value']['additionalProperties']['maximum'] = 2147483647
+                    operation[0]['value']['additionalProperties']['minimum'] = -2147483648
+                    operation[0]['value']['additionalProperties']['meta:xdmType'] = "int"
         operation[0]['value']['title'] = title
         if enumValues is not None and type(enumValues) == dict:
             if array == False:
@@ -970,7 +1073,7 @@ class DataTypeManager:
                     operation[0]['value']['items']['enum'] = list(enumValues.keys())
         return operation
 
-    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,ref:str=None,**kwargs)->dict:
+    def addField(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,ref:str=None,mapType:str="string",**kwargs)->dict:
         """
         Add the field to the existing Data Type definition.
         Returns False when the field could not be inserted.
@@ -986,9 +1089,16 @@ class DataTypeManager:
             enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
             enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
             ref : OPTIONAL : If you have used "dataType" as a dataType, you can pass the reference to the Data Type there.
+            mapType : OPTIONAL : If you have used "map" as a dataType, you can pass the type of the map value there. Default is "string", possible alternate value is "integer"
         possible kwargs:
             defaultPath : Define which path to take by default for adding new field on tenant. Default "customFields", possible alternative : "property"
             description : if you want to add a description on your field
+            maximum : if you want to add a maximum value for numeric field
+            minimum : if you want to add a minimum value for numeric field
+            pattern : if you want to add a pattern for string field
+            minLength : if you want to add a minimum length for string field
+            maxLength : if you want to add a maximum length for string field
+            default : if you want to add a default value for the field
         """
         if self.EDITABLE == False:
             raise Exception("The Data Type is not Editable via Field Group Manager")
@@ -1048,12 +1158,32 @@ class DataTypeManager:
                 }
             self.dataTypes[ref] = title
             self.dataTypeManagers[ref] = DataTypeManager(dataType=ref,schemaAPI=self.schemaAPI)
+        elif dataType == "map":
+            obj = {'additionalProperties': {'type': mapType,
+                'meta:xdmType': mapType},
+                'required': [],
+                'note': '',
+                'mapFieldType': mapType,
+                'type': 'object',
+                'description': description,
+                'title': title,
+                'meta:xdmType': 'map'}
+            if mapType == "integer":
+                obj['additionalProperties']['maximum'] = 2147483647
+                obj['additionalProperties']['minimum'] = -2147483648
+                obj['additionalProperties']['meta:xdmType'] = "int"
         else:
-            obj = self.__transformFieldType__(dataType)
+            minimum = kwargs.get('minimum',None)
+            maximum = kwargs.get('maximum',None)
+            pattern = kwargs.get('pattern',None)
+            minLength = kwargs.get('minLength',None)
+            maxLength = kwargs.get('maxLength',None)
+            default = kwargs.get('default',None)
+            obj = self.__transformFieldType__(dataType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
             obj['title']= title
             if array:
                 obj['type'] = "array"
-                obj['items'] = self.__transformFieldType__(dataType)
+                obj['items'] = self.__transformFieldType__(dataType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
         if enumValues is not None and type(enumValues) == dict:
             if array == False:
                 obj['meta:enum'] = enumValues
@@ -1183,27 +1313,27 @@ class DataTypeManager:
         """
         return som.Som(self.to_dict())
 
-    def to_dataframe(self,save:bool=False,description:bool=False,xdmType:bool=True,queryPath:bool=False,required:bool=False)->pd.DataFrame:
+    def to_dataframe(self,save:bool=False,queryPath:bool=False,required:bool=False,full:bool=False)->pd.DataFrame:
         """
         Generate a dataframe with the row representing each possible path.
         Arguments:
             save : OPTIONAL : If you wish to save it with the title used by the field group.
                 save as csv with the title used. Not title, used "unknown_fieldGroup_" + timestamp.
-            description : OPTIONAL : If you want to have the description used (default False)
-            xdmType : OPTIONAL : If you want to retrieve the xdm Data Type (default False)
+            queryPath : OPTIONAL : If you want to have the query path in the dataframe (only dot notation) (default False)
             required : OPTIONAL : If you want to have the required field in the dataframe (default False)
+            full : OPTIONAL : If you want to have all possible attributes in the dataframe (default False)
         """
         definition = self.dataType.get('definitions',{})
         if definition == {}:
             definition = self.dataType.get('properties',{})
-        data = self.__transformationDF__(definition,description=description,xdmType=xdmType,queryPath=queryPath,required=required)
+        data = self.__transformationDF__(definition,queryPath=queryPath,required=required,full=full)
         df = pd.DataFrame(data)
         df['origin'] = 'self'
         if len(self.dataTypes)>0:
             paths = self.getDataTypePaths()
             for path,dataElementId in paths.items():
                 tmp_dtManager = self.getDataTypeManager(dataElementId)
-                df_dataType = tmp_dtManager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,required=required)
+                df_dataType = tmp_dtManager.to_dataframe(queryPath=queryPath,required=required,full=full)
                 df_dataType['path'] = df_dataType['path'].apply(lambda x : f"{path}.{x}")
                 df_dataType['origin'] = 'external'
                 df = pd.concat([df,df_dataType],axis=0,ignore_index=True)
@@ -1278,7 +1408,8 @@ class DataTypeManager:
             raise AttributeError("missing a column [xdmType, path] in your fieldgroup")
         df_import = df_import[~(df_import.duplicated('path'))].copy() ## removing duplicated paths
         df_import = df_import[~(df_import['path']==self.tenantId)].copy() ## removing tenant field
-        df_import = df_import.fillna('')
+        df_import['title'] = df_import['title'].fillna('')
+        df_import['description'] = df_import['description'].fillna('')
         if 'title' not in df_import.columns:
             df_import['title'] = df_import['path'].apply(lambda x : x.split('.')[-1])
         if 'description' not in df_import.columns:
@@ -1289,13 +1420,28 @@ class DataTypeManager:
             #if 'error' in res.keys():
             path = row['path']
             typeElement = row['xdmType']
+            if typeElement == 'map': ## supporting map types
+                mapType = row.get('mapType','string')
+            else:
+                mapType = None
+            minimum = (lambda x : None if pd.isnull(x) else int(x))(row.get('minimum'))
+            maximum = (lambda x : None if pd.isnull(x) else int(x))(row.get('maximum'))
+            minLength = (lambda x : None if pd.isnull(x) else int(x))(row.get('minLength'))
+            maxLength = (lambda x : None if pd.isnull(x) else int(x))(row.get('maxLength'))
+            pattern = (lambda x : None if pd.isnull(x) else x)(row.get('pattern',None))
+            default = (lambda x : None if pd.isnull(x) else x)(row.get('default',None))
+            enumValues = (lambda x : None if pd.isnull(x) else x)(row.get('enumValues',None))
+            if enumValues is None: ## ensuring to forcing a suggested value for empty enumValues
+                enumType = None
+            else:
+                enumType = row.get('enum',False)
             if path.endswith("[]"):
                 clean_path = self.__cleanPath__(row['path'])
-                self.addField(clean_path,typeElement,title=row['title'],description=row['description'],array=True)
+                self.addField(clean_path,typeElement,title=row['title'],description=row['description'],array=True,enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
             elif path.endswith("[]{}"):
                 clean_path = self.__cleanPath__(row['path'])
-                self.addField(clean_path,'array',title=row['title'],description=row['description'])
+                self.addField(clean_path,'array',title=row['title'],description=row['description'],enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
             else:
                 clean_path = self.__cleanPath__(row['path'])
-                self.addField(clean_path,typeElement,title=row['title'],description=row['description'])
+                self.addField(clean_path,typeElement,title=row['title'],description=row['description'],enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
         return self

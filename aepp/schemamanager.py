@@ -436,26 +436,24 @@ class SchemaManager:
     def to_dataframe(self,
                      save:bool=False,
                      queryPath: bool = False,
-                     description:bool = False,
-                     xdmType:bool=False,
                      editable:bool=False,
                      excludeObjects:bool=False,
-                     required:bool=False)->pd.DataFrame:
+                     required:bool=False,
+                     full:bool=False)->pd.DataFrame:
         """
         Extract the information from the Field Groups to a DataFrame. 
         Arguments:
             save : OPTIONAL : If you wish to save it with the title used by the field group.
                 save as csv with the title used. Not title, used "unknown_schema_" + timestamp.
             queryPath : OPTIONAL : If you want to have the query path to be used.
-            description : OPTIONAL : If you want to have the description added to your dataframe. (default False)
-            xdmType : OPTIONAL : If you want to have the xdmType also returned (default False)
             editable : OPTIONAL : If you can manipulate the structure of the field groups
             excludeObjects : OPTIONAL : If you want to exclude object nodes and only get fields containing data.
             required : OPTIONAL : If you want to have the required field in the dataframe (default False)
+            full : OPTIONAL : If you want to extract all of the attributes from the fields (default False)
         """
         df = pd.DataFrame({'path':[],'type':[],'fieldGroup':[]})
         for clManager in list(self.classManagers.values()):
-            tmp_df = clManager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,editable=editable,required=required)
+            tmp_df = clManager.to_dataframe(queryPath=queryPath,editable=editable,required=required,full=full)
             if required:
                 list_required = clManager.requiredFields
                 if len(list_required) > 0:
@@ -465,7 +463,7 @@ class SchemaManager:
             tmp_df['fieldGroup'] = 'class'
             df = pd.concat([df,tmp_df],ignore_index=True)
         for fgmanager in list(self.fieldGroupsManagers.values()):
-            tmp_df = fgmanager.to_dataframe(queryPath=queryPath,description=description,xdmType=xdmType,editable=editable,required=required)
+            tmp_df = fgmanager.to_dataframe(queryPath=queryPath,editable=editable,required=required,full=full)
             tmp_df['fieldGroup'] = fgmanager.title
             if required:
                 list_required = fgmanager.requiredFields
