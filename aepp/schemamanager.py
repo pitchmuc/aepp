@@ -600,6 +600,7 @@ class SchemaManager:
                                 alternateTitle:str="",
                                 alternateDescription:str=None,
                                 alternateNote:str="",
+                                alternateEnum:str="",
                                 targetSchema:str=None,
                                 targetCompletePath:str=None,
                                 targetNamespace:str=None,
@@ -621,6 +622,7 @@ class SchemaManager:
             alternateTitle : OPTIONAL : if the descriptor is alternateDisplay, the alternate title to be used.
             alternateDescription : OPTIONAL if you wish to add a new description.
             alternateNote : OPTIONAL : if you wish to add a new note.
+            alternateEnum : OPTIONAL : if you wish to add a new enum limitation.
             targetSchema : OPTIONAL : The schema ID for the destination (lookup, B2B lookup, relationship) if the descriptor is "descriptorRelationship" or "descriptorOneToOne".
             targetCompletePath : OPTIONAL : if you have the complete path for the field in the target lookup schema, if the descriptor is "descriptorRelationship" or "descriptorOneToOne".
             targetNamespace: OPTIONAL : if you have the namespace code for the target schema (used for "descriptorRelationship").
@@ -647,8 +649,6 @@ class SchemaManager:
                 "xdm:isPrimary": identityPrimary
             }
         elif descType == "xdm:alternateDisplayInfo":
-            if alternateTitle is None:
-                raise ValueError("Require an alternate title")
             obj = {
                 "@type": descType,
                 "xdm:sourceSchema": self.id,
@@ -667,6 +667,8 @@ class SchemaManager:
                 obj["xdm:note"] = {
                     "en_us":alternateNote
                 }
+            if alternateEnum is not None:
+                obj["xdm:excludeMetaEnum"] = alternateEnum
         elif descType == "xdm:descriptorOneToOne":
             obj = {
                 "@type": descType,

@@ -682,6 +682,7 @@ class ClassManager:
                 dictionary['enumValues'] = []
                 dictionary['enum'] = []
                 dictionary['default'] = []
+                dictionary['metaStatus'] = []
         else:
             dictionary = dictionary
         for key in mydict:
@@ -707,6 +708,7 @@ class ClassManager:
                         if queryPath or full:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         if full:
+                            dictionary['metaStatus'].append(mydict[key].get('meta:status',pd.NA))
                             dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
                             dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
                             dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
@@ -749,6 +751,7 @@ class ClassManager:
                         if (queryPath or full) and tmp_path is not None:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         if full:
+                            dictionary['metaStatus'].append(mydict[key].get('meta:status',pd.NA))
                             dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
                             dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
                             dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
@@ -787,6 +790,7 @@ class ClassManager:
                         if queryPath or full:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
                         if full:
+                            dictionary['metaStatus'].append(mydict[key]['items'].get('meta:status',pd.NA))
                             dictionary['minLength'].append(mydict[key]['items'].get('minLength',np.nan))
                             dictionary['maxLength'].append(mydict[key]['items'].get('maxLength',np.nan))
                             dictionary['minimum'].append(mydict[key]['items'].get('minimum',np.nan))
@@ -821,6 +825,7 @@ class ClassManager:
                     if queryPath or full:
                         dictionary["querypath"].append(self.__cleanPath__(finalpath))
                     if full:
+                        dictionary['metaStatus'].append(mydict[key].get('meta:status',pd.NA))
                         dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
                         dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
                         dictionary['minimum'].append(mydict[key].get('minimum',np.nan))

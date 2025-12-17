@@ -643,25 +643,30 @@ class Synchronizer:
                 case "xdm:alternateDisplayInfo":
                     target_alternateDisplayInfo = [desc for desc in target_descriptors if desc['@type'] == 'xdm:alternateDisplayInfo']
                     alternateTitle = baseDescriptor.get('xdm:title',{}).get('en_us',None)
+                    alternateDescription = baseDescriptor.get('xdm:description',{}).get('en_us',None)
+                    alternateDescription = baseDescriptor.get('xdm:description',{}).get('en_us',None)
                     alternateNote = baseDescriptor.get('xdm:note',{}).get('en_us',None)
+                    alternateEnum = baseDescriptor.get('xdm:excludeMetaEnum',None)
                     alternateDescription = baseDescriptor.get('xdm:description',{}).get('en_us',None)
                     if baseDescriptor['xdm:sourceProperty'] not in [el['xdm:sourceProperty'] for el in target_alternateDisplayInfo]: ## descriptor does not exists in target
                         new_desc = targetSchemaManager.createDescriptorOperation(descType=descType,
                                                                             completePath=baseDescriptor['xdm:sourceProperty'],
                                                                             alternateTitle=alternateTitle,alternateDescription=alternateDescription,
-                                                                            alternateNote=alternateNote)
+                                                                            alternateNote=alternateNote,alternateEnum=alternateEnum)
                         res = targetSchemaManager.createDescriptor(new_desc)
                     else: ## descriptor already exists in target
                         res = [el for el in target_alternateDisplayInfo if el['xdm:sourceProperty'] == baseDescriptor['xdm:sourceProperty']][0]
                         target_alternateTitle = res.get('xdm:title',{}).get('en_us',None)
                         target_alternateNote = res.get('xdm:note',{}).get('en_us',None)
                         target_alternateDescription = res.get('xdm:description',{}).get('en_us',None)
+                        target_alternateNote = baseDescriptor.get('xdm:note',{}).get('en_us',None)
+                        target_alternateEnum = baseDescriptor.get('xdm:excludeMetaEnum',None)
                         ## check if the alternateTitle, alternateNote and alternateDescription are the same
-                        if target_alternateTitle != alternateTitle or target_alternateNote != alternateNote or target_alternateDescription != alternateDescription:
+                        if target_alternateTitle != alternateTitle or target_alternateNote != alternateNote or target_alternateDescription != alternateDescription or str(target_alternateEnum) != str(alternateEnum):
                             new_desc = targetSchemaManager.createDescriptorOperation(descType=descType,
                                                                             completePath=baseDescriptor['xdm:sourceProperty'],
                                                                             alternateTitle=alternateTitle,alternateDescription=alternateDescription,
-                                                                            alternateNote=alternateNote)
+                                                                            alternateNote=alternateNote,alternateEnum=alternateEnum)
                             res = targetSchemaManager.updateDescriptor(new_def)
                     list_descriptors.append(res)
                 case "xdm:descriptorReferenceIdentity": ## can be referenced by other schemas

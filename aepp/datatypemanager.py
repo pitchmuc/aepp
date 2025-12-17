@@ -548,6 +548,7 @@ class DataTypeManager:
                 dictionary['enumValues'] = []
                 dictionary['enum'] = []
                 dictionary['default'] = []
+                dictionary['metaStatus'] = []
         else:
             dictionary = dictionary
         for key in mydict:
@@ -573,6 +574,7 @@ class DataTypeManager:
                         if queryPath or full:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         if full:
+                            dictionary['metaStatus'].append(mydict[key].get('meta:status',pd.NA))
                             dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
                             dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
                             dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
@@ -615,6 +617,7 @@ class DataTypeManager:
                         if queryPath or full:
                             dictionary["querypath"].append(self.__cleanPath__(tmp_path))
                         if full:
+                            dictionary['metaStatus'].append(mydict[key].get('meta:status',pd.NA))
                             dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
                             dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
                             dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
@@ -660,6 +663,7 @@ class DataTypeManager:
                         if queryPath or full:
                             dictionary["querypath"].append(self.__cleanPath__(finalpath))
                         if full:
+                            dictionary['metaStatus'].append(mydict[key]['items'].get('meta:status',pd.NA))
                             dictionary['minLength'].append(mydict[key]['items'].get('minLength',np.nan))
                             dictionary['maxLength'].append(mydict[key]['items'].get('maxLength',np.nan))
                             dictionary['minimum'].append(mydict[key]['items'].get('minimum',np.nan))
@@ -697,6 +701,7 @@ class DataTypeManager:
                     if queryPath or full:
                         dictionary["querypath"].append(self.__cleanPath__(finalpath))
                     if full:
+                        dictionary['metaStatus'].append(mydict[key].get('meta:status',pd.NA))
                         dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
                         dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
                         dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
@@ -1099,6 +1104,7 @@ class DataTypeManager:
             minLength : if you want to add a minimum length for string field
             maxLength : if you want to add a maximum length for string field
             default : if you want to add a default value for the field
+            metaStatus : if you want to add a meta:status value for the field
         """
         if self.EDITABLE == False:
             raise Exception("The Data Type is not Editable via Field Group Manager")
@@ -1116,6 +1122,7 @@ class DataTypeManager:
             del pathSplit[0]
         newField = pathSplit.pop()
         description = kwargs.get("description",'')
+        metaStatus = kwargs.get("metaStatus",None)
         obj = {}
         if dataType == 'object':
             if objectComponents is not None:
@@ -1126,6 +1133,8 @@ class DataTypeManager:
                 obj = { 'type':'object', 'title':title, "description":description,
                     'properties':{}
                 }
+            if metaStatus is not None:
+                obj['meta:status'] = metaStatus
         elif dataType == 'array':
             if objectComponents is not None:
                 obj = { 'type':'array', 'title':title,"description":description,
@@ -1141,6 +1150,8 @@ class DataTypeManager:
                         'properties':{}
                     }
                 }
+            if metaStatus is not None:
+                obj['meta:status'] = metaStatus
         elif dataType == "dataType":
             obj = {'$ref': ref,
                     'required': [],
@@ -1156,6 +1167,8 @@ class DataTypeManager:
                     "$ref" : ref,
                     "title":title
                 }
+            if metaStatus is not None:
+                obj['meta:status'] = metaStatus
             self.dataTypes[ref] = title
             self.dataTypeManagers[ref] = DataTypeManager(dataType=ref,schemaAPI=self.schemaAPI)
         elif dataType == "map":
@@ -1172,6 +1185,8 @@ class DataTypeManager:
                 obj['additionalProperties']['maximum'] = 2147483647
                 obj['additionalProperties']['minimum'] = -2147483648
                 obj['additionalProperties']['meta:xdmType'] = "int"
+            if metaStatus is not None:
+                obj['meta:status'] = metaStatus
         else:
             minimum = kwargs.get('minimum',None)
             maximum = kwargs.get('maximum',None)
@@ -1181,6 +1196,9 @@ class DataTypeManager:
             default = kwargs.get('default',None)
             obj = self.__transformFieldType__(dataType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
             obj['title']= title
+            obj['description']= description
+            if metaStatus is not None:
+                obj['meta:status'] = metaStatus
             if array:
                 obj['type'] = "array"
                 obj['items'] = self.__transformFieldType__(dataType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
@@ -1431,17 +1449,18 @@ class DataTypeManager:
             pattern = (lambda x : None if pd.isnull(x) else x)(row.get('pattern',None))
             default = (lambda x : None if pd.isnull(x) else x)(row.get('default',None))
             enumValues = (lambda x : None if pd.isnull(x) else x)(row.get('enumValues',None))
+            metastatus = (lambda x : None if pd.isnull(x) else x)(row.get('metaStatus',None))
             if enumValues is None: ## ensuring to forcing a suggested value for empty enumValues
                 enumType = None
             else:
                 enumType = row.get('enum',False)
             if path.endswith("[]"):
                 clean_path = self.__cleanPath__(row['path'])
-                self.addField(clean_path,typeElement,title=row['title'],description=row['description'],array=True,enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
+                self.addField(clean_path,typeElement,title=row['title'],description=row['description'],array=True,enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default,metastatus=metastatus)
             elif path.endswith("[]{}"):
                 clean_path = self.__cleanPath__(row['path'])
-                self.addField(clean_path,'array',title=row['title'],description=row['description'],enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
+                self.addField(clean_path,'array',title=row['title'],description=row['description'],enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default,metastatus=metastatus)
             else:
                 clean_path = self.__cleanPath__(row['path'])
-                self.addField(clean_path,typeElement,title=row['title'],description=row['description'],enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
+                self.addField(clean_path,typeElement,title=row['title'],description=row['description'],enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default,metastatus=metastatus)
         return self
