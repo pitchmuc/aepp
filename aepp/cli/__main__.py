@@ -198,6 +198,34 @@ class ServiceShell(cmd.Cmd):
             return
         
     @login_required
+    def do_create_sandbox(self,args:Any)->None:
+        """
+        Create a new sandbox in the current organization. 
+        """
+        parser = argparse.ArgumentParser(prog='create_sandbox', add_help=True)
+        parser.add_argument("-n","--name", help="Name for the new sandbox. It must be unique and not contain spaces (use - instead of space)", required=True, type=str)
+        parser.add_argument('-tl','--title', help="Title for the new sandbox", required=True, type=str)
+        parser.add_argument("-t","--type", help="Type for the new sandbox. Possible values: [development, production]", required=True, type=str)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            if args.type not in ['development', 'production']:
+                console.print(f"(!) Error: Invalid sandbox type '{args.type}'. Must be either 'development' or 'production'.", style="red")
+                return
+            if args.name and ' ' in args.name:
+                console.print(f"(!) Error: Sandbox name '{args.name}' cannot contain spaces. Please use '-' instead of space.", style="red")
+                return
+            aepp_sandboxes = sandboxes.Sandboxes(config=self.config)
+            res = aepp_sandboxes.createSandbox(name=args.name, title=args.title, type_sandbox=args.type)
+            if res.get("name"):
+                console.print_json(data=res, style="green")
+            else:
+                console.print_json(data=res, style="orange_red1")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
     def do_get_profile_attributes_lineage(self,args:Any)->None:
         """Get data lineage information for all profile paths. This method is very expensive and will take a long time. Use with caution."""
         parser = argparse.ArgumentParser(prog='get_profile_paths_info', add_help=True)
@@ -851,11 +879,12 @@ class ServiceShell(cmd.Cmd):
         """Upload a field group definition from a CSV file"""
         parser = argparse.ArgumentParser(prog='upload_fieldgroup_definition_csv', add_help=True)
         parser.add_argument("csv_path", help="Path to the field group CSV file")
+        parser.add_argument("-sp","--separator", help="CSV separator, default is comma (,)", default=",", type=str)
         parser.add_argument("-ts","--test",help="Boolean. Test creation without uploading it to AEP. It will output a JSON file. Default False. Possible values: True, False",default=False,type=bool)
         try:
             args = parser.parse_args(shlex.split(args))
             myfg = fieldgroupmanager.FieldGroupManager(config=self.config)
-            myfg.importFieldGroupDefinition(fieldgroup=args.csv_path)
+            myfg.importFieldGroupDefinition(fieldgroup=args.csv_path, sep=args.separator)
             if args.test:
                 data = myfg.to_dict()
                 with open(f"test_{myfg.title}_fieldgroup.json", 'w') as f:
@@ -1166,6 +1195,30 @@ class ServiceShell(cmd.Cmd):
                 )
             console.print(table)
             console.print(f"Identities exported to {self.config.sandbox}_identities.csv", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+    
+    @login_required
+    def do_create_identity(self,args:Any) -> None:
+        """Create a new identity namespace"""
+        parser = argparse.ArgumentParser(prog='create_identity', add_help=True)
+        parser.add_argument("-c","--code", help="Code for the new identity namespace (e.g., email, phone)")
+        parser.add_argument("-n","--name", help="Display name for the new identity namespace")
+        parser.add_argument("-t","--type", help="Type for the new identity namespace. Possible Values: COOKIE, CROSS_DEVICE, DEVICE, EMAIL, MOBILE, NON_PEOPLE or PHONE")
+        parser.add_argument("-d","--description", help="Description for the new identity namespace", default="", type=str)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_identity = identity.Identity(config=self.config)
+            if args.type not in ["COOKIE", "CROSS_DEVICE", "DEVICE", "EMAIL", "MOBILE", "NON_PEOPLE", "PHONE"]:
+                console.print(f"(!) Error: Invalid identity type '{args.type}'. Must be one of: COOKIE, CROSS_DEVICE, DEVICE, EMAIL, MOBILE, NON_PEOPLE, PHONE", style="red")
+                return
+            new_identity = aepp_identity.createIdentity(code=args.code,name=args.name,idType=args.type,description=args.description)
+            if 'code' in new_identity.keys() and 'status' in new_identity.keys():
+                console.print_json(data=new_identity, style="green")
+            else:
+                console.print_json(data=new_identity,style='orange_red1')
         except Exception as e:
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
@@ -1751,7 +1804,12 @@ class ServiceShell(cmd.Cmd):
             console.print(f"(!) Error: {str(e)}", style="red")
 
     COMMAND_GROUPS = {
-        "System": ["config", "create_config_file", "get_sandboxes", "change_sandbox", "get_tags"],
+        "System": ["config", 
+                   "create_config_file", 
+                   "get_sandboxes", 
+                   "change_sandbox",
+                   "create_sandbox",
+                   "get_tags"],
         "Schema": ["get_schemas",
                    "get_ups_schemas",
                    "get_ups_fieldgroups",
@@ -1796,6 +1854,7 @@ class ServiceShell(cmd.Cmd):
                     "query"],
         "Profiles": [
                     "get_identities",
+                    "create_identity",
                     "get_profile_attributes",
                      "get_profile_events",
                      "get_profile_attributes_lineage",
