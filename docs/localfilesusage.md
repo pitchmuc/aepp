@@ -9,15 +9,9 @@ This element is also into consideration for building a continuous integration pi
 - [Local Storage usage in aepp](#local-storage-usage-in-aepp)
   - [Menu](#menu)
   - [Local Storage Requirements](#local-storage-requirements)
+      - [Strategy around folder extraction](#strategy-around-folder-extraction)
     - [Config File](#config-file)
   - [Extracting the artifacts](#extracting-the-artifacts)
-  - [Setting up your own extractor \[WIP\]](#setting-up-your-own-extractor-wip)
-    - [Behavior schema](#behavior-schema)
-    - [Class schema](#class-schema)
-    - [Schema schema](#schema-schema)
-    - [Field Group schema](#field-group-schema)
-    - [Data Types schema](#data-types-schema)
-    - [Descriptor schema](#descriptor-schema)
   - [Using the local storage](#using-the-local-storage)
     - [SchemaManager](#schemamanager)
     - [Field Group Manager](#field-group-manager)
@@ -34,6 +28,7 @@ In that case, we have defined a clear structure for the artifacts  that are supp
 The structure is as follow: 
 
 sandbox_folder\
+  config.json\
   \class\
   \schema\
   \fieldgroup\
@@ -44,10 +39,14 @@ sandbox_folder\
   \identity\
   \dataset\
   \mergePolicy\
-  \audience
+  \audience\
+  \tag\
 
+#### Strategy around folder extraction
 
-You could technically mixed different sandbox in one folder and the elements will be just appended to folder as their type is definde (schema in schema), however, it is not a best practice approach as sandbox environment should be kept different.
+You could technically mixed different sandbox in one folder and the elements will be just appended to folder as their type is definde (schema in schema), **however**, it is not a best practice approach as sandbox environment should be kept different as artefact could be overwritting each other.\
+
+The synchronizer can reference more than one folder as the source, and you can have some global artefacts in a common folder and have specific sandbox artefacts in their respective folder.\ 
 
 The creation of clearly defined structure is making the dependency between elements able to be handled in the different tools that `aepp` is providing (`SchemaManager`, `ClassManager`, `FieldGroupManager`, `DataTypeManager`, `Synchronizer`).
 
@@ -87,48 +86,6 @@ import aepp
 prod = aepp.importConfigFile('myconfig.json',sandbox='prod',connectInstance=True)
 aepp.extractSandboxArtifacts(prod,localFolder='prodFolder',region='va7')
 ```
-
-## Setting up your own extractor [WIP]
-
-**NOTE**: This section is still a work in progress and will evolve in the future.\
-Please use the extractArticfacts method for now to extract the different artifacts.
-
-It may be that you have your own pipeline to work on the extraction of the artifact from AEP.\
-If that is the case, you can refer to the different schema definition of the artifacts needed for the synchronizer to work.
-
-The schema definition provides the required fields and the format that you need to ensure having for the different tools define below to work.
-
-
-
-### Behavior schema
-
-You can find the definition of the behavior elements here: [behavior schema](behavior.json)
-
-
-### Class schema
-
-You can find the definition of the class elements here: [class schema](class.json)
-
-
-### Schema schema 
-
-The definition of the schema elements are here: [schema schema](schema.json)
-
-
-### Field Group schema
-
-The definition of the field group elements are here: [field group schema](fieldgroup.json)
-
-
-### Data Types schema 
-
-The definition of the data types elements are here: [data type schema](datatype.json)
-
-
-### Descriptor schema
-
-The descriptors schema needed for the resolution of dependency are defined here: [descriptor schema](descriptor.json) 
-
 
 
 ## Using the local storage
