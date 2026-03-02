@@ -486,7 +486,7 @@ class Schema:
 
         if self.loggingEnabled:
             self.logger.debug(f"Starting getSchemaSample")
-        rand_number = random.randint(1, 10e10)
+        rand_number = random.randint(1, 10**10)
         if schemaId is None:
             raise Exception("Require an ID for the schema")
         if schemaId.startswith("https://"):
