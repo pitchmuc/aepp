@@ -341,6 +341,7 @@ class ServiceShell(cmd.Cmd):
             aepp_schema = schema.Schema(config=self.config)
             schemas = aepp_schema.getSchemas()
             if len(schemas) > 0:
+                table = Table(title=f"Schemas in Sandbox: {self.config.sandbox}")
                 table.add_column("ID", style="cyan")
                 table.add_column("Name", style="magenta")
                 table.add_column("Version", style="green")
