@@ -160,16 +160,7 @@ class ClassManager:
                 "title" : title,
                 "description":description,
                 "type" : "object",
-                "definitions":{
-                    "customFields":{"properties":{},"type" : "object"},
-                    "property":{"properties":{},"type" : "object"}
-                },
-                'allOf': [{'$ref': '#/definitions/customFields',
-                    'type': 'object',
-                    'meta:xdmType': 'object'},
-                    {"$ref": "#/definitions/property",
-                    "type": "object"
-                    }],
+                'allOf': [],
                 'meta:extensible': True,
                 'meta:extends': self.behavior,
                 'meta:tenantNamespace': self.tenantId
