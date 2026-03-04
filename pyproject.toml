@@ -29,11 +29,13 @@ dependencies = [
     "deprecation",
     "datamodel-code-generator",
     "rich",
-    "matplotlib"
+    "matplotlib",
+    "psycopg2"
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/adobe/aepp"
+"Changelog" = "https://github.com/adobe/aepp/docs/releases.md"
 
 [project.scripts]
 aepp = "aepp.cli.__main__:main"

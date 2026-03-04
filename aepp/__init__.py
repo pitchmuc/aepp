@@ -402,7 +402,10 @@ def __extractClass__(classEl: str,folder: Union[str, Path] = None,sandbox: 'Conn
     myclasses = sch.getClasses()
     myclassesGlobal = sch.getClassesGlobal()
     all_classes = myclasses + myclassesGlobal
-    myclass = [el for el in all_classes if el.get('$id','') == classEl or el.get('title','') == classEl or el.get('meta:altId') == classEl][0]
+    try:
+        myclass = [el for el in all_classes if el.get('$id','') == classEl or el.get('title','') == classEl or el.get('meta:altId') == classEl][0]
+    except IndexError:
+        raise IndexError("The class you want to extract is not present in the sandbox or the id/name provided is not correct")
     if tenantId in myclass.get('$id',''):
         definition = sch.getClass(myclass['$id'],full=False,xtype='xed')
     else:
@@ -430,7 +433,10 @@ def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: '
     dts = sch.getDataTypes()
     globalDts = sch.getDataTypesGlobal()
     all_dts = dts + globalDts
-    mydt = [el for el in all_dts if el.get('meta:altId','') == dataType or el.get('title','') == dataType or el.get('$id') == dataType][0]
+    try:
+        mydt = [el for el in all_dts if el.get('meta:altId','') == dataType or el.get('title','') == dataType or el.get('$id') == dataType][0]
+    except IndexError:
+        raise IndexError("The data type you want to extract is not present in the sandbox or the id/name provided is not correct")
     mydt_manager = datatypemanager.DataTypeManager(mydt.get('$id'),config=sandbox)
     if tenantId in mydt.get('$id',''):
         definition = sch.getDataType(mydt.get('$id',''),full=False,xtype='xed')
@@ -457,7 +463,10 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
     fgs = sch.getFieldGroups()
     globalFgs = sch.getFieldGroupsGlobal()
     all_fgs = fgs + globalFgs
-    myfg = [el for el in all_fgs if el.get('$id','') == fieldGroup or el.get('title','') == fieldGroup or el.get('meta:altId','') == fieldGroup][0]
+    try:
+        myfg = [el for el in all_fgs if el.get('$id','') == fieldGroup or el.get('title','') == fieldGroup or el.get('meta:altId','') == fieldGroup][0]
+    except IndexError:
+        raise IndexError("The field group you want to extract is not present in the sandbox or the id/name provided is not correct")
     myfg_manager = fieldgroupmanager.FieldGroupManager(myfg.get('$id'),config=sandbox)
     if tenantId in myfg.get('$id',''):
         definition = sch.getFieldGroup(myfg['$id'],full=False,xtype='xed')
@@ -494,7 +503,10 @@ def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'Co
     sch = schema.Schema(config=sandbox)
     tenantId = sch.getTenantId()
     myschemas = sch.getSchemas()
-    myschema = [el for el in myschemas if el.get('$id','') == schemaEl or el.get('title','') == schemaEl or el.get('meta:altId') == schemaEl][0]
+    try:
+        myschema = [el for el in myschemas if el.get('$id','') == schemaEl or el.get('title','') == schemaEl or el.get('meta:altId') == schemaEl][0]
+    except IndexError:
+        raise IndexError("The schema you want to extract is not present in the sandbox or the id/name provided is not correct")
     definition = sch.getSchema(myschema['$id'],full=False,xtype='xed')
     schema_manager = schemamanager.SchemaManager(myschema.get('$id'),config=sandbox)
     file_name = __titleSafe__(definition.get('title',definition.get('$id','unknown')))
@@ -530,7 +542,10 @@ def __extractIdentity__(identityStr: str,region:str=None,folder: Union[str, Path
     from aepp import identity
     ide = identity.Identity(config=sandbox,region=region)
     identities = ide.getIdentities()
-    myIdentity = [el for el in identities if el.get('code','') == identityStr or el.get('name','') == identityStr][0]
+    try:
+        myIdentity = [el for el in identities if el.get('code','') == identityStr or el.get('name','') == identityStr][0]
+    except IndexError:
+        raise IndexError("The identity you want to extract is not present in the sandbox or the code/name provided is not correct")
     identityPath = Path(folder) / 'identity'
     identityPath.mkdir(exist_ok=True)
     file_name = __titleSafe__(myIdentity.get('code',myIdentity.get('name','unknown')))
@@ -550,7 +565,7 @@ def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'Co
                 tag_names = [dict_tag_id_name.get(tag_id) for tag_id in myDataset.get('unifiedTags',[])]
                 myDataset['unifiedTags'] = tag_names
     if myDataset is None:
-        raise ValueError("Dataset not found")
+        raise IndexError("The dataset you want to extract is not present in the sandbox or the id/name provided is not correct")
     datasetPath = Path(folder) / 'dataset'
     datasetPath.mkdir(exist_ok=True)
     file_name = __titleSafe__(myDataset.get('tags',{}).get('adobe/pqs/table',[myDataset.get('id','unknown')])[0])
@@ -578,7 +593,10 @@ def __extractAudience__(audienceName: str = None,folder:Union[str, Path]=None, s
     from aepp import segmentation
     mysegmentation = segmentation.Segmentation(config=sandbox) 
     audiences = mysegmentation.getAudiences()
-    myaudience = [el for el in audiences if el.get('name','') == audienceName or el.get('id','') == audienceName][0]
+    try:
+        myaudience = [el for el in audiences if el.get('name','') == audienceName or el.get('id','') == audienceName][0]
+    except IndexError:
+        raise IndexError("The audience you want to extract is not present in the sandbox or the name/id provided is not correct")
     audiencePath = Path(folder) / 'audience'
     audiencePath.mkdir(exist_ok=True)
     safe_name = __titleSafe__(myaudience.get('name','unknown'))

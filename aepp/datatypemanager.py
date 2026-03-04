@@ -199,34 +199,37 @@ class DataTypeManager:
                     }],
                 'meta:tenantNamespace': self.tenantId
             }
-        if '$ref' in str(self.dataType.get('definitions',{})) or '/datatype_name/' in str(self.dataType.get('definitions',{})) or 'meta:referencedFrom' in str(self.dataType.get('definitions',{})): ## if datatype used in data types
+        if '$ref' in str(self.dataType.get('definitions',self.dataType.get('properties',{}))) or '/datatype_name/' in str(self.dataType.get('definitions',self.dataType.get('properties',{}))) or 'meta:referencedFrom' in str(self.dataType.get('definitions',self.dataType.get('properties',{}))): ## if datatype used in data types
             dataTypeSearch_id = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
-            dataTypes_id = re.findall(dataTypeSearch_id,str(self.dataType.get('definitions',{})))
+            dataTypes_id = re.findall(dataTypeSearch_id,str(self.dataType.get('definitions',self.dataType.get('properties',{}))))
             dataTypeSearch_name = f"(https://[0-9A-Za-z.]+/datatype_name/[0-9a-z]+?)'"
-            dataTypes_name = re.findall(dataTypeSearch_name,str(self.dataType.get('definitions',{})))
+            dataTypes_name = re.findall(dataTypeSearch_name,str(self.dataType.get('definitions',self.dataType.get('properties',{}))))
             metaRefSearch = f"'meta:referencedFrom': '(https://ns.adobe.com/.+?)'"
-            dataType_MetaRef_name = re.findall(metaRefSearch,str(self.dataType.get('definitions',{})))
+            dataType_MetaRef_name = re.findall(metaRefSearch,str(self.dataType.get('definitions',self.dataType.get('properties',{}))))
             dataTypes = dataTypes_id + dataTypes_name + dataType_MetaRef_name
             dataTypes = list(set(dataTypes))
+            dataTypeManager_ids = list(set(self.getDataTypePaths(list_dt_ids=dataTypes).values()))
             if self.schemaAPI is not None:
-                for dt in dataTypes:
-                    dt_manager = self.schemaAPI.DataTypeManager(dt)
-                    self.dataTypes[dt_manager.id] = dt_manager.title
-                    self.dataTypeManagers[dt_manager.title] = dt_manager
+                for dt in dataTypeManager_ids:
+                    if dt not in self.dataTypes.keys():
+                        dt_manager = self.schemaAPI.DataTypeManager(dt)
+                        self.dataTypes[dt_manager.id] = dt_manager.title
+                        self.dataTypeManagers[dt_manager.title] = dt_manager
             elif self.localfolder is not None:
-                for dt in dataTypes: ## today only searching custom data types in local folder
-                    found = False
-                    for folder in self.datatypeFolder:
-                        for dataTypeFile in folder.glob("*.json"):
-                            tmp_def = json.load(FileIO(dataTypeFile))
-                            if tmp_def.get('$id') == dt or tmp_def.get('meta:altId') == dt or tmp_def.get('title') == dt:
-                                dt_manager = DataTypeManager(dataType=tmp_def,localFolder=self.localfolder,tenantId=self.tenantId,sandbox=self.sandbox)
-                                self.dataTypes[dt_manager.id] = dt_manager.title
-                                self.dataTypeManagers[dt_manager.title] = dt_manager
-                                found = True
+                for dt in dataTypeManager_ids: ## today only searching custom data types in local folder
+                    if dt not in self.dataTypes.keys():
+                        found = False
+                        for folder in self.datatypeFolder:
+                            for dataTypeFile in folder.glob("*.json"):
+                                tmp_def = json.load(FileIO(dataTypeFile))
+                                if tmp_def.get('$id') == dt or tmp_def.get('meta:altId') == dt or tmp_def.get('title') == dt:
+                                    dt_manager = DataTypeManager(dataType=tmp_def,localFolder=self.localfolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                                    self.dataTypes[dt_manager.id] = dt_manager.title
+                                    self.dataTypeManagers[dt_manager.title] = dt_manager
+                                    found = True
+                                    break
+                            if found:
                                 break
-                        if found:
-                            break
         if title is not None:
             self.dataType['title'] = title
             self.title = title
@@ -450,7 +453,7 @@ class DataTypeManager:
                                 finalpath = f"{path}.{key}[]"
                             else:
                                 finalpath = f"{key}[]"
-                                dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
+                            dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
                         dictionary["path"].append(finalpath)
                         dictionary["title"].append(f"{mydict[key].get('title','')}")
                         dictionary["description"].append(mydict[key].get('description',''))
@@ -522,7 +525,7 @@ class DataTypeManager:
                                     tmp_reqPath = f"{elRequired}"
                                 self.requiredFields.add(tmp_reqPath)
             elif type(mydict[key]) == dict and mydict[key].get('meta:referencedFrom',None) is not None: ## if the object is referencing a dataType
-                if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys() : 
+                if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys():
                     if path is None:
                         tmp_path = key
                     else:
@@ -546,6 +549,9 @@ class DataTypeManager:
                             dictionary['default'].append(pd.NA)
                             dictionary['enumValues'].append(pd.NA)
                             dictionary['enum'].append(False)
+                    properties = mydict[key].get('properties',None)
+                    if properties is not None:
+                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath,required,full=full)
         return dictionary
     
     def __setField__(self,completePathList:list=None,dataType:dict=None,newField:str=None,obj:dict=None)->dict:
@@ -706,7 +712,11 @@ class DataTypeManager:
         som_compatible: boolean. Default False.
         """
         dict_results = {}
-        for dt_id,dt_title in self.dataTypes.items():
+        if kwargs.get('list_dt_ids') is not None:
+            list_ids = kwargs.get('list_dt_ids')
+        else:
+            list_ids = self.dataTypes.items()
+        for dt_id in list_ids:
             ref_results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
             paths = [res[list(res.keys())[0]]['path'] for res in ref_results]
             for path in paths:
@@ -723,7 +733,15 @@ class DataTypeManager:
                 dict_results[path] = dt_id
             if kwargs.get('som_compatible',False):
                 paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
-        return dict_results
+        dict_dedup_result = {} ## avoid reference to datatype already references in another datatype (in case of nested data type reference)
+        for path, dt_id in dict_results.items():
+            if '.' in path:
+                root = path.split('.')[0]
+                if root not in dict_results.keys():
+                    dict_dedup_result[path] = dt_id
+            else:
+                dict_dedup_result[path] = dt_id
+        return dict_dedup_result
 
     def searchField(self,string:str,partialMatch:bool=True,caseSensitive:bool=False)->list:
         """
@@ -1090,7 +1108,9 @@ class DataTypeManager:
                 tmp_dtManager = self.getDataTypeManager(dataElementId)
                 tmp_dict = tmp_dtManager.to_dict()
                 clean_path = path.replace('[]{}','.[0]')
-                mysom.assign(path,tmp_dict)
+                print(self.title)
+                print(clean_path)
+                mysom.assign(clean_path,tmp_dict)
         data = mysom.to_dict()
         if save:
             filename = self.dataType.get('title',f'unknown_dataType_{str(int(time.time()))}')
@@ -1168,6 +1188,7 @@ class DataTypeManager:
         if definition == {}:
             definition = self.dataType.get('properties',{})
         data = self.__transformationDF__(definition,queryPath=queryPath,required=required,full=full)
+        tmp_dict = {key:len(value) for key, value in data.items()}
         df = pd.DataFrame(data)
         df['origin'] = 'self'
         if len(self.dataTypes)>0:

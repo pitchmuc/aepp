@@ -23,6 +23,9 @@ Patch:
 * better handling of `config.json` file requirement or baseSandbox requirement for `Synchronizer` class.
 * Optimization of code structure for `managers` with the manager_utils module.
 * Better support of the `dataTypes` in the `FieldGroupManager` class and `DataTypeManager` class for Synchronizer.
+* Fix some issues on the `to_dict` and `to_dataframe` method for `FieldGroupManager` and `DataTypeManager` class
+* PR for fixing int issue with `getSchemaSample` in `Schema` class
+* Optimization of artifact extraction in Managers to gain time during instantiation. 
 
 ## version 0.5.2
 * adding support for multiple values for localFolder in `SchemaManager`, `FieldGroupManager`, `DataTypeManager` and `ClassManager`

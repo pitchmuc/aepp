@@ -347,7 +347,7 @@ class Som:
                     else:
                         data[node] = value
             return data
-        else:
+        else: ## not end of the path, entering recursion
             if type(data) == dict:
                 if node not in data.keys():
                     if next_node is not None:

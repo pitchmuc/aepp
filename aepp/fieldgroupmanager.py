@@ -237,23 +237,25 @@ class FieldGroupManager:
                 dataType_MetaRef_name = re.findall(metaRefSearch,str(self.fieldGroup.get('definitions',{})))
                 dataTypes = dataTypes_id + dataTypes_name + dataType_MetaRef_name
                 dataTypes = list(set(dataTypes))
+                dataTypeManager_ids = list(set(self.getDataTypePaths(list_dt_ids=dataTypes).values()))
                 if self.schemaAPI is not None:
-                    for dt in dataTypes:
-                        dt_manager = self.schemaAPI.DataTypeManager(dt)
-                        self.dataTypes[dt_manager.id] = dt_manager.title
-                        self.dataTypeManagers[dt_manager.title] = dt_manager
+                    for dt in dataTypeManager_ids:
+                        if dt not in self.dataTypes.keys():
+                            dt_manager = self.schemaAPI.DataTypeManager(dt)
+                            self.dataTypes[dt_manager.id] = dt_manager.title
+                            self.dataTypeManagers[dt_manager.title] = dt_manager
                 elif self.localfolder is not None:
                     for folder in self.datatypeFolder:
                         for file in folder.glob('*.json'):
                             tmp_def = json.load(FileIO(file))
-                            if tmp_def.get('$id') in dataTypes or tmp_def.get('meta:altId') in dataTypes:
+                            if tmp_def.get('$id') in dataTypeManager_ids or tmp_def.get('meta:altId') in dataTypeManager_ids:
                                 dt_manager = DataTypeManager(tmp_def,localFolder=self.localfolder,sandbox=self.sandbox,tenantId=self.tenantId)
                                 self.dataTypes[dt_manager.id] = dt_manager.title
                                 self.dataTypeManagers[dt_manager.title] = dt_manager
                     for folder in self.datatypeGlobalFolder:
                         for file in folder.glob('*.json'):
                             tmp_def = json.load(FileIO(file))
-                            if tmp_def.get('$id') in dataTypes or tmp_def.get('meta:altId') in dataTypes:
+                            if tmp_def.get('$id') in dataTypeManager_ids or tmp_def.get('meta:altId') in dataTypeManager_ids:
                                 dt_manager = DataTypeManager(tmp_def,localFolder=self.localfolder,sandbox=self.sandbox,tenantId=self.tenantId)
                                 self.dataTypes[dt_manager.id] = dt_manager.title
                                 self.dataTypeManagers[dt_manager.title] = dt_manager
@@ -271,18 +273,9 @@ class FieldGroupManager:
                         "properties":{
                         }
                     },
-                    "property":{
-                        "type" : "object",
-                        "properties":{
-                        }
-                    },
                 },
                 'allOf':[{
                     "$ref": "#/definitions/customFields",
-                    "type": "object"
-                },
-                {
-                    "$ref": "#/definitions/property",
                     "type": "object"
                 }],
                 "meta:intendedToExtend":[],
@@ -296,7 +289,7 @@ class FieldGroupManager:
                     elif "profile" in cls or "https://ns.adobe.com/xdm/context/profile" == cls:
                         self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/profile")
                     elif "record" in cls or "https://ns.adobe.com/xdm/data/record" == cls:
-                        self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/context/profile")
+                        self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/data/record")
                     else:
                         self.fieldGroup["meta:intendedToExtend"].append(cls)
         if len(self.fieldGroup.get('allOf',[]))>1:
@@ -1149,6 +1142,8 @@ class FieldGroupManager:
             for path,dataElementId in paths.items():
                 dict_dataType = self.getDataTypeManager(dataElementId).to_dict(typed=typed)
                 clean_path = path.replace('[]{}','.[0]')
+                print(self.title)
+                print(clean_path)
                 mySom.assign(clean_path,dict_dataType)
         if self.metaExtend is not None:
             for fgId in self.metaExtend:
@@ -1328,7 +1323,11 @@ class FieldGroupManager:
         som_compatible: boolean. Default False.
         """
         dict_results = {}
-        for dt_id,dt_title in self.dataTypes.items():
+        if kwargs.get('list_dt_ids') is not None:
+            list_ids = kwargs.get('list_dt_ids')
+        else:
+            list_ids = self.dataTypes.items()
+        for dt_id in list_ids:
             ref_results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
             paths = [res[list(res.keys())[0]]['path'] for res in ref_results]
             for path in paths:
@@ -1345,7 +1344,21 @@ class FieldGroupManager:
                 dict_results[path] = dt_id
             if kwargs.get('som_compatible',False):
                 paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
-        return dict_results
+        dict_dedup_result = {} ## avoid reference to datatype already references in another datatype (in case of nested data type reference)
+        for path, dt_id in dict_results.items():
+            if '.' in path:
+                if path.startswith('_'):
+                    if len(path.split('.')) > 1:
+                        root = path.split('.')[0]+'.'+path.split('.')[1]
+                    else:
+                        root = path.split('.')[0]
+                else:
+                    root = path.split('.')[0]
+                if root not in dict_results.keys():
+                    dict_dedup_result[path] = dt_id
+            else:
+                dict_dedup_result[path] = dt_id
+        return dict_dedup_result
     
 
     def patchFieldGroup(self,operations:list=None)->dict:
