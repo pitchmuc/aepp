@@ -22,7 +22,8 @@ config_object = {
     "token": "",
     "oauthTokenEndpointV1": "",
     "oauthTokenEndpointV2": "",
-    "imsEndpoint": ""
+    "imsEndpoint": "",
+    "retry": 1
 }
 
 header = {"Accept": "application/json",

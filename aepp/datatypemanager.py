@@ -52,6 +52,9 @@ class DataTypeManager:
             description : OPTIONAL : The description of the data type. Default is empty string.
             localFolder : OPTIONAL : If you want to use local storage to create all the connections between schema and field groups, classes and datatypes
             sandbox : OPTIONAL : If you use localFolder, you can specific the sandbox.
+        Possible kwargs:
+            tenantId : OPTIONAL : If you want to specific the tenantId for the data type manager (if not provided, it will be retrieved from the schemaAPI or the local folder)
+            retry : int to set the number of retry in case of connection error for the schema module (default is the retry number set for the instance)
         """
         self.localfolder = None
         self.EDITABLE = False
@@ -59,12 +62,13 @@ class DataTypeManager:
         self.dataType = {}
         self.dataTypes = {}
         self.dataTypeManagers = {}
+        self.retry = kwargs.get("retry", aepp.config.config_object.get("retry",1))
         self.id = None
         self.requiredFields = set()
         if schemaAPI is not None and type(schemaAPI) == Schema:
             self.schemaAPI = schemaAPI
         elif config is not None and localFolder is None:
-            self.schemaAPI = Schema(config=config)
+            self.schemaAPI = Schema(config=config,retry=self.retry)
         elif localFolder is not None:
             if isinstance(localFolder, str):
                 self.localfolder = [Path(localFolder)]
@@ -212,7 +216,7 @@ class DataTypeManager:
             if self.schemaAPI is not None:
                 for dt in dataTypeManager_ids:
                     if dt not in self.dataTypes.keys():
-                        dt_manager = self.schemaAPI.DataTypeManager(dt)
+                        dt_manager = self.schemaAPI.DataTypeManager(dt,retry=self.retry)
                         self.dataTypes[dt_manager.id] = dt_manager.title
                         self.dataTypeManagers[dt_manager.title] = dt_manager
             elif self.localfolder is not None:
@@ -223,7 +227,7 @@ class DataTypeManager:
                             for dataTypeFile in folder.glob("*.json"):
                                 tmp_def = json.load(FileIO(dataTypeFile))
                                 if tmp_def.get('$id') == dt or tmp_def.get('meta:altId') == dt or tmp_def.get('title') == dt:
-                                    dt_manager = DataTypeManager(dataType=tmp_def,localFolder=self.localfolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                                    dt_manager = DataTypeManager(dataType=tmp_def,localFolder=self.localfolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                                     self.dataTypes[dt_manager.id] = dt_manager.title
                                     self.dataTypeManagers[dt_manager.title] = dt_manager
                                     found = True

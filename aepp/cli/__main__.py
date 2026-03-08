@@ -1927,6 +1927,7 @@ def main():
     parser.add_argument("-sc", "--scopes", help="Scopes")
     parser.add_argument("-cid", "--client_id", help="Auto-login client ID")
     parser.add_argument("-cf", "--config_file", help="Path to config file", default=None)
+    parser.add_argument("-v", "--version", action="version", version=f"aepp {aepp.__version__}")
     args = parser.parse_args() 
     shell = ServiceShell(**vars(args))
     try:

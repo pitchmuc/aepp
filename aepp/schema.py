@@ -83,6 +83,8 @@ class Schema:
             containerId : OPTIONAL : "tenant"(default) or "global"
             header : OPTIONAL : header object  in the config module.
             loggingObject : OPTIONAL : logging object to log messages.
+        possible kwargs:
+            retry : int to set the number of retry in case of connection error for the schema module (default is the retry number set for the instance)
         """
         if loggingObject is not None and sorted(
             ["level", "stream", "format", "filename", "file"]
@@ -108,11 +110,13 @@ class Schema:
         elif type(config) == ConnectObject:
             header = config.getConfigHeader()
             config = config.getConfigObject()
+        self.retry = kwargs.get("retry", aepp.config.config_object.get("retry",1))
         self.connector = connector.AdobeRequest(
             config=config,
             header=header,
             loggingEnabled=self.loggingEnabled,
             logger=self.logger,
+            retry=self.retry
         )
         self.header = self.connector.header
         self.header["Accept"] = "application/vnd.adobe.xed+json"
@@ -124,7 +128,7 @@ class Schema:
             self.connector.header.update({"x-sandbox-name":kwargs.get('sandbox')})
         else:
             self.sandbox = self.connector.config["sandbox"]
-        self.header.update(**kwargs)
+        self.header.update({key:value for key,value in kwargs.items() if key != "retry"})
         self.endpoint = (
             aepp.config.endpoints["global"] + aepp.config.endpoints["schemas"]
         )
@@ -1894,7 +1898,7 @@ class Schema:
         res = self.connector.patchData(self.endpoint + path,data=operation)
         return res
     
-    def FieldGroupManager(self,fieldGroup:Union[dict,str,None],title:str=None,fg_class:list=["experienceevent","profile"]) -> 'FieldGroupManager':
+    def FieldGroupManager(self,fieldGroup:Union[dict,str,None],title:str=None,fg_class:list=["experienceevent","profile"],retry:int=None) -> 'FieldGroupManager':
          """
          Generates a field group Manager instance using the information provided by the schema instance.
          Arguments:
@@ -1902,9 +1906,11 @@ class Schema:
              title : OPTIONAL : If you wish to change the tile of the field group.
          """
          from .fieldgroupmanager import FieldGroupManager
-         return FieldGroupManager(fieldGroup=fieldGroup,title=title,fg_class=fg_class,schemaAPI=self)
+         if retry is None:
+             retry = self.retry
+         return FieldGroupManager(fieldGroup=fieldGroup,title=title,fg_class=fg_class,schemaAPI=self,retry=retry)
     
-    def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None) -> 'SchemaManager':
+    def SchemaManager(self,schema:Union[dict,str],fieldGroups:list=None,retry:int=None) -> 'SchemaManager':
          """
          Generates a Schema Manager instance using the information provided by the schema instance.
          Arguments:
@@ -1913,16 +1919,20 @@ class Schema:
             fgManager : OPTIONAL : If you wish to handle the different field group passed into a Field Group Manager instance and have additional methods available.
          """
          from .schemamanager import SchemaManager
-         return SchemaManager(schema=schema,fieldGroups=fieldGroups,schemaAPI=self)
+         if retry is None:
+             retry = self.retry
+         return SchemaManager(schema=schema,fieldGroups=fieldGroups,schemaAPI=self,retry=retry)
 
-    def DataTypeManager(self,dataType:Union[dict,str])->'DataTypeManager':
+    def DataTypeManager(self,dataType:Union[dict,str],retry:int=None)->'DataTypeManager':
         """
         Generates a Data Type Manager instance using the information provided by the schema instance.
         Arguments:
             dataType : OPTIONAL : The data Type definition, the reference Id or nothing if you want to start from scratch.
         """
+        if retry is None:
+            retry = self.retry
         from .datatypemanager import DataTypeManager
-        return DataTypeManager(dataType=dataType,schemaAPI=self)
+        return DataTypeManager(dataType=dataType,schemaAPI=self,retry=retry)
 
     def compareDFschemas(self,df1,df2,**kwargs)->dict:
         """

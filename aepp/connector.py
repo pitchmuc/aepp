@@ -137,6 +137,14 @@ class AdobeRequest:
     def __repr__(self):
         return json.dumps({'class':'Connector','sandbox':self.sandbox, 'token':self.token,'clientId':self.client_id,'orgId':self.org_id},indent=2)
 
+    def setRetry(self, retry:int)->None:
+        """
+        Set the number of retry for the connection and the modules.
+        Arguments:
+            retry : REQUIRED : int to set the number of retry in case of connection error for the connection and the modules.
+        """
+        self.retry = retry
+
     def get_oauth_token_and_expiry_for_config(
         self,
         config: Union[dict,configs.ConnectObject],
@@ -275,6 +283,8 @@ class AdobeRequest:
             headers : OPTIONAL: a dictionary to override the predefined header.
         Possible kwrags
             verify : boolean to set the SSL Setup
+            retry_count : int to set the number of retry in case of connection error (default is the retry number set for the instance)
+            format : "json" (default) or "txt" or "raw" to set the format of the response
         """
         verify = kwargs.get('verify', False)
         self._checkingDate()
@@ -284,21 +294,35 @@ class AdobeRequest:
             self.logger.debug(
                 f"Start GET request to {endpoint} with header: {json.dumps(headers)}"
             )
-        if params is None and data is None:
-            res = requests.get(endpoint, headers=headers, verify=verify)
-        elif params is not None and data is None:
-            if self.loggingEnabled:
-                self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.get(endpoint, headers=headers, params=params, verify=verify)
-        elif params is None and data is not None:
-            if self.loggingEnabled:
-                self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.get(endpoint, headers=headers, data=data, verify=verify)
-        elif params is not None and data is not None:
-            if self.loggingEnabled:
-                self.logger.debug(f"params: {json.dumps(params)}")
-                self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.get(endpoint, headers=headers, params=params, data=data, verify=verify)
+            
+        retry_count = kwargs.get('retry_count', max(1, self.retry))
+        for attempt in range(retry_count + 1):
+            try:
+                if params is None and data is None:
+                    res = requests.get(endpoint, headers=headers, verify=verify)
+                elif params is not None and data is None:
+                    if self.loggingEnabled:
+                        self.logger.debug(f"params: {json.dumps(params)}")
+                    res = requests.get(endpoint, headers=headers, params=params, verify=verify)
+                elif params is None and data is not None:
+                    if self.loggingEnabled:
+                        self.logger.debug(f"data: {json.dumps(data)}")
+                    res = requests.get(endpoint, headers=headers, data=data, verify=verify)
+                elif params is not None and data is not None:
+                    if self.loggingEnabled:
+                        self.logger.debug(f"params: {json.dumps(params)}")
+                        self.logger.debug(f"data: {json.dumps(data)}")
+                    res = requests.get(endpoint, headers=headers, params=params, data=data, verify=verify)
+                break
+            except (requests.exceptions.ChunkedEncodingError, requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as e:
+                if attempt < retry_count:
+                    if self.loggingEnabled:
+                        self.logger.warning(f"Connection error: {e}. Retrying {attempt + 1}/{retry_count}...")
+                    time.sleep(2)
+                else:
+                    if self.loggingEnabled:
+                        self.logger.error(f"Failed after {retry_count} retries due to connection error: {e}")
+                    raise e
         if self.loggingEnabled:
             self.logger.debug(f"endpoint used: {res.request.url}")
             self.logger.debug(f"params used: {params}")
@@ -322,7 +346,7 @@ class AdobeRequest:
                     self.logger.info(f"starting retry: {self.retry} to do")
                 for each in range(self.retry):
                     if "error" in res_json.keys():
-                        time.sleep(5)
+                        time.sleep(2)
                         res_json = self.getData(
                             endpoint, params, data, headers, **kwargs
                         )

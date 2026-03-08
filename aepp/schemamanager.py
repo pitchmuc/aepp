@@ -60,6 +60,9 @@ class SchemaManager:
             description : OPTIONAL : To provide a description to your schema
             localFolder : OPTIONAL : If you want to use local storage to create all the connections between schema and field groups, classes and datatypes. Can be a set of folders.
             sandbox : OPTIONAL : If you use localFolder, you can specific the sandbox.
+        Possible kwargs:
+            tenantId : OPTIONAL : If you want to specific the tenantId for the schema manager (if not provided, it will be retrieved from the schemaAPI or the local folder)
+            retry : int to set the number of retry in case of connection error for the schema manager and the modules (default is the retry number set for the instance)
         """
         self.fieldGroupIds=[]
         self.fieldGroupsManagers = {}
@@ -68,10 +71,11 @@ class SchemaManager:
         self.title = title
         self.STATE = "EXISTING"
         self.localfolder = None
+        self.retry = kwargs.get("retry", aepp.config.config_object.get("retry",1))
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
         elif config is not None and localFolder is None:
-            self.schemaAPI = Schema(config=config)
+            self.schemaAPI = Schema(config=config,retry=self.retry)
         elif localFolder is not None:
             if isinstance(localFolder, str):
                 self.localfolder = [Path(localFolder)]
@@ -148,7 +152,7 @@ class SchemaManager:
                                 break
                     elif self.schemaAPI is not None:
                         definition = self.schemaAPI.getFieldGroup(ref,full=False)
-                    fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                    fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                 else:
                     if self.localfolder is not None:
                         found = False
@@ -165,11 +169,11 @@ class SchemaManager:
                         definition = self.schemaAPI.getFieldGroup(ref,full=False)
                     if 'properties' in definition.keys():
                         definition['definitions'] = definition['properties']
-                    fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                    fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                 self.fieldGroupsManagers[fgM.title] = fgM
             for clas in self.classIds:
                 clsM = None
-                clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                 if clsM is not None:
                     self.classManagers[clsM.title] = clsM
         elif type(schema) == str:
@@ -254,7 +258,7 @@ class SchemaManager:
                                     break
                 if 'properties' in definition.keys():
                     definition['definitions'] = definition['properties']
-                fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                 self.fieldGroupsManagers[fgM.title] = fgM
             for clas in self.classIds:
                 clsM = None
@@ -266,13 +270,13 @@ class SchemaManager:
                             if tmp_def.get('$id') == clas:
                                 self.classId = tmp_def.get('meta:class',None)
                                 self.schemaClass = tmp_def['$id']
-                                clsM = ClassManager(tmp_def,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                                clsM = ClassManager(tmp_def,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                                 found = True
                                 break
                         if found:
                             break
                 elif self.schemaAPI is not None:
-                    clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                    clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                 if clsM is not None:
                     self.classManagers[clsM.title] = clsM
         elif schema is None:
@@ -290,7 +294,7 @@ class SchemaManager:
                     }
             for clas in self.classIds:
                 clsM = None
-                clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                 if clsM is not None:
                     self.classManagers[clsM.title] = clsM
         if fieldGroups is not None and type(fieldGroups) == list:
@@ -325,13 +329,13 @@ class SchemaManager:
                                             break
                                 if found:
                                     break
-                    fgM = FieldGroupManager(definition,schemaAPI=self.schemaAPI, localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                    fgM = FieldGroupManager(definition,schemaAPI=self.schemaAPI, localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                     self.fieldGroupsManagers[fgM.title] = fgM
             elif fieldGroups[0] == dict:
                 for fg in fieldGroups:
                     fgM = None
                     self.fieldGroupIds.append(fg.get('$id'))
-                    fgM = FieldGroupManager(fg,schemaAPI=self.schemaAPI, localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox)
+                    fgM = FieldGroupManager(fg,schemaAPI=self.schemaAPI, localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                     if fgM is not None:
                         self.fieldGroupsManagers[fgM.title] = fgM
         self.fieldGroupTitles= tuple(fg.title for fg in list(self.fieldGroupsManagers.values()))

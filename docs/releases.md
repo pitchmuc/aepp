@@ -25,7 +25,9 @@ Patch:
 * Better support of the `dataTypes` in the `FieldGroupManager` class and `DataTypeManager` class for Synchronizer.
 * Fix some issues on the `to_dict` and `to_dataframe` method for `FieldGroupManager` and `DataTypeManager` class
 * PR for fixing int issue with `getSchemaSample` in `Schema` class
-* Optimization of artifact extraction in Managers to gain time during instantiation. 
+* Optimization of artifact extraction in Managers to gain time during instantiation.
+* adding retry capabilities in global methods, in the `connector`, in the `schema`, `fieldgroupmanager`, `schemamanager`, `classmanager` and `datatypemanager` module.
+* adding `--version`, `-v` parameter for CLI to get the version of the module used.
 
 ## version 0.5.2
 * adding support for multiple values for localFolder in `SchemaManager`, `FieldGroupManager`, `DataTypeManager` and `ClassManager`

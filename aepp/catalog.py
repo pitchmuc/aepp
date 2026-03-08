@@ -948,7 +948,8 @@ class Catalog:
                 return predecessor
             else:
                 return batchId
-    
+
+
 class ObservableSchemaManager:
 
     def __init__(self,observableSchema:dict=None)->None:

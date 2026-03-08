@@ -44,6 +44,15 @@ def home(product: str = None, limit: int = 50):
     res = connection.getData(endpoint, params=params, headers=myHeader)
     return res
 
+def setRetry(rety:int)->None:
+    """
+    Set the number of retry for the connection and the modules.
+    Arguments:
+        retry : REQUIRED : int to set the number of retry in case of connection error for the connection and the modules.
+    """
+    config.config_object["retry"] = rety
+    if connection is not None:
+        connection.retry = rety
 
 def getPlatformEvents(
     limit: int = 50, n_results: Union[int, str] = "inf", prop: str = None, **kwargs
@@ -167,17 +176,17 @@ def __titleSafe__(text: str) -> str:
 def extractSandboxArtifacts(
     sandbox: 'ConnectObject' = None, 
     localFolder: Union[str, Path] = None,
-    region: str = "nld2",
     ootb: bool = True,
+    retry: int = 2,
+    **kwargs
 ):
     """
     Extract the sandbox in the local folder.
     Arguments:
         sandbox: REQUIRED: the instance of a ConnectObject that contains the sandbox information and connection.
         localFolder: OPTIONAL: the local folder where to extract the sandbox. If not provided, it will use the current working directory and name the folder the name of the sandbox.
-        region: OPTIONAL: the region of the sandbox (default: nld2). This is used to fetch the correct API endpoints for the identities. 
-            Possible values: "va7","aus5", "can2", "ind2"
         ootb : OPTIONAL : If you want to also download the OOTB elements
+        retry: OPTIONAL: the number of retry in case of connection error for the modules (default is 2)
     """
     if sandbox is None:
         raise ValueError("You need to provide a ConnectObject instance with the sandbox information")
@@ -187,9 +196,9 @@ def extractSandboxArtifacts(
     else:
         completePath = Path(localFolder)
     from aepp import schema, catalog, identity,customerprofile, segmentation, tags
-    sch = schema.Schema(config=sandbox)
+    sch = schema.Schema(config=sandbox,retry=retry)
     cat = catalog.Catalog(config=sandbox)
-    ide = identity.Identity(config=sandbox,region=region)
+    ide = identity.Identity(config=sandbox)
     completePath.mkdir(exist_ok=True)
     globalConfig = {
         "imsOrgId":sandbox.org_id,
@@ -333,7 +342,7 @@ def extractSandboxArtifact(
     localFolder: Union[str, Path] = None,
     artifact: str = None,
     artifactType: str = None,
-    region: str = "nld2",
+    retry: int = 2
 ):
     """
     Export a single artifact and its dependencies from the sandbox.
@@ -342,8 +351,7 @@ def extractSandboxArtifact(
         localFolder: OPTIONAL: the local folder where to extract the sandbox. If not provided, it will use the current working directory and name the folder the name of the sandbox.
         artifact: REQUIRED: the id or the name of the artifact to export.
         artifactType: REQUIRED: the type of artifact to export. Possible values are: 'class','schema','fieldgroup','datatype','descriptor','dataset','identity','mergepolicy',audience'
-        region: OPTIONAL: the region of the sandbox (default: nld2). This is used to fetch the correct API endpoints for the identities. 
-            Possible values: "va7","aus5", "can2", "ind2"
+        retry: OPTIONAL: the number of retry in case of connection error for the modules (default is 2)
     """
     if sandbox is None:
         raise ValueError("You need to provide a ConnectObject instance with the sandbox information")
@@ -353,8 +361,9 @@ def extractSandboxArtifact(
     else:
         completePath = Path(localFolder)
     completePath.mkdir(exist_ok=True)
-    from aepp import schema
-    sch = schema.Schema(config=sandbox)
+    from aepp import schema,catalog, tags
+    sch = schema.Schema(config=sandbox,retry=2)
+    cat = catalog.Catalog(config=sandbox)
     globalConfig = {
         "imsOrgId":sandbox.org_id,
         "tenantId":f"_{sch.getTenantId()}",
@@ -362,10 +371,6 @@ def extractSandboxArtifact(
     }
     with open(f'{completePath}/config.json','w') as f:
         json.dump(globalConfig,f,indent=2)
-    
-    from aepp import schema, catalog, tags
-    sch = schema.Schema(config=sandbox)
-    cat = catalog.Catalog(config=sandbox)
     ### taking care of tas
     tagPath = completePath / 'tag'
     tagPath.mkdir(exist_ok=True)
@@ -375,17 +380,17 @@ def extractSandboxArtifact(
     with open(f'{tagPath}/tags.json','w') as f:
         json.dump(all_tags,f,indent=2)
     if artifactType == 'class':
-        __extractClass__(artifact,completePath,sandbox)
+        __extractClass__(artifact,completePath,sandbox,retry)
     elif artifactType == 'schema':
-        __extractSchema__(artifact,completePath,sandbox,region)
+        __extractSchema__(artifact,completePath,sandbox,retry)
     elif artifactType == 'fieldgroup':
-        __extractFieldGroup__(artifact,completePath,sandbox)
+        __extractFieldGroup__(artifact,completePath,sandbox,retry)
     elif artifactType == 'datatype':
-        __extractDataType__(artifact,completePath,sandbox)
+        __extractDataType__(artifact,completePath,sandbox,retry)
     elif artifactType == 'dataset':
-        __extractDataset__(artifact,completePath,sandbox,region,dict_tag_id_name)
+        __extractDataset__(artifact,completePath,sandbox,dict_tag_id_name)
     elif artifactType == 'identity':
-        __extractIdentity__(artifact,region,completePath,sandbox)
+        __extractIdentity__(artifact,completePath,sandbox)
     elif artifactType == 'mergepolicy':
         __extractMergePolicy__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name)
     elif artifactType == 'audience':
@@ -393,11 +398,11 @@ def extractSandboxArtifact(
     else:
         raise ValueError("artifactType not recognized")
 
-def __extractClass__(classEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None):
+def __extractClass__(classEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
     classPath = Path(folder) / 'class'
     classPath.mkdir(exist_ok=True)
     from aepp import schema
-    sch = schema.Schema(config=sandbox)
+    sch = schema.Schema(config=sandbox,retry=retry)
     tenantId = sch.getTenantId()
     myclasses = sch.getClasses()
     myclassesGlobal = sch.getClassesGlobal()
@@ -422,13 +427,13 @@ def __extractClass__(classEl: str,folder: Union[str, Path] = None,sandbox: 'Conn
     with open(f"{behavPath / behav_file_name}.json",'w') as f:
         json.dump(behavDef,f,indent=2)
 
-def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None):
+def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
     dtPath = Path(folder) / 'datatype'
     dtPath.mkdir(exist_ok=True)
     dtPathGlobal = dtPath / 'global'
     dtPathGlobal.mkdir(exist_ok=True)
     from aepp import schema, datatypemanager
-    sch = schema.Schema(config=sandbox)
+    sch = schema.Schema(config=sandbox,retry=retry)
     tenantId = sch.getTenantId()
     dts = sch.getDataTypes()
     globalDts = sch.getDataTypesGlobal()
@@ -437,7 +442,7 @@ def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: '
         mydt = [el for el in all_dts if el.get('meta:altId','') == dataType or el.get('title','') == dataType or el.get('$id') == dataType][0]
     except IndexError:
         raise IndexError("The data type you want to extract is not present in the sandbox or the id/name provided is not correct")
-    mydt_manager = datatypemanager.DataTypeManager(mydt.get('$id'),config=sandbox)
+    mydt_manager = datatypemanager.DataTypeManager(mydt.get('$id'),config=sandbox,retry=retry)
     if tenantId in mydt.get('$id',''):
         definition = sch.getDataType(mydt.get('$id',''),full=False,xtype='xed')
         path_to_use = dtPath
@@ -452,7 +457,7 @@ def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: '
         for dt in other_dts:
             __extractDataType__(dt,folder,sandbox)
 
-def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None):
+def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
     fgPath = Path(folder) / 'fieldgroup'
     fgPath.mkdir(exist_ok=True)
     fgPathGlobal = fgPath / 'global'
@@ -467,7 +472,7 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
         myfg = [el for el in all_fgs if el.get('$id','') == fieldGroup or el.get('title','') == fieldGroup or el.get('meta:altId','') == fieldGroup][0]
     except IndexError:
         raise IndexError("The field group you want to extract is not present in the sandbox or the id/name provided is not correct")
-    myfg_manager = fieldgroupmanager.FieldGroupManager(myfg.get('$id'),config=sandbox)
+    myfg_manager = fieldgroupmanager.FieldGroupManager(myfg.get('$id'),config=sandbox,retry=retry)
     if tenantId in myfg.get('$id',''):
         definition = sch.getFieldGroup(myfg['$id'],full=False,xtype='xed')
         path_to_use = fgPath
@@ -480,9 +485,9 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
     myfg_manager_dataTypes = list(myfg_manager.dataTypes.keys())
     if len(myfg_manager_dataTypes) > 0:
         def unpack_dt_call(dtElements):
-            element,folder,sandbox = dtElements
-            __extractDataType__(element,folder,sandbox)
-        dtElements = [(element,folder,sandbox) for element in myfg_manager_dataTypes]
+            element,folder,sandbox,retry = dtElements
+            __extractDataType__(element,folder,sandbox,retry)
+        dtElements = [(element,folder,sandbox,retry) for element in myfg_manager_dataTypes]
         with ThreadPoolExecutor(thread_name_prefix = 'datatypes') as thread_pool:
             results = thread_pool.map(unpack_dt_call, dtElements)
     descriptors = myfg_manager.getDescriptors()
@@ -494,13 +499,13 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
                 json.dump(descriptor,f,indent=2)
     classes = myfg_manager.classIds
     for cls in classes:
-        __extractClass__(cls,folder,sandbox)
+        __extractClass__(cls,folder,sandbox,retry)
 
-def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,region:str=None):
+def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,region:str=None,retry: int = 2):
     schemaPath = Path(folder) / 'schema'
     schemaPath.mkdir(exist_ok=True)
     from aepp import schema, schemamanager
-    sch = schema.Schema(config=sandbox)
+    sch = schema.Schema(config=sandbox,retry=retry)
     tenantId = sch.getTenantId()
     myschemas = sch.getSchemas()
     try:
@@ -508,7 +513,7 @@ def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'Co
     except IndexError:
         raise IndexError("The schema you want to extract is not present in the sandbox or the id/name provided is not correct")
     definition = sch.getSchema(myschema['$id'],full=False,xtype='xed')
-    schema_manager = schemamanager.SchemaManager(myschema.get('$id'),config=sandbox)
+    schema_manager = schemamanager.SchemaManager(myschema.get('$id'),config=sandbox,retry=retry)
     file_name = __titleSafe__(definition.get('title',definition.get('$id','unknown')))
     with open(f"{schemaPath / file_name}.json",'w') as f:
         json.dump(definition,f,indent=2)
@@ -516,13 +521,13 @@ def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'Co
     fg_list = schema_manager.fieldGroupIds
     if len(fg_list) > 0:
         def unpack_fg_call(fgsElements):
-            element,folder,sandbox = fgsElements
-            __extractFieldGroup__(element,folder,sandbox)
-        fgsElements = [(element,folder,sandbox) for element in fg_list]
+            element,folder,sandbox,retry = fgsElements
+            __extractFieldGroup__(element,folder,sandbox,retry)
+        fgsElements = [(element,folder,sandbox,retry) for element in fg_list]
         with ThreadPoolExecutor(thread_name_prefix = 'fieldGroup') as thread_pool:
             results = thread_pool.map(unpack_fg_call, fgsElements)
     class_id = schema_manager.classId
-    __extractClass__(class_id,folder,sandbox)
+    __extractClass__(class_id,folder,sandbox,retry)
     descriptors = schema_manager.getDescriptors()
     if len(descriptors) > 0:
         descriptorPath = Path(folder) / 'descriptor'
@@ -532,15 +537,15 @@ def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'Co
                 json.dump(descriptor,f,indent=2)
             if descriptor.get('@type','') == 'xdm:descriptorIdentity':
                 namespace = descriptor['xdm:namespace']
-                __extractIdentity__(namespace,region,folder,sandbox)
+                __extractIdentity__(namespace,folder,sandbox)
             if descriptor.get('@type','') == 'xdm:descriptorRelationship' or descriptor.get('@type','') == 'xdm:descriptorOneToOne':
                 targetSchema = descriptor['xdm:destinationSchema']
                 __extractSchema__(targetSchema,folder,sandbox,region)
 
 
-def __extractIdentity__(identityStr: str,region:str=None,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None):
+def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None):
     from aepp import identity
-    ide = identity.Identity(config=sandbox,region=region)
+    ide = identity.Identity(config=sandbox)
     identities = ide.getIdentities()
     try:
         myIdentity = [el for el in identities if el.get('code','') == identityStr or el.get('name','') == identityStr][0]
@@ -575,7 +580,7 @@ def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'Co
     if schema is not None:
         __extractSchema__(schema,folder,sandbox,region)
 
-def __extractMergePolicy__(mergePolicy: str = None,folder:Union[str, Path]=None, sandbox: 'ConnectObject' = None,region:str=None,dict_tag_id_name: dict = None,**kwargs):
+def __extractMergePolicy__(mergePolicy: str = None,folder:Union[str, Path]=None, sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None,**kwargs):
     from aepp import customerprofile
     ups = customerprofile.Profile(config=sandbox)
     mymergePolicies = ups.getMergePolicies()
@@ -583,7 +588,7 @@ def __extractMergePolicy__(mergePolicy: str = None,folder:Union[str, Path]=None,
     if mymergePolicy['attributeMerge'].get('type','timestampOrdered') == 'dataSetPrecedence':
         list_ds = mymergePolicy['attributeMerge'].get('order',[])
         for ds in list_ds:
-            __extractDataset__(ds,folder,sandbox,region,dict_tag_id_name=dict_tag_id_name)
+            __extractDataset__(ds,folder,sandbox,dict_tag_id_name=dict_tag_id_name)
     mergePolicyPath = Path(folder) / 'mergePolicy'
     mergePolicyPath.mkdir(exist_ok=True)
     with open(f"{mergePolicyPath / mymergePolicy.get('id','unknown')}.json",'w') as f:

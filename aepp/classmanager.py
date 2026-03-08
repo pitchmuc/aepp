@@ -40,14 +40,18 @@ class ClassManager:
             description : OPTIONAL : If you want to add a description to your class
             localFolder : OPTIONAL : If you want to use local storage to create all the connections between schema and field groups, classes and datatypes
             sandbox : OPTIONAL : If you use localFolder, you can specific the sandbox.
+        Possible kwargs:
+            tenantId : OPTIONAL : If you want to specific the tenantId for the class manager (if not provided, it will be retrieved from the schemaAPI or the local folder)
+            retry : int to set the number of retry in case of connection error for the schema module and the modules (default is the retry number set for the instance)
         """
         self.EDITABLE = False
         self.STATE = "EXISTING"
         self.localfolder = None
+        self.retry = kwargs.get("retry", aepp.config.config_object.get("retry",1))
         if schemaAPI is not None:
             self.schemaAPI = schemaAPI
         elif config is not None and localFolder is None:
-            self.schemaAPI = Schema(config=config)
+            self.schemaAPI = Schema(config=config,retry=self.retry)
         elif localFolder is not None:
             if isinstance(localFolder, str):
                 self.localfolder = [Path(localFolder)]
