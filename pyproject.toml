@@ -30,7 +30,11 @@ dependencies = [
     "datamodel-code-generator",
     "rich",
     "matplotlib",
-    "psycopg2"
+    "psycopg2-binary; sys_platform == 'darwin'",
+    # Install standard psycopg2 on Windows
+    "psycopg2; sys_platform == 'win32'",
+    # Optional: Install standard psycopg2 on Linux
+    "psycopg2; sys_platform == 'linux'",
 ]
 
 [project.urls]
