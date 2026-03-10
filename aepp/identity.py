@@ -45,6 +45,8 @@ class Identity:
             loggingObject : OPTIONAL : logging object to log messages.
             config : OPTIONAL : config object in the config module. (DO NOT MODIFY)
             header : OPTIONAL : header object  in the config module. (DO NOT MODIFY)
+        possible kwargs:
+            retry : int to set the number of retry in case of connection error for the schema module (default is the retry number set for the instance)
         """
         if loggingObject is not None and sorted(
             ["level", "stream", "format", "filename", "file"]
@@ -69,14 +71,16 @@ class Identity:
         elif type(config) == ConnectObject:
             header = config.getConfigHeader()
             config = config.getConfigObject()
+        self.retry = kwargs.get("retry", aepp.config.config_object.get("retry",1))
         self.connector = connector.AdobeRequest(
             config=config,
             header=header,
             loggingEnabled=self.loggingEnabled,
             logger=self.logger,
+            retry=self.retry
         )
         self.header = self.connector.header
-        self.header.update(**kwargs)
+        self.header.update({key:value for key,value in kwargs.items() if key != "retry"})
         if kwargs.get('sandbox',None) is not None: ## supporting sandbox setup on class instanciation
             self.sandbox = kwargs.get('sandbox')
             self.connector.config["sandbox"] = kwargs.get('sandbox')

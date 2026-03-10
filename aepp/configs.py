@@ -81,6 +81,7 @@ def importConfigFile(
     connectInstance: bool = False,
     auth_type: str = None,
     sandbox:str = None,
+    retry:int = 1,
     **kwargs
 ):
     """Reads the file denoted by the supplied `path` and retrieves the configuration information
@@ -91,6 +92,7 @@ def importConfigFile(
         connectInstance : OPTIONAL : If you want to return an instance of the ConnectObject class
         auth_type : OPTIONAL : type of authentication, either "oauthV2" (default) or "oauthV1". Detected based on keys present in config file.
         sandbox : OPTIONAL : The sandbox to connect it.
+        retry : OPTIONAL : number of retry in case of failure, default is 1 retry.
 
     Example of path value.
     "config.json"
@@ -134,7 +136,8 @@ def importConfigFile(
             "secret": get_case_insensitive_key(provided_config, "secret") or get_case_insensitive_key(provided_config, "client_secret") or get_case_insensitive_key(provided_config, "client_secrets")[0],
             "sandbox": get_case_insensitive_key(provided_config, "sandbox-name") or "prod",
             "environment": get_case_insensitive_key(provided_config, "environment") or "prod",
-            "connectInstance": connectInstance
+            "connectInstance": connectInstance,
+            "retry": retry
         }
         
         if sandbox is not None:  # overriding sandbox from parameter
@@ -168,6 +171,7 @@ def configure(
     environment: str = "prod",
     scopes: str = None,
     auth_code:str=None,
+    retry:int=1,
     **kwargs
 ):
     """Performs programmatic configuration of the API using provided values.
@@ -181,6 +185,7 @@ def configure(
         environment : OPTIONAL : If not provided, default to prod
         scopes : OPTIONAL : The scope define in your project for your API connection. Oauth V2, for clients and customers.
         auth_code : OPTIONAL : If an authorization code is used directly instead of generating via OauthV2. Oauth V1 only, for adobe internal services.
+        retry : OPTIONAL : number of retry in case of failure, default is 1 retry.
     """
     if not org_id:
         raise ValueError("`org_id` must be specified in the configuration.")
@@ -205,6 +210,7 @@ def configure(
         config_object["date_limit"] = kwargs.get('accesstoken')
     # ensure we refer to the right environment endpoints
     config_object["environment"] = environment
+    config_object["retry"] = retry
     if environment == "prod":
         endpoints["global"] = "https://platform.adobe.io"
         config_object["imsEndpoint"] = "https://ims-na1.adobelogin.com"
@@ -235,7 +241,8 @@ def configure(
             accesstoken=kwargs.get('accesstoken',''),
             date_limit=config_object["date_limit"],
             environment=environment,
-            endpoint = kwargs.get('endpoint','')
+            endpoint = kwargs.get('endpoint',''),
+            retry=retry
         )
         return myInstance
 
@@ -282,6 +289,7 @@ class ConnectObject:
             accesstoken: str = "",
             date_limit:int = 0,
             auth_code:str=None,
+            retry:int=1,
             **kwargs)->None:
         """
         Take a config object and save the configuration directly in the instance of the class.
@@ -315,6 +323,7 @@ class ConnectObject:
         self.scopes = scopes
         self.token = accesstoken
         self.date_limit = date_limit
+        self.retry = retry
         self.__configObject__ = {
             "org_id": self.org_id,
             "client_id": self.client_id,
@@ -327,7 +336,8 @@ class ConnectObject:
             "oauthTokenEndpointV1" : self.oauthEndpointV1,
             "oauthTokenEndpointV2" : self.oauthEndpointV2,
             "scopes": self.scopes,
-            "environment":environment
+            "environment":environment,
+            "retry": retry
         }
 
     def __str__(self):

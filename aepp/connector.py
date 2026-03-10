@@ -20,6 +20,8 @@ from copy import deepcopy
 import time
 import requests
 from requests import Response
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from pathlib import Path
 
 @dataclass
@@ -71,10 +73,21 @@ class AdobeRequest:
         self.endpoints = deepcopy(endpoints)
         self.loggingEnabled = loggingEnabled
         self.logger = logger
-        self.retry = retry
+        self.retry = max(retry, config.get("retry", 0))
         self.token = None
         self.config = deepcopy(config)
         requests.packages.urllib3.disable_warnings()
+        # Initialize a session with retry logic
+        self.session = requests.Session()
+        retry_strategy = Retry(
+            total=self.retry,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST", "PATCH"],
+            backoff_factor=2
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
         if kwargs.get('origin') != "edge-no-auth": ## Config can be None for Edge Server Side
             if self.config["environment"] == "support":
                 self.connectionType = 'support'
@@ -294,35 +307,21 @@ class AdobeRequest:
             self.logger.debug(
                 f"Start GET request to {endpoint} with header: {json.dumps(headers)}"
             )
-            
-        retry_count = kwargs.get('retry_count', max(1, self.retry))
-        for attempt in range(retry_count + 1):
-            try:
-                if params is None and data is None:
-                    res = requests.get(endpoint, headers=headers, verify=verify)
-                elif params is not None and data is None:
-                    if self.loggingEnabled:
-                        self.logger.debug(f"params: {json.dumps(params)}")
-                    res = requests.get(endpoint, headers=headers, params=params, verify=verify)
-                elif params is None and data is not None:
-                    if self.loggingEnabled:
-                        self.logger.debug(f"data: {json.dumps(data)}")
-                    res = requests.get(endpoint, headers=headers, data=data, verify=verify)
-                elif params is not None and data is not None:
-                    if self.loggingEnabled:
-                        self.logger.debug(f"params: {json.dumps(params)}")
-                        self.logger.debug(f"data: {json.dumps(data)}")
-                    res = requests.get(endpoint, headers=headers, params=params, data=data, verify=verify)
-                break
-            except (requests.exceptions.ChunkedEncodingError, requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout) as e:
-                if attempt < retry_count:
-                    if self.loggingEnabled:
-                        self.logger.warning(f"Connection error: {e}. Retrying {attempt + 1}/{retry_count}...")
-                    time.sleep(2)
-                else:
-                    if self.loggingEnabled:
-                        self.logger.error(f"Failed after {retry_count} retries due to connection error: {e}")
-                    raise e
+        if params is None and data is None:
+            res = self.session.get(endpoint, headers=headers, verify=verify)
+        elif params is not None and data is None:
+            if self.loggingEnabled:
+                self.logger.debug(f"params: {json.dumps(params)}")
+            res = self.session.get(endpoint, headers=headers, params=params, verify=verify)
+        elif params is None and data is not None:
+            if self.loggingEnabled:
+                self.logger.debug(f"data: {json.dumps(data)}")
+            res = self.session.get(endpoint, headers=headers, data=data, verify=verify)
+        elif params is not None and data is not None:
+            if self.loggingEnabled:
+                self.logger.debug(f"params: {json.dumps(params)}")
+                self.logger.debug(f"data: {json.dumps(data)}")
+            res = self.session.get(endpoint, headers=headers, params=params, data=data, verify=verify)
         if self.loggingEnabled:
             self.logger.debug(f"endpoint used: {res.request.url}")
             self.logger.debug(f"params used: {params}")

@@ -390,7 +390,7 @@ def extractSandboxArtifact(
     elif artifactType == 'dataset':
         __extractDataset__(artifact,completePath,sandbox,dict_tag_id_name)
     elif artifactType == 'identity':
-        __extractIdentity__(artifact,completePath,sandbox)
+        __extractIdentity__(artifact,completePath,sandbox,retry=retry)
     elif artifactType == 'mergepolicy':
         __extractMergePolicy__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name)
     elif artifactType == 'audience':
@@ -463,7 +463,7 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
     fgPathGlobal = fgPath / 'global'
     fgPathGlobal.mkdir(exist_ok=True)
     from aepp import schema, fieldgroupmanager
-    sch = schema.Schema(config=sandbox)
+    sch = schema.Schema(config=sandbox,retry=retry)
     tenantId = sch.getTenantId()
     fgs = sch.getFieldGroups()
     globalFgs = sch.getFieldGroupsGlobal()
@@ -537,15 +537,15 @@ def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'Co
                 json.dump(descriptor,f,indent=2)
             if descriptor.get('@type','') == 'xdm:descriptorIdentity':
                 namespace = descriptor['xdm:namespace']
-                __extractIdentity__(namespace,folder,sandbox)
+                __extractIdentity__(namespace,folder,sandbox,retry)
             if descriptor.get('@type','') == 'xdm:descriptorRelationship' or descriptor.get('@type','') == 'xdm:descriptorOneToOne':
                 targetSchema = descriptor['xdm:destinationSchema']
                 __extractSchema__(targetSchema,folder,sandbox,region)
 
 
-def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None):
+def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
     from aepp import identity
-    ide = identity.Identity(config=sandbox)
+    ide = identity.Identity(config=sandbox,retry=retry)
     identities = ide.getIdentities()
     try:
         myIdentity = [el for el in identities if el.get('code','') == identityStr or el.get('name','') == identityStr][0]
