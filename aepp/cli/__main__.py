@@ -1692,14 +1692,12 @@ class ServiceShell(cmd.Cmd):
         """extract all artifacts from the current sandbox to a localfolder"""
         parser = argparse.ArgumentParser(prog='extract_artifacts', description='Extract artifacts from AEP to a local folder',add_help=True)
         parser.add_argument('-lf','--localfolder', help='Local folder to extract artifacts to', default='./extractions')
-        parser.add_argument('-rg','--region', help='Region to extract artifacts from: "ndl2" (default), "va7", "aus5", "can2", "ind2"',default='ndl2')
         try:
             console.print("Extracting artifacts...", style="blue")
             args = parser.parse_args(shlex.split(args))
             aepp.extractSandboxArtifacts(
                 sandbox=self.config,
-                localFolder=args.localfolder,
-                region=args.region
+                localFolder=args.localfolder
             )
             console.print(Panel("Extraction completed!", style="green"))
         except SystemExit:
@@ -1714,7 +1712,6 @@ class ServiceShell(cmd.Cmd):
         parser.add_argument('artifact', help='artifact to extract (name or id): "schema","fieldgroup","datatype","descriptor","dataset","identity","mergepolicy","audience"')
         parser.add_argument('-at','--artifactType', help='artifact type ')
         parser.add_argument('-lf','--localfolder', help='Local folder to extract artifacts to',default='extractions')
-        parser.add_argument('-rg','--region', help='Region to extract artifacts from: "ndl2" (default), "va7", "aus5", "can2", "ind2"',default='ndl2')
         try:
             console.print("Extracting artifact...", style="blue")
             args = parser.parse_args(shlex.split(args))

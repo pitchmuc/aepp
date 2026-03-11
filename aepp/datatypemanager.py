@@ -57,11 +57,11 @@ class DataTypeManager:
             retry : int to set the number of retry in case of connection error for the schema module (default is the retry number set for the instance)
         """
         self.localfolder = None
-        self.EDITABLE = False
         self.STATE = "EXISTING"
         self.dataType = {}
         self.dataTypes = {}
         self.dataTypeManagers = {}
+        self.schemaAPI = None
         self.retry = kwargs.get("retry", aepp.config.config_object.get("retry",1))
         self.id = None
         self.requiredFields = set()
@@ -95,9 +95,11 @@ class DataTypeManager:
         elif kwargs.get('tenantId',None) is not None:
             self.tenantId = kwargs.get('tenantId')
         elif self.localfolder is not None:
-            config_json = json.load(FileIO(self.localfolder / 'config.json'))
-            if config_json.get('tenantId',None) is not None:
-                self.tenantId = config_json.get('tenantId')
+            for folder in self.localfolder:
+                config_json = json.load(FileIO(folder / 'config.json'))
+                if config_json.get('tenantId',None) is not None:
+                    self.tenantId = config_json.get('tenantId')
+                    break
         else:
             self.tenantId = "  "
         if type(dataType) == dict:
@@ -105,7 +107,6 @@ class DataTypeManager:
             if self.tenantId[1:] in self.dataType['$id']:
                 if self.schemaAPI is not None:
                     self.dataType = self.schemaAPI.getDataType(dataType['$id'],full=False)
-                    self.EDITABLE = True
                 elif self.localfolder is not None:
                     found = False
                     for folder in self.datatypeFolder:
@@ -117,11 +118,9 @@ class DataTypeManager:
                                 break
                         if found:
                             break
-                    self.EDITABLE = False
             else:
                 if self.schemaAPI is not None:
                     self.dataType = self.schemaAPI.getDataType(dataType['$id'],full=True)
-                    self.EDITABLE = True
                 elif self.localfolder is not None:
                     found = False
                     for folder in self.datatypeGlobalFolder:
@@ -133,14 +132,12 @@ class DataTypeManager:
                                 break
                         if found:
                             break
-                    self.EDITABLE = False
         elif type(dataType) == str:
             if self.tenantId[1:] in dataType:
                 if self.schemaAPI is not None:
                     self.dataType = self.schemaAPI.getDataType(dataType,full=False)
                     if self.dataType is None:
                         raise ValueError(f"Cannot find the data type with id {dataType} in the schema API.")
-                    self.EDITABLE = True
                 elif self.localfolder is not None:
                     found = False
                     for folder in self.datatypeFolder:
@@ -152,7 +149,6 @@ class DataTypeManager:
                                 break
                         if found:
                             break
-                    self.EDITABLE = False
                 else:
                     raise Exception("You try to retrieve the datatype definition from the id, but no API or localFolder has been passed as a parameter.")
             else:
@@ -160,7 +156,6 @@ class DataTypeManager:
                     self.dataType = self.schemaAPI.getDataType(dataType,full=True)
                     if self.dataType is None:
                         raise ValueError(f"Cannot find the data type with id {dataType} in the schema API.")
-                    self.EDITABLE = True
                 elif self.localfolder is not None:
                     found = False
                     for folder in self.datatypeGlobalFolder:
@@ -172,15 +167,10 @@ class DataTypeManager:
                                 break
                         if found:
                             break
-                    self.EDITABLE = False
                 else:
                     raise Exception("You try to retrieve the datatype definition from the id, but no API or localFolder has been passed as a parameter.")
         else:
             self.STATE = "NEW"
-            if self.schemaAPI is not None:
-                self.EDITABLE = True
-            else:
-                self.EDITABLE = False
             self.dataType = {
                 "title" : "",
                 "description":description,
@@ -189,20 +179,15 @@ class DataTypeManager:
                     "customFields":{
                         "type" : "object",
                         "properties":{}
-                        },
-                    "property":
-                        {"type" : "object",
-                        "properties":{}
                         }
                 },
                 'allOf': [{'$ref': '#/definitions/customFields',
                     'type': 'object',
-                    'meta:xdmType': 'object'},
-                    {"$ref": "#/definitions/property",
-                    "type": "object"
-                    }],
-                'meta:tenantNamespace': self.tenantId
+                    'meta:xdmType': 'object'}],
+                'meta:extensible': True
             }
+            if self.tenantId.strip() != "":
+                self.dataType['meta:tenantNamespace'] = self.tenantId
         if '$ref' in str(self.dataType.get('definitions',self.dataType.get('properties',{}))) or '/datatype_name/' in str(self.dataType.get('definitions',self.dataType.get('properties',{}))) or 'meta:referencedFrom' in str(self.dataType.get('definitions',self.dataType.get('properties',{}))): ## if datatype used in data types
             dataTypeSearch_id = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
             dataTypes_id = re.findall(dataTypeSearch_id,str(self.dataType.get('definitions',self.dataType.get('properties',{}))))
@@ -210,11 +195,19 @@ class DataTypeManager:
             dataTypes_name = re.findall(dataTypeSearch_name,str(self.dataType.get('definitions',self.dataType.get('properties',{}))))
             metaRefSearch = f"'meta:referencedFrom': '(https://ns.adobe.com/.+?)'"
             dataType_MetaRef_name = re.findall(metaRefSearch,str(self.dataType.get('definitions',self.dataType.get('properties',{}))))
-            dataTypes = dataTypes_id + dataTypes_name + dataType_MetaRef_name
+            locationSearch = f"(http://schema.org/.+?)'"
+            dataType_Location_name = re.findall(locationSearch,str(self.dataType.get('definitions',self.dataType.get('properties',{}))))
+            dataTypes = dataTypes_id + dataTypes_name + dataType_MetaRef_name + dataType_Location_name
             dataTypes = list(set(dataTypes))
             dataTypeManager_ids = list(set(self.getDataTypePaths(list_dt_ids=dataTypes).values()))
             if self.schemaAPI is not None:
                 for dt in dataTypeManager_ids:
+                    if dt == 'http://schema.org/GeoShape':
+                        dt = '_schema.org.GeoShape'
+                    elif dt == 'http://schema.org/GeoCoordinates':
+                        dt = '_schema.org.GeoCoordinates'
+                    elif dt == 'http://schema.org/GeoCircle':
+                        dt = '_schema.org.GeoCircle'
                     if dt not in self.dataTypes.keys():
                         dt_manager = self.schemaAPI.DataTypeManager(dt,retry=self.retry)
                         self.dataTypes[dt_manager.id] = dt_manager.title
@@ -239,6 +232,7 @@ class DataTypeManager:
             self.title = title
         else:
             self.title = self.dataType.get('title','unknown')
+        self.EDITABLE = self.dataType.get('meta:extensible', False)
         self.__setAttributes__(self.dataType)
     
     def __setAttributes__(self,datatype:dict)->None:
@@ -719,7 +713,7 @@ class DataTypeManager:
         if kwargs.get('list_dt_ids') is not None:
             list_ids = kwargs.get('list_dt_ids')
         else:
-            list_ids = self.dataTypes.items()
+            list_ids = self.dataTypes.keys()
         for dt_id in list_ids:
             ref_results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
             paths = [res[list(res.keys())[0]]['path'] for res in ref_results]
@@ -729,7 +723,7 @@ class DataTypeManager:
                     path = path +'[]{}'
                 dict_results[path] = dt_id
             meta_ref_results = self.searchAttribute({'meta:referencedFrom':dt_id},extendedResults=True)
-            meta_paths = [res[list(res.keys())[0]]['path'] for res in meta_ref_results]
+            meta_paths = [res[list(res.keys())[0]]['path'] for res in meta_ref_results if '$ref' in res[list(res.keys())[0]].keys() or 'meta:referencedFrom' in res[list(res.keys())[0]].keys()]
             for path in meta_paths:
                 res = self.getField(path) ## to ensure the type of the path
                 if res.get('type') == 'array':
@@ -738,10 +732,10 @@ class DataTypeManager:
             if kwargs.get('som_compatible',False):
                 paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
         dict_dedup_result = {} ## avoid reference to datatype already references in another datatype (in case of nested data type reference)
-        for path, dt_id in dict_results.items():
+        for path, dt_id in {key:dict_results[key] for key in sorted(dict_results.keys())}.items():
             if '.' in path:
                 root = path.split('.')[0]
-                if root not in dict_results.keys():
+                if root not in dict_dedup_result.keys():
                     dict_dedup_result[path] = dt_id
             else:
                 dict_dedup_result[path] = dt_id
@@ -1112,8 +1106,6 @@ class DataTypeManager:
                 tmp_dtManager = self.getDataTypeManager(dataElementId)
                 tmp_dict = tmp_dtManager.to_dict()
                 clean_path = path.replace('[]{}','.[0]')
-                print(self.title)
-                print(clean_path)
                 mysom.assign(clean_path,tmp_dict)
         data = mysom.to_dict()
         if save:
@@ -1274,6 +1266,9 @@ class DataTypeManager:
             raise AttributeError("missing a column [xdmType, path] in your fieldgroup")
         df_import = df_import[~(df_import.duplicated('path'))].copy() ## removing duplicated paths
         df_import = df_import[~(df_import['path']==self.tenantId)].copy() ## removing tenant field
+        df_import = df_import[df_import['origin'] != 'dataType'].copy() ## removing path created by data type
+        list_datatype_roots = list(self.getDataTypePaths().keys())
+        df_import = df_import[~df_import['path'].isin(list_datatype_roots)].copy() ### removing the path that will link to data type, taking care of them later
         df_import['title'] = df_import['title'].fillna('')
         df_import['description'] = df_import['description'].fillna('')
         if 'title' not in df_import.columns:

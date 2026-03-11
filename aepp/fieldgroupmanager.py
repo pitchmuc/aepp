@@ -62,7 +62,6 @@ class FieldGroupManager:
             tenantId : OPTIONAL : If you want to specific the tenantId for the field group manager (if not provided, it will be retrieved from the schemaAPI or the local folder)
             retry : int to set the number of retry in case of connection error for the schema module and the modules (default is the retry number set for the instance)
         """
-        self.EDITABLE = False
         self.localfolder = None
         self.STATE = "EXISTING"
         self.fieldGroup = {}
@@ -117,12 +116,10 @@ class FieldGroupManager:
                         if self.schemaAPI is not None:
                             if 'mixins' in fieldGroup.get('$id') and self.tenantId[1:] in fieldGroup.get('$id'): ## customer mixin
                                 self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
-                                self.EDITABLE = True
                             else: ## OOTB mixins
                                 tmp_def = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True) ## handling OOTB mixins
                                 tmp_def['definitions'] = tmp_def['properties']
                                 self.fieldGroup = tmp_def
-                                self.EDITABLE = False
                         elif self.localfolder is not None:
                             found = False
                             for folder in self.fieldgroupFolder:
@@ -136,7 +133,6 @@ class FieldGroupManager:
                                             if 'properties' in self.fieldGroup.keys():
                                                 self.fieldGroup['definitions'] = self.fieldGroup['properties']
                                         found = True
-                                        self.EDITABLE = True
                                         break
                                 if found:
                                     break
@@ -149,18 +145,15 @@ class FieldGroupManager:
                                             if 'properties' in self.fieldGroup.keys():
                                                 self.fieldGroup['definitions'] = self.fieldGroup['properties']
                                             found = True
-                                            self.EDITABLE = False
                                             break
                                     if found:
                                         break
-                            self.EDITABLE = False
                     else: ## if definitions key not present
                         if 'properties' in self.fieldGroup.keys():
                             self.fieldGroup['definitions'] = self.fieldGroup['properties']
                             del self.fieldGroup['properties']
                         if self.schemaAPI is not None:
                             self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
-                            self.EDITABLE = True
                         elif self.localfolder is not None: ## looking into local folder
                             found = False
                             for folder in self.fieldgroupFolder:
@@ -169,7 +162,6 @@ class FieldGroupManager:
                                     if tmp_def.get('$id') == fieldGroup['$id'] or tmp_def.get('meta:altId') == fieldGroup.get('meta:altId') or tmp_def.get('title') == fieldGroup.get('title'):
                                         self.fieldGroup = tmp_def
                                         found = True
-                                        self.EDITABLE = True
                                         break
                                 if found:
                                     break
@@ -180,7 +172,6 @@ class FieldGroupManager:
                                         if tmp_def.get('$id') == fieldGroup['$id'] or tmp_def.get('meta:altId') == fieldGroup.get('meta:altId') or tmp_def.get('title') == fieldGroup.get('title'):
                                             self.fieldGroup = tmp_def            
                                             found = True
-                                            self.EDITABLE = False
                                             break
                                     if found:
                                         break
@@ -196,13 +187,9 @@ class FieldGroupManager:
                     self.tenantId = f"_{self.schemaAPI.getTenantId()}"
                     if full:
                         self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
-                        self.EDITABLE = True
                     if self.fieldGroup.get('meta:extensible',False) == False: ## OOTB field group
                         tmp_def = self.schemaAPI.getFieldGroup(fieldGroup,full=True)
                         self.fieldGroup = tmp_def
-                        self.EDITABLE = False
-                    else: ## custom field group
-                        self.EDITABLE = True
                 elif self.localfolder is not None:
                     found = False
                     for folder in self.fieldgroupFolder:
@@ -212,7 +199,6 @@ class FieldGroupManager:
                                 self.fieldGroup = tmp_def
                                 if tmp_def.get('meta:tenantNamespace',None) is not None:
                                     self.tenantId = tmp_def.get('meta:tenantNamespace')
-                                self.EDITABLE = True
                                 found = True
                                 break
                         if found:
@@ -225,7 +211,6 @@ class FieldGroupManager:
                                     if tmp_def.get('$id') == fieldGroup or tmp_def.get('meta:altId') == fieldGroup or tmp_def.get('title') == fieldGroup:
                                         self.fieldGroup = tmp_def            
                                         found = True
-                                        self.EDITABLE = False
                                         break
                                 if found:
                                     break  
@@ -234,17 +219,25 @@ class FieldGroupManager:
         if self.fieldGroup.get('meta:extensible',False) == True: ## custom Field group
             if '$ref' in str(self.fieldGroup.get('definitions',{})) or '/datatype_name/' in str(self.fieldGroup.get('definitions',{}))  or 'meta:referencedFrom' in str(self.fieldGroup.get('definitions',{})): ## if datatype used in data types
                 dataTypeSearch_id = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9A-Za-z]+?)'"
-                dataTypes_id = re.findall(dataTypeSearch_id,str(self.fieldGroup.get('definitions',{})))
+                dataTypes_id = re.findall(dataTypeSearch_id,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
                 dataTypeSearch_name = f"(https://[0-9A-Za-z.]+/datatype_name/[0-9A-Za-z]+?)'"
-                dataTypes_name = re.findall(dataTypeSearch_name,str(self.fieldGroup.get('definitions',{})))
+                dataTypes_name = re.findall(dataTypeSearch_name,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
                 metaRefSearch = f"'meta:referencedFrom': '(https://ns.adobe.com/.+?)'"
-                dataType_MetaRef_name = re.findall(metaRefSearch,str(self.fieldGroup.get('definitions',{})))
-                dataTypes = dataTypes_id + dataTypes_name + dataType_MetaRef_name
+                dataType_MetaRef_name = re.findall(metaRefSearch,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
+                locationSearch = f"(http://schema.org/.+?)'"
+                dataType_Location_name = re.findall(locationSearch,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
+                dataTypes = dataTypes_id + dataTypes_name + dataType_MetaRef_name + dataType_Location_name
                 dataTypes = list(set(dataTypes))
                 dataTypeManager_ids = list(set(self.getDataTypePaths(list_dt_ids=dataTypes).values()))
                 if self.schemaAPI is not None:
                     for dt in dataTypeManager_ids:
                         if dt not in self.dataTypes.keys():
+                            if dt == 'http://schema.org/GeoShape':
+                                dt = '_schema.org.GeoShape'
+                            elif dt == 'http://schema.org/GeoCoordinates':
+                                dt = '_schema.org.GeoCoordinates'
+                            elif dt == 'http://schema.org/GeoCircle':
+                                dt = '_schema.org.GeoCircle'
                             dt_manager = self.schemaAPI.DataTypeManager(dt,retry=self.retry)
                             self.dataTypes[dt_manager.id] = dt_manager.title
                             self.dataTypeManagers[dt_manager.title] = dt_manager
@@ -264,7 +257,6 @@ class FieldGroupManager:
                                 self.dataTypes[dt_manager.id] = dt_manager.title
                                 self.dataTypeManagers[dt_manager.title] = dt_manager
         else:
-            self.EDITABLE = True
             self.STATE = "NEW"
             self.fieldGroup = {
                 "title" : "",
@@ -284,6 +276,7 @@ class FieldGroupManager:
                 }],
                 "meta:intendedToExtend":[],
                 "meta:containerId": "tenant",
+                "meta:extensible":True,
                 "meta:tenantNamespace": self.tenantId,
             }
             if self.fieldGroup.get("meta:intendedToExtend") == []:
@@ -305,6 +298,7 @@ class FieldGroupManager:
         if title is not None:
             self.fieldGroup['title'] = title
             self.title = title
+        self.EDITABLE = self.fieldGroup.get('meta:extensible', False)
         
     
     def __setAttributes__(self,fieldGroup:dict)->None:
@@ -1146,8 +1140,6 @@ class FieldGroupManager:
             for path,dataElementId in paths.items():
                 dict_dataType = self.getDataTypeManager(dataElementId).to_dict(typed=typed)
                 clean_path = path.replace('[]{}','.[0]')
-                print(self.title)
-                print(clean_path)
                 mySom.assign(clean_path,dict_dataType)
         if self.metaExtend is not None:
             for fgId in self.metaExtend:
@@ -1330,7 +1322,7 @@ class FieldGroupManager:
         if kwargs.get('list_dt_ids') is not None:
             list_ids = kwargs.get('list_dt_ids')
         else:
-            list_ids = self.dataTypes.items()
+            list_ids = self.dataTypes.keys()
         for dt_id in list_ids:
             ref_results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
             paths = [res[list(res.keys())[0]]['path'] for res in ref_results]
@@ -1340,7 +1332,7 @@ class FieldGroupManager:
                     path = path +'[]{}'
                 dict_results[path] = dt_id
             meta_ref_results = self.searchAttribute({'meta:referencedFrom':dt_id},extendedResults=True)
-            meta_paths = [res[list(res.keys())[0]]['path'] for res in meta_ref_results]
+            meta_paths = [res[list(res.keys())[0]]['path'] for res in meta_ref_results if '$ref' in res[list(res.keys())[0]].keys() or 'meta:referencedFrom' in res[list(res.keys())[0]].keys()]
             for path in meta_paths:
                 res = self.getField(path) ## to ensure the type of the path
                 if res.get('type') == 'array':
@@ -1349,7 +1341,7 @@ class FieldGroupManager:
             if kwargs.get('som_compatible',False):
                 paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
         dict_dedup_result = {} ## avoid reference to datatype already references in another datatype (in case of nested data type reference)
-        for path, dt_id in dict_results.items():
+        for path, dt_id in {key:dict_results[key] for key in sorted(dict_results.keys())}.items(): ## making sure that the shortest is processed first to avoid keeping the nested reference instead of the root reference
             if '.' in path:
                 if path.startswith('_'):
                     if len(path.split('.')) > 1:
@@ -1358,7 +1350,7 @@ class FieldGroupManager:
                         root = path.split('.')[0]
                 else:
                     root = path.split('.')[0]
-                if root not in dict_results.keys():
+                if root not in dict_dedup_result.keys():
                     dict_dedup_result[path] = dt_id
             else:
                 dict_dedup_result[path] = dt_id
@@ -1455,6 +1447,9 @@ class FieldGroupManager:
         if 'path' not in df_import.columns or 'xdmType' not in df_import.columns or ('fieldGroup' not in df_import.columns and 'unknown' in self.title):
             raise AttributeError("missing a column [xdmType, path, or fieldGroup] in your dataframe fieldgroup")
         df_import = df_import[~(df_import.duplicated('path'))].copy() ## removing duplicated paths
+        df_import = df_import[df_import['origin'] != 'dataType'].copy() ## removing path created by data type
+        list_datatype_roots = list(self.getDataTypePaths().keys())
+        df_import = df_import[~df_import['path'].isin(list_datatype_roots)].copy() ### removing the path that will link to data type, taking care of them later
         df_import['title'] = df_import['title'].fillna('')
         df_import['description'] = df_import['description'].fillna('')
         if 'title' not in df_import.columns:

@@ -388,7 +388,7 @@ def extractSandboxArtifact(
     elif artifactType == 'datatype':
         __extractDataType__(artifact,completePath,sandbox,retry)
     elif artifactType == 'dataset':
-        __extractDataset__(artifact,completePath,sandbox,dict_tag_id_name)
+        __extractDataset__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name,retry=retry)
     elif artifactType == 'identity':
         __extractIdentity__(artifact,completePath,sandbox,retry=retry)
     elif artifactType == 'mergepolicy':
@@ -442,12 +442,18 @@ def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: '
         mydt = [el for el in all_dts if el.get('meta:altId','') == dataType or el.get('title','') == dataType or el.get('$id') == dataType][0]
     except IndexError:
         raise IndexError("The data type you want to extract is not present in the sandbox or the id/name provided is not correct")
-    mydt_manager = datatypemanager.DataTypeManager(mydt.get('$id'),config=sandbox,retry=retry)
+    if mydt.get('$id','') in ['http://schema.org/GeoShape', 'http://schema.org/GeoCoordinates', 'http://schema.org/GeoCircle']:
+        mydt_manager = datatypemanager.DataTypeManager(mydt.get('meta:altId'),config=sandbox,retry=retry)
+    else:
+        mydt_manager = datatypemanager.DataTypeManager(mydt.get('$id'),config=sandbox,retry=retry)
     if tenantId in mydt.get('$id',''):
         definition = sch.getDataType(mydt.get('$id',''),full=False,xtype='xed')
         path_to_use = dtPath
     else:
-        definition = sch.getDataType(mydt.get('$id',''),full=True,xtype='xed')
+        dt_id = mydt.get('$id','')
+        if dt_id in ['http://schema.org/GeoShape', 'http://schema.org/GeoCoordinates', 'http://schema.org/GeoCircle']:
+            dt_id = mydt.get('meta:altId')
+        definition = sch.getDataType(dt_id,full=True,xtype='xed')
         path_to_use = dtPathGlobal
     file_name = __titleSafe__(definition.get('title',definition.get('meta:altId','unknown')))
     with open(f"{path_to_use / file_name}.json",'w') as f:
@@ -455,6 +461,12 @@ def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: '
     other_dts = list(mydt_manager.dataTypes.keys())
     if len(other_dts) > 0:
         for dt in other_dts:
+            if dt == 'http://schema.org/GeoShape':
+                dt = '_schema.org.GeoShape'
+            elif dt == 'http://schema.org/GeoCoordinates':
+                dt = '_schema.org.GeoCoordinates'
+            elif dt == 'http://schema.org/GeoCircle':
+                dt = '_schema.org.GeoCircle'
             __extractDataType__(dt,folder,sandbox)
 
 def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
@@ -501,7 +513,7 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
     for cls in classes:
         __extractClass__(cls,folder,sandbox,retry)
 
-def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,region:str=None,retry: int = 2):
+def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
     schemaPath = Path(folder) / 'schema'
     schemaPath.mkdir(exist_ok=True)
     from aepp import schema, schemamanager
@@ -540,7 +552,7 @@ def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'Co
                 __extractIdentity__(namespace,folder,sandbox,retry)
             if descriptor.get('@type','') == 'xdm:descriptorRelationship' or descriptor.get('@type','') == 'xdm:descriptorOneToOne':
                 targetSchema = descriptor['xdm:destinationSchema']
-                __extractSchema__(targetSchema,folder,sandbox,region)
+                __extractSchema__(targetSchema,folder,sandbox,retry)
 
 
 def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
@@ -557,7 +569,7 @@ def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox
     with open(f"{identityPath / file_name}.json",'w') as f:
         json.dump(myIdentity,f,indent=2)
 
-def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None, region:str=None,dict_tag_id_name: dict = None,**kwargs):
+def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None, retry:int=2,**kwargs):
     from aepp import catalog
     cat = catalog.Catalog(config=sandbox)
     datasets = cat.getDataSets()
@@ -578,7 +590,7 @@ def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'Co
         json.dump(myDataset,f,indent=2)
     schema = myDataset.get('schemaRef',{}).get('id',None)
     if schema is not None:
-        __extractSchema__(schema,folder,sandbox,region)
+        __extractSchema__(schema,folder,sandbox,retry)
 
 def __extractMergePolicy__(mergePolicy: str = None,folder:Union[str, Path]=None, sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None,**kwargs):
     from aepp import customerprofile

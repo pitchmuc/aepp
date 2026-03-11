@@ -28,6 +28,8 @@ Patch:
 * Optimization of artifact extraction in Managers to gain time during instantiation.
 * adding retry capabilities in global methods, in the `connector`, in the `schema`, `fieldgroupmanager`, `schemamanager`, `classmanager` and `datatypemanager` module.
 * adding `--version`, `-v` parameter for CLI to get the version of the module used.
+* Removing `region` parameter in most sync and extraction methods as it is not needed anymore with the new API endpoint structure.
+* fixing dependencies issues in Synchronizer related to OOTB datatypes and field groups handling.
 
 ## version 0.5.2
 * adding support for multiple values for localFolder in `SchemaManager`, `FieldGroupManager`, `DataTypeManager` and `ClassManager`

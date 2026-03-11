@@ -95,11 +95,11 @@ class Synchronizer:
             else:
                 try:
                     for folder in self.localfolder:
-                            with open(folder / 'config.json','r') as f:
-                                local_config = json.load(f)
-                                if 'sandbox' in local_config.keys():
-                                    self.baseSandbox = local_config['sandbox']
-                                    break
+                        with open(folder / 'config.json','r') as f:
+                            local_config = json.load(f)
+                            if 'sandbox' in local_config.keys():
+                                self.baseSandbox = local_config['sandbox']
+                                break
                 except Exception as e:
                     raise ValueError("baseSandbox must be provided in the constructor or in the config.json file in the local folder")
         self.dict_targetsConfig = {target: aepp.configure(org_id=config_object['org_id'],client_id=config_object['client_id'],scopes=config_object['scopes'],secret=config_object['secret'],sandbox=target,connectInstance=True) for target in targets}
@@ -175,7 +175,7 @@ class Synchronizer:
         If the component is a string, you have to have provided a base sandbox in the constructor.
         Arguments:
             component : REQUIRED : name or id of the component or a dictionary with the component definition
-            componentType : OPTIONAL : type of the component (e.g. "schema", "fieldgroup", "datatypes", "class", "identity", "dataset", "mergepolicy", "audience"). Required if a string is passed. 
+            componentType : OPTIONAL : type of the component (e.g. "schema", "fieldgroup", "datatype", "class", "identity", "dataset", "mergepolicy", "audience"). Required if a string is passed. 
                 It is not required but if the type cannot be inferred from the component, it will raise an error. 
             force : OPTIONAL : if True, it will force the synchronization of the component even if it already exists in the target sandbox. Works for Schema, FieldGroup, DataType and Class.
             verbose : OPTIONAL : if True, it will print the details of the synchronization process
@@ -185,9 +185,9 @@ class Synchronizer:
                 raise ValueError("a base sandbox or a local folder must be provided to synchronize a component by name or id")
             if componentType is None:
                 raise ValueError("the type of the component must be provided if the component is a string")
-            if componentType not in ['schema', 'fieldgroup', 'datatypes', 'class', 'identity', 'dataset', 'mergepolicy', 'audience']:
-                raise ValueError("the type of the component is not supported. Please provide one of the following types: schema, fieldgroup, datatypes, class, identity, dataset, mergepolicy, audience")
-            if componentType in ['schema', 'fieldgroup', 'datatypes', 'class']:
+            if componentType not in ['schema', 'fieldgroup', 'datatype', 'class', 'identity', 'dataset', 'mergepolicy', 'audience']:
+                raise ValueError("the type of the component is not supported. Please provide one of the following types: schema, fieldgroup, datatype, class, identity, dataset, mergepolicy, audience")
+            if componentType in ['schema', 'fieldgroup', 'datatype', 'class']:
                 if self.baseConfig is not None:
                     base_schema = schema.Schema(config=self.baseConfig)
                 else:
@@ -218,9 +218,9 @@ class Synchronizer:
                                     component = fg_file
                                     break
                     component = fieldgroupmanager.FieldGroupManager(component,config=self.baseConfig,localFolder=self.localfolder,sandbox=self.baseSandbox)
-                elif componentType == 'datatypes':
-                    datatypes = base_schema.getDataTypes()
+                elif componentType == 'datatype':    
                     if base_schema is not None:
+                        datatypes = base_schema.getDataTypes()
                         if component in base_schema.data.dataTypes_altId.keys():## replacing name with altId
                             component = base_schema.data.dataTypes_altId[component]
                     if self.localfolder is not None:
@@ -232,9 +232,17 @@ class Synchronizer:
                                     break
                     component = datatypemanager.DataTypeManager(component,config=self.baseConfig,localFolder=self.localfolder,sandbox=self.baseSandbox)
                 elif componentType == 'class':
-                    classes = base_schema.getClasses()
-                    if component in base_schema.data.classes_altId.keys():## replacing name 
-                        component = base_schema.data.classes_altId[component]
+                    if base_schema is not None:
+                        classes = base_schema.getClasses()
+                        if component in base_schema.data.classes_altId.keys():## replacing name 
+                            component = base_schema.data.classes_altId[component]
+                    if self.localfolder is not None:
+                        for folder in self.classFolder:
+                            for file in folder.glob('*.json'):
+                                class_file = json.load(FileIO(file))
+                                if class_file['title'] == component or class_file['$id'] == component or class_file['meta:altId'] == component:
+                                    component = class_file
+                                    break
                     component = classmanager.ClassManager(component,config=self.baseConfig,localFolder=self.localfolder,sandbox=self.baseSandbox)
             elif componentType == 'identity':
                 if self.baseConfig is not None:
@@ -328,7 +336,7 @@ class Synchronizer:
             else:
                 raise TypeError("the component type could not be inferred from the component or is not supported. Please provide the type as a parameter")
         ## Synchronize the component to the target sandboxes
-        if componentType == 'datatypes':
+        if componentType == 'datatype':
             self.__syncDataType__(component,verbose=verbose,force=force)
         if componentType == 'fieldgroup':
             self.__syncFieldGroup__(component,verbose=verbose,force=force)
@@ -493,12 +501,14 @@ class Synchronizer:
                     base_datatypes_paths = baseDataType.getDataTypePaths()
                     df_base_limited = df_base[df_base['origin'] == 'self'].copy() ## exclude field group native fields
                     df_base_limited = df_base_limited[~df_base_limited['path'].isin(list(base_datatypes_paths.keys()))] ## exclude base of datatype rows
-                    t_datatype.importDataTypeDefinition(df_base_limited)
+                    if t_datatype.EDITABLE:
+                        t_datatype.importDataTypeDefinition(df_base_limited)
                     ## handling data types
                     base_dict_path_dtTitle = {}
                     for path,dt_id in base_datatypes_paths.items():
                         tmp_dt_manager = baseDataType.getDataTypeManager(dt_id)
-                        self.__syncDataType__(tmp_dt_manager,force=force,verbose=verbose)
+                        if tmp_dt_manager.EDITABLE:
+                            self.__syncDataType__(tmp_dt_manager,force=force,verbose=verbose)
                         base_dict_path_dtTitle[path] = tmp_dt_manager.title
                     target_datatypes_paths = t_datatype.getDataTypePaths(som_compatible=True)
                     target_datatypes_paths_list = list(target_datatypes_paths.keys())
@@ -510,12 +520,13 @@ class Synchronizer:
                                 arrayBool = True
                                 path = path[:-4] ## removing the [] from the path
                             t_datatype.addField(path=path,dataType='dataType',ref=tmp_t_dt.id,array=arrayBool)
-                    res = t_datatype.updateDataType()
-                    if '$id' not in res.keys():
-                        print(res)
-                        raise Exception("the data type could not be updated in the target sandbox")
-                    else:
-                        t_datatype = datatypemanager.DataTypeManager(res['$id'],config=self.dict_targetsConfig[target],sandbox=target)
+                    if t_datatype.EDITABLE: ### avoid OOTB datatype
+                        res = t_datatype.updateDataType()
+                        if '$id' not in res.keys():
+                            print(res)
+                            raise Exception("the data type could not be updated in the target sandbox")
+                        else:
+                            t_datatype = datatypemanager.DataTypeManager(res['$id'],config=self.dict_targetsConfig[target],sandbox=target)
             else:## datatype does not exist in target
                 if verbose:
                     print(f"datatype '{name_base_datatype}' does not exist in target {target}, creating it")
@@ -635,11 +646,12 @@ class Synchronizer:
                         t_fieldgroup.updateClassSupported(fg_class_ids)
                     if base_fg_description != t_fieldgroup.description:
                         t_fieldgroup.setDescription(base_fg_description)
-                    res = t_fieldgroup.updateFieldGroup()
-                    if '$id' not in res.keys():
-                        raise Exception(res)
-                    else:
-                        t_fieldgroup = fieldgroupmanager.FieldGroupManager(res['$id'],config=self.dict_targetsConfig[target],sandbox=target)
+                    if t_fieldgroup.EDITABLE: ### avoid OOTB field group
+                        res = t_fieldgroup.updateFieldGroup()
+                        if '$id' not in res.keys():
+                            raise Exception(res)
+                        else:
+                            t_fieldgroup = fieldgroupmanager.FieldGroupManager(res['$id'],config=self.dict_targetsConfig[target],sandbox=target)
                 else:
                     if len(t_fieldgroup.classIds) != len(fg_class_ids):
                         t_fieldgroup.updateClassSupported(fg_class_ids)
