@@ -218,7 +218,7 @@ class FieldGroupManager:
                 raise ValueError("the element pass is not a field group definition")
         if self.fieldGroup.get('meta:extensible',False) == True: ## custom Field group
             if '$ref' in str(self.fieldGroup.get('definitions',{})) or '/datatype_name/' in str(self.fieldGroup.get('definitions',{}))  or 'meta:referencedFrom' in str(self.fieldGroup.get('definitions',{})): ## if datatype used in data types
-                dataTypeSearch_id = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9A-Za-z]+?)'"
+                dataTypeSearch_id = f"(https://ns.adobe.com/.+?)'"
                 dataTypes_id = re.findall(dataTypeSearch_id,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
                 dataTypeSearch_name = f"(https://[0-9A-Za-z.]+/datatype_name/[0-9A-Za-z]+?)'"
                 dataTypes_name = re.findall(dataTypeSearch_name,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))

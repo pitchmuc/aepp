@@ -189,7 +189,7 @@ class DataTypeManager:
             if self.tenantId.strip() != "":
                 self.dataType['meta:tenantNamespace'] = self.tenantId
         if '$ref' in str(self.dataType.get('definitions',self.dataType.get('properties',{}))) or '/datatype_name/' in str(self.dataType.get('definitions',self.dataType.get('properties',{}))) or 'meta:referencedFrom' in str(self.dataType.get('definitions',self.dataType.get('properties',{}))): ## if datatype used in data types
-            dataTypeSearch_id = f"(https://ns.adobe.com/{self.tenantId[1:]}/datatypes/[0-9a-z]+?)'"
+            dataTypeSearch_id = f"(https://ns.adobe.com/.+?)'"
             dataTypes_id = re.findall(dataTypeSearch_id,str(self.dataType.get('definitions',self.dataType.get('properties',{}))))
             dataTypeSearch_name = f"(https://[0-9A-Za-z.]+/datatype_name/[0-9a-z]+?)'"
             dataTypes_name = re.findall(dataTypeSearch_name,str(self.dataType.get('definitions',self.dataType.get('properties',{}))))
