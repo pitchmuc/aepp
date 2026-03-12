@@ -62,7 +62,8 @@ It is not required but if the type cannot be inferred from the component, it wil
 * verbose : OPTIONAL : if True, it will print the details of the synchronization process
 
 #### syncAll
-Synchronize all the components to the target sandboxes.
+Synchronize all the components to the target sandboxes.\
+**NOTE: This method only works based on a local folder. See [extractArtefacts](.main#extractSandboxArtifacts) or [extract_artifacts](cli.md#extract_artifacts) in the CLI method**\
 It will synchronize the components in the following order: 
 1. Identities
 2. Data Types

@@ -560,9 +560,9 @@ def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox
     ide = identity.Identity(config=sandbox,retry=retry)
     identities = ide.getIdentities()
     try:
-        myIdentity = [el for el in identities if el.get('code','') == identityStr or el.get('name','') == identityStr][0]
+        myIdentity = [el for el in identities if el.get('code','').lower() == identityStr.lower() or el.get('name','') == identityStr][0]
     except IndexError:
-        raise IndexError("The identity you want to extract is not present in the sandbox or the code/name provided is not correct")
+        raise IndexError(f"The identity {identityStr} you want to extract is not present in the sandbox or the code/name provided is not correct")
     identityPath = Path(folder) / 'identity'
     identityPath.mkdir(exist_ok=True)
     file_name = __titleSafe__(myIdentity.get('code',myIdentity.get('name','unknown')))

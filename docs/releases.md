@@ -30,6 +30,10 @@ Patch:
 * adding `--version`, `-v` parameter for CLI to get the version of the module used.
 * Removing `region` parameter in most sync and extraction methods as it is not needed anymore with the new API endpoint structure.
 * fixing dependencies issues in Synchronizer related to OOTB datatypes and field groups handling.
+* `syncAll` and `sync_all` methods now only works based on the local folder setup.
+* Fix issue regarding missing folder when more than one folder is passed for `synchronization` and for `managers`.
+* Adding the `force` parameter to sync in the CLI
+* adding filter capabilities on get_schemas and get_datasets for name filtering.  
 
 ## version 0.5.2
 * adding support for multiple values for localFolder in `SchemaManager`, `FieldGroupManager`, `DataTypeManager` and `ClassManager`

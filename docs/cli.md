@@ -87,6 +87,7 @@ Arguments:
 List all schemas in the current sandbox.\
 Arguments:
 * `-sv`, `--save` : Save the list of schemas to a CSV file.
+* `-f`, `--filter`: filter the schema returned based on title and on lower case and partial match of that string
   
 #### get_ups_schemas
 List all schemas enabled for Unified Profile in the current sandbox.\
@@ -197,14 +198,15 @@ Arguments:
 ### Dataset Methods
 
 #### get_datasets
-List all datasets in the current sandbox (Basic info).
+List all datasets in the current sandbox.\
+Also save the result in a CSV file.\
+* `-f`, `--filter`: filter the dataset returned based name and on lower case and partial match of that string
 
 #### get_datasets_infos
 List all datasets with detailed storage and row count statistics.
 
 #### do_get_datasets_tableNames
-Get the table names associated with dataset names and ID.\
-
+Get the table names associated with dataset names and ID.
 
 #### get_observable_schema_json
 Retrieve the observable schema JSON for a specific dataset.\

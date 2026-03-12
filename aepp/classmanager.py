@@ -62,8 +62,9 @@ class ClassManager:
             self.schemaAPI = None
             self.classFolder = [folder / 'class' for folder in self.localfolder]
             self.behavFolder = [folder / 'behaviour' for folder in self.localfolder]
-            if any([folder.exists() is False for folder in self.classFolder]):
-                raise Exception(f"The local folder {self.classFolder} does not exist. Please create it and extract your sandbox before using it.")
+            for folder in self.classFolder+self.behavFolder:
+                if folder.exists() == False:
+                    folder.mkdir(exist_ok=True)
         else:
             raise Exception("You need to provide a schemaAPI instance or a config object to connect to the API or a local folder to use the local storage")
         if self.schemaAPI is not None:

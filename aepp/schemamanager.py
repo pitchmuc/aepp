@@ -89,8 +89,9 @@ class SchemaManager:
             self.fieldgroupGlobalFolder = [folder / 'global' for folder in self.fieldgroupFolder]
             self.classFolder = [folder / 'class' for folder in self.localfolder]
             self.descriptorFolder = [folder / 'descriptor' for folder in self.localfolder]
-            if any([folder.exists() is False for folder in self.schemaFolder]) or any([folder.exists() is False for folder in self.fieldgroupFolder]) or any([folder.exists() is False for folder in self.classFolder]):
-                raise Exception(f"One of the folders {self.schemaFolder} or {self.fieldgroupFolder} or {self.classFolder} does not exist. Please create it and extract your sandbox before using it.")
+            for folder in self.schemaFolder+self.fieldgroupFolder+self.classFolder + self.fieldgroupGlobalFolder + self.descriptorFolder:
+                if folder.exists() == False:
+                    folder.mkdir(exist_ok=True)
         else:
             raise Exception("You need to provide a schemaAPI instance or a config object to connect to the API or a local folder to use the local storage")
         if self.schemaAPI is not None:

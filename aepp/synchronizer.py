@@ -375,44 +375,31 @@ class Synchronizer:
         base_schemas = []
         base_datasets = []
         self.syncIssues = []
-        if self.baseConfig is not None:
-            if verbose:
-                print("Loading base components from the sandbox...")
-            baseSchemaAPI = schema.Schema(config=self.baseConfig)
-            baseCatalog = catalog.Catalog(config=self.baseConfig)
-            baseIdentity = identity.Identity(config=self.baseConfig)
-            base_identities = baseIdentity.getIdentities()
-            base_schemas_list = baseSchemaAPI.getSchemas()
-            for sch in base_schemas_list:
-                mySchemaManager = schemamanager.SchemaManager(sch,config=self.baseConfig) 
+        if self.localfolder is None:
+            raise Exception("syncAll only allows synchronization based on a local folder. Extract artefacts and curate them before using syncAll.\nSee aepp.extractSandboxArtifacts or extract_artifacts in CLI method")
+        if verbose:
+            print("Loading base components from the local folder...")
+        for folder in self.identityFolder:
+            for file in folder.glob('*.json'):
+                id_file = json.load(FileIO(file))
+                base_identities.append(id_file)
+        for folder in self.schemaFolder:
+            for file in folder.glob('*.json'):
+                sc_file = json.load(FileIO(file))
+                mySchemaManager = schemamanager.SchemaManager(sc_file,localFolder=self.localfolder,sandbox=self.baseSandbox) 
                 base_schemas.append(mySchemaManager)
-            base_datasets = baseCatalog.getDataSets(output='list')
-        elif self.localfolder is not None:
-            if verbose:
-                print("Loading base components from the local folder...")
-            for folder in self.identityFolder:
-                for file in folder.glob('*.json'):
-                    id_file = json.load(FileIO(file))
-                    base_identities.append(id_file)
-            for folder in self.schemaFolder:
-                for file in folder.glob('*.json'):
-                    sc_file = json.load(FileIO(file))
-                    mySchemaManager = schemamanager.SchemaManager(sc_file,localFolder=self.localfolder,sandbox=self.baseSandbox) 
-                    base_schemas.append(mySchemaManager)
-            for folder in self.datasetFolder:
-                for file in folder.glob('*.json'):
-                    ds_file = json.load(FileIO(file))
-                    if len(ds_file.get('unifiedTags',[])) > 0 and self.dict_tag_name_id is not None:
-                        ds_file['unifiedTags'] = [self.dict_tag_name_id[tag_name] for tag_name in ds_file.get('unifiedTags',[]) if tag_name in self.dict_tag_name_id.keys()]
-                    base_datasets.append(ds_file)
-        else:
-            raise ValueError("a base sandbox or a local folder must be provided to synchronize the components")
+        for folder in self.datasetFolder:
+            for file in folder.glob('*.json'):
+                ds_file = json.load(FileIO(file))
+                if len(ds_file.get('unifiedTags',[])) > 0 and self.dict_tag_name_id is not None:
+                    ds_file['unifiedTags'] = [self.dict_tag_name_id[tag_name] for tag_name in ds_file.get('unifiedTags',[]) if tag_name in self.dict_tag_name_id.keys()]
+                base_datasets.append(ds_file)
         ### syncing identities
         if verbose:
             print("Syncing Identities...")
         for identity in base_identities:
             try:
-                self.__syncIdentity__(identity,force=force,verbose=verbose)
+                self.__syncIdentity__(identity,verbose=verbose)
             except Exception as e:
                 self.syncIssues.append({'component':identity.get('name','code not found'),'type':'identity','error':str(e)})
         ### Syncing schema components
@@ -1052,7 +1039,7 @@ class Synchronizer:
                     list_descriptors.append(res)
         return list_descriptors
 
-    def __syncIdentity__(self,identityDefiniton:dict,verbose:bool=False)-> dict:
+    def __syncIdentity__(self,identityDefiniton:dict,verbose:bool=False,**kwargs)-> dict:
         """
         Synchronize an identity to the target sandboxes.
         Arguments:
@@ -1064,7 +1051,7 @@ class Synchronizer:
         self.dict_baseComponents['identities'][code_base_identity] = identityDefiniton
         for target in self.dict_targetsConfig.keys():
             if code_base_identity not in self.dict_targetComponents[target]['identities'].keys(): ## if the identity is not already synchronized in the target cache
-                targetIdentity = identity.Identity(config=self.dict_targetsConfig[target],region=self.region)
+                targetIdentity = identity.Identity(config=self.dict_targetsConfig[target])
                 t_identities = targetIdentity.getIdentities()
                 if code_base_identity in [el['code'].lower() for el in t_identities]:## identity already exists in target
                     if verbose:

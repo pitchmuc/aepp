@@ -76,8 +76,9 @@ class DataTypeManager:
                 self.localfolder = [Path(folder) for folder in localFolder]
             self.datatypeFolder = [folder / 'datatype' for folder in self.localfolder]
             self.datatypeGlobalFolder = [folder / 'global' for folder in self.datatypeFolder]
-            if any([folder.exists() is False for folder in self.localfolder]):
-                raise Exception(f"The local folder {self.localfolder} does not exist. Please create it and extract your sandbox before using it.")
+            for folder in self.datatypeFolder+self.datatypeGlobalFolder:
+                if folder.exists() == False:
+                    folder.mkdir(exist_ok=True)
             self.schemaAPI = None
         if self.schemaAPI is not None:
             self.sandbox = self.schemaAPI.sandbox

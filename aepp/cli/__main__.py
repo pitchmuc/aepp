@@ -336,10 +336,13 @@ class ServiceShell(cmd.Cmd):
         """List all schemas in the current sandbox. By default do not save the output to a file as it can be very long, use the --save option to export the data to a CSV file."""
         parser = argparse.ArgumentParser(prog='get_schemas', add_help=True)
         parser.add_argument("-sv", "--save",help="Save schemas to CSV file")
+        parser.add_argument("-f","--filter",help="filter the schema return by name (non-case sensitive and partial match)",type=str,default="")
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_schema = schema.Schema(config=self.config)
             schemas = aepp_schema.getSchemas()
+            if args.filter != "":
+                schemas = [sc for sc in schemas if args.filter.lower() in sc['title'].lower()]
             if len(schemas) > 0:
                 table = Table(title=f"Schemas in Sandbox: {self.config.sandbox}")
                 table.add_column("ID", style="cyan")
@@ -366,7 +369,7 @@ class ServiceShell(cmd.Cmd):
     @login_required
     def do_get_ups_schemas(self, args) -> None:
         """List all schemas enabled for Profile in the current sandbox. By default do not save the output to a file as it can be very long, use the --save option to export the data to a CSV file."""
-        parser = argparse.ArgumentParser(prog='get_schemas_enabled', add_help=True)
+        parser = argparse.ArgumentParser(prog='get_ups_schemas', add_help=True)
         parser.add_argument("-sv", "--save",help="Boolean. Save enabled schemas to CSV file. Default False. Possible values: True, False",type=bool,default=False)
         try:
             args = parser.parse_args(shlex.split(args))
@@ -446,7 +449,7 @@ class ServiceShell(cmd.Cmd):
     @login_required
     def do_get_profile_schemas(self,args:Any) -> None:
         """Get the current schema based on Profile class. By default do not save the output to a file as it can be very long, use the --save option to export the data to a CSV file."""
-        parser = argparse.ArgumentParser(prog='get_schemas_enabled', add_help=True)
+        parser = argparse.ArgumentParser(prog='get_profile_schemas', add_help=True)
         parser.add_argument("-sv", "--save",help="Boolean. Save profile schemas to CSV file. Default False. Possible values: True, False",type=bool,default=False)
         try:
             args = parser.parse_args(shlex.split(args))
@@ -929,10 +932,13 @@ class ServiceShell(cmd.Cmd):
     def do_get_datasets(self, args:Any) -> None:
         """List all datasets in the current sandbox"""
         parser = argparse.ArgumentParser(prog='get_datasets', add_help=True)
+        parser.add_argument("-f","--filter",help="filter the dataset return by name (non-case sensitive and partial match)",type=str,default="")
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_cat = catalog.Catalog(config=self.config)
             datasets = aepp_cat.getDataSets(output='list')
+            if args.filter != "":
+                datasets = [ds for ds in datasets if args.filter.lower() in ds['name'].lower()]
             df_datasets = pd.DataFrame(datasets)
             df_datasets.to_csv(f"{self.config.sandbox}_datasets.csv",index=False)
             table = Table(title=f"Datasets in Sandbox: {self.config.sandbox}")
@@ -1740,6 +1746,7 @@ class ServiceShell(cmd.Cmd):
         parser.add_argument('-lf','--localfolder', help='Local folder(s) to use for sync',default='extractions',nargs='+',type=str)
         parser.add_argument('-b','--baseSandbox', help='Base sandbox for synchronization (if not using local folder)',type=str)
         parser.add_argument('-v','--verbose', help='Enable verbose output (default True)',default=True,type=bool)
+        parser.add_argument("-f","--force",help="Boolean. force the creation or synchronization of the artefact. (Default False)",default=False,type=bool)
         try:
             args = parser.parse_args(shlex.split(args))
             console.print("Initializing Synchronizor...", style="blue")
@@ -1759,7 +1766,8 @@ class ServiceShell(cmd.Cmd):
             synchronizor.syncComponent(
                 component=args.artifact,
                 componentType=args.artifactType,
-                verbose=args.verbose
+                verbose=args.verbose,
+                force=args.force
             )
             console.print("Sync completed!", style="green")
         except SystemExit:
@@ -1772,12 +1780,12 @@ class ServiceShell(cmd.Cmd):
     
     @login_required
     def do_sync_all(self,args:Any) -> None:
-        """sync all artifacts based on the parameters provided (local folder or base sandbox) to a target sandbox(s)"""
+        """sync all artifacts based on the parameters provided (ONLY local folder) to a target sandbox(s)"""
         parser = argparse.ArgumentParser(prog='sync_all', description='Synchronizing all artifacts to an AEP Sandbox, either from sandbox or from local storage',add_help=True)
         parser.add_argument('-t','--targets', help='target sandboxes',nargs='+',type=str)
         parser.add_argument('-lf','--localfolder', help='Local folder(s) to use for sync',default='extractions',nargs='+',type=str)
-        parser.add_argument('-b','--baseSandbox', help='Base sandbox for synchronization (if not using local folder)',type=str)
         parser.add_argument('-v','--verbose', help='Enable verbose output (default True)',default=True,type=bool)
+        parser.add_argument("-f","--force", help="Boolean. force the creation or synchronization of the artefact. (Default False)",default=False,type=bool)
         try:
             args = parser.parse_args(shlex.split(args))
             console.print("Initializing Synchronizor...", style="blue")
@@ -1794,7 +1802,7 @@ class ServiceShell(cmd.Cmd):
                     localFolder=args.localfolder,
             )
             console.print("Starting Sync...", style="blue")
-            synchronizor.syncAll(verbose=args.verbose)
+            synchronizor.syncAll(verbose=args.verbose,force=args.force)
             console.print("Sync completed!", style="green")
         except SystemExit:
             return

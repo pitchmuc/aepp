@@ -84,8 +84,9 @@ class FieldGroupManager:
             self.fieldgroupFolder = [folder / 'fieldgroup' for folder in self.localfolder]
             self.fieldgroupGlobalFolder = [folder / 'global' for folder in self.fieldgroupFolder]
             self.descriptorFolder = [folder / 'descriptor' for folder in self.localfolder]
-            if any([folder.exists() is False for folder in self.localfolder]):
-                raise Exception(f"The local folder {self.localfolder} does not exist. Please create it and extract your sandbox before using it.")
+            for folder in self.datatypeFolder+self.fieldgroupFolder+self.datatypeGlobalFolder + self.fieldgroupGlobalFolder + self.descriptorFolder:
+                if folder.exists() == False:
+                    folder.mkdir(exist_ok=True)
             self.schemaAPI = None
         if self.schemaAPI is not None:
             self.sandbox = self.schemaAPI.sandbox
