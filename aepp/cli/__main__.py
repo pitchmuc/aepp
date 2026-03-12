@@ -1789,18 +1789,10 @@ class ServiceShell(cmd.Cmd):
         try:
             args = parser.parse_args(shlex.split(args))
             console.print("Initializing Synchronizor...", style="blue")
-            if args.baseSandbox:
-                synchronizor = synchronizer.Synchronizer(
-                    config=self.config,
-                    targets=args.targets,
-                    baseSandbox=args.baseSandbox,
-                )
-            elif args.localfolder:
-                synchronizor = synchronizer.Synchronizer(
-                    config=self.config,
-                    targets=args.targets,
-                    localFolder=args.localfolder,
-            )
+            synchronizor = synchronizer.Synchronizer(
+                config=self.config,
+                targets=args.targets,
+                localFolder=args.localfolder)
             console.print("Starting Sync...", style="blue")
             synchronizor.syncAll(verbose=args.verbose,force=args.force)
             console.print("Sync completed!", style="green")
