@@ -67,6 +67,7 @@ class SchemaManager:
         self.fieldGroupIds=[]
         self.fieldGroupsManagers = {}
         self.classIds=[]
+        self.classId = None
         self.classManagers={}
         self.title = title
         self.STATE = "EXISTING"
@@ -269,8 +270,6 @@ class SchemaManager:
                         for json_file in folder.glob('*.json'):
                             tmp_def = json.load(FileIO(json_file))
                             if tmp_def.get('$id') == clas:
-                                self.classId = tmp_def.get('meta:class',None)
-                                self.schemaClass = tmp_def['$id']
                                 clsM = ClassManager(tmp_def,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                                 found = True
                                 break
