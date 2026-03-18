@@ -95,11 +95,12 @@ class Synchronizer:
             else:
                 try:
                     for folder in self.localfolder:
-                        with open(folder / 'config.json','r') as f:
-                            local_config = json.load(f)
-                            if 'sandbox' in local_config.keys():
-                                self.baseSandbox = local_config['sandbox']
-                                break
+                        if Path(folder / 'config.json').exists():
+                            with open(folder / 'config.json','r') as f:
+                                local_config = json.load(f)
+                                if 'sandbox' in local_config.keys():
+                                    self.baseSandbox = local_config['sandbox']
+                                    break
                 except Exception as e:
                     raise ValueError("baseSandbox must be provided in the constructor or in the config.json file in the local folder")
         self.dict_targetsConfig = {target: aepp.configure(org_id=config_object['org_id'],client_id=config_object['client_id'],scopes=config_object['scopes'],secret=config_object['secret'],sandbox=target,connectInstance=True) for target in targets}

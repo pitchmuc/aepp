@@ -1,55 +1,35 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "aepp"
-dynamic = ["version"]
-authors = [
-  { name="Julien Piccini", email="piccini.julien@gmail.com" },
-]
+version = "0.0.0" # Overwritten by the plugin
 description = "Package to manage AEP API endpoint and some helper functions"
+authors = ["Julien Piccini <piccini.julien@gmail.com>"]
+license = "Apache-2.0"
 readme = "README.md"
-requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-    "License :: OSI Approved :: Apache Software License",
-    "Topic :: Utilities",
-    "Topic :: Internet",
-    "Topic :: Software Development :: Libraries",
-    "Development Status :: 2 - Pre-Alpha"
-]
-dependencies = [
-    "pandas",
-    "requests",
-    "pathlib2",
-    "tenacity",
-    "deprecation",
-    "datamodel-code-generator",
-    "rich",
-    "matplotlib",
-    "psycopg2-binary; sys_platform == 'darwin'",
-    # Install standard psycopg2 on Windows
-    "psycopg2; sys_platform == 'win32'",
-    # Optional: Install standard psycopg2 on Linux
-    "psycopg2-binary; sys_platform == 'linux'",
-]
+packages = [{include = "aepp"}]
 
-[project.urls]
-"Homepage" = "https://github.com/adobe/aepp"
-"Changelog" = "https://github.com/adobe/aepp/docs/releases.md"
+[tool.poetry.dependencies]
+python = ">=3.10"
+pandas = "*"
+requests = "*"
+pathlib2 = "*"
+tenacity = "*"
+deprecation = "*"
+datamodel-code-generator = "*"
+rich = "*"
+matplotlib = "*"
+# Combined marker for unix-like systems
+psycopg2-binary = { version = "*", markers = "sys_platform == 'darwin' or sys_platform == 'linux'" }
+psycopg2 = { version = "*", markers = "sys_platform == 'win32'" }
 
-[project.scripts]
+[tool.poetry.scripts]
 aepp = "aepp.cli.__main__:main"
 
-[tool.setuptools]
-packages = ["aepp", "aepp.cli"]
-include-package-data = true
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "pattern"
+pattern = "(?P<base>\\d+\\.\\d+\\.\\d+([-.]\\w+)?)"
+files = ["aepp/__version__.py"]
 
-[tool.setuptools.dynamic]
-version = {attr = "aepp.__version__.__version__"}
-
-[tool.poetry]
-package-mode = true
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
