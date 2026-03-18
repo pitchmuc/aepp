@@ -104,10 +104,11 @@ class FieldGroupManager:
                 self.tenantId = fieldGroup.get('meta:tenantNamespace')
         elif self.localfolder is not None:
             for folder in self.localfolder:
-                config_json = json.load(FileIO(folder / 'config.json'))
-                if config_json.get('tenantId',None) is not None:
-                    self.tenantId = config_json.get('tenantId')
-                    break
+                if Path(folder / 'config.json').exists():
+                    config_json = json.load(FileIO(folder / 'config.json'))
+                    if config_json.get('tenantId',None) is not None:
+                        self.tenantId = config_json.get('tenantId')
+                        break
         else:### Should not be a problem as the element without a tenantId are not supposed to change
             self.tenantId = "  "
         if fieldGroup is not None:
