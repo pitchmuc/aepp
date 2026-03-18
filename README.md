@@ -64,7 +64,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [edge](./docs/edge.md)
 * [som](./docs/som.md) (see note below)
 * [synchronizer](./docs/synchronizer.md)
-* [cli](.docs/cli.md)
+* [cli](./docs/cli.md)
 
 Last but not least, the core methods are described here: [main](./docs/main.md)
 
