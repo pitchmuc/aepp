@@ -50,3 +50,6 @@ include-package-data = true
 
 [tool.setuptools.dynamic]
 version = {attr = "aepp.__version__.__version__"}
+
+[tool.poetry]
+package-mode = true
