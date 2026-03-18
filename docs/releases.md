@@ -33,7 +33,8 @@ Patch:
 * `syncAll` and `sync_all` methods now only works based on the local folder setup.
 * Fix issue regarding missing folder when more than one folder is passed for `synchronization` and for `managers`.
 * Adding the `force` parameter to sync in the CLI
-* adding filter capabilities on get_schemas and get_datasets for name filtering.  
+* adding filter capabilities on get_schemas and get_datasets for name filtering. 
+* fix issue on synchronization from local folder where tenantId was not correctly setup in schemaManager. 
 
 ## version 0.5.2
 * adding support for multiple values for localFolder in `SchemaManager`, `FieldGroupManager`, `DataTypeManager` and `ClassManager`
