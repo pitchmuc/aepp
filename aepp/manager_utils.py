@@ -117,34 +117,38 @@ def __cleanPath__(string:str=None)->str:
     """
     return string.replace('[','').replace(']','').replace("{",'').replace('}','')
 
-def __accessorAlgo__(mydict:dict,path:str=None)->dict:
+def __accessorAlgo__(mydict:dict,path:str=None,allOf:list=None)->dict:
     """
     recursive method to retrieve all the elements.
     Arguments:
         mydict : REQUIRED : The dictionary containing the elements to fetch (in "properties" key)
         path : REQUIRED : the path with dot notation.
+        allOf : OPTIONAL : The list of allOf references from the field group, used to transparently traverse wrapper keys.
     """
     path = __cleanPath__(path)
     pathSplit = path.split('.')
     key = pathSplit[0]
+    list_allOf_keys = [el['$ref'].split('/').pop() for el in (allOf or []) if '$ref' in el]
     if 'customFields' in mydict.keys():
-        level = __accessorAlgo__(mydict.get('customFields',{}).get('properties',{}),'.'.join(pathSplit))
+        level = __accessorAlgo__(mydict.get('customFields',{}).get('properties',{}),'.'.join(pathSplit),allOf)
         if 'error' not in level.keys():
             return level
-    if 'property' in mydict.keys() :
-        level = __accessorAlgo__(mydict.get('property',{}).get('properties',{}),'.'.join(pathSplit))
-        return level
+    if 'property' in mydict.keys():
+        level = __accessorAlgo__(mydict.get('property',{}).get('properties',{}),'.'.join(pathSplit),allOf)
+        if 'error' not in level.keys():
+            return level
     level = mydict.get(key,None)
     if level is not None:
-        if level["type"] == "object":
+        fieldType = level.get("type") if type(level) == dict else None
+        if fieldType == "object" or (type(level) == dict and 'properties' in level):
             levelProperties = mydict[key].get('properties',None)
-            if levelProperties is not None:
-                level = __accessorAlgo__(levelProperties,'.'.join(pathSplit[1:]))
+            if levelProperties is not None and len(pathSplit) > 1:
+                level = __accessorAlgo__(levelProperties,'.'.join(pathSplit[1:]),allOf)
             return level
-        elif level["type"] == "array":
+        elif fieldType == "array":
             levelProperties = mydict[key]['items'].get('properties',None)
-            if levelProperties is not None:
-                level = __accessorAlgo__(levelProperties,'.'.join(pathSplit[1:]))
+            if levelProperties is not None and len(pathSplit) > 1:
+                level = __accessorAlgo__(levelProperties,'.'.join(pathSplit[1:]),allOf)
             return level
         else:
             if len(pathSplit) > 1: 
@@ -153,6 +157,13 @@ def __accessorAlgo__(mydict:dict,path:str=None)->dict:
     else:
         if key == "":
             return mydict
+        ## Key not found — transparently traverse allOf wrapper dicts (e.g. 'experienceevent')
+        for wrapperKey in list_allOf_keys:
+            wrapper = mydict.get(wrapperKey)
+            if wrapper is not None and type(wrapper) == dict and 'properties' in wrapper:
+                level = __accessorAlgo__(wrapper['properties'],'.'.join(pathSplit),allOf)
+                if 'error' not in level:
+                    return level
         return {'error':f'cannot find the key "{key}"'}
 
 def __searchAlgo__(allOf:list,mydict:dict,string:str=None,partialMatch:bool=False,caseSensitive:bool=False,results:list=None,path:str=None,completePath:str=None)->list:
@@ -173,27 +184,42 @@ def __searchAlgo__(allOf:list,mydict:dict,string:str=None,partialMatch:bool=Fals
     if results is None:
         results=[]
     for key in mydict:
+        if path is not None:
+            finalPath = f"{path}.{key}"
+        else:
+            finalPath = f"{key}"
+            
+        title = mydict[key].get('title', '') if type(mydict[key]) == dict else ''
+        
         if caseSensitive == False:
             keyComp = key.lower()
             string = string.lower()
+            pathComp = finalPath.lower()
+            titleComp = title.lower()
         else:
             keyComp = key
             string = string
+            pathComp = finalPath
+            titleComp = title
+            
         if partialMatch:
-            if string in keyComp:
+            if string in keyComp or string in pathComp or string in titleComp:
                 ### checking if element is an array without deeper object level
-                if mydict[key].get('type') == 'array' and mydict[key]['items'].get('properties',None) is None:
-                    finalPath = path + f".{key}[]"
-                    if path is not None:
-                        finalPath = path + f".{key}"
-                    else:
-                        finalPath = f"{key}"
+                if type(mydict[key]) == dict and mydict[key].get('type') == 'array' and mydict[key].get('items', {}).get('properties',None) is None:
+                    finalPathArr = finalPath + "[]"
                 else:
-                    if path is not None:
-                        finalPath = path + f".{key}"
-                    else:
-                        finalPath = f"{key}"
-                value = deepcopy(mydict[key])
+                    finalPathArr = finalPath
+                value = deepcopy(mydict[key]) if type(mydict[key]) == dict else {}
+                value['path'] = finalPathArr
+                value['queryPath'] = __cleanPath__(finalPathArr)
+                if completePath is None:
+                    value['completePath'] = f"/definitions/{key}"
+                else:
+                    value['completePath'] = completePath + "/" + key
+                results.append({key:value})
+        else:
+            if keyComp == string or pathComp == string or titleComp == string:
+                value = deepcopy(mydict[key]) if type(mydict[key]) == dict else {}
                 value['path'] = finalPath
                 value['queryPath'] = __cleanPath__(finalPath)
                 if completePath is None:
@@ -201,37 +227,8 @@ def __searchAlgo__(allOf:list,mydict:dict,string:str=None,partialMatch:bool=Fals
                 else:
                     value['completePath'] = completePath + "/" + key
                 results.append({key:value})
-        else:
-            if caseSensitive == False:
-                if keyComp == string:
-                    if path is not None:
-                        finalPath = path + f".{key}"
-                    else:
-                        finalPath = key
-                    value = deepcopy(mydict[key])
-                    value['path'] = finalPath
-                    value['queryPath'] = __cleanPath__(finalPath)
-                    if completePath is None:
-                        value['completePath'] = f"/definitions/{key}"
-                    else:
-                        value['completePath'] = completePath + "/" + key
-                    results.append({key:value})
-            else:
-                if keyComp == string:
-                    if path is not None:
-                        finalPath = path + f".{key}"
-                    else:
-                        finalPath = key
-                    value = deepcopy(mydict[key])
-                    value['path'] = finalPath
-                    value['queryPath'] = __cleanPath__(finalPath)
-                    if completePath is None:
-                        value['completePath'] = f"/definitions/{key}"
-                    else:
-                        value['completePath'] = completePath + "/" + key
-                    results.append({key:value})
         ## loop through keys
-        if mydict[key].get("type") == "object" and ('properties' in mydict[key].keys() or 'additionalProperties' in mydict[key].keys()):
+        if type(mydict[key]) == dict and ('properties' in mydict[key] or (mydict[key].get("type") == "object" and 'additionalProperties' in mydict[key])):
             levelProperties = mydict[key].get('properties',{})
             if levelProperties != dict():
                 if completePath is None:

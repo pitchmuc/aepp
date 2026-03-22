@@ -619,7 +619,7 @@ class ClassManager:
             path : REQUIRED : path with dot notation to which field you want to access
         """
         definition = self.aepclass.get('definitions',self.aepclass.get('properties',{}))
-        data = __accessorAlgo__(definition,path)
+        data = __accessorAlgo__(definition,path,self.aepclass.get('allOf',[]))
         return data
 
     def searchField(self,string:str,partialMatch:bool=True,caseSensitive:bool=False)->list:

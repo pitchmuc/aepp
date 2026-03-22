@@ -2,6 +2,13 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.5.4
+* Fix issues when synchronizer search for config.json file in local folders and they do not exist.
+* Refactoring FieldGroupManager, SchemaManager and DataTypeManager to support better handling of local folder and synchronization.
+* Refactoring FieldGroupManager to handle OOTB field groups without their full definition
+* Changing the way the `synchronizer` module is handling the synchronization of schema, field groups and data types to support better handling of OOTB artefacts and local folder setup.\
+* Fixing issue regarding handling data type reference for path that contains repetitive name (eg `_tenant.scroll.scroll`)
+
 ## version 0.5.3
 * soft removing dependency to `region` in `Synchronizer` and `Identity` class
 * adding `get_tags`, `get_profile_attributes`, `get_profile_events` method in the `cli` module

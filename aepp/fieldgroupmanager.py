@@ -116,12 +116,7 @@ class FieldGroupManager:
                 if fieldGroup.get("meta:resourceType",None) == "mixins":
                     if fieldGroup.get('definitions',None) is not None:
                         if self.schemaAPI is not None:
-                            if 'mixins' in fieldGroup.get('$id') and self.tenantId[1:] in fieldGroup.get('$id'): ## customer mixin
-                                self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
-                            else: ## OOTB mixins
-                                tmp_def = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=True) ## handling OOTB mixins
-                                tmp_def['definitions'] = tmp_def['properties']
-                                self.fieldGroup = tmp_def
+                            self.fieldGroup = self.schemaAPI.getFieldGroup(fieldGroup['$id'],full=False)
                         elif self.localfolder is not None:
                             found = False
                             for folder in self.fieldgroupFolder:
@@ -189,9 +184,6 @@ class FieldGroupManager:
                     self.tenantId = f"_{self.schemaAPI.getTenantId()}"
                     if full:
                         self.fieldGroup = self.schemaAPI.getFieldGroup(self.fieldGroup['$id'],full=True)
-                    if self.fieldGroup.get('meta:extensible',False) == False: ## OOTB field group
-                        tmp_def = self.schemaAPI.getFieldGroup(fieldGroup,full=True)
-                        self.fieldGroup = tmp_def
                 elif self.localfolder is not None:
                     found = False
                     for folder in self.fieldgroupFolder:
@@ -218,46 +210,6 @@ class FieldGroupManager:
                                     break  
             else:
                 raise ValueError("the element pass is not a field group definition")
-        if self.fieldGroup.get('meta:extensible',False) == True: ## custom Field group
-            if '$ref' in str(self.fieldGroup.get('definitions',{})) or '/datatype_name/' in str(self.fieldGroup.get('definitions',{}))  or 'meta:referencedFrom' in str(self.fieldGroup.get('definitions',{})): ## if datatype used in data types
-                dataTypeSearch_id = f"(https://ns.adobe.com/.+?)'"
-                dataTypes_id = re.findall(dataTypeSearch_id,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
-                dataTypeSearch_name = f"(https://[0-9A-Za-z.]+/datatype_name/[0-9A-Za-z]+?)'"
-                dataTypes_name = re.findall(dataTypeSearch_name,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
-                metaRefSearch = f"'meta:referencedFrom': '(https://ns.adobe.com/.+?)'"
-                dataType_MetaRef_name = re.findall(metaRefSearch,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
-                locationSearch = f"(http://schema.org/.+?)'"
-                dataType_Location_name = re.findall(locationSearch,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
-                dataTypes = dataTypes_id + dataTypes_name + dataType_MetaRef_name + dataType_Location_name
-                dataTypes = list(set(dataTypes))
-                dataTypeManager_ids = list(set(self.getDataTypePaths(list_dt_ids=dataTypes).values()))
-                if self.schemaAPI is not None:
-                    for dt in dataTypeManager_ids:
-                        if dt not in self.dataTypes.keys():
-                            if dt == 'http://schema.org/GeoShape':
-                                dt = '_schema.org.GeoShape'
-                            elif dt == 'http://schema.org/GeoCoordinates':
-                                dt = '_schema.org.GeoCoordinates'
-                            elif dt == 'http://schema.org/GeoCircle':
-                                dt = '_schema.org.GeoCircle'
-                            dt_manager = self.schemaAPI.DataTypeManager(dt,retry=self.retry)
-                            self.dataTypes[dt_manager.id] = dt_manager.title
-                            self.dataTypeManagers[dt_manager.title] = dt_manager
-                elif self.localfolder is not None:
-                    for folder in self.datatypeFolder:
-                        for file in folder.glob('*.json'):
-                            tmp_def = json.load(FileIO(file))
-                            if tmp_def.get('$id') in dataTypeManager_ids or tmp_def.get('meta:altId') in dataTypeManager_ids:
-                                dt_manager = DataTypeManager(tmp_def,localFolder=self.localfolder,sandbox=self.sandbox,tenantId=self.tenantId)
-                                self.dataTypes[dt_manager.id] = dt_manager.title
-                                self.dataTypeManagers[dt_manager.title] = dt_manager
-                    for folder in self.datatypeGlobalFolder:
-                        for file in folder.glob('*.json'):
-                            tmp_def = json.load(FileIO(file))
-                            if tmp_def.get('$id') in dataTypeManager_ids or tmp_def.get('meta:altId') in dataTypeManager_ids:
-                                dt_manager = DataTypeManager(tmp_def,localFolder=self.localfolder,sandbox=self.sandbox,tenantId=self.tenantId)
-                                self.dataTypes[dt_manager.id] = dt_manager.title
-                                self.dataTypeManagers[dt_manager.title] = dt_manager
         else:
             self.STATE = "NEW"
             self.fieldGroup = {
@@ -291,6 +243,45 @@ class FieldGroupManager:
                         self.fieldGroup["meta:intendedToExtend"].append("https://ns.adobe.com/xdm/data/record")
                     else:
                         self.fieldGroup["meta:intendedToExtend"].append(cls)
+        if '$ref' in str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))) or '/datatype_name/' in str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{})))  or 'meta:referencedFrom' in str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))): ## if datatype used in data types
+            dataTypeSearch_id = f"(https://ns.adobe.com/.+?)'"
+            dataTypes_id = re.findall(dataTypeSearch_id,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
+            dataTypeSearch_name = f"(https://[0-9A-Za-z.]+/datatype_name/[0-9A-Za-z]+?)'"
+            dataTypes_name = re.findall(dataTypeSearch_name,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
+            metaRefSearch = f"'meta:referencedFrom': '(https://ns.adobe.com/.+?)'"
+            dataType_MetaRef_name = re.findall(metaRefSearch,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
+            locationSearch = f"(http://schema.org/.+?)'"
+            dataType_Location_name = re.findall(locationSearch,str(self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))))
+            dataTypes = dataTypes_id + dataTypes_name + dataType_MetaRef_name + dataType_Location_name
+            dataTypes = list(set(dataTypes))
+            dataTypeManager_ids = list(set(self.getDataTypePaths(list_dt_ids=dataTypes).values()))
+            if self.schemaAPI is not None:
+                for dt in dataTypeManager_ids:
+                    if dt not in self.dataTypes.keys():
+                        if dt == 'http://schema.org/GeoShape':
+                            dt = '_schema.org.GeoShape'
+                        elif dt == 'http://schema.org/GeoCoordinates':
+                            dt = '_schema.org.GeoCoordinates'
+                        elif dt == 'http://schema.org/GeoCircle':
+                            dt = '_schema.org.GeoCircle'
+                        dt_manager = self.schemaAPI.DataTypeManager(dt,retry=self.retry)
+                        self.dataTypes[dt_manager.id] = dt_manager.title
+                        self.dataTypeManagers[dt_manager.title] = dt_manager
+            elif self.localfolder is not None:
+                for folder in self.datatypeFolder:
+                    for file in folder.glob('*.json'):
+                        tmp_def = json.load(FileIO(file))
+                        if tmp_def.get('$id') in dataTypeManager_ids or tmp_def.get('meta:altId') in dataTypeManager_ids:
+                            dt_manager = DataTypeManager(tmp_def,localFolder=self.localfolder,sandbox=self.sandbox,tenantId=self.tenantId)
+                            self.dataTypes[dt_manager.id] = dt_manager.title
+                            self.dataTypeManagers[dt_manager.title] = dt_manager
+                for folder in self.datatypeGlobalFolder:
+                    for file in folder.glob('*.json'):
+                        tmp_def = json.load(FileIO(file))
+                        if tmp_def.get('$id') in dataTypeManager_ids or tmp_def.get('meta:altId') in dataTypeManager_ids:
+                            dt_manager = DataTypeManager(tmp_def,localFolder=self.localfolder,sandbox=self.sandbox,tenantId=self.tenantId)
+                            self.dataTypes[dt_manager.id] = dt_manager.title
+                            self.dataTypeManagers[dt_manager.title] = dt_manager
         if len(self.fieldGroup.get('allOf',[]))>1:
             ### handling the custom field group based on existing ootb field groups
             for element in self.fieldGroup.get('allOf'):
@@ -307,11 +298,11 @@ class FieldGroupManager:
         uniqueId = fieldGroup.get('id',str(int(time.time()*100))[-7:])
         self.title = fieldGroup.get('title',f'unknown:{uniqueId}')
         self.description = fieldGroup.get('description','')
-        if self.fieldGroup.get('$id',False):
-            self.id = self.fieldGroup.get('$id')
-        if self.fieldGroup.get('meta:altId',False):
-            self.altId = self.fieldGroup.get('meta:altId')
-        self.classIds = self.fieldGroup.get('meta:intendedToExtend')
+        if fieldGroup.get('$id',False):
+            self.id = fieldGroup.get('$id')
+        if fieldGroup.get('meta:altId',False):
+            self.altId = fieldGroup.get('meta:altId')
+        self.classIds = fieldGroup.get('meta:intendedToExtend')
     
     def __str__(self)->str:
         return json.dumps(self.fieldGroup,indent=2)
@@ -766,7 +757,7 @@ class FieldGroupManager:
             path : REQUIRED : path with dot notation to which field you want to access
         """
         definition = self.fieldGroup.get('definitions',self.fieldGroup.get('properties',{}))
-        data = __accessorAlgo__(definition,path)
+        data = __accessorAlgo__(definition,path,self.fieldGroup.get('allOf',[]))
         return data
 
     def searchField(self,string:str,partialMatch:bool=True,caseSensitive:bool=False)->list:
@@ -821,7 +812,7 @@ class FieldGroupManager:
                     result_combi = result_combi.intersection(resultsDict[key]) 
         if extendedResults:
             result_extended = []
-            for field in result_combi:
+            for field in set(result_combi):
                 result_extended += self.searchField(field,partialMatch=False,caseSensitive=True)
             return result_extended
         return list(result_combi)
@@ -1327,7 +1318,7 @@ class FieldGroupManager:
             list_ids = self.dataTypes.keys()
         for dt_id in list_ids:
             ref_results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
-            paths = [res[list(res.keys())[0]]['path'] for res in ref_results]
+            paths = [res[list(res.keys())[0]]['path'] for res in ref_results if '$ref' in res[list(res.keys())[0]].keys()]
             for path in paths:
                 res = self.getField(path) ## to ensure the type of the path
                 if res.get('type') == 'array':
@@ -1343,20 +1334,7 @@ class FieldGroupManager:
             if kwargs.get('som_compatible',False):
                 paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
         dict_dedup_result = {} ## avoid reference to datatype already references in another datatype (in case of nested data type reference)
-        for path, dt_id in {key:dict_results[key] for key in sorted(dict_results.keys())}.items(): ## making sure that the shortest is processed first to avoid keeping the nested reference instead of the root reference
-            if '.' in path:
-                if path.startswith('_'):
-                    if len(path.split('.')) > 1:
-                        root = path.split('.')[0]+'.'+path.split('.')[1]
-                    else:
-                        root = path.split('.')[0]
-                else:
-                    root = path.split('.')[0]
-                if root not in dict_dedup_result.keys():
-                    dict_dedup_result[path] = dt_id
-            else:
-                dict_dedup_result[path] = dt_id
-        return dict_dedup_result
+        return dict_results
     
 
     def patchFieldGroup(self,operations:list=None)->dict:

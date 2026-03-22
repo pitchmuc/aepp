@@ -10,7 +10,6 @@
 
 ## Internal modules
 from aepp import config, configs
-
 ## External module
 import json
 import os
@@ -23,6 +22,7 @@ from requests import Response
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from pathlib import Path
+from functools import wraps
 
 @dataclass
 class TokenInfo:
@@ -31,6 +31,34 @@ class TokenInfo:
     """
     token: str
     expiry: int
+
+def with_network_retries(default_retries=3, backoff_factor=2):
+    """
+    Decorator to retry requests specifically on streaming failures 
+    that urllib3 cannot catch.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            max_retries = getattr(self, 'retry', default_retries)
+            for attempt in range(max_retries):
+                try:
+                    return func(self, *args, **kwargs)
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        sleep_time = backoff_factor ** attempt
+                        if getattr(self, 'loggingEnabled', False):
+                            self.logger.warning(
+                                f"Streaming network drop ({type(e).__name__}) detected. "
+                                f"Retrying {attempt + 1}/{max_retries} in {sleep_time}s..."
+                            )
+                        time.sleep(sleep_time)
+                    else:
+                        if getattr(self, 'loggingEnabled', False):
+                            self.logger.error(f"Request failed after {max_retries} attempts due to {type(e).__name__}.")
+                        raise e
+        return wrapper
+    return decorator
 
 
 class AdobeRequest:
@@ -82,7 +110,7 @@ class AdobeRequest:
         retry_strategy = Retry(
             total=self.retry,
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST", "PATCH"],
+            allowed_methods=["HEAD", "GET", "PUT","POST","PATCH", "DELETE", "OPTIONS", "TRACE", "POST", "PATCH"],
             backoff_factor=2
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -278,6 +306,7 @@ class AdobeRequest:
         sandbox_id = res["id"]
         self.header["x-sandbox-id"] = sandbox_id
 
+    @with_network_retries(default_retries=3)
     def getData(
         self,
         endpoint: str,
@@ -367,6 +396,7 @@ class AdobeRequest:
                     self.logger.warning(json.dumps(res_json,indent=2))
         return res_json
 
+    @with_network_retries(default_retries=3)
     def headData(
         self, 
         endpoint: str, 
@@ -395,9 +425,9 @@ class AdobeRequest:
                 f"Start GET request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None:
-            res = requests.head(endpoint, headers=headers, verify=verify)
+            res = self.session.head(endpoint, headers=headers, verify=verify)
         if params is not None:
-            res = requests.head(endpoint, headers=headers, params=params, verify=verify)
+            res = self.session.head(endpoint, headers=headers, params=params, verify=verify)
         try:
             res_header = res.headers()
         except:
@@ -429,7 +459,7 @@ class AdobeRequest:
             data : OPTIONAL : If data needs to passed to that method (dictionary or list)
             bytesData : OPTIONAL : If you want to send bytes instead of dictionary
             headers : OPTIONAL: a dictionary to override the predefined header.
-        Possible kwrags
+        Possible kwargs:
             verify : boolean to set the SSL Setup
             verbose : if you want to display some messages
         """
@@ -442,26 +472,26 @@ class AdobeRequest:
                 f"Start POST request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None and data is None:
-            res = requests.post(endpoint, headers=headers, verify=verify)
+            res = self.session.post(endpoint, headers=headers, verify=verify)
         elif params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.post(endpoint, headers=headers, params=params, verify=verify)
+            res = self.session.post(endpoint, headers=headers, params=params, verify=verify)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.post(endpoint, headers=headers, data=json.dumps(data), verify=verify)
+            res = self.session.post(endpoint, headers=headers, data=json.dumps(data), verify=verify)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.post(
+            res = self.session.post(
                 endpoint, headers=headers, params=params, data=json.dumps(data), verify=verify
             )
         elif bytesData is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"bytes data used")
-            res = requests.post(
+            res = self.session.post(
                 endpoint, headers=headers, params=params, data=bytesData, verify=verify
             )
         try:
@@ -495,6 +525,7 @@ class AdobeRequest:
             pass
         return res_json
 
+    @with_network_retries(default_retries=3)
     def patchData(
         self,
         endpoint: str,
@@ -526,16 +557,16 @@ class AdobeRequest:
         if params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.patch(endpoint, headers=headers, params=params, verify=verify)
+            res = self.session.patch(endpoint, headers=headers, params=params, verify=verify)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.patch(endpoint, headers=headers, data=json.dumps(data), verify=verify)
+            res = self.session.patch(endpoint, headers=headers, data=json.dumps(data), verify=verify)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.patch(
+            res = self.session.patch(
                 endpoint, headers=headers, params=params, data=json.dumps(data), verify=verify
             )
         try:
@@ -558,6 +589,7 @@ class AdobeRequest:
                 res_json = {}
         return res_json
 
+    @with_network_retries(default_retries=3)
     def putData(
         self,
         endpoint: str,
@@ -589,16 +621,16 @@ class AdobeRequest:
         if params is not None and data is None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
-            res = requests.put(endpoint, headers=headers, params=params, verify=verify)
+            res = self.session.put(endpoint, headers=headers, params=params, verify=verify)
         elif params is None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.put(endpoint, headers=headers, data=json.dumps(data), verify=verify)
+            res = self.session.put(endpoint, headers=headers, data=json.dumps(data), verify=verify)
         elif params is not None and data is not None:
             if self.loggingEnabled:
                 self.logger.debug(f"params: {json.dumps(params)}")
                 self.logger.debug(f"data: {json.dumps(data)}")
-            res = requests.put(
+            res = self.session.put(
                 endpoint, headers=headers, params=params, data=json.dumps(data), verify=verify
             )
         try:
@@ -618,6 +650,7 @@ class AdobeRequest:
                 res_json = {}
         return res_json
 
+    @with_network_retries(default_retries=3)
     def deleteData(
         self, endpoint: str, params: dict = None, headers: dict = None, *args, **kwargs
     ):
@@ -637,12 +670,12 @@ class AdobeRequest:
             headers = self.header
         if self.loggingEnabled:
             self.logger.debug(
-                f"Start PUT request to {endpoint} with header: {json.dumps(headers)}"
+                f"Start DELETE request to {endpoint} with header: {json.dumps(headers)}"
             )
         if params is None:
-            res = requests.delete(endpoint, headers=headers, verify=verify)
+            res = self.session.delete(endpoint, headers=headers, verify=verify)
         elif params is not None:
-            res = requests.delete(endpoint, headers=headers, params=params, verify=verify)
+            res = self.session.delete(endpoint, headers=headers, params=params, verify=verify)
         try:
             status_code = res.status_code
             if status_code >= 400:

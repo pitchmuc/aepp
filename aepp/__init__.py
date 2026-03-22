@@ -485,11 +485,10 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
     except IndexError:
         raise IndexError("The field group you want to extract is not present in the sandbox or the id/name provided is not correct")
     myfg_manager = fieldgroupmanager.FieldGroupManager(myfg.get('$id'),config=sandbox,retry=retry)
+    definition = sch.getFieldGroup(myfg['$id'],full=False,xtype='xed')
     if tenantId in myfg.get('$id',''):
-        definition = sch.getFieldGroup(myfg['$id'],full=False,xtype='xed')
         path_to_use = fgPath
     else:
-        definition = sch.getFieldGroup(myfg['$id'],full=True,xtype='xed')
         path_to_use = fgPathGlobal
     file_name = __titleSafe__(definition.get('title',definition.get('$id','unknown')))
     with open(f"{path_to_use / file_name}.json",'w') as f:

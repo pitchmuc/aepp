@@ -141,23 +141,21 @@ class SchemaManager:
             self.fieldGroupIds = [obj['$ref'] for obj in allOf if ('/mixins/' in obj['$ref'] or '/experience/' in obj['$ref'] or '/context/' in obj['$ref'] or '/common/' in obj['$ref']) and obj['$ref'] != self.classId]
             self.classIds = [self.classId]
             for ref in self.fieldGroupIds:
-                if '/mixins/' in ref and self.tenantId[1:] in ref:
-                    if self.localfolder is not None:
-                        found = False
-                        for folder in self.fieldgroupFolder:
-                            for json_file in folder.glob('*.json'):
-                                tmp_def = json.load(FileIO(json_file))
-                                if tmp_def.get('$id') == ref:
-                                    definition = tmp_def
-                                    found = True
-                                    break
-                            if found:
+                if self.schemaAPI is not None:
+                        definition = self.schemaAPI.getFieldGroup(ref,full=False)  
+                elif self.localfolder is not None:
+                    definition = None
+                    found = False
+                    for folder in self.fieldgroupFolder:
+                        for json_file in folder.glob('*.json'):
+                            tmp_def = json.load(FileIO(json_file))
+                            if tmp_def.get('$id') == ref:
+                                definition = tmp_def
+                                found = True
                                 break
-                    elif self.schemaAPI is not None:
-                        definition = self.schemaAPI.getFieldGroup(ref,full=False)
-                    fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
-                else:
-                    if self.localfolder is not None:
+                        if found:
+                            break
+                    if definition is None:
                         found = False
                         for folder in self.fieldgroupGlobalFolder:
                             for json_file in folder.glob('*.json'):
@@ -168,11 +166,9 @@ class SchemaManager:
                                     break
                             if found:
                                 break
-                    elif self.schemaAPI is not None:
-                        definition = self.schemaAPI.getFieldGroup(ref,full=False)
-                    if 'properties' in definition.keys():
-                        definition['definitions'] = definition['properties']
-                    fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
+                if 'properties' in definition.keys():
+                    definition['definitions'] = definition['properties']
+                fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                 self.fieldGroupsManagers[fgM.title] = fgM
             for clas in self.classIds:
                 clsM = None
@@ -209,12 +205,22 @@ class SchemaManager:
                 raise Exception("You need to provide a schemaAPI instance or a localFolder to use the local storage")
             for ref in self.fieldGroupIds:
                 definition = None
-                if '/mixins/' in ref and self.tenantId[1:] in ref:
-                    if self.schemaAPI is not None:
-                        definition = self.schemaAPI.getFieldGroup(ref,full=False)
-                    elif self.localfolder is not None:
-                        found = False
-                        for folder in self.fieldgroupFolder:
+                if self.schemaAPI is not None:
+                    definition = self.schemaAPI.getFieldGroup(ref,full=False)
+                elif self.localfolder is not None:
+                    found = False
+                    for folder in self.fieldgroupFolder:
+                        for json_file in folder.glob('*.json'):
+                            tmp_def = json.load(FileIO(json_file))
+                            if tmp_def.get('$id') == ref:
+                                definition = tmp_def
+                                found = True
+                                break
+                        if found:
+                            break
+                    found = False
+                    if definition is None:
+                        for folder in self.fieldgroupGlobalFolder:
                             for json_file in folder.glob('*.json'):
                                 tmp_def = json.load(FileIO(json_file))
                                 if tmp_def.get('$id') == ref:
@@ -223,45 +229,9 @@ class SchemaManager:
                                     break
                             if found:
                                 break
-                        found = False
-                        if definition is None:
-                            for folder in self.fieldgroupGlobalFolder:
-                                for json_file in folder.glob('*.json'):
-                                    tmp_def = json.load(FileIO(json_file))
-                                    if tmp_def.get('$id') == ref:
-                                        definition = tmp_def
-                                        found = True
-                                    break
-                                if found:
-                                    break
-                else:
-                    if self.schemaAPI is not None:
-                        definition = self.schemaAPI.getFieldGroup(ref,full=False)
-                    elif self.localfolder is not None:
-                        found = False
-                        for folder in self.fieldgroupFolder:
-                            for json_file in folder.glob('*.json'):
-                                tmp_def = json.load(FileIO(json_file))
-                                if tmp_def.get('$id') == ref:
-                                    definition = tmp_def
-                                    found = True
-                                    break
-                            if found:
-                                break
-                        found = False
-                        if definition is None:
-                            for folder in self.fieldgroupGlobalFolder:
-                                for json_file in folder.glob('*.json'):
-                                    tmp_def = json.load(FileIO(json_file))
-                                    if tmp_def.get('$id') == ref:
-                                        definition = tmp_def
-                                        found = True
-                                        break
-                                if found:
-                                    break
                 if 'properties' in definition.keys():
                     definition['definitions'] = definition['properties']
-                fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
+                fgM = FieldGroupManager(fieldGroup=definition['$id'],schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                 self.fieldGroupsManagers[fgM.title] = fgM
             for clas in self.classIds:
                 clsM = None
@@ -339,9 +309,9 @@ class SchemaManager:
                     fgM = FieldGroupManager(fg,schemaAPI=self.schemaAPI, localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                     if fgM is not None:
                         self.fieldGroupsManagers[fgM.title] = fgM
-        self.fieldGroupTitles= tuple(fg.title for fg in list(self.fieldGroupsManagers.values()))
-        self.fieldGroups = {fg.id:fg.title for fg in list(self.fieldGroupsManagers.values())}
-        self.fieldGroupIds = tuple(fg.id for fg in list(self.fieldGroupsManagers.values()))
+        self.fieldGroupTitles= tuple(fg.title for fg in list(self.fieldGroupsManagers.values()) if hasattr(fg,'id'))
+        self.fieldGroups = {fg.id:fg.title for fg in list(self.fieldGroupsManagers.values()) if hasattr(fg,'id')}
+        self.fieldGroupIds = tuple(fg.id for fg in list(self.fieldGroupsManagers.values()) if hasattr(fg,'id'))
     
     def __setAttributes__(self,schemaDef:dict)->None:
         """

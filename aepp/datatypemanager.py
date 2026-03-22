@@ -689,7 +689,7 @@ class DataTypeManager:
             path : REQUIRED : path with dot notation to which field you want to access
         """
         definition = self.dataType.get('definitions',self.dataType.get('properties',{}))
-        data = __accessorAlgo__(definition,path)
+        data = __accessorAlgo__(definition,path,self.dataType.get('allOf',[]))
         return data
 
     def getDataTypeManager(self,dataType:str=None)->'DataTypeManager':
@@ -732,16 +732,9 @@ class DataTypeManager:
                     path = path +'[]{}'
                 dict_results[path] = dt_id
             if kwargs.get('som_compatible',False):
-                paths = [path.replace('{}','').replace('[]','.[0]') for path in paths] ## compatible with SOM later
-        dict_dedup_result = {} ## avoid reference to datatype already references in another datatype (in case of nested data type reference)
-        for path, dt_id in {key:dict_results[key] for key in sorted(dict_results.keys())}.items():
-            if '.' in path:
-                root = path.split('.')[0]
-                if root not in dict_dedup_result.keys():
-                    dict_dedup_result[path] = dt_id
-            else:
-                dict_dedup_result[path] = dt_id
-        return dict_dedup_result
+                dict_results = {path.replace('{}','').replace('[]','.[0]'): dt_id for path, dt_id in dict_results.items()} ## compatible with SOM later
+        dict_results = {} ## avoid reference to datatype already references in another datatype (in case of nested data type reference)
+        return dict_results
 
     def searchField(self,string:str,partialMatch:bool=True,caseSensitive:bool=False)->list:
         """
