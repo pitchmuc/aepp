@@ -725,7 +725,7 @@ class DataTypeManager:
                     path = path +'[]{}'
                 dict_results[path] = dt_id
             meta_ref_results = self.searchAttribute({'meta:referencedFrom':dt_id},extendedResults=True)
-            meta_paths = [res[list(res.keys())[0]]['path'] for res in meta_ref_results if '$ref' in res[list(res.keys())[0]].keys() or 'meta:referencedFrom' in res[list(res.keys())[0]].keys()]
+            meta_paths = [res[list(res.keys())[0]]['path'] for res in meta_ref_results if '$ref' in res[list(res.keys())[0]].keys() or 'meta:referencedFrom' in res[list(res.keys())[0]].keys() or '$ref' in res[list(res.keys())[0]].get('items', {}).keys() or 'meta:referencedFrom' in res[list(res.keys())[0]].get('items', {}).keys()]
             for path in meta_paths:
                 res = self.getField(path) ## to ensure the type of the path
                 if res.get('type') == 'array':

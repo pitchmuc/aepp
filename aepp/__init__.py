@@ -512,19 +512,24 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
     for cls in classes:
         __extractClass__(cls,folder,sandbox,retry)
 
-def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
+def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2, _visited: set = None):
+    if _visited is None: ## to avoid circular dependencies
+        _visited = set()
     schemaPath = Path(folder) / 'schema'
     schemaPath.mkdir(exist_ok=True)
     from aepp import schema, schemamanager
     sch = schema.Schema(config=sandbox,retry=retry)
-    tenantId = sch.getTenantId()
     myschemas = sch.getSchemas()
     try:
         myschema = [el for el in myschemas if el.get('$id','') == schemaEl or el.get('title','') == schemaEl or el.get('meta:altId') == schemaEl][0]
     except IndexError:
         raise IndexError("The schema you want to extract is not present in the sandbox or the id/name provided is not correct")
-    definition = sch.getSchema(myschema['$id'],full=False,xtype='xed')
-    schema_manager = schemamanager.SchemaManager(myschema.get('$id'),config=sandbox,retry=retry)
+    schema_id = myschema['$id']
+    if schema_id in _visited:
+        return
+    _visited.add(schema_id)
+    definition = sch.getSchema(schema_id,full=False,xtype='xed')
+    schema_manager = schemamanager.SchemaManager(schema_id,config=sandbox,retry=retry)
     file_name = __titleSafe__(definition.get('title',definition.get('$id','unknown')))
     with open(f"{schemaPath / file_name}.json",'w') as f:
         json.dump(definition,f,indent=2)
@@ -551,7 +556,8 @@ def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'Co
                 __extractIdentity__(namespace,folder,sandbox,retry)
             if descriptor.get('@type','') == 'xdm:descriptorRelationship' or descriptor.get('@type','') == 'xdm:descriptorOneToOne':
                 targetSchema = descriptor['xdm:destinationSchema']
-                __extractSchema__(targetSchema,folder,sandbox,retry)
+                if targetSchema not in _visited:
+                    __extractSchema__(targetSchema,folder,sandbox,retry,_visited)
 
 
 def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
@@ -568,7 +574,7 @@ def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox
     with open(f"{identityPath / file_name}.json",'w') as f:
         json.dump(myIdentity,f,indent=2)
 
-def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None, retry:int=2,**kwargs):
+def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None, retry:int=2, _visited: set = None,**kwargs):
     from aepp import catalog
     cat = catalog.Catalog(config=sandbox)
     datasets = cat.getDataSets()
@@ -589,7 +595,7 @@ def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'Co
         json.dump(myDataset,f,indent=2)
     schema = myDataset.get('schemaRef',{}).get('id',None)
     if schema is not None:
-        __extractSchema__(schema,folder,sandbox,retry)
+        __extractSchema__(schema,folder,sandbox,retry,_visited)
 
 def __extractMergePolicy__(mergePolicy: str = None,folder:Union[str, Path]=None, sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None,**kwargs):
     from aepp import customerprofile

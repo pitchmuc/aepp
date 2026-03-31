@@ -703,6 +703,14 @@ class Synchronizer:
         if not isinstance(baseSchema,schemamanager.SchemaManager):
             raise TypeError("the baseSchema must be a SchemaManager object")
         name_base_schema = baseSchema.title
+        ## Guard against re-entrant calls caused by circular descriptor relationships (A→B→A).
+        ## _syncing_schemas tracks schemas currently mid-flight in this call stack only.
+        ## discard() is called at every exit point so sequential re-calls are not blocked.
+        if not hasattr(self, '_syncing_schemas'):
+            self._syncing_schemas = set()
+        if name_base_schema in self._syncing_schemas:
+            return
+        self._syncing_schemas.add(name_base_schema)
         self.dict_baseComponents['schema'][name_base_schema] = baseSchema
         descriptors = baseSchema.getDescriptors()
         base_field_groups_names = list(baseSchema.fieldGroups.values())
@@ -711,6 +719,7 @@ class Synchronizer:
         if 'meta:service' in baseSchema.schema.keys():
             if verbose:
                 print(f"schema '{name_base_schema}' is a service schema, skipping the synchronization")
+            self._syncing_schemas.discard(name_base_schema)
             return
         for target in self.dict_targetsConfig.keys():
             targetSchemaAPI = schema.Schema(config=self.dict_targetsConfig[target])
@@ -832,6 +841,8 @@ class Synchronizer:
                 else:
                     print(res)
                     raise Exception("the schema could not be created in the target sandbox")
+                ## copying the schema creation so it can be fetch later for B2B references
+                self.dict_targetComponents[target]['schema'][name_base_schema] = t_schema
                 ## handling descriptors
                 list_new_descriptors = self.__syncDescriptor__(baseSchema,t_schema,targetSchemaAPI,verbose=verbose)
                 self.dict_targetComponents[target]['schemaDescriptors'][name_base_schema] = list_new_descriptors
@@ -858,6 +869,7 @@ class Synchronizer:
                                 ref['meta:refProperty'] = ref_property
                 t_schema.updateSchema()
             self.dict_targetComponents[target]['schema'][name_base_schema] = t_schema
+        self._syncing_schemas.discard(name_base_schema)
 
     def __syncDescriptor__(self,baseSchemaManager:schemamanager.SchemaManager|None=None,targetSchemaManager:schemamanager.SchemaManager|None=None,targetSchemaAPI:schema.Schema|None=None,verbose:bool=False)-> dict:
         """

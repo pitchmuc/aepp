@@ -7,7 +7,11 @@ This page list all of the changes that came during the different release of the 
 * Refactoring FieldGroupManager, SchemaManager and DataTypeManager to support better handling of local folder and synchronization.
 * Refactoring FieldGroupManager to handle OOTB field groups without their full definition
 * Changing the way the `synchronizer` module is handling the synchronization of schema, field groups and data types to support better handling of OOTB artefacts and local folder setup.\
-* Fixing issue regarding handling data type reference for path that contains repetitive name (eg `_tenant.scroll.scroll`)
+* Fixing issue regarding handling data type reference for path that contains repetitive name (eg `_tenant.scroll.scroll`)\
+Patch:
+* Fixing recursion issue when trying to pull schema that reference themselves in extract_methods
+* Fixing issue with datatype references in arrays in Field Group Manager
+* Fix the handling of schema creation in synchronizer to better support B2B descriptors.
 
 ## version 0.5.3
 * soft removing dependency to `region` in `Synchronizer` and `Identity` class
