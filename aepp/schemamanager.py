@@ -166,6 +166,8 @@ class SchemaManager:
                                     break
                             if found:
                                 break
+                if definition is None:
+                    raise ReferenceError(f"The Field Group {ref} was not found")
                 if 'properties' in definition.keys():
                     definition['definitions'] = definition['properties']
                 fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
@@ -229,6 +231,8 @@ class SchemaManager:
                                     break
                             if found:
                                 break
+                if definition is None:
+                    raise ReferenceError(f"The Field Group {ref} was not found")
                 if 'properties' in definition.keys():
                     definition['definitions'] = definition['properties']
                 fgM = FieldGroupManager(fieldGroup=definition['$id'],schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)

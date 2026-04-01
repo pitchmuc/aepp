@@ -161,6 +161,11 @@ Arguments:
 * `fieldgroup` : Field Group Name, $id, or alt:Id.
 * `-f`, `--full` : Boolean. Get full field group details (default: False, possible values: True, False).
 
+#### get_fieldgroup_xdm
+Get the XDM definition of a specific field group exported as a JSON file.\
+Arguments:
+* `fieldgroup` : Field Group Name, $id, or alt:Id.
+
 #### upload_fieldgroup_definition_csv
 Create or Update a field group using a CSV definition file.\
 Arguments:
@@ -193,7 +198,11 @@ Arguments:
 Export a specific Data Type definition to a JSON file.\
 Arguments:
 * `datatype` : Data Type Name, $id, or alt:Id.
-* `-f`, `--full` : Boolean. Get full details (default: False, possible values: True, False).
+
+#### get_datatype_xdm
+Export a specific Data Type XDM definition to a JSON file.\
+Arguments:
+* `datatype` : Data Type Name, $id, or alt:Id.
 
 ### Dataset Methods
 
@@ -207,6 +216,8 @@ List all datasets with detailed storage and row count statistics.
 
 #### do_get_datasets_tableNames
 Get the table names associated with dataset names and ID.
+Arguments:
+* `-f`, `--filter`: filter the dataset returned based name and on lower case and partial match of that string
 
 #### get_observable_schema_json
 Retrieve the observable schema JSON for a specific dataset.\
@@ -237,6 +248,8 @@ Arguments:
 
 #### get_audiences
 List all audiences in the current sandbox.
+Arguments:
+* `-f`, `--filter`: filter the audience returned based name and on lower case and partial match of that string
 
 ### Flow Service
 

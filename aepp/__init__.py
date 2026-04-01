@@ -287,7 +287,7 @@ def extractSandboxArtifacts(
         globalFgs = sch.getFieldGroupsGlobal()
         globalFgsElements = [(element, fieldgroupPathGlobale, '$id', 'title', sch.getFieldGroup) for element in globalFgs]
         with ThreadPoolExecutor(thread_name_prefix = 'globalFieldgroup') as thread_pool:
-            results = thread_pool.map(writingFullFile, globalFgsElements)
+            results = thread_pool.map(writingFalseFile, globalFgsElements)
         ### exception for a fieldgroup not supported by default getFieldGroups endpoint
         myfg = sch.getFieldGroup('https://ns.adobe.com/experience/intelligentServices/event-journeyai-sendtimeoptimization-summary',full=True,xtype='xed')
         title_myfg = __titleSafe__(myfg.get('title',myfg.get('$id','unknown')))

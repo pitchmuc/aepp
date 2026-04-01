@@ -709,12 +709,12 @@ class ServiceShell(cmd.Cmd):
             ## chech if schema title is found
             if args.fieldgroup in [fg for fg in aepp_schema.data.fieldGroups_altId.keys()]:
                 my_fieldgroup_manager = fieldgroupmanager.FieldGroupManager(
-                    fieldgroup=aepp_schema.data.fieldGroups_altId[args.fieldgroup],
+                    fieldGroup=aepp_schema.data.fieldGroups_altId[args.fieldgroup],
                     config=self.config
                 )
             else:
                 my_fieldgroup_manager = fieldgroupmanager.FieldGroupManager(
-                    fieldgroup=args.fieldgroup,
+                    fieldGroup=args.fieldgroup,
                     config=self.config
                 )
             data = my_fieldgroup_manager.to_dict()
@@ -739,12 +739,12 @@ class ServiceShell(cmd.Cmd):
             ## chech if schema title is found
             if args.fieldgroup in [fg for fg in aepp_schema.data.fieldGroups_altId.keys()]:
                 my_fieldgroup_manager = fieldgroupmanager.FieldGroupManager(
-                    fieldgroup=aepp_schema.data.fieldGroups_altId[args.fieldgroup],
+                    fieldGroup=aepp_schema.data.fieldGroups_altId[args.fieldgroup],
                     config=self.config
                 )
             else:
                 my_fieldgroup_manager = fieldgroupmanager.FieldGroupManager(
-                    fieldgroup=args.fieldgroup,
+                    fieldGroup=args.fieldgroup,
                     config=self.config
                 )
             df = my_fieldgroup_manager.to_dataframe(full=args.full)
@@ -754,7 +754,37 @@ class ServiceShell(cmd.Cmd):
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
             return
-        
+    
+    @login_required
+    def do_get_fieldgroup_xdm(self,args:Any)->None:
+        """Get the field group XDM definition by name or ID """
+        parser = argparse.ArgumentParser(prog='get_fieldgroup_xdm', add_help=True)
+        parser.add_argument("fieldgroup", help="Field Group name, $id or alt:Id to retrieve")
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_schema = schema.Schema(config=self.config)
+            fieldgroups = aepp_schema.getFieldGroups()
+            ## chech if schema title is found
+            if args.fieldgroup in [fg for fg in aepp_schema.data.fieldGroups_altId.keys()]:
+                my_fieldgroup_manager = fieldgroupmanager.FieldGroupManager(
+                    fieldGroup=aepp_schema.data.fieldGroups_altId[args.fieldgroup],
+                    config=self.config
+                )
+            else:
+                my_fieldgroup_manager = fieldgroupmanager.FieldGroupManager(
+                    fieldGroup=args.fieldgroup,
+                    config=self.config
+                )
+            fieldgroup_json = my_fieldgroup_manager.to_xdm()
+            filename = f"{my_fieldgroup_manager.title}_xdm.json"
+            with open(filename, 'w') as f:
+                json.dump(fieldgroup_json, f, indent=4)
+            console.print(f"Field Group XDM definition saved to {filename}.", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+    
     @login_required
     def do_get_datatypes(self, args:Any) -> None:
         """List all data types in the current sandbox"""
@@ -793,12 +823,12 @@ class ServiceShell(cmd.Cmd):
             ## chech if schema title is found
             if args.datatype in [dt for dt in aepp_schema.data.dataTypes_altId.keys()]:
                 my_datatype_manager = datatypemanager.DataTypeManager(
-                    datatype=aepp_schema.data.dataTypes_altId[args.datatype],
+                    dataType=aepp_schema.data.dataTypes_altId[args.datatype],
                     config=self.config
                 )
             else:
                 my_datatype_manager = datatypemanager.DataTypeManager(
-                    datatype=args.datatype,
+                    dataType=args.datatype,
                     config=self.config
                 )
             df = my_datatype_manager.to_dataframe(full=args.full)
@@ -821,12 +851,12 @@ class ServiceShell(cmd.Cmd):
             ## chech if schema title is found
             if args.datatype in [dt for dt in aepp_schema.data.dataTypes_altId.keys()]:
                 my_datatype_manager = datatypemanager.DataTypeManager(
-                    datatype=aepp_schema.data.dataTypes_altId[args.datatype],
+                    dataType=aepp_schema.data.dataTypes_altId[args.datatype],
                     config=self.config
                 )
             else:
                 my_datatype_manager = datatypemanager.DataTypeManager(
-                    datatype=args.datatype,
+                    dataType=args.datatype,
                     config=self.config
                 )
             data = my_datatype_manager.to_dict()
@@ -837,7 +867,86 @@ class ServiceShell(cmd.Cmd):
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
             return
+        
+    @login_required
+    def do_get_datatype_xdm(self, args:Any) -> None:
+        """Get data type XDM JSON by name or ID"""
+        parser = argparse.ArgumentParser(prog='get_datatype_xdm', add_help=True)
+        parser.add_argument("datatype", help="Data Type name, $id or alt:Id to retrieve")
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_schema = schema.Schema(config=self.config)
+            datatypes = aepp_schema.getDataTypes()
+            ## chech if schema title is found
+            if args.datatype in [dt for dt in aepp_schema.data.dataTypes_altId.keys()]:
+                my_datatype_manager = datatypemanager.DataTypeManager(
+                    dataType=aepp_schema.data.dataTypes_altId[args.datatype],
+                    config=self.config
+                )
+            else:
+                my_datatype_manager = datatypemanager.DataTypeManager(
+                    dataType=args.datatype,
+                    config=self.config
+                )
+            datatype_json = my_datatype_manager.to_xdm()
+            filename = f"{my_datatype_manager.title}_xdm.json"
+            with open(filename, 'w') as f:
+                json.dump(datatype_json, f, indent=4)
+            console.print(f"Data Type XDM definition saved to {filename}.", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
     
+    @login_required
+    def do_get_descriptors(self, args:Any) -> None:
+        """Retrieve the list of descriptors, possibly for a specific schema"""
+        parser = argparse.ArgumentParser(prog='get_descriptors', add_help=True)
+        parser.add_argument("-sc", "--schema", help="Schema name, $id or alt:Id to filter descriptors by schema")
+        parser.add_argument("-sv", "--save",help="Boolean. Save descriptors to JSON file. Default False. Possible values: True, False",type=bool,default=False)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_schema = schema.Schema(config=self.config)
+            schemas = aepp_schema.getSchemas()
+            if args.schema:
+                ## chech if schema title is found
+                if args.schema in [sch for sch in aepp_schema.data.schemas_altId.keys()]:
+                    schema_id = aepp_schema.data.schemas_altId[args.schema]
+                else:
+                    schema_id = args.schema
+                descriptors = aepp_schema.getDescriptors(prop=f"xdm:sourceSchema=={schema_id}")
+            else:
+                descriptors = aepp_schema.getDescriptors()
+            if descriptors:
+                table = Table(title=f"Descriptors in Sandbox: {self.config.sandbox}")
+                table.add_column("id", style="cyan")
+                table.add_column("Type", style="magenta")
+                table.add_column("Source Path", style="green")
+                table.add_column("Source Schema", style="yellow")
+                for desc in descriptors:
+                    table.add_row(
+                        desc.get("@id","N/A"),
+                        desc.get("@type","N/A"),
+                        desc.get("xdm:sourceProperty","N/A"),
+                        desc.get("xdm:sourceSchema","N/A")
+                    )
+                console.print(table)
+            if args.save:
+                if args.schema:
+                    filename = f"descriptors_{args.schema}.json"
+                else:
+                    filename = f"descriptors.json"
+                with open(filename, 'w') as f:
+                    json.dump(descriptors, f, indent=4)
+                console.print(f"Descriptors saved to {filename}.", style="green")
+            else:
+                console.print("(!) No descriptors found.", style="red")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+
     @login_required
     def do_enable_schema_for_ups(self, args:Any) -> None:
         """Enable a schema for Profile"""
@@ -966,10 +1075,13 @@ class ServiceShell(cmd.Cmd):
     def do_get_datasets_tablenames(self, args:Any) -> None:
         """List all datasets with their table names in the current sandbox"""
         parser = argparse.ArgumentParser(prog='get_datasets_tablenames', add_help=True)
+        parser.add_argument("-f","--filter",help="filter the dataset return by name (non-case sensitive and partial match)",type=str,default="")
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_cat = catalog.Catalog(config=self.config)
             datasets = aepp_cat.getDataSets(output='list')
+            if args.filter != "":
+                datasets = [ds for ds in datasets if args.filter.lower() in ds['name'].lower()]
             table = Table(title=f"Datasets in Sandbox: {self.config.sandbox}")
             table.add_column("Name", style="white")
             table.add_column("Table Name", style="cyan",no_wrap=True)
@@ -1235,10 +1347,13 @@ class ServiceShell(cmd.Cmd):
     def do_get_audiences(self, args:Any) -> None:
         """List all audiences in the current sandbox"""
         parser = argparse.ArgumentParser(prog='get_audiences', add_help=True)
+        parser.add_argument("-f","--filter",help="filter the audience return by name (non-case sensitive and partial match)",type=str,default="")
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_audience = segmentation.Segmentation(config=self.config)
             audiences = aepp_audience.getAudiences()
+            if args.filter != "":
+                audiences = [aud for aud in audiences if args.filter.lower() in aud['name'].lower()]
             flw = flowservice.FlowService(config=self.config)
             destinations = flw.getFlows(onlyDestinations=True)
             segments_shared = []
@@ -1824,13 +1939,15 @@ class ServiceShell(cmd.Cmd):
                    "get_fieldgroups",
                    "get_fieldgroup_json",
                    "get_fieldgroup_csv",
-                    "get_datatypes",
-                    "get_datatype_json",
-                    "get_datatype_csv",
-                    "enable_schema_for_ups",
-                    "create_fieldgroup_template",
-                    "upload_fieldgroup_definition_csv",
-                    "upload_fieldgroup_definition_xdm"
+                   "get_fieldgroup_xdm",
+                   "get_datatypes",
+                   "get_datatype_json",
+                   "get_datatype_csv",
+                   "get_datatype_xdm",
+                   "enable_schema_for_ups",
+                   "create_fieldgroup_template",
+                   "upload_fieldgroup_definition_csv",
+                   "upload_fieldgroup_definition_xdm"
                    ],
         "Datasets": ["get_datasets",
                      "get_datasets_tablenames",
