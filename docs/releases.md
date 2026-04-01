@@ -12,6 +12,9 @@ Patch:
 * Fixing recursion issue when trying to pull schema that reference themselves in extract_methods
 * Fixing issue with datatype references in arrays in Field Group Manager
 * Fix the handling of schema creation in synchronizer to better support B2B descriptors.
+* Adding filtering options in datasets and audiences retrieval in CLI
+* fixing CLI get_fieldgroup and get_datatype (json and csv) methods.
+* Adding get_fieldgroup_xdm and get_datatype_xdm methods in CLI to export the XDM definition of a specific field group or data type.
 
 ## version 0.5.3
 * soft removing dependency to `region` in `Synchronizer` and `Identity` class
