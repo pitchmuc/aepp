@@ -1020,6 +1020,8 @@ class InteractiveQuery:
             return query
         elif output == "dataframe":
             data = query.getresult()
+            if len(data) == 0:
+                return pd.DataFrame()
             columns = query.listfields()
             df = pd.DataFrame(data, columns=columns)
             return df
@@ -1236,7 +1238,7 @@ class InteractiveQuery2:
             output : OPTIONAL : the format you would like to be returned.
             Possible format:
                 "raw" : return the instance of the query object.
-                "dataframe" : return a dataframe with the data. (default)
+                "dataframe" : return a dataframe with the data. (default) - returns empty dataframe if no data is returned by the query
         """
         if sql is None:
             raise Exception("Required a SQL query")
@@ -1247,6 +1249,8 @@ class InteractiveQuery2:
         if output == "raw":
             return cursor
         elif output == "dataframe":
+            if cursor.rowcount == 0:
+                return pd.DataFrame()
             df = pd.DataFrame(cursor.fetchall())
             df.columns = [col[0] for col in cursor.description]
             return df

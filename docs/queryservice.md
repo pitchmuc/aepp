@@ -534,7 +534,8 @@ Arguments:
 * output : OPTIONAL : the format you would like to be returned.
 * Possible format:
   * "raw" : return the instance of the query object.
-  * "dataframe" : return a dataframe with the data. (default)
+  * "dataframe" : return a dataframe with the data. (default)\
+  Returns empty dataframe when the query result is empty.
 
 ```python
 
@@ -545,7 +546,7 @@ LIMIT 100
 """
 
 ## returns a dataframe
-df_result = intQuery.query(sql,output= "dataframe")
+df_result = intQuery.query(sql)
 
 ## returns an object
 result = intQuery.query(sql,output= "raw")
