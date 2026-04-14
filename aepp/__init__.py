@@ -9,6 +9,8 @@
 #  governing permissions and limitations under the License.
 
 # Internal Library
+from tomlkit import value
+
 from aepp import config
 from aepp import connector
 from .configs import *
@@ -177,6 +179,7 @@ def extractSandboxArtifacts(
     sandbox: 'ConnectObject' = None, 
     localFolder: Union[str, Path] = None,
     ootb: bool = True,
+    filters: list = None,
     retry: int = 2,
     **kwargs
 ):
@@ -186,6 +189,8 @@ def extractSandboxArtifacts(
         sandbox: REQUIRED: the instance of a ConnectObject that contains the sandbox information and connection.
         localFolder: OPTIONAL: the local folder where to extract the sandbox. If not provided, it will use the current working directory and name the folder the name of the sandbox.
         ootb : OPTIONAL : If you want to also download the OOTB elements
+        filters: OPTIONAL: a list of names to apply as filter when extracting the sandbox artifacts. It will filter Datasets and Schemas based on the name passed (lower and partial match).
+            Identities, Field Groups, Data Types, Classes will not be filtered.
         retry: OPTIONAL: the number of retry in case of connection error for the modules (default is 2)
     """
     if sandbox is None:
@@ -195,6 +200,8 @@ def extractSandboxArtifacts(
         completePath = mypath / f'{sandbox.sandbox}'
     else:
         completePath = Path(localFolder)
+    if filters is None:
+        filters = []
     from aepp import schema, catalog, identity,customerprofile, segmentation, tags
     sch = schema.Schema(config=sandbox,retry=retry)
     cat = catalog.Catalog(config=sandbox)
@@ -275,11 +282,15 @@ def extractSandboxArtifacts(
     with ThreadPoolExecutor(thread_name_prefix = 'classGlobal') as thread_pool:
         results = thread_pool.map(writingFullFile, classGlobalElements)
     myschemas = sch.getSchemas()
+    if filters is not None and len(filters) > 0:
+        myschemas = [schema for schema in myschemas if any(fil.lower() in schema.get('title','').lower() for fil in filters)]
+    all_ids = [element['$id'] for element in myschemas]
     schemaElement = [(element, schemaPath, '$id', 'title', sch.getSchema) for element in myschemas]
     with ThreadPoolExecutor(thread_name_prefix = 'schema') as thread_pool:
         results = thread_pool.map(writingFalseFile, schemaElement)
     ## writing field groups
     myfgs = sch.getFieldGroups()
+    all_ids += [element['$id'] for element in myfgs]
     fgsElements = [(element, fieldgroupPath, '$id', 'title', sch.getFieldGroup) for element in myfgs]
     with ThreadPoolExecutor(thread_name_prefix = 'fieldgroup') as thread_pool:  
         results = thread_pool.map(writingFalseFile, fgsElements)
@@ -305,17 +316,19 @@ def extractSandboxArtifacts(
             results = thread_pool.map(writingFalseFile, globalDataTypesElements)
     ## writing descriptors
     descriptors = sch.getDescriptors()
+    descriptors = [desc for desc in descriptors if desc.get('xdm:sourceSchema','') in all_ids]
     descriptorsElements = [(element,descriptorPath,'@id',"@id",None) for element in descriptors]
     with ThreadPoolExecutor(thread_name_prefix = 'descriptors') as thread_pool:
         results = thread_pool.map(writingFullFile, descriptorsElements)
-    datasets = cat.getDataSets()
-    for key,value in datasets.items():
-        value['id'] = key
-        if len(value.get('unifiedTags',[])) > 0:
-            tag_names = [dict_id_name.get(tag_id) for tag_id in value.get('unifiedTags',[])]
-            value['unifiedTags'] = tag_names
-        with open(f"{datasetPath / value.get('tags',{}).get('adobe/pqs/table',[key])[0]}.json",'w') as f:
-            json.dump(value,f,indent=2)
+    datasets = cat.getDataSets(output='list')
+    if filters is not None and len(filters) > 0:
+        datasets = [dataset for dataset in datasets if any(fil.lower() in dataset.get('name','').lower() for fil in filters)]
+    for ds in datasets:
+        if len(ds.get('unifiedTags',[])) > 0:
+            tag_names = [dict_id_name.get(tag_id) for tag_id in ds.get('unifiedTags',[])]
+            ds['unifiedTags'] = tag_names
+        with open(f"{datasetPath / ds.get('adobe/pqs/table',[ds.get('id','unknown')])[0]}.json",'w') as f:
+            json.dump(ds,f,indent=2)
     identities = ide.getIdentities()
     for el in identities:
         with open(f"{identityPath / el['code']}.json",'w') as f:
@@ -394,7 +407,7 @@ def extractSandboxArtifact(
     elif artifactType == 'mergepolicy':
         __extractMergePolicy__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name)
     elif artifactType == 'audience':
-        __extractAudience__(artifact,completePath,sandbox,dict_tag_id_name)
+        __extractAudience__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name)
     else:
         raise ValueError("artifactType not recognized")
 

@@ -1813,12 +1813,14 @@ class ServiceShell(cmd.Cmd):
         """extract all artifacts from the current sandbox to a localfolder"""
         parser = argparse.ArgumentParser(prog='extract_artifacts', description='Extract artifacts from AEP to a local folder',add_help=True)
         parser.add_argument('-lf','--localfolder', help='Local folder to extract artifacts to', default='./extractions')
+        parser.add_argument('-f','--filters', help='Name to be used to filter schemas and datasets extraction. It does not impact other artifact types. Multiple filters can be separated by space.', nargs='*', default=None)
         try:
             console.print("Extracting artifacts...", style="blue")
             args = parser.parse_args(shlex.split(args))
             aepp.extractSandboxArtifacts(
                 sandbox=self.config,
-                localFolder=args.localfolder
+                localFolder=args.localfolder,
+                filters=args.filters
             )
             console.print(Panel("Extraction completed!", style="green"))
         except SystemExit:

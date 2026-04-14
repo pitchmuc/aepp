@@ -143,17 +143,16 @@ The `extractSandboxArtifacts` method is a way to extract the different artifacts
 This method is taking 2 arguments:
 * sandbox: REQUIRED: the instance of a ConnectObject that contains the sandbox information and connection.
 * localFolder: OPTIONAL: the local folder where to extract the sandbox. If not provided, it will use the current working directory and name the    folder the name of the sandbox.
-* region: OPTIONAL: the region of the sandbox (default: nld2). This is used to fetch the correct API endpoints for the identities. 
-    Possible values: "va7","aus5", "can2", "ind2"
+* filters: OPTIONAL: an array of string to filter the artifacts to extract. The filter will be applied on the name of the artifact. It will only impact the extraction of schemas and datasets. For example, if you want to extract only the schemas and dataset that contains "Customer" in their name, you can pass filters=["Customer"]. The filter will not impact the other artifact types and all the artifacts of other types will be extracted. Only exception is descriptors, which will only be extracted for the artefacts matching the filter(s). The matching is case insensitive and partial, meaning that if you pass "customer", it will match "CustomerProfile", "CustomerSchema", "MyCustomerDataset" and so on.
 * ootb : OPTIONAL : If you want to also download the OOTB elements
 
 Example of usage: 
 
-```py
+```python
 import aepp
 
 prod = aepp.importConfigFile('myconfig.json',sandbox='prod',connectInstance=True)
-aepp.extractSandboxArtifacts(prod,localFolder='prodFolder',region='va7')
+aepp.extractSandboxArtifacts(prod,localFolder='prodFolder',filters=['Customer'])
 ```
 as of today, the following artifacts are exported:
 * behavior
@@ -176,7 +175,5 @@ Arguments:
 * localFolder: OPTIONAL: the local folder where to extract the sandbox. If not provided, it will use the current working directory and name the * folder the name of the sandbox.
 * artifact: REQUIRED: the id or the name of the artifact to export.
 * artifactType: REQUIRED: the type of artifact to export. Possible values are: 'class','schema','fieldgroup','datatype','descriptor','dataset','identity','audience', 'mergepolicy'
-* region: OPTIONAL: the region of the sandbox (default: nld2). This is used to fetch the correct API endpoints for the identities. 
-    Possible values: "va7","aus5", "can2", "ind2"
 
 The reason to use that extractSandboxArtifacts methods is documented on [Local File Usage](./localfilesusage.md)
