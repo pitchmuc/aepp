@@ -17,6 +17,7 @@ Patch:
 * Adding get_fieldgroup_xdm and get_datatype_xdm methods in CLI to export the XDM definition of a specific field group or data type.
 * Changing behavior and now the query that do not return data will return empty dataframe instead of throwing an error.
 * Adding filter parameter for extractSandboxArtifacts method to support filtering on schema and dataset name during extraction.
+* Fix importing issue with unused library `tomlkit`
 
 ## version 0.5.3
 * soft removing dependency to `region` in `Synchronizer` and `Identity` class
