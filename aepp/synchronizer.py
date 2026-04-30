@@ -1030,7 +1030,7 @@ class Synchronizer:
                             for file in folder.glob('*.json'):
                                 id_file = json.load(FileIO(file))
                                 baseIdentities.append(id_file)
-                    def_identity = [el for el in baseIdentities if el['code'] == baseIdentityNS][0]
+                    def_identity = [el for el in baseIdentities if el['code'].lower() == baseIdentityNS.lower()][0]
                     self.__syncIdentity__(def_identity,verbose=verbose)
                     target_referenceIdentity = [desc for desc in target_descriptors if desc['@type'] == 'xdm:descriptorReferenceIdentity']
                     if baseDescriptor['xdm:sourceProperty'] not in [el['xdm:sourceProperty'] for el in target_referenceIdentity]: ## descriptor does not exists in target
@@ -1262,6 +1262,7 @@ class Synchronizer:
                     print(res)
                     raise Exception("the audience could not be created in the target sandbox")
             else: ## audience already exists in target
+                t_audience = [el for el in t_audiences if el['name'] == audience_name][0]
                 if verbose:
                     print(f"audience '{audience_name}' already exists in target {target}, checking it")
                 if str(t_audience['expression']) != str(baseAudience.get('expression',[])) or len(baseAudience.get('tags',[])).difference(set(t_audience.get('tags',[])))>0 or force == True:
