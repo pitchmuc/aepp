@@ -221,9 +221,9 @@ class UpsFieldsAnalyzer:
         """
         result_dict = {'path':path}
         if path in self.df_union.index:
-            result_dict['description'] = self.df_union.at[path,'description']
+            result_dict['description'] = self.df_union.at[path,'type'] if type(self.df_union.at[path,'type']) == str else self.df_union.at[path,'type'].iloc[0]
             result_dict['fieldGroup'] = self.df_union.at[path,'fieldGroup']
-            result_dict['type'] = self.df_union.at[path,'type']
+            result_dict['type'] = self.df_union.at[path,'type'] if type(self.df_union.at[path,'type']) == str else self.df_union.at[path,'type'].iloc[0]
         result_dict['schemas'] = {}
         for schemaId in self.schemaManagers:
             if path in self.schemaManagers[schemaId].to_dataframe()['path'].to_list():
