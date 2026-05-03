@@ -511,8 +511,17 @@ class Synchronizer:
                     if t_datatype.EDITABLE: ### avoid OOTB datatype
                         res = t_datatype.updateDataType()
                         if '$id' not in res.keys():
-                            print(res)
-                            raise Exception("the data type could not be updated in the target sandbox")
+                            if res["type"] == "http://ns.adobe.com/aep/errors/XDM-1406-422":
+                                t_datatype.dataType["properties"] = t_datatype.dataType["definitions"][next(iter(t_datatype.dataType["definitions"].keys()))]["properties"]
+                                t_datatype.dataType.pop("allOf", None)
+                                t_datatype.dataType.pop("definitions", None)
+                                res = t_datatype.updateDataType()
+                                if '$id' not in res.keys():
+                                    print(res)
+                                    raise Exception("the data type could not be updated in the target sandbox")
+                            else:
+                                print(res)
+                                raise Exception("the data type could not be updated in the target sandbox")
                         else:
                             t_datatype = datatypemanager.DataTypeManager(res['$id'],config=self.dict_targetsConfig[target],sandbox=target)
             else:## datatype does not exist in target
@@ -637,7 +646,16 @@ class Synchronizer:
                     if t_fieldgroup.EDITABLE: ### avoid OOTB field group
                         res = t_fieldgroup.updateFieldGroup()
                         if '$id' not in res.keys():
-                            raise Exception(res)
+                            if res["type"] == "http://ns.adobe.com/aep/errors/XDM-1406-422":
+                                t_fieldgroup.fieldGroup["properties"] = t_fieldgroup.fieldGroup["definitions"][next(iter(t_datatype.dataType["definitions"].keys()))]["properties"]
+                                t_fieldgroup.fieldGroup.pop("allOf", None)
+                                t_fieldgroup.fieldGroup.pop("definitions", None)
+                                res = t_fieldgroup.updateFieldGroup()
+                                if '$id' not in res.keys():
+                                    print(res)
+                                    raise Exception("the field group could not be updated in the target sandbox")
+                            else:                            
+                                raise Exception(res)
                         else:
                             t_fieldgroup = fieldgroupmanager.FieldGroupManager(res['$id'],config=self.dict_targetsConfig[target],sandbox=target)
                 else:
