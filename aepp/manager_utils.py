@@ -95,18 +95,23 @@ def __simpleDeepMerge__(base:dict,append:dict)->dict:
     if type(append) == list:
         append = append[0]
     for key in append:
-        if type(base)==dict:
-            if key in base.keys():
-                __simpleDeepMerge__(base[key],append[key])
-            else:
-                base[key] = append[key]
-        elif type(base)==list:
-            base = base[0]
-            if type(base) == dict:
+        if key == "meta:xedConverted":
+            continue
+        try:
+            if type(base)==dict:
                 if key in base.keys():
                     __simpleDeepMerge__(base[key],append[key])
                 else:
                     base[key] = append[key]
+            elif type(base)==list:
+                base = base[0]
+                if type(base) == dict:
+                    if key in base.keys():
+                        __simpleDeepMerge__(base[key],append[key])
+                    else:
+                        base[key] = append[key]
+        except Exception as e:
+            print(f"issue while merging key {key} : {e}")
     return base
 
 def __cleanPath__(string:str=None)->str:

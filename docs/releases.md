@@ -18,6 +18,13 @@ Patch:
 * Changing behavior and now the query that do not return data will return empty dataframe instead of throwing an error.
 * Adding filter parameter for extractSandboxArtifacts method to support filtering on schema and dataset name during extraction.
 * Fix importing issue with unused library `tomlkit`
+* Fix some issue related to `to_dataframe` method when doing union_event schema. 
+* improve output for `analyzePath` method in `upsfieldanalyzer`
+* Fixing issue with descriptor API that returns non case sensitive code for identity namespace and causing issue for synchronizer to find the correct descriptor to synchronize. 
+* Fixing issue when syncing audiences between sandboxes when audience already exists.
+* Optimizing the upsFieldAnalayzer for description and type
+* adding exception for `meta:xedConverted` field in Schemas for `to_dict` and `to_dataframe` method in managers.
+* Fixing that datasets were created with their ID and not table names when export artefacts. 
 
 ## version 0.5.3
 * soft removing dependency to `region` in `Synchronizer` and `Identity` class

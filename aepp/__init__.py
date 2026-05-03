@@ -324,7 +324,7 @@ def extractSandboxArtifacts(
         if len(ds.get('unifiedTags',[])) > 0:
             tag_names = [dict_id_name.get(tag_id) for tag_id in ds.get('unifiedTags',[])]
             ds['unifiedTags'] = tag_names
-        with open(f"{datasetPath / ds.get('adobe/pqs/table',[ds.get('id','unknown')])[0]}.json",'w') as f:
+        with open(f"{datasetPath / ds.get('tags',{}).get('adobe/pqs/table',[ds.get('id','unknown')])[0]}.json",'w') as f:
             json.dump(ds,f,indent=2)
     identities = ide.getIdentities()
     for el in identities:
