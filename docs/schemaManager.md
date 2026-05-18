@@ -7,6 +7,8 @@ The Schema Manager is built on top of all of the existing [AEP Schema Registry A
 - [Instantiation](#instantiation)
 - [Schema Manager attributs](#schema-manager-attributes)
 - [Schema Manager methods](#schema-manager-methods)
+- [Editable concept](#editable-concept)
+- [Adhoc-v2 schema support](#adhoc-v2-schema-support)
 
 ## Instantiation
 
@@ -336,3 +338,44 @@ The other is to use a predefined set of fields, that are called Data Type.\
 When you are using the Data Type field that are not the native ones, you are technically using an external reference in your field group, and this reference can be used in multiple places in your field group.\
 Because it is then wrong, and not possible, to modify one of the reference and not the other, the Field Groups that return `False` to the `Editable` column cannot be edited via Field Group Manager.\
 These Data Type, that are representing more than one field, can be edited via the [DataTypeManager](./dataTypeManager.md), however, the same way than for Field Group, any modification in the Data Type will be repercuted to all Schema and Field Groups using this Data Type.
+
+## Adhoc-v2 schema support
+
+The adhoc-v2 schema is a specific schema that has been release during the 2026 year.\
+This type of Schema is special because it does not rely on the normal concept of schema with class, field groups and other elements.\
+This Schema is more flexible and autorize the creation of fields directly at schema level, without the need to create a field group for that.\
+The Schema Manager has been updated to be able to support this type of schema, with some specific methods that are only available for this type of schema.\
+
+### Methods available for adhoc-v2 schema
+
+#### addField
+Add a field directly at the schema level, without the need to create a field group for that.\
+Arguments:
+* path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
+* dataType : REQUIRED : the field type you want to create
+    A type can be any of the following: "string","boolean","double","long","integer","int","number","short","byte","date","datetime","date-time","boolean","object","array", "map"
+    NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
+* title : OPTIONAL : if you want to have a custom title.
+* objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
+    Example : {'field1:'string','field2':'double'}
+* array : OPTIONAL : Boolean. If the element to create is an array. False by default.
+* enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
+* enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
+* ref : OPTIONAL : If you have used "dataType" as a dataType, you can pass the reference to the Data Type there.
+* mapType : OPTIONAL : If you are creating a map type, define the type of the map value. Default to "string". Possible other value: "integer"\
+possible kwargs:
+* description : if you want to add a description on your field
+* maximum : if you want to add a maximum value for numeric field
+* minimum : if you want to add a minimum value for numeric field
+* pattern : if you want to add a pattern for string field
+* minLength : if you want to add a minimum length for string field
+* maxLength : if you want to add a maximum length for string field
+* default : if you want to add a default value for the field
+* metaStatus : if you want to add a meta:status attribute to the field
+
+
+#### removeField
+Remove a field from the definition based on the path provided.\
+NOTE: Once a schema has been enabled for Profile or has a dataset associated with it, the path cannot be removed.\
+Argument:
+* path : REQUIRED : The path to be removed from the definition with dot notation.
