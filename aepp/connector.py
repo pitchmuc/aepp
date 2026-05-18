@@ -435,7 +435,7 @@ class AdobeRequest:
                 print("error generating the JSON response")
                 print(f"status: {res.status_code}")
                 print(res.text)
-            if res.status_code != 200:
+            if res.status_code != 200 and res.status_code != 204:
                 res_header = res.headers
             else:
                 res_header = {}
@@ -511,7 +511,7 @@ class AdobeRequest:
                 print("error generating the JSON response")
                 print(f"status: {res.status_code}")
                 print(res.text)
-            if res.status_code != 200:
+            if res.status_code != 200 and res.status_code != 204:
                 try:
                     res_json = res.json()
                 except:
@@ -580,7 +580,7 @@ class AdobeRequest:
                 self.logger.error(
                     f"error with the response {res.status_code}: {res.text}"
                 )
-            if res.status_code != 200:
+            if res.status_code != 200 and res.status_code != 204:
                 try:
                     res_json = res.json()
                 except:

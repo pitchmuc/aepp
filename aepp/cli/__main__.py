@@ -1,5 +1,3 @@
-from html import parser
-from matplotlib.pyplot import table
 import aepp
 from aepp import synchronizer, schema, schemamanager, fieldgroupmanager, datatypemanager, identity, queryservice,catalog,flowservice,sandboxes, segmentation, customerprofile
 from aepp.cli.upsfieldsanalyzer import UpsFieldsAnalyzer
@@ -8,7 +6,6 @@ from functools import wraps
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.markdown import Markdown
 from pathlib import Path
 from io import FileIO
 import pandas as pd
@@ -16,6 +13,7 @@ from datetime import datetime
 import urllib.parse
 from typing import Any, Concatenate, ParamSpec, ParamSpecKwargs
 from collections.abc import Callable
+import os
 
 P = ParamSpec("P")
 
@@ -29,6 +27,11 @@ def login_required(f:Callable[Concatenate["ServiceShell", P], None]) -> Callable
             return
         return f(self, *args, **kwargs)
     return wrapper
+
+def clear_terminal():
+    """Clears the terminal screen based on the OS."""
+    # os.name is 'nt' for Windows, 'posix' for Mac/Linux
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 console = Console()
 
@@ -2002,6 +2005,10 @@ class ServiceShell(cmd.Cmd):
                     print("  " + command)
             print()
             print()
+    
+    def do_clear(self, arg:Any) -> None:
+        """Clear the terminal screen."""
+        clear_terminal()
 
     def get_grouped_commands(self):
         # This maps the defined groups to actual commands available in the class
