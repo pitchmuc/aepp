@@ -8,12 +8,10 @@
 #  OF ANY KIND, either express or implied. See the License for the specific language
 #  governing permissions and limitations under the License.
 
-from turtle import title
-
 import aepp
 from copy import deepcopy
 from typing import Union
-import time, json, types
+import time, json
 from pathlib import Path
 import numpy as np
 from io import FileIO
