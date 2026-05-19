@@ -7,7 +7,9 @@ This page list all of the changes that came during the different release of the 
 * adding support for `labels` in the `createDescriptorOperation` in `SchemaManager`
 * adding the `createDescriptorOperation` in the `Schema` class
 * adding the `clear` method in the CLI
-* supporting the new `adhoc-v2` schema in the `SchemaManager`.
+* supporting the new `adhoc-v2` schema in the `SchemaManager`.\
+Patch:
+* fixing the `SchemaManager` issue for regular schema due to adhoc-v2 schema patch.  
 
 ## version 0.5.4
 * Fix issues when synchronizer search for config.json file in local folders and they do not exist.

@@ -363,8 +363,10 @@ class SchemaManager:
             self.altId = schemaDef.get('meta:altId')
         if schemaDef.get('meta:class'):
             self.classId = schemaDef.get('meta:class')
-            if len(schemaDef.get('meta:extends',[])) > 0:
+            if self.classId is None and len(schemaDef.get('meta:extends',[])) > 0:
                 self.classId = schemaDef.get('meta:extends')[0]
+                if self.classId != "https://ns.adobe.com/xdm/data/adhoc-v2":
+                    self.classId = None
         
     def __str__(self)->str:
         return json.dumps(self.schema,indent=2)
