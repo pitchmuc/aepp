@@ -65,5 +65,6 @@ endpoints = {
         "inlet": "",
         "collection": "https://dcs.adobedc.net"
     },
-    "audit": "/data/foundation"
+    "audit": "/data/foundation",
+    "ajo": "/ajo"
 }
