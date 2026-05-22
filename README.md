@@ -62,6 +62,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [privacyservice](./docs/privacyservice.md) (see note below)
 * [data hygiene](./docs/hygiene.md)
 * [edge](./docs/edge.md)
+* [ajo](./docs/ajo.md)
 * [som](./docs/som.md) (see note below)
 * [synchronizer](./docs/synchronizer.md)
 * [cli](./docs/cli.md)

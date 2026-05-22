@@ -2,6 +2,19 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.5.6
+* Adding the `ajo` module [documentation](./ajo.md) 
+
+## version 0.5.5
+* update the `createDescriptor` method in the `Schema` class.
+* adding support for `labels` in the `createDescriptorOperation` in `SchemaManager`
+* adding the `createDescriptorOperation` in the `Schema` class
+* adding the `clear` method in the CLI
+* supporting the new `adhoc-v2` schema in the `SchemaManager`.\
+Patch:
+* fixing the `SchemaManager` issue for regular schema due to adhoc-v2 schema patch.
+* fixing issue with unwanted dependency 
+
 ## version 0.5.4
 * Fix issues when synchronizer search for config.json file in local folders and they do not exist.
 * Refactoring FieldGroupManager, SchemaManager and DataTypeManager to support better handling of local folder and synchronization.

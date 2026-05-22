@@ -13,6 +13,7 @@ from copy import deepcopy
 from typing import Union
 import time, json
 from pathlib import Path
+import numpy as np
 from io import FileIO
 import pandas as pd
 from .configs import ConnectObject
@@ -20,7 +21,7 @@ from aepp.fieldgroupmanager import FieldGroupManager
 from aepp.classmanager import ClassManager
 from aepp.catalog import ObservableSchemaManager
 from aepp.schema import Schema
-from aepp.manager_utils import __simpleDeepMerge__
+from aepp.manager_utils import __simpleDeepMerge__, __cleanPath__, __transformationDict__,__searchAlgo__,__accessorAlgo__
 from aepp import som
 from tempfile import TemporaryDirectory
 from datamodel_code_generator import InputFileType, generate
@@ -30,7 +31,7 @@ class SchemaManager:
     """
     A class to handle the schema management.
     """
-    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity","xdm:descriptorRelationship"]
+    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity","xdm:descriptorRelationship","xdm:descriptorTimestamp","xdm:descriptorVersion","xdm:descriptorPrimaryKey"]
 
     def __init__(self,
                 schema:Union[str,dict]=None,
@@ -42,6 +43,7 @@ class SchemaManager:
                 description : str = "powered by aepp",
                 localFolder:str|list|None=None,
                 sandbox:str=None,
+                behaviorType:str="record",
                 **kwargs
                 )->None:
         """
@@ -60,15 +62,17 @@ class SchemaManager:
             description : OPTIONAL : To provide a description to your schema
             localFolder : OPTIONAL : If you want to use local storage to create all the connections between schema and field groups, classes and datatypes. Can be a set of folders.
             sandbox : OPTIONAL : If you use localFolder, you can specific the sandbox.
+            behaviorType : OPTIONAL : If you are using the adhoc class, define the behavior of the schema ("record" or "time-series", default "record"). 
         Possible kwargs:
             tenantId : OPTIONAL : If you want to specific the tenantId for the schema manager (if not provided, it will be retrieved from the schemaAPI or the local folder)
             retry : int to set the number of retry in case of connection error for the schema manager and the modules (default is the retry number set for the instance)
         """
-        self.fieldGroupIds=[]
+        self.fieldGroupIds = tuple()
+        self.fieldGroupTitles = tuple()
         self.fieldGroupsManagers = {}
-        self.classIds=[]
+        self.classIds = []
         self.classId = None
-        self.classManagers={}
+        self.classManagers = {}
         self.title = title
         self.STATE = "EXISTING"
         self.localfolder = None
@@ -173,10 +177,11 @@ class SchemaManager:
                 fgM = FieldGroupManager(fieldGroup=definition,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                 self.fieldGroupsManagers[fgM.title] = fgM
             for clas in self.classIds:
-                clsM = None
-                clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
-                if clsM is not None:
-                    self.classManagers[clsM.title] = clsM
+                if clas != "https://ns.adobe.com/xdm/data/adhoc-v2":
+                    clsM = None
+                    clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
+                    if clsM is not None:
+                        self.classManagers[clsM.title] = clsM
         elif type(schema) == str:
             if self.schemaAPI is not None:
                 self.schema = self.schemaAPI.getSchema(schema,full=False,schema_type='xed')
@@ -238,41 +243,63 @@ class SchemaManager:
                 fgM = FieldGroupManager(fieldGroup=definition['$id'],schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                 self.fieldGroupsManagers[fgM.title] = fgM
             for clas in self.classIds:
-                clsM = None
-                if self.localfolder is not None:
-                    found = False
-                    for folder in self.classFolder:
-                        for json_file in folder.glob('*.json'):
-                            tmp_def = json.load(FileIO(json_file))
-                            if tmp_def.get('$id') == clas:
-                                clsM = ClassManager(tmp_def,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
-                                found = True
+                if clas != "https://ns.adobe.com/xdm/data/adhoc-v2":
+                    clsM = None
+                    if self.localfolder is not None:
+                        found = False
+                        for folder in self.classFolder:
+                            for json_file in folder.glob('*.json'):
+                                tmp_def = json.load(FileIO(json_file))
+                                if tmp_def.get('$id') == clas:
+                                    clsM = ClassManager(tmp_def,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
+                                    found = True
+                                    break
+                            if found:
                                 break
-                        if found:
-                            break
-                elif self.schemaAPI is not None:
-                    clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
-                if clsM is not None:
-                    self.classManagers[clsM.title] = clsM
+                    elif self.schemaAPI is not None:
+                        clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
+                    if clsM is not None:
+                        self.classManagers[clsM.title] = clsM
         elif schema is None:
             self.STATE = "NEW"
             self.classId = schemaClass
             self.classIds = [schemaClass]
-            self.schema = {
-                    "title": self.title,
-                    "description": description,
-                    "allOf": [
-                            {
-                            "$ref": schemaClass
-                            }
-                        ]
-                    }
+            if self.classId != "https://ns.adobe.com/xdm/data/adhoc-v2":
+                self.schema = {
+                        "title": self.title,
+                        "description": description,
+                        "allOf": [
+                                {
+                                "$ref": schemaClass
+                                }
+                            ]
+                        }
+            else:
+                self.schema = {
+                        "title": self.title,
+                        "description": description,
+                        "type": "object",
+                        "definitions":{
+                            "customFields":{
+                                "type" : "object",
+                                "properties":{
+                                }
+                            },
+                        },
+                        "allOf": [{
+                                "$ref": "#/definitions/customFields",
+                                "meta:xdmType": "object"
+                            }],
+                        "meta:extends": [self.classId],
+                        "meta:behaviorType": behaviorType
+                        }
             for clas in self.classIds:
-                clsM = None
-                clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
-                if clsM is not None:
-                    self.classManagers[clsM.title] = clsM
-        if fieldGroups is not None and type(fieldGroups) == list:
+                if clas != "https://ns.adobe.com/xdm/data/adhoc-v2":
+                    clsM = None
+                    clsM = ClassManager(clas,schemaAPI=self.schemaAPI,localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
+                    if clsM is not None:
+                        self.classManagers[clsM.title] = clsM
+        if fieldGroups is not None and type(fieldGroups) == list and self.classId != "https://ns.adobe.com/xdm/data/adhoc-v2":
             if fieldGroups[0] == str:
                 for fgId in fieldGroups:
                     if self.schemaAPI is not None:
@@ -313,9 +340,13 @@ class SchemaManager:
                     fgM = FieldGroupManager(fg,schemaAPI=self.schemaAPI, localFolder=localFolder,tenantId=self.tenantId,sandbox=self.sandbox,retry=self.retry)
                     if fgM is not None:
                         self.fieldGroupsManagers[fgM.title] = fgM
-        self.fieldGroupTitles= tuple(fg.title for fg in list(self.fieldGroupsManagers.values()) if hasattr(fg,'id'))
-        self.fieldGroups = {fg.id:fg.title for fg in list(self.fieldGroupsManagers.values()) if hasattr(fg,'id')}
-        self.fieldGroupIds = tuple(fg.id for fg in list(self.fieldGroupsManagers.values()) if hasattr(fg,'id'))
+        if self.classId != "https://ns.adobe.com/xdm/data/adhoc-v2":
+            self.fieldGroupTitles = tuple(fg.title for fg in list(self.fieldGroupsManagers.values()) if hasattr(fg,'id'))
+            self.fieldGroups = {fg.id:fg.title for fg in list(self.fieldGroupsManagers.values()) if hasattr(fg,'id')}
+            self.fieldGroupIds = tuple(fg.id for fg in list(self.fieldGroupsManagers.values()) if hasattr(fg,'id'))
+        else:
+            self.addField = self.__addField__
+            self.removeField = self.__removeField__
     
     def __setAttributes__(self,schemaDef:dict)->None:
         """
@@ -330,13 +361,511 @@ class SchemaManager:
             self.altId = schemaDef.get('meta:altId')
         if schemaDef.get('meta:class'):
             self.classId = schemaDef.get('meta:class')
-    
-
+            if self.classId is None and len(schemaDef.get('meta:extends',[])) > 0:
+                self.classId = schemaDef.get('meta:extends')[0]
+                if self.classId != "https://ns.adobe.com/xdm/data/adhoc-v2":
+                    self.classId = None
+        
     def __str__(self)->str:
         return json.dumps(self.schema,indent=2)
     
     def __repr__(self)->str:
         return json.dumps(self.schema,indent=2)
+    
+    def __transformFieldType__(self,dataType:str=None,**kwargs)->dict:
+        """
+        return the object with the type and possible meta attribute.
+        Possible kwargs:
+            minimum : minimum value for number/integer
+            maximum : maximum value for number/integer
+            pattern : pattern for string
+            minLength : minimum length for string
+            maxLength : maximum length for string
+            default : default value for the field
+        """
+        obj = {}
+        if dataType == 'double':
+            obj['type'] = "number"
+        elif dataType == 'long':
+            obj['type'] = "integer"
+            obj['maximum'] = 9007199254740991
+            obj['minimum'] = -9007199254740991
+        elif dataType == "short":
+            obj['type'] = "integer"
+            obj['maximum'] = 32768
+            obj['minimum'] = -32768
+        elif dataType == "date":
+            obj['type'] = "string"
+            obj['format'] = "date"
+        elif dataType.lower() == "datetime" or dataType == "date-time":
+            obj['type'] = "string"
+            obj['format'] = "date-time"
+        elif dataType == "byte":
+            obj['type'] = "integer"
+            obj['maximum'] = 128
+            obj['minimum'] = -128
+        elif dataType == "int":
+            obj['type'] = "integer"
+        else:
+            obj['type'] = dataType
+        list_possible_kwargs = ['minimum','maximum','pattern','minLength','maxLength','enum','default']
+        for kw in kwargs:
+            if kw in list_possible_kwargs:
+                if kwargs[kw] is not None:
+                    obj[kw] = kwargs[kw]
+        return obj
+    
+    def __setField__(self,completePathList:list=None,schema:dict=None,newField:str=None,obj:dict=None)->dict:
+        """
+        Create a field with the attribute provided
+        Arguments:
+            completePathList : list of path to use for creation of the field.
+            schema : the self.schema attribute
+            newField : name of the new field to create
+            obj : the object associated with the new field
+        """
+        foundFlag = False ## Flag to set if the operation has been realized or not
+        lastField = completePathList[-1] ## last field where to put the new object.
+        schema = deepcopy(schema)
+        for key in schema:
+            level = schema.get(key,None)
+            if type(level) == dict and key == completePathList[0]:
+                if 'properties' in level.keys(): ## if we are in a properties object
+                    if key != lastField:
+                        res,foundFlag = self.__setField__(completePathList[1:],schema[key]['properties'],newField,obj)
+                        schema[key]['properties'] = res
+                    else:
+                        schema[key]['properties'][newField] = obj
+                        foundFlag = True
+                        return schema,foundFlag
+                elif 'items' in level.keys(): ## if we are in an array of objects
+                    if 'properties' in  schema[key].get('items',{}).keys():
+                        if key != lastField:
+                            res, foundFlag = self.__setField__(completePathList[1:],schema[key]['items']['properties'],newField,obj)
+                            schema[key]['items']['properties'] = res
+                        else:
+                            schema[key]['items']['properties'][newField] = obj
+                            foundFlag = True
+                            return schema,foundFlag
+        return schema,foundFlag
+    
+    def __removeKey__(self,completePathList:list=None,schema:dict=None)->dict:
+        """
+        Remove the key and all element based on the path provided.
+        Arugments:
+            completePathList : list of path to use for identifying the key to remove
+            schema : the self.schema attribute
+        """
+        lastField = deepcopy(completePathList).pop()
+        success = False
+        for key in schema:
+            level = schema.get(key,None)
+            if type(level) == dict and key in completePathList:
+                if 'properties' in level.keys():
+                    if lastField in level['properties'].keys():
+                        level['properties'].pop(lastField)
+                        success = True
+                        return success
+                    else:
+                        success = self.__removeKey__(completePathList,schema[key]['properties'])
+                        return success
+                elif 'items' in level.keys():
+                    if 'properties' in level.get('items',{}).keys():
+                        if lastField in level.get('items',{}).get('properties'):
+                            level['items']['properties'].pop(lastField)
+                            success = True
+                            return success
+                        else:
+                            success = self.__removeKey__(completePathList,schema[key]['items']['properties'])
+                            return success
+        return success 
+
+    def __addField__(self,path:str,dataType:str=None,title:str=None,objectComponents:dict=None,array:bool=False,enumValues:dict=None,enumType:bool=None,ref:str=None,mapType:str='string',**kwargs)->dict:
+        """
+        Add the field to the schema definition. ONLY WORKS FOR "adhoc-v2"" SCHEMA.
+        Returns False when the field could not be inserted.
+        Arguments:
+            path : REQUIRED : path with dot notation where you want to create that new field. New field name should be included.
+            dataType : REQUIRED : the field type you want to create
+                A type can be any of the following: "string","boolean","double","long","integer","int","number","short","byte","date","datetime","date-time","boolean","object","array", "map"
+                NOTE : "array" type is to be used for array of objects. If the type is string array, use the boolean "array" parameter.
+            title : OPTIONAL : if you want to have a custom title.
+            objectComponents: OPTIONAL : A dictionary with the name of the fields contain in the "object" or "array of objects" specify, with their typed.
+                Example : {'field1:'string','field2':'double'}
+            array : OPTIONAL : Boolean. If the element to create is an array. False by default.
+            enumValues : OPTIONAL : If your field is an enum, provid a dictionary of value and display name, such as : {'value':'display'}
+            enumType: OPTIONAL: If your field is an enum, indicates whether it is an enum (True) or suggested values (False)
+            ref : OPTIONAL : If you have used "dataType" as a dataType, you can pass the reference to the Data Type there.
+            mapType : OPTIONAL : If you are creating a map type, define the type of the map value. Default to "string". Possible other value: "integer"
+        possible kwargs:
+            description : if you want to add a description on your field
+            maximum : if you want to add a maximum value for numeric field
+            minimum : if you want to add a minimum value for numeric field
+            pattern : if you want to add a pattern for string field
+            minLength : if you want to add a minimum length for string field
+            maxLength : if you want to add a maximum length for string field
+            default : if you want to add a default value for the field
+            metaStatus : if you want to add a meta:status attribute to the field
+        """
+        if path is None:
+            raise ValueError("path must provided")
+        dataType = dataType.replace('[]','')
+        typeTyped = ["string","boolean","double","long","int","integer","number","short","byte","date","datetime",'date-time',"boolean","object",'array','map']
+        if dataType not in typeTyped:
+            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","int","integer","short","byte","date","date-time","boolean","object","byte","dataType", "map". Got {dataType}')
+        if dataType == "dataType" and ref is None:
+            raise ValueError("Required a reference to be passed when selecting 'dataType' type of data.")
+        if title is None:
+            title = __cleanPath__(path.split('.').pop())
+        if title == 'items' or title == 'properties':
+            raise Exception('"items" and "properties" are 2 reserved keywords')
+        pathSplit = __cleanPath__(path).split('.')
+        if pathSplit[0] == '':
+            del pathSplit[0]
+        newField = pathSplit.pop()
+        description = kwargs.get("description",'')
+        metaStatus = kwargs.get('metaStatus',None)
+        if dataType == 'object':
+            if array==False:
+                if objectComponents is not None:
+                    obj = { 'type':'object', 'title':title, "description":description,
+                        'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
+                    }
+                else:
+                    obj = { 'type':'object', 'title':title, "description":description,
+                        'properties':{}
+                    }
+                if metaStatus is not None:
+                    obj['meta:status'] = metaStatus
+            else:
+                if objectComponents is not None:
+                    obj = { 'type':'array', 'title':title, "description":description,
+                        'items':{
+                            'type':'object',
+                            'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
+                        }
+                    }
+                else:
+                    obj = { 'type':'array', 'title':title, "description":description,
+                        'items':{
+                            'type':'object',
+                            'properties':{}
+                        }
+                    }
+                if metaStatus is not None:
+                    obj['meta:status'] = metaStatus
+        elif dataType == 'array':
+            if objectComponents is not None:
+                obj = { 'type':'array', 'title':title,"description":description,
+                    "items":{
+                        'type':'object',
+                        'properties':{key:self.__transformFieldType__(objectComponents[key]) for key in objectComponents }
+                    }
+                }
+            else:
+                obj = { 'type':'array', 'title':title,"description":description,
+                    "items":{
+                        'type':'object',
+                        'properties':{}
+                    }
+                }
+            if metaStatus is not None:
+                obj['meta:status'] = metaStatus
+        elif dataType == "map":
+            obj = {'additionalProperties': {'type': mapType,
+                'meta:xdmType': mapType},
+                'required': [],
+                'note': '',
+                'mapFieldType': mapType,
+                'type': 'object',
+                'description': description,
+                'title': title,
+                'meta:xdmType': 'map'}
+            if mapType == "integer":
+                obj['additionalProperties']['maximum'] = 2147483647
+                obj['additionalProperties']['minimum'] = -2147483648
+                obj['additionalProperties']['meta:xdmType'] = "int"
+            if metaStatus is not None:
+                obj['meta:status'] = metaStatus
+        else:
+            minimum = kwargs.get('minimum',None)
+            maximum = kwargs.get('maximum',None)
+            pattern = kwargs.get('pattern',None)
+            minLength = kwargs.get('minLength',None)
+            maxLength = kwargs.get('maxLength',None)
+            default = kwargs.get('default',None)
+            obj = self.__transformFieldType__(dataType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
+            obj['title'] = title
+            obj["description"] = description,
+            if metaStatus is not None:
+                obj['meta:status'] = metaStatus
+            if type(obj["description"]) == tuple:
+                obj["description"] = obj["description"][0]
+            if array:
+                obj['type'] = "array"
+                obj['items'] = self.__transformFieldType__(dataType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default)
+        if enumValues is not None and type(enumValues) == dict:
+            if array == False:
+                obj['meta:enum'] = enumValues
+                if enumType:
+                    obj['enum'] = list(enumValues.keys())
+            else:
+                obj['items']['meta:enum'] = enumValues
+                if enumType:
+                    obj['items']['enum'] = list(enumValues.keys())
+        completePath:list[str] = [kwargs.get('defaultPath','customFields')] + pathSplit
+        if 'definitions' not in self.schema.keys():
+            if 'properties' in self.schema.keys():
+                definition,foundFlag = self.__setField__(pathSplit, self.schema.get('properties',{}),newField,obj)
+                if foundFlag == False:
+                    return False
+                else:
+                    self.schema['properties'] = definition
+                    return self.schema
+        else:
+            definition,foundFlag = self.__setField__(completePath, self.schema.get('definitions'),newField,obj)
+        self.schema['definitions'] = definition
+        return self.schema
+        
+    def __removeField__(self,path:str)->dict:
+        """
+        Remove a field from the definition based on the path provided.
+        NOTE: Once a schema has been enabled for Profile or has a dataset associated with it, the path cannot be removed.
+        Argument:
+            path : REQUIRED : The path to be removed from the definition with dot notation.
+        """
+        if path is None:
+            raise ValueError('Require a path to remove it')
+        pathSplit = __cleanPath__(path).split('.')
+        if pathSplit[0] == '':
+            del pathSplit[0]
+        success = False
+        ## Try customFields
+        completePath:list[str] = ['customFields'] + pathSplit
+        success = self.__removeKey__(completePath,self.schema.get('definitions'))
+        return success
+
+    def __transformationDF__(self,mydict:dict=None,dictionary:dict=None,path:str=None,queryPath:bool=False,description:bool=False,xdmType:bool=False,required:bool=False,full:bool=False)->dict:
+        """
+        Transform the current XDM schema to a dictionary.
+        Arguments:
+            mydict : the schema
+            dictionary : the dictionary that gather the paths
+            path : path that is currently being developed
+            queryPath: boolean to tell if we want to add the query path
+            required : boolean to know if you want to retrieve the required field
+            full : boolean to know if you want to retrieve all the information (minLength, etc)
+        """
+        if dictionary is None:
+            dictionary = {'path':[],'type':[],'title':[],'description':[],'xdmType':[],'mapType':[]}
+            if queryPath or full:
+                dictionary['querypath'] = []
+            if full:
+                dictionary['minLength'] = []
+                dictionary['maxLength'] = []
+                dictionary['minimum'] = []
+                dictionary['maximum'] = []
+                dictionary['pattern'] = []
+                dictionary['enumValues'] = []
+                dictionary['enum'] = []
+                dictionary['default'] = []
+                dictionary['metaStatus'] = []
+        else:
+            dictionary = dictionary
+        for key in mydict:
+            if type(mydict[key]) == dict and mydict[key].get('meta:referencedFrom',None) is None:## if the object is referenced from another definition, we skip it as it will be treated in the definition where it is referenced
+                if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys() : 
+                    if path is None:
+                        tmp_path = key
+                    else:
+                        tmp_path = f"{path}.{key}"
+                    if tmp_path is not None:
+                        dictionary["path"].append(tmp_path)
+                        dictionary["type"].append(f"{mydict[key].get('type','')}")
+                        dictionary["title"].append(f"{mydict[key].get('title','')}")
+                        dictionary["description"].append(f"{mydict[key].get('description','')}")
+                        dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
+                        if mydict[key].get('meta:xdmType') == 'map':
+                            dictionary["mapType"].append(f"{mydict[key].get('additionalProperties',{}).get('type','string')}")
+                        else:
+                            dictionary["mapType"].append(pd.NA)
+                        if queryPath or full:
+                            dictionary["querypath"].append(__cleanPath__(tmp_path))
+                        if full:
+                            dictionary['metaStatus'].append(mydict[key].get('meta:status',pd.NA))
+                            dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
+                            dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
+                            dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
+                            dictionary['maximum'].append(mydict[key].get('maximum',np.nan))
+                            dictionary['pattern'].append(mydict[key].get('pattern',pd.NA))
+                            dictionary['default'].append(mydict[key].get('default',pd.NA))
+                            enumValues = mydict[key].get('meta:enum',pd.NA)
+                            dictionary['enumValues'].append(enumValues)
+                            if len(mydict[key].get('enum',[])) > 0:
+                                dictionary['enum'].append(True)
+                            else:
+                                dictionary['enum'].append(False)
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if tmp_path is not None:
+                                        tmp_reqPath = f"{tmp_path}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
+                    properties = mydict[key].get('properties',None)
+                    if properties is not None:
+                        self.__transformationDF__(properties,dictionary,tmp_path,queryPath,required,full=full)
+                elif mydict[key].get('type') == 'array':
+                    levelProperties = mydict[key]['items'].get('properties',None)
+                    if levelProperties is not None: ## array of objects
+                        if path is None:
+                            tmp_path = f"{key}[]{{}}"
+                        else :
+                            tmp_path = f"{path}.{key}[]{{}}"
+                        dictionary["path"].append(tmp_path)
+                        dictionary["type"].append(f"{mydict[key].get('type')}")
+                        dictionary["title"].append(f"{mydict[key].get('title')}")
+                        dictionary["description"].append(mydict[key].get('description',''))
+                        dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
+                        if mydict[key].get('meta:xdmType') == 'map':
+                            dictionary["mapType"].append(f"{mydict[key].get('additionalProperties',{}).get('type','string')}")
+                        else:
+                            dictionary["mapType"].append(pd.NA)
+                        if (queryPath or full) and tmp_path is not None:
+                            dictionary["querypath"].append(__cleanPath__(tmp_path))
+                        if full:
+                            dictionary['metaStatus'].append(mydict[key].get('meta:status',pd.NA))
+                            dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
+                            dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
+                            dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
+                            dictionary['maximum'].append(mydict[key].get('maximum',np.nan))
+                            dictionary['pattern'].append(mydict[key].get('pattern',pd.NA))
+                            dictionary['default'].append(mydict[key].get('default',pd.NA))
+                            enumValues = mydict[key].get('meta:enum',pd.NA)
+                            dictionary['enumValues'].append(enumValues)
+                            if len(mydict[key].get('enum',[])) > 0:
+                                dictionary['enum'].append(True)
+                            else:
+                                dictionary['enum'].append(False)
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if tmp_path is not None:
+                                        tmp_reqPath = f"{tmp_path}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
+                        self.__transformationDF__(levelProperties,dictionary,tmp_path,queryPath,required,full=full)
+                    else: ## simple arrays
+                        if '$ref' in mydict[key].get('items',{}).keys(): ## array of a datatype
+                            if path is None:
+                                finalpath = f"{key}[]{{}}"
+                            else:
+                                finalpath = f"{path}.{key}[]{{}}"
+                            dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]{{}}")
+                        else:
+                            if path is None:
+                                finalpath = f"{key}[]"
+                            else:
+                                finalpath = f"{path}.{key}[]"
+                            dictionary["type"].append(f"{mydict[key]['items'].get('type')}[]")
+                        dictionary["path"].append(finalpath)
+                        dictionary["title"].append(f"{mydict[key].get('title')}")
+                        dictionary["description"].append(mydict[key].get('description',''))
+                        dictionary["xdmType"].append(mydict[key]['items'].get('meta:xdmType',''))
+                        if mydict[key]['items'].get('meta:xdmType') == 'map':
+                            dictionary["mapType"].append(f"{mydict[key]['items'].get('additionalProperties',{}).get('type','string')}")
+                        else:
+                            dictionary["mapType"].append(pd.NA)
+                        if (queryPath or full) and finalpath is not None:
+                            dictionary["querypath"].append(__cleanPath__(finalpath))
+                        if full:
+                            dictionary['metaStatus'].append(mydict[key]['items'].get('meta:status',pd.NA))
+                            dictionary['minLength'].append(mydict[key]['items'].get('minLength',np.nan))
+                            dictionary['maxLength'].append(mydict[key]['items'].get('maxLength',np.nan))
+                            dictionary['minimum'].append(mydict[key]['items'].get('minimum',np.nan))
+                            dictionary['maximum'].append(mydict[key]['items'].get('maximum',np.nan))
+                            dictionary['pattern'].append(mydict[key]['items'].get('pattern',pd.NA))
+                            dictionary['default'].append(mydict[key]['items'].get('default',pd.NA))
+                            enumValues = mydict[key]['items'].get('meta:enum',pd.NA)
+                            dictionary['enumValues'].append(enumValues)
+                            if len(mydict[key]['items'].get('enum',[])) > 0:
+                                dictionary['enum'].append(True)
+                            else:
+                                dictionary['enum'].append(False)
+                        if required:
+                            if len(mydict[key].get('required',[])) > 0:
+                                for elRequired in mydict[key].get('required',[]):
+                                    if tmp_path is not None:
+                                        tmp_reqPath = f"{tmp_path}.{elRequired}"
+                                    else:
+                                        tmp_reqPath = f"{elRequired}"
+                                    self.requiredFields.add(tmp_reqPath)
+                else:
+                    if path is not None:
+                        finalpath = f"{path}.{key}"
+                    else:
+                        finalpath = f"{key}"
+                    dictionary["path"].append(finalpath)
+                    dictionary["type"].append(mydict[key].get('type','object'))
+                    dictionary["title"].append(mydict[key].get('title',''))
+                    dictionary["description"].append(mydict[key].get('description',''))
+                    dictionary["xdmType"].append(mydict[key].get('meta:xdmType',''))
+                    if mydict[key].get('meta:xdmType') == 'map':
+                        dictionary["mapType"].append(f"{mydict[key].get('additionalProperties',{}).get('type','string')}")
+                    else:
+                        dictionary["mapType"].append(pd.NA)
+                    if (queryPath or full) and finalpath is not None:
+                        dictionary["querypath"].append(__cleanPath__(finalpath))
+                    if full:
+                        dictionary['metaStatus'].append(mydict[key].get('meta:status',pd.NA))
+                        dictionary['minLength'].append(mydict[key].get('minLength',np.nan))
+                        dictionary['maxLength'].append(mydict[key].get('maxLength',np.nan))
+                        dictionary['minimum'].append(mydict[key].get('minimum',np.nan))
+                        dictionary['maximum'].append(mydict[key].get('maximum',np.nan))
+                        dictionary['pattern'].append(mydict[key].get('pattern',pd.NA))
+                        dictionary['default'].append(mydict[key].get('default',pd.NA))
+                        enumValues = mydict[key].get('meta:enum',pd.NA)
+                        dictionary['enumValues'].append(enumValues)
+                        if len(mydict[key].get('enum',[])) > 0:
+                            dictionary['enum'].append(True)
+                        else:
+                            dictionary['enum'].append(False)
+                    if required:
+                        if len(mydict[key].get('required',[])) > 0:
+                            for elRequired in mydict[key].get('required',[]):
+                                if finalpath is not None:
+                                    tmp_reqPath = f"{finalpath}.{elRequired}"
+                                else:
+                                    tmp_reqPath = f"{elRequired}"
+                                self.requiredFields.add(tmp_reqPath)
+            elif type(mydict[key]) == dict and mydict[key].get('meta:referencedFrom',None) is not None: ## if the object is referencing a dataType
+                if mydict[key].get('type') == 'object' or 'properties' in mydict[key].keys() : 
+                    if path is None:
+                        tmp_path = key
+                    else:
+                        tmp_path = f"{path}.{key}"
+                    if tmp_path is not None:
+                        dictionary["path"].append(tmp_path)
+                        dictionary["type"].append(f"{mydict[key].get('type','')}")
+                        dictionary["title"].append(f"{mydict[key].get('title','')}")
+                        dictionary["description"].append(f"{mydict[key].get('description','')}")
+                        dictionary["xdmType"].append(f"{mydict[key].get('meta:xdmType')}")
+                        dictionary["mapType"].append(pd.NA)
+                        if queryPath or full:
+                            dictionary["querypath"].append(__cleanPath__(tmp_path))
+                        if full:
+                            dictionary['metaStatus'].append(pd.NA)
+                            dictionary['minLength'].append(np.nan)
+                            dictionary['maxLength'].append(np.nan)
+                            dictionary['minimum'].append(np.nan)
+                            dictionary['maximum'].append(np.nan)
+                            dictionary['pattern'].append(pd.NA)
+                            dictionary['default'].append(pd.NA)
+                            dictionary['enumValues'].append(pd.NA)
+                            dictionary['enum'].append(False)
+        return dictionary
 
     def setTitle(self,title:str=None)->None:
         """
@@ -372,6 +901,11 @@ class SchemaManager:
             caseSensitive : OPTIONAL : If you want to remove the case sensitivity.
         """
         myResults = []
+        if self.classId == "https://ns.adobe.com/xdm/data/adhoc-v2":
+            definition = self.schema.get('definitions',{})
+            allOf = self.schema.get('allOf',[])
+            res = __searchAlgo__(allOf,definition,string,partialMatch,caseSensitive)
+            return res
         for clmanager in list(self.classManagers.values()):
             res = clmanager.searchField(string,partialMatch,caseSensitive)
             for r in res:
@@ -420,6 +954,8 @@ class SchemaManager:
             fieldGroup : REQUIRED : The fieldGroup ID or the dictionary definition connecting to the API.
                 if a fieldGroup ID is provided, you should have added a schemaAPI previously.
         """
+        if self.classId == "https://ns.adobe.com/xdm/data/adhoc-v2":
+            raise Exception("addFieldGroup method is not available for adhoc-v2 schema as it is not based on field groups but on definitions.")
         if type(fieldGroup) == dict:
             if fieldGroup.get('$id') not in [fg for fg in self.fieldGroupIds]:
                 self.schema['allOf'].append({'$ref':fieldGroup['$id'],"type": "object"})
@@ -446,6 +982,8 @@ class SchemaManager:
         Argument:
             fieldgroup : REQUIRED : The title or the $id of the field group to retrieve.
         """
+        if self.classId == "https://ns.adobe.com/xdm/data/adhoc-v2":
+            raise Exception("Field Group Manager is not available for adhoc-v2 schema as it is not based on field groups but on definitions.")
         if self.getFieldGroupManager is not None:
             if "ns.adobe.com" in fieldgroup: ## id
                 return [fg for fg in list(self.fieldGroupsManagers.values()) if fg.id == fieldgroup][0]
@@ -462,7 +1000,7 @@ class SchemaManager:
                      required:bool=False,
                      full:bool=False)->pd.DataFrame:
         """
-        Extract the information from the Field Groups to a DataFrame. 
+        Extract the information from the Schema to a DataFrame. 
         Arguments:
             save : OPTIONAL : If you wish to save it with the title used by the field group.
                 save as csv with the title used. Not title, used "unknown_schema_" + timestamp.
@@ -472,38 +1010,49 @@ class SchemaManager:
             required : OPTIONAL : If you want to have the required field in the dataframe (default False)
             full : OPTIONAL : If you want to extract all of the attributes from the fields (default False)
         """
-        df = pd.DataFrame({'path':[],'type':[],'fieldGroup':[]})
-        for clManager in list(self.classManagers.values()):
-            tmp_df = clManager.to_dataframe(queryPath=queryPath,editable=editable,required=required,full=full)
+        if self.classId == "https://ns.adobe.com/xdm/data/adhoc-v2":
+            definition = self.schema.get('definitions',{})
+            list_allOf_keys = [el['$ref'].split('/').pop() for el in self.schema.get('allOf',[])]
+            if len(list_allOf_keys)> 0:
+                definition_deep = {}
+                for key in list_allOf_keys:
+                    if definition.get(key,None) is not None:
+                        definition_deep = __simpleDeepMerge__(definition_deep,definition[key]['properties'])
+                definition = definition_deep
+            dictionary = self.__transformationDF__(definition,queryPath=queryPath,required=required,full=full)
+            df = pd.DataFrame(dictionary)
+        else:
+            for clManager in list(self.classManagers.values()):
+                tmp_df = clManager.to_dataframe(queryPath=queryPath,editable=editable,required=required,full=full)
+                if required:
+                    list_required = clManager.requiredFields
+                    if len(list_required) > 0:
+                        tmp_df['required'] = tmp_df['path'].isin(list_required)
+                    else:
+                        tmp_df['required'] = False
+                tmp_df['fieldGroup'] = 'class'
+                df = pd.concat([df,tmp_df],ignore_index=True)
+            for fgmanager in list(self.fieldGroupsManagers.values()):
+                tmp_df = fgmanager.to_dataframe(queryPath=queryPath,editable=editable,required=required,full=full)
+                tmp_df['fieldGroup'] = fgmanager.title
+                if required:
+                    list_required = fgmanager.requiredFields
+                    if len(list_required) > 0:
+                        tmp_df['required'] = tmp_df.apply(lambda x : True if x.path in list_required or x['required'] else False,axis=1)
+                    else:
+                        tmp_df['required'] = tmp_df['required'].apply(lambda x: False if x != True else x)
+                df = pd.concat([df,tmp_df],ignore_index=True)
+            df = df[~df.duplicated(subset=['path'])].reset_index(drop=True)
             if required:
-                list_required = clManager.requiredFields
+                list_required = self.requiredFields
                 if len(list_required) > 0:
-                    tmp_df['required'] = tmp_df['path'].isin(list_required)
+                    df['required'] = df.apply(lambda x : True if x.path in list_required or x['required'] else False,axis=1)
                 else:
-                    tmp_df['required'] = False
-            tmp_df['fieldGroup'] = 'class'
-            df = pd.concat([df,tmp_df],ignore_index=True)
-        for fgmanager in list(self.fieldGroupsManagers.values()):
-            tmp_df = fgmanager.to_dataframe(queryPath=queryPath,editable=editable,required=required,full=full)
-            tmp_df['fieldGroup'] = fgmanager.title
-            if required:
-                list_required = fgmanager.requiredFields
-                if len(list_required) > 0:
-                    tmp_df['required'] = tmp_df.apply(lambda x : True if x.path in list_required or x['required'] else False,axis=1)
-                else:
-                    tmp_df['required'] = tmp_df['required'].apply(lambda x: False if x != True else x)
-            df = pd.concat([df,tmp_df],ignore_index=True)
-        df = df[~df.duplicated(subset=['path'])].reset_index(drop=True)
-        if required:
-            list_required = self.requiredFields
-            if len(list_required) > 0:
-                df['required'] = df.apply(lambda x : True if x.path in list_required or x['required'] else False,axis=1)
-            else:
-                df['required'] = df['required'].apply(lambda x: False if x != True else x)
-        if excludeObjects:
-            df = df[df['type'] != 'object'].copy()
-        if save:
-            title = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}.csv')
+                    df['required'] = df['required'].apply(lambda x: False if x != True else x)
+            if excludeObjects:
+                df = df[df['type'] != 'object'].copy()
+            if save:
+                title = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}.csv')
             df.to_csv(f"{title}.csv",index=False)
         return df
     
@@ -511,13 +1060,17 @@ class SchemaManager:
         """
         Return a dictionary of the whole schema. You need to have instanciated the Field Group Manager
         """
-        list_dict = [fbm.to_dict() for fbm in list(self.fieldGroupsManagers.values())]
-        list_class_dicts = [clm.to_dict() for clm in list(self.classManagers.values())]
-        result = {}
-        for mydict in list_class_dicts:
-            result = __simpleDeepMerge__(result,mydict)
-        for mydict in list_dict:
-            result = __simpleDeepMerge__(result,mydict)
+        if self.classId != "https://ns.adobe.com/xdm/data/adhoc-v2":
+            list_dict = [fbm.to_dict() for fbm in list(self.fieldGroupsManagers.values())]
+            list_class_dicts = [clm.to_dict() for clm in list(self.classManagers.values())]
+            result = {}
+            for mydict in list_class_dicts:
+                result = __simpleDeepMerge__(result,mydict)
+            for mydict in list_dict:
+                result = __simpleDeepMerge__(result,mydict)
+        else:
+            definition = self.schema.get('definitions')
+            result = __transformationDict__(definition,True)
         return result
     
     def to_som(self)->'som.Som':
@@ -534,35 +1087,37 @@ class SchemaManager:
         possible kwargs:
             output_model_type : The model that is outputed, default PydanticV2BaseModel
         """
-        list_pydantics = [fbm.to_pydantic(origin='schema') for fbm in list(self.fieldGroupsManagers.values())]
-        list_class_pydantics = [clm.to_pydantic(origin='schema') for clm in list(self.classManagers.values())]
-        result = {}
-        for mydict in list_class_pydantics:
-            result = __simpleDeepMerge__(result,mydict)
-        for mydict in list_pydantics:
-            result = __simpleDeepMerge__(result,mydict)
-        pydantic_schema = {}
-        pydantic_schema['title'] = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}')
-        pydantic_schema['description'] = self.schema.get('description','')
-        pydantic_schema['type'] = 'object'
-        pydantic_schema["$schema"] = "http://json-schema.org/draft-07/schema#"
-        pydantic_schema['properties'] = deepcopy(result)
-        modelTypeOutput = kwargs.get("output_model_type",DataModelType.PydanticV2BaseModel)
-        with TemporaryDirectory() as temporary_directory_name:
-            temporary_directory = Path(temporary_directory_name)
-            output = Path(temporary_directory / 'tmp_model.py')
-            generate(
-                json.dumps(pydantic_schema),
-                input_file_type=InputFileType.JsonSchema,
-                output=output,
-                output_model_type=modelTypeOutput,
-            )
-            mydata: str = output.read_text()
-        if save:
-            with open(f"pydantic_{self.schema.get('title',f'unknown_schema_{str(int(time.time()))}')}.py",'w') as f:
-                f.write(mydata)
-        return mydata
-
+        if self.classId != "https://ns.adobe.com/xdm/data/adhoc-v2":
+            return None ## TODO : to be implemented within schema manager
+        else:
+            list_pydantics = [fbm.to_pydantic(origin='schema') for fbm in list(self.fieldGroupsManagers.values())]
+            list_class_pydantics = [clm.to_pydantic(origin='schema') for clm in list(self.classManagers.values())]
+            result = {}
+            for mydict in list_class_pydantics:
+                result = __simpleDeepMerge__(result,mydict)
+            for mydict in list_pydantics:
+                result = __simpleDeepMerge__(result,mydict)
+            pydantic_schema = {}
+            pydantic_schema['title'] = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}')
+            pydantic_schema['description'] = self.schema.get('description','')
+            pydantic_schema['type'] = 'object'
+            pydantic_schema["$schema"] = "http://json-schema.org/draft-07/schema#"
+            pydantic_schema['properties'] = deepcopy(result)
+            modelTypeOutput = kwargs.get("output_model_type",DataModelType.PydanticV2BaseModel)
+            with TemporaryDirectory() as temporary_directory_name:
+                temporary_directory = Path(temporary_directory_name)
+                output = Path(temporary_directory / 'tmp_model.py')
+                generate(
+                    json.dumps(pydantic_schema),
+                    input_file_type=InputFileType.JsonSchema,
+                    output=output,
+                    output_model_type=modelTypeOutput,
+                )
+                mydata: str = output.read_text()
+            if save:
+                with open(f"pydantic_{self.schema.get('title',f'unknown_schema_{str(int(time.time()))}')}.py",'w') as f:
+                    f.write(mydata)
+            return mydata
 
     def getDatasets(self)->dict:
         """
@@ -589,7 +1144,8 @@ class SchemaManager:
         listMetaTags = [key for key in self.schema.keys() if 'meta' in key]
         if len(listMetaTags)>0:
             for key in listMetaTags:
-                del self.schema[key]
+                if key not in ["meta:extends","meta:behaviorType"]:
+                    del self.schema[key]
         res = self.schemaAPI.createSchema(self.schema)
         if '$id' in res.keys():
             self.schema = res
@@ -614,7 +1170,7 @@ class SchemaManager:
         return res
     
     def createDescriptorOperation(self,descType:str=None,
-                                completePath:str=None,
+                                completePath:str | list[str]=None,
                                 identityNSCode:str=None,
                                 identityPrimary:bool=False,
                                 alternateTitle:str="",
@@ -625,6 +1181,7 @@ class SchemaManager:
                                 targetCompletePath:str=None,
                                 targetNamespace:str=None,
                                 timezone:str="UTC",
+                                labels: list[str]=None,
                                 granularity:str="day",
                                 cardinality:str="M:1",
                                 )->dict:
@@ -637,6 +1194,7 @@ class SchemaManager:
                 it can only be one of the following value: "xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorLabel","xdm:descriptorTimeSeriesGranularity", "xdm:descriptorRelationship"
             completePath : REQUIRED : the dot path of the field you want to attach a descriptor to.
                 Example: '_tenant.tenantObject.field'
+                It has to be an array for descriptorPrimaryKey.
             identityNSCode : OPTIONAL : if the descriptor is identity related, the namespace CODE  used.
             identityPrimary : OPTIONAL : If the primary descriptor added is the primary identity.
             alternateTitle : OPTIONAL : if the descriptor is alternateDisplay, the alternate title to be used.
@@ -731,9 +1289,37 @@ class SchemaManager:
                 "xdm:sourceProperty": completePath,
                 "xdm:destinationSchema": targetSchema,
                 "xdm:destinationProperty": targetCompletePath,
-                "xdm:destinationNamespace": targetNamespace,
                 "xdm:destinationVersion": 1,
                 "xdm:cardinality": cardinality
+            }
+            if targetNamespace is not None:
+                obj["xdm:destinationNamespace"] = targetNamespace
+        elif descType == "xdm:descriptorPrimaryKey":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+            }
+        elif descType == "xdm:descriptorVersion":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceProperty": completePath,
+            }
+        elif descType == "xdm:descriptorTimestamp":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceProperty": completePath,
+            }
+        elif descType == "xdm:descriptorLabel":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": self.id,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:label": labels
             }
         return obj
     
@@ -855,6 +1441,7 @@ class SchemaManager:
         """
         if schema is None:
             raise ValueError("Require a dataframe or a CSV")
+        
         if type(schema) == str:
             if '.csv' in schema:
                 df_import = pd.read_csv(schema,sep=sep)
@@ -863,49 +1450,89 @@ class SchemaManager:
                     raise ImportError("You need to pass a sheet name to use Excel")
                 df_import = pd.read_excel(schema,sheet_name=sheet_name)
         elif type(schema) == pd.DataFrame:
-            df_import = schema
+            df_import = schema.copy()
         if 'path' not in df_import.columns or 'type' not in df_import.columns or 'fieldGroup' not in df_import.columns:
             raise AttributeError("missing a column [type, path, or type] in your fieldgroup")
-        fieldGroupsImportList = list(df_import['fieldGroup'].unique())
-        allFieldGroups = self.schemaAPI.getFieldGroups() ## generate the dictionary in data attribute
-        ootbFGS = self.schemaAPI.getFieldGroupsGlobal()
-        dictionaryFGs = {fg:None for fg in fieldGroupsImportList}
-        dict_SourcePropery_Descriptor = {} ## default descriptors list empty
-        if hasattr(self,'id'):
-            mydescriptors = self.schemaAPI.getDescriptors(type_desc="xdm:alternateDisplayInfo",prop=f"xdm:sourceSchema=={self.id}")
-            dict_SourcePropery_Descriptor = {ex['xdm:sourceProperty']:ex for ex in mydescriptors}
-        for fg in fieldGroupsImportList:
-            subDF:pd.DataFrame = df_import[df_import['fieldGroup'] == fg].copy()
-            if fg in self.fieldGroups.values():
-                myFg = self.getFieldGroupManager(fg)
-                if myFg.EDITABLE:
-                    res = myFg.importFieldGroupDefinition(subDF)
+        if self.classId == "https://ns.adobe.com/xdm/data/adhoc-v2":
+            df_import['title'] = df_import['title'].fillna('')
+            df_import['description'] = df_import['description'].fillna('')
+            if 'title' not in df_import.columns:
+                df_import['title'] = df_import['path'].apply(lambda x : x.split('.')[-1])
+            if 'description' not in df_import.columns:
+                df_import['description'] = ""
+            df_import['pathDot'] = df_import.path.str.count(r'\.')
+            df_import = df_import.sort_values(['pathDot'])##sorting creation of objects
+            for index, row in df_import.iterrows():
+                #if 'error' in res.keys():
+                path = row['path']
+                typeElement = row['xdmType']
+                if typeElement == 'map': ## supporting map types
+                    mapType = row.get('mapType','string')
                 else:
-                    res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
-                dictionaryFGs[fg] = res
-            elif fg in self.schemaAPI.data.fieldGroups_altId.keys():
-                myFg = FieldGroupManager(self.schemaAPI.data.fieldGroups_id[fg],schemaAPI=self.schemaAPI)
-                if myFg.EDITABLE:
-                    res = myFg.importFieldGroupDefinition(subDF)
+                    mapType = None
+                minimum = (lambda x : None if pd.isnull(x) else int(x))(row.get('minimum'))
+                maximum = (lambda x : None if pd.isnull(x) else int(x))(row.get('maximum'))
+                minLength = (lambda x : None if pd.isnull(x) else int(x))(row.get('minLength'))
+                maxLength = (lambda x : None if pd.isnull(x) else int(x))(row.get('maxLength'))
+                pattern = (lambda x : None if pd.isnull(x) else x)(row.get('pattern',None))
+                default = (lambda x : None if pd.isnull(x) else x)(row.get('default',None))
+                enumValues = (lambda x : None if pd.isnull(x) else x)(row.get('enumValues',None))
+                metaStatus = (lambda x : None if pd.isnull(x) else x)(row.get('metaStatus',None))
+                if enumValues is None: ## ensuring to forcing a suggested value for empty enumValues
+                    enumType = None
                 else:
+                    enumType = row.get('enum',False)
+                if path.endswith("[]"):
+                    clean_path = __cleanPath__(row['path'])
+                    self.addField(clean_path,typeElement,title=row['title'],description=row['description'],array=True,enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default,metaStatus=metaStatus)
+                elif path.endswith("[]{}"):
+                    clean_path = __cleanPath__(row['path'])
+                    self.addField(clean_path,'array',title=row['title'],description=row['description'],enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default,metaStatus=metaStatus)
+                else:
+                    clean_path = __cleanPath__(row['path'])
+                    self.addField(clean_path,typeElement,title=row['title'],description=row['description'],enumType=enumType,enumValues=enumValues,mapType=mapType,minimum=minimum,maximum=maximum,pattern=pattern,minLength=minLength,maxLength=maxLength,default=default,metaStatus=metaStatus)
+            return self.to_dict()
+        else:
+            fieldGroupsImportList = list(df_import['fieldGroup'].unique())
+            allFieldGroups = self.schemaAPI.getFieldGroups() ## generate the dictionary in data attribute
+            ootbFGS = self.schemaAPI.getFieldGroupsGlobal()
+            dictionaryFGs = {fg:None for fg in fieldGroupsImportList}
+            dict_SourcePropery_Descriptor = {} ## default descriptors list empty
+            if hasattr(self,'id'):
+                mydescriptors = self.schemaAPI.getDescriptors(type_desc="xdm:alternateDisplayInfo",prop=f"xdm:sourceSchema=={self.id}")
+                dict_SourcePropery_Descriptor = {ex['xdm:sourceProperty']:ex for ex in mydescriptors}
+            for fg in fieldGroupsImportList:
+                subDF:pd.DataFrame = df_import[df_import['fieldGroup'] == fg].copy()
+                if fg in self.fieldGroups.values():
+                    myFg = self.getFieldGroupManager(fg)
+                    if myFg.EDITABLE:
+                        res = myFg.importFieldGroupDefinition(subDF)
+                    else:
+                        res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
+                    dictionaryFGs[fg] = res
+                elif fg in self.schemaAPI.data.fieldGroups_altId.keys():
+                    myFg = FieldGroupManager(self.schemaAPI.data.fieldGroups_id[fg],schemaAPI=self.schemaAPI)
+                    if myFg.EDITABLE:
+                        res = myFg.importFieldGroupDefinition(subDF)
+                    else:
+                        if hasattr(self,'id'):
+                            res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
+                        else:
+                            res = {'error':'not descriptors can be added to this schema because it has no $id attached. Create the schema before trying to attach descriptors.'}
+                    dictionaryFGs[fg] = myFg
+                elif fg in  self.schemaAPI.data.fieldGroups_altId.keys():
                     if hasattr(self,'id'):
                         res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
                     else:
                         res = {'error':'not descriptors can be added to this schema because it has no $id attached. Create the schema before trying to attach descriptors.'}
-                dictionaryFGs[fg] = myFg
-            elif fg in  self.schemaAPI.data.fieldGroups_altId.keys():
-                if hasattr(self,'id'):
-                    res = self.__prepareDescriptors__(subDF,dict_SourcePropery_Descriptor,fg)
-                else:
-                    res = {'error':'not descriptors can be added to this schema because it has no $id attached. Create the schema before trying to attach descriptors.'}
-                dictionaryFGs[fg] = res
-            else: # does not exist
-                myFg = FieldGroupManager(schemaAPI=self.schemaAPI,title=fg)
-                if myFg.EDITABLE:
-                    myFg.importFieldGroupDefinition(subDF)
-                    dictionaryFGs[fg] = myFg
-        self.dictFieldGroupWork = dictionaryFGs
-        return self.dictFieldGroupWork
+                    dictionaryFGs[fg] = res
+                else: # does not exist
+                    myFg = FieldGroupManager(schemaAPI=self.schemaAPI,title=fg)
+                    if myFg.EDITABLE:
+                        myFg.importFieldGroupDefinition(subDF)
+                        dictionaryFGs[fg] = myFg
+            self.dictFieldGroupWork = dictionaryFGs
+            return self.dictFieldGroupWork
 
 
     def applyFieldsChanges(self)->dict:

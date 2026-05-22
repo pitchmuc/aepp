@@ -66,7 +66,7 @@ class Schema:
         "" :""
     }
     PATCH_OBJ = [{"op": "add", "path": "/meta:immutableTags-", "value": "union"}]
-    DESCRIPTOR_TYPES =["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity",'xdm:descriptorLabel']
+    DESCRIPTOR_TYPES = ["xdm:descriptorIdentity","xdm:alternateDisplayInfo","xdm:descriptorOneToOne","xdm:descriptorReferenceIdentity","xdm:descriptorDeprecated","xdm:descriptorTimeSeriesGranularity","xdm:descriptorRelationship","xdm:descriptorTimestamp","xdm:descriptorVersion","xdm:descriptorPrimaryKey","xdm:descriptorLabel"]
 
     def __init__(
         self,
@@ -1676,9 +1676,158 @@ class Schema:
             )
         return res
 
+    def createDescriptorOperation(self,
+                                sourceSchema: str = None,
+                                descType: str = None,
+                                completePath: str | list = None,
+                                identityNSCode: str = None,
+                                identityPrimary: bool = False,
+                                alternateTitle: str = "",
+                                alternateDescription: str = None,
+                                alternateNote: str = "",
+                                alternateEnum: str = "",
+                                targetSchema: str = None,
+                                targetCompletePath: str = None,
+                                targetNamespace: str = None,
+                                timezone: str = "UTC",
+                                labels: list = None,
+                                granularity: str = "day",
+                                cardinality: str = "M:1",
+                                ) -> dict:
+        """
+        Build a descriptor object to be passed to createDescriptor.
+        You can see the type of descriptor available in the DESCRIPTOR_TYPES attribute and also on the official documentation:
+        https://experienceleague.adobe.com/docs/experience-platform/xdm/api/descriptors.html?lang=en#appendix
+        Arguments:
+            sourceSchema : REQUIRED : The schema $id the descriptor is attached to.
+            descType : REQUIRED : The type of descriptor to create. Must be one of DESCRIPTOR_TYPES.
+            completePath : REQUIRED (most types) : The dot or slash path to the field.
+                Example: '_tenant.tenantObject.field'
+            identityNSCode : OPTIONAL : Namespace code for identity descriptors.
+            identityPrimary : OPTIONAL : Whether the identity is primary (default False).
+            alternateTitle : OPTIONAL : Alternate title for xdm:alternateDisplayInfo.
+            alternateDescription : OPTIONAL : Alternate description for xdm:alternateDisplayInfo.
+            alternateNote : OPTIONAL : Alternate note for xdm:alternateDisplayInfo.
+            alternateEnum : OPTIONAL : Enum exclusion for xdm:alternateDisplayInfo.
+            targetSchema : OPTIONAL : Destination schema $id for relationship/lookup descriptors.
+            targetCompletePath : OPTIONAL : Path in the destination schema.
+            targetNamespace : OPTIONAL : Namespace code for the destination schema (xdm:descriptorRelationship).
+            timezone : OPTIONAL : IANA timezone identifier (default "UTC").
+            labels : OPTIONAL : List of label strings for xdm:descriptorLabel.
+            granularity : OPTIONAL : "hour" or "day" (default) for xdm:descriptorTimeSeriesGranularity.
+            cardinality : OPTIONAL : Cardinality for xdm:descriptorRelationship (default "M:1").
+        """
+        if descType not in self.DESCRIPTOR_TYPES:
+            raise Exception(f"The value provided ({descType}) is not supported. Use one of: {self.DESCRIPTOR_TYPES}")
+        if descType != "xdm:descriptorTimeSeriesGranularity":
+            if completePath is None:
+                raise ValueError("Require a field complete path")
+            else:
+                if not completePath.startswith('/'):
+                    completePath = '/' + completePath.replace('.', '/')
+        if descType == "xdm:descriptorIdentity":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:namespace": identityNSCode,
+                "xdm:property": "xdm:code",
+                "xdm:isPrimary": identityPrimary,
+            }
+        elif descType == "xdm:alternateDisplayInfo":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+            }
+            if alternateTitle is not None:
+                obj["xdm:title"] = {"en_us": alternateTitle}
+            if alternateDescription is not None:
+                obj["xdm:description"] = {"en_us": alternateDescription}
+            if alternateNote is not None:
+                obj["xdm:note"] = {"en_us": alternateNote}
+            if alternateEnum is not None:
+                obj["xdm:excludeMetaEnum"] = alternateEnum
+        elif descType == "xdm:descriptorOneToOne":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:destinationSchema": targetSchema,
+                "xdm:destinationVersion": 1,
+            }
+            if targetCompletePath is not None:
+                obj["xdm:destinationProperty"] = targetCompletePath
+        elif descType == "xdm:descriptorReferenceIdentity":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:identityNamespace": identityNSCode,
+            }
+        elif descType == "xdm:descriptorDeprecated":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+            }
+        elif descType == "xdm:descriptorTimeSeriesGranularity":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceVersion": 1,
+                "xdm:granularity": granularity,
+                "xdm:ianaTimezone": timezone,
+            }
+        elif descType == "xdm:descriptorRelationship":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:destinationSchema": targetSchema,
+                "xdm:destinationProperty": targetCompletePath,
+                "xdm:destinationNamespace": targetNamespace,
+                "xdm:destinationVersion": 1,
+                "xdm:cardinality": cardinality,
+            }
+        elif descType == "xdm:descriptorPrimaryKey":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+            }
+        elif descType == "xdm:descriptorVersion":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceProperty": completePath,
+            }
+        elif descType == "xdm:descriptorTimestamp":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceProperty": completePath,
+            }
+        elif descType == "xdm:descriptorLabel":
+            obj = {
+                "@type": descType,
+                "xdm:sourceSchema": sourceSchema,
+                "xdm:sourceVersion": 1,
+                "xdm:sourceProperty": completePath,
+                "xdm:label": labels,
+            }
+        return obj
+
     def createDescriptor(
         self,
-        descriptorObj:dict = None,
+        descriptorObj: dict = None,
         desc_type: str = "xdm:descriptorIdentity",
         sourceSchema: str = None,
         sourceProperty: str = None,
@@ -1688,23 +1837,26 @@ class Schema:
     ) -> dict:
         """
         Create a descriptor attached to a specific schema.
+        The recommended way to build the descriptor object is to use createDescriptorOperation first.
         Arguments:
-            descriptorObj : REQUIRED : If you wish to pass the whole object.
-            desc_type : REQUIRED : the type of descriptor to create.(default Identity)
-            sourceSchema : REQUIRED : the schema attached to your identity ()
-            sourceProperty : REQUIRED : the path to the field
-            namespace : REQUIRED : the namespace used for the identity
-            primary : OPTIONAL : Boolean (True or False) to define if it is a primary identity or not (default None).
+            descriptorObj : OPTIONAL : A complete descriptor dictionary (e.g. built by createDescriptorOperation).
+                When provided, all other arguments are ignored.
+            desc_type : OPTIONAL : The type of descriptor (default "xdm:descriptorIdentity").
+                Supported types are listed in DESCRIPTOR_TYPES.
+            sourceSchema : REQUIRED (if no descriptorObj) : The $id of the schema to attach the descriptor to.
+            sourceProperty : REQUIRED (if no descriptorObj) : The path to the field.
+            namespace : OPTIONAL : The namespace code for identity descriptors.
+            primary : OPTIONAL : Boolean to define if it is a primary identity.
         possible kwargs:
-            version : version of the creation (default 1)
-            xdm:property : type of property
+            version : version of the descriptor (default 1)
+            any xdm: prefixed key will be added to the descriptor object
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createDescriptor")
         path = f"/tenant/descriptors"
         if descriptorObj:
             res = self.connector.postData(
-            self.endpoint + path, data=descriptorObj)
+                self.endpoint + path, data=descriptorObj)
         else:
             if sourceSchema is None or sourceProperty is None:
                 raise Exception("Missing required arguments.")

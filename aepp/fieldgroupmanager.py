@@ -652,8 +652,8 @@ class FieldGroupManager:
                         success = True
                         return success
                     else:
-                        sucess = self.__removeKey__(completePathList,fieldGroup[key]['properties'])
-                        return sucess
+                        success = self.__removeKey__(completePathList,fieldGroup[key]['properties'])
+                        return success
                 elif 'items' in level.keys():
                     if 'properties' in level.get('items',{}).keys():
                         if lastField in level.get('items',{}).get('properties'):
