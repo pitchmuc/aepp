@@ -738,7 +738,6 @@ class Synchronizer:
                         continue ## if the schema is already synchronized in the target cache and force sync is not on, we skip the synchronization of this target
                 if verbose:
                     print(f"schema '{name_base_schema}' already exists in target {target}, checking it")
-                t_schema = schemamanager.SchemaManager(targetSchemaAPI.data.schemas_altId[name_base_schema],config=self.dict_targetsConfig[target],sandbox=target)
                 new_fieldgroups = [fg for fg in base_field_groups_names if fg not in t_schema.fieldGroups.values()]
                 existing_fieldgroups = [fg for fg in base_field_groups_names if fg in t_schema.fieldGroups.values()]
                 if len(new_fieldgroups) > 0 or base_schema_description != t_schema.description or force==True: ## if new field groups
