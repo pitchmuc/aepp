@@ -9,6 +9,7 @@ Patch:
 * fixing `get_observable_schema_csv` and `get_observable_schema_json`
 * adding `create_audiences_job` method
 * enhancing header token replacement when private header are passed to the calls. Solving edge case of Token regeneration issue on some requests.
+* adding `get_hygiene_works`, `get_hygiene_work` and `get_hygiene_quotas` methods in CLI module
 
 ## version 0.5.5
 * update the `createDescriptor` method in the `Schema` class.
