@@ -251,6 +251,11 @@ List all audiences in the current sandbox.
 Arguments:
 * `-f`, `--filter`: filter the audience returned based name and on lower case and partial match of that string
 
+#### create_audiences_job
+Create a job for audience segmentation. Only 50 jobs available per year for production sandboxes.
+Arguments:
+* `audience_ids` : list of audience IDs such as `"audienceId1"` `"audienceId2"` `"audienceId3"`
+
 ### Flow Service
 
 #### create_dataset_http_source

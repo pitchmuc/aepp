@@ -3,7 +3,11 @@
 This page list all of the changes that came during the different release of the aepp module.
 
 ## version 0.5.6
-* Adding the `ajo` module [documentation](./ajo.md) 
+* Adding the `ajo` module [documentation](./ajo.md)
+Patch:
+* optimizing synchronizer jobs runtime
+* fixing `get_observable_schema_csv` and `get_observable_schema_json`
+* adding `create_audiences_job` method 
 
 ## version 0.5.5
 * update the `createDescriptor` method in the `Schema` class.

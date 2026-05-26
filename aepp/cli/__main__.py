@@ -1114,7 +1114,7 @@ class ServiceShell(cmd.Cmd):
                 if ds.get("name","") == args.dataset or ds.get("id","") == args.dataset:
                     datasetId = ds.get("id")
             schema_json = aepp_cat.getDataSetObservableSchema(datasetId=datasetId,appendDatasetInfo=True)
-            myObs = catalog.ObservableSchemaManager(schema_json,config=self.config)
+            myObs = catalog.ObservableSchemaManager(schema_json)
             data = myObs.to_dict()
             with open(f"{args.dataset}_observable_schema.json", 'w') as f:
                 json.dump(data, f, indent=4)
@@ -1137,7 +1137,7 @@ class ServiceShell(cmd.Cmd):
                 if ds.get("name","") == args.dataset or ds.get("id","") == args.dataset:
                     datasetId = ds.get("id")
             schema_json = aepp_cat.getDataSetObservableSchema(datasetId=datasetId,appendDatasetInfo=True)
-            myObs = catalog.ObservableSchemaManager(schema_json,config=self.config)
+            myObs = catalog.ObservableSchemaManager(schema_json)
             data = myObs.to_dataframe()
             data.to_csv(f"{args.dataset}_observable_schema.csv", index=False)
             console.print(f"Saved Observable schema to {args.dataset}_observable_schema.csv.", style="green")
@@ -1398,7 +1398,28 @@ class ServiceShell(cmd.Cmd):
             return
     
     @login_required
-    def do_get_tags(self,args)->None:
+    def do_create_audiences_job(self,args:Any)->None:
+        """
+        Create a job for audience segmentation. Only 50 jobs available per year for production sandboxes.
+        Arguments:
+            audience_ids : list of audience IDs such as "audienceId1" "audienceId2" "audienceId3"
+        """
+        parser = argparse.ArgumentParser(prog="create_audiences_jobs",add_help=True)
+        parser.add_argument("audience_ids",type='str',nargs="+")
+        try:
+            from aepp import segmentation
+            args = parser.parse_args(shlex.split(args))
+            seg = segmentation.Segmentation(config = self.config)
+            res = seg.createJob(segmentIds=args)
+            console.print_json(res)
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    
+    @login_required
+    def do_get_tags(self,args:Any)->None:
         """
         Provide the list of tags defined in the current organization
         """
@@ -1965,7 +1986,7 @@ class ServiceShell(cmd.Cmd):
                      "enable_dataset_for_ups",
                      "enable_dataset_for_uis",
                      "get_tags",],
-        "Audiences":["get_audiences"],
+        "Audiences":["get_audiences","create_audiences_job"],
         "Flows": ["get_flows",
                   "get_flow_errors",
                   "create_dataset_http_source",
