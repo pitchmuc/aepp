@@ -334,6 +334,27 @@ Arguments:
 * `-uid`,`--user_id` : User ID of the user.
 * `-ns`,`--namespace` : Namespace of the user.
 
+The output in the terminal will give you an aggregated view of these different informations: 
+- "eventTypes": the different types and their numbers
+- "primaryIdentities": the different primary identities used during the requests
+- "totalEvents": the total events attached to that profile
+- "firstEventTimestamp": The first event timestamp recorded of that profile
+- "lastEventTimestamp": The last event timestamp recorded of that profile
+
+
+### Hygiene API
+
+#### get_hygiene_works
+List all hygiene works in the current sandbox and save it in a JSON file.\
+Arguments:
+* `-f`, `--filter`: filter the works returned based name and on lower case and partial match of that string
+* `-d`, `--days`: filter the works by creation date based on a lookback window in days (default: 0, no filter)
+
+#### get_hygiene_work
+Get details of a specific hygiene work and save it in a JSON file.\
+Arguments:
+* `workOrderId` : The Hygiene Work ID.
+
 
 ### Tools & Migration
 
@@ -357,11 +378,10 @@ Arguments:
 Synchronize or copy artifacts between sandboxes.\
 Arguments:
 * `artifact` : Name or ID of the component to sync.
-* `-at`, `--artifactType` : Type of component.
+* `-at`, `--artifactType` : Type of component. Can be from this list: "schema","fieldgroup","datatype","descriptor","dataset","identity","mergepolicy","audience"
 * `-t`, `--targets` : list of target sandboxes.
 * `-lf`, `--localfolder` : Local staging folders.
 * `-b`, `--baseSandbox` : The source sandbox name.
-* `-rg`, `--region` : Region.
 * `-v`, `--verbose` : Enable verbose logging (default: True).
 
 

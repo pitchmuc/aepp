@@ -9,7 +9,7 @@ from rich.panel import Panel
 from pathlib import Path
 from io import FileIO
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import urllib.parse
 from typing import Any, Concatenate, ParamSpec, ParamSpecKwargs
 from collections.abc import Callable
@@ -1404,7 +1404,7 @@ class ServiceShell(cmd.Cmd):
         Arguments:
             audience_ids : list of audience IDs such as "audienceId1" "audienceId2" "audienceId3"
         """
-        parser = argparse.ArgumentParser(prog="create_audiences_jobs",add_help=True)
+        parser = argparse.ArgumentParser(prog="create_audiences_jobs",description='Create an audience Job for the audience ID provided',add_help=True)
         parser.add_argument("audience_ids",type='str',nargs="+")
         try:
             from aepp import segmentation
@@ -1831,6 +1831,73 @@ class ServiceShell(cmd.Cmd):
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
             return
+        
+    @login_required
+    def do_get_hygiene_works(self,args:Any) -> None:
+        """Get the work orders from Data Hygiene API, saving them in a JSON file and optionally filtering by work order ID"""
+        parser = argparse.ArgumentParser(prog="get_hygiene_works",description="Get the work orders from Data Hygiene")
+        parser.add_argument('-f','--filter',help="filter the work orders by the work order ID that contains that string", type=str)
+        parser.add_argument('-d','--days', help='Timeframe in days to filter work orders by creation date, default 0 (no filter)', default=0, type=int)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            from aepp import hygiene
+            hygiene_client = hygiene.Hygiene(config=self.config)
+            works = hygiene_client.getWorkOrders()
+            if args.filter:
+                works = [work for work in works if args.filter in work.get("workorderId", "")]
+            if args.days > 0:
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=args.days)
+                works = [work for work in works if datetime.fromisoformat(work.get("createdAt", "1970-01-01T00:00:00+00:00")) >= cutoff_date]
+            with open(f"{self.config.sandbox}_hygiene_works.json", 'w') as f:
+                json.dump(works, f, indent=4)
+            console.print_json(data=works)
+            console.print(f"Hygiene work orders exported to {self.config.sandbox}_hygiene_works.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+    
+    @login_required
+    def do_get_hygiene_work(self,args:Any) -> None:
+        """Get the work status from Data Hygiene API, saving them in a JSON file and optionally filtering by work order ID"""
+        parser = argparse.ArgumentParser(prog="get_hygiene_work",description="Get the work status from Data Hygiene")
+        parser.add_argument('workOrderId',help="The unique ID of the work order to retrieve", type=str)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            from aepp import hygiene
+            hygiene_client = hygiene.Hygiene(config=self.config)
+            if not args.workOrderId:
+                console.print("Please provide a work order ID using the 'workOrderId' argument", style="red")
+                return
+            work = hygiene_client.getWorkOrderStatus(args.workOrderId)
+            with open(f"{self.config.sandbox}_hygiene_work_{args.workOrderId}.json", 'w') as f:
+                json.dump(work, f, indent=4)
+            console.print_json(data=work)
+            console.print(f"Hygiene work order exported to {self.config.sandbox}_hygiene_work_{args.workOrderId}.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+    
+    @login_required
+    def do_get_hygiene_quotas(self,args:Any) -> None:
+        """Get the current quota and usage for Data Hygiene API, saving them in a JSON file"""
+        parser = argparse.ArgumentParser(prog="get_hygiene_quotas",description="Get the current quota and usage for Data Hygiene API", add_help=True)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            from aepp import hygiene
+            hygiene_client = hygiene.Hygiene(config=self.config)
+            quotas = hygiene_client.getQuotas()
+            if type(quotas) == list and len(quotas) == 1:
+                quotas = quotas[0]
+            with open(f"{self.config.sandbox}_hygiene_quotas.json", 'w') as f:
+                json.dump(quotas, f, indent=4)
+            console.print_json(data=quotas)
+            console.print(f"Hygiene quotas exported to {self.config.sandbox}_hygiene_quotas.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
 
     @login_required
     def do_extract_artifacts(self,args:Any) -> None:
@@ -1993,6 +2060,7 @@ class ServiceShell(cmd.Cmd):
                   "get_DLZ_credential"],
         "Queries": ["get_queries",
                     "query"],
+        "Hygiene": ["get_hygiene_works","get_hygiene_work"],
         "Profiles": [
                     "get_identities",
                     "create_identity",
