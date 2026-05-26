@@ -7,7 +7,8 @@ This page list all of the changes that came during the different release of the 
 Patch:
 * optimizing synchronizer jobs runtime
 * fixing `get_observable_schema_csv` and `get_observable_schema_json`
-* adding `create_audiences_job` method 
+* adding `create_audiences_job` method
+* enhancing header token replacement when private header are passed to the calls. Solving edge case of Token regeneration issue on some requests.
 
 ## version 0.5.5
 * update the `createDescriptor` method in the `Schema` class.

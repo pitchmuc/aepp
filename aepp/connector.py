@@ -332,6 +332,8 @@ class AdobeRequest:
         self._checkingDate()
         if headers is None:
             headers = self.header
+        else:
+            headers.update({"Authorization": f"Bearer {self.token}"})
         if self.loggingEnabled:
             self.logger.debug(
                 f"Start GET request to {endpoint} with header: {json.dumps(headers)}"
@@ -420,6 +422,8 @@ class AdobeRequest:
         verify = kwargs.get('verify',False)
         if headers is None:
             headers = self.header
+        else:
+            headers.update({"Authorization": f"Bearer {self.token}"})
         if self.loggingEnabled:
             self.logger.debug(
                 f"Start GET request to {endpoint} with header: {json.dumps(headers)}"
@@ -467,6 +471,8 @@ class AdobeRequest:
         verify = kwargs.get('verify',False)
         if headers is None:
             headers = self.header
+        else:
+            headers.update({"Authorization": f"Bearer {self.token}"})
         if self.loggingEnabled:
             self.logger.debug(
                 f"Start POST request to {endpoint} with header: {json.dumps(headers)}"
@@ -550,6 +556,8 @@ class AdobeRequest:
         verify = kwargs.get('verify',False)
         if headers is None:
             headers = self.header
+        else:
+            headers.update({"Authorization": f"Bearer {self.token}"})
         if self.loggingEnabled:
             self.logger.debug(
                 f"Start PATCH request to {endpoint} with header: {json.dumps(headers)}"
@@ -614,6 +622,8 @@ class AdobeRequest:
         verify = kwargs.get('verify',False)
         if headers is None:
             headers = self.header
+        else:
+            headers.update({"Authorization": f"Bearer {self.token}"})
         if self.loggingEnabled:
             self.logger.debug(
                 f"Start PUT request to {endpoint} with header: {json.dumps(headers)}"
@@ -668,6 +678,8 @@ class AdobeRequest:
         verify = kwargs.get('verify',False)
         if headers is None:
             headers = self.header
+        else:
+            headers.update({"Authorization": f"Bearer {self.token}"})
         if self.loggingEnabled:
             self.logger.debug(
                 f"Start DELETE request to {endpoint} with header: {json.dumps(headers)}"
