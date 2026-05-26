@@ -511,8 +511,17 @@ class Synchronizer:
                     if t_datatype.EDITABLE: ### avoid OOTB datatype
                         res = t_datatype.updateDataType()
                         if '$id' not in res.keys():
-                            print(res)
-                            raise Exception("the data type could not be updated in the target sandbox")
+                            if res["type"] == "http://ns.adobe.com/aep/errors/XDM-1406-422":
+                                t_datatype.dataType["properties"] = t_datatype.dataType["definitions"][next(iter(t_datatype.dataType["definitions"].keys()))]["properties"]
+                                t_datatype.dataType.pop("allOf", None)
+                                t_datatype.dataType.pop("definitions", None)
+                                res = t_datatype.updateDataType()
+                                if '$id' not in res.keys():
+                                    print(res)
+                                    raise Exception("the data type could not be updated in the target sandbox")
+                            else:
+                                print(res)
+                                raise Exception("the data type could not be updated in the target sandbox")
                         else:
                             t_datatype = datatypemanager.DataTypeManager(res['$id'],config=self.dict_targetsConfig[target],sandbox=target)
             else:## datatype does not exist in target
@@ -637,7 +646,16 @@ class Synchronizer:
                     if t_fieldgroup.EDITABLE: ### avoid OOTB field group
                         res = t_fieldgroup.updateFieldGroup()
                         if '$id' not in res.keys():
-                            raise Exception(res)
+                            if res["type"] == "http://ns.adobe.com/aep/errors/XDM-1406-422":
+                                t_fieldgroup.fieldGroup["properties"] = t_fieldgroup.fieldGroup["definitions"][next(iter(t_datatype.dataType["definitions"].keys()))]["properties"]
+                                t_fieldgroup.fieldGroup.pop("allOf", None)
+                                t_fieldgroup.fieldGroup.pop("definitions", None)
+                                res = t_fieldgroup.updateFieldGroup()
+                                if '$id' not in res.keys():
+                                    print(res)
+                                    raise Exception("the field group could not be updated in the target sandbox")
+                            else:                            
+                                raise Exception(res)
                         else:
                             t_fieldgroup = fieldgroupmanager.FieldGroupManager(res['$id'],config=self.dict_targetsConfig[target],sandbox=target)
                 else:
@@ -740,13 +758,21 @@ class Synchronizer:
                     print(f"schema '{name_base_schema}' already exists in target {target}, checking it")
                 new_fieldgroups = [fg for fg in base_field_groups_names if fg not in t_schema.fieldGroups.values()]
                 existing_fieldgroups = [fg for fg in base_field_groups_names if fg in t_schema.fieldGroups.values()]
-                if len(new_fieldgroups) > 0 or base_schema_description != t_schema.description or force==True: ## if new field groups
+                removed_fieldgroups = [fg for fg, n in t_schema.fieldGroups.items() if n not in dict_base_fg_name_id]
+                if len(removed_fieldgroups) > 0 or len(new_fieldgroups) > 0 or base_schema_description != t_schema.description or force==True: ## if new field groups
                     if verbose:
                         if force == False:
                             print('found difference in the schema, updating it')
                         else:
                             print('force flag is set to True, updating the schema')
                     ## handling field groups
+                    for r in removed_fieldgroups:
+                        ra = [a for a in t_schema.schema["allOf"] if a["$ref"] == r]
+                        if len(ra) > 0:
+                            rae = ra[0]
+                            t_schema.schema["allOf"].remove(rae)
+
+                        t_schema.fieldGroups.pop(r, None)
                     for new_fieldgroup in new_fieldgroups:
                         if baseSchema.tenantId[1:] not in dict_base_fg_name_id[new_fieldgroup]: ## ootb field group
                             if verbose:

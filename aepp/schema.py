@@ -208,6 +208,9 @@ class Schema:
             self.logger.debug(f"Starting getStats")
         path = "/stats/"
         res = self.connector.getData(self.endpoint + path, headers=self.header)
+        if res.get("status")  == 404:
+            raise NameError(f'{res.get("title","404 no found")} - {res.get("detail",self.header)}')
+
         return res
 
     def getTenantId(self) -> str:
