@@ -12,7 +12,7 @@ import aepp
 from aepp import connector
 import logging
 from typing import Union
-from .configs import ConnectObject
+from aepp.configs import ConnectObject
 import json
 from copy import deepcopy
 import datetime
@@ -281,44 +281,45 @@ class Sandboxes:
             raise ValueError("Requires a package ID")
         if self.loggingEnabled:
             self.logger.debug(f"Starting deletePackage")
-        privateHeader = deepcopy(self.header)
-        del privateHeader["x-sandbox-name"]
         path = f"/packages/{packageId}/"
-        res = self.connector.deleteData(self.endpointPackage+path,headers=privateHeader)
+        res = self.connector.deleteData(self.endpointPackage+path)
         return res
     
     def createPackage(self,
                       name:str=None,
                       description:str=None,
-                      fullPackage:bool=False,
+                      packageType:str="PARTIAL",
                       artifacts:list=None,
-                      expiry:int=90,
+                      expiry:int|str=90,
                       **kwargs)->dict:
         """
         Create a package.
         Arguments:
             name : REQUIRED : Name of the package.
             description : OPTIONAL : Description of the package
-            fullPackage : OPTIONAL : If you want to copy the whole sandbox. (default False)
+            packageType : OPTIONAL : Set to True if you want to copy the whole sandbox. (default PARTIAL)
             artifacts : OPTIONAL : If you set fullPackage to False, then you need to provide a list of dictionary of items.
                 example : [
                     {"id":"27115daa-c92b-4f17-a077-d65ffeb0c525","title": "my segment title", "type" : "PROFILE_SEGMENT"},
                     {"id":"d8d8ed6d-696a-40bd-b4fe-ca053ec94e29","title": "my journey title", "type" : "JOURNEY"}
                 ]
                 For more types, refers to ARTIFACS_TYPE 
-            expiry : OPTIONAL : The expiry of that package in days (default 90 days)
+            expiry : OPTIONAL : The expiry of that package in days (default 90 days) or a specific date in the format "2023-05-11T18:29:59.999Z"
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting createPackage")
-        delta90days = datetime.timedelta(days=expiry)
-        now = datetime.datetime.now()
-        now90days = now + delta90days
-        now90daysZ_str= f"{now90days.isoformat(timespec='seconds')}Z"
+        if type(expiry) == int:
+            deltaXdays = datetime.timedelta(days=expiry)
+            now = datetime.datetime.now()
+            now90days = now + deltaXdays
+            expiry= f"{now90days.isoformat(timespec='seconds')}Z"
+        else:
+            expiry = expiry
         if description is not None:
             desc = description
         else:
             desc = "power by aepp"
-        if fullPackage:
+        if packageType == "FULL":
             data = {
                 "name": name,
                 "description": desc,
@@ -327,7 +328,7 @@ class Sandboxes:
                     "name": self.sandbox,
                     "imsOrgId": self.org_id
                 },
-                "expiry": now90daysZ_str,
+                "expiry": expiry,
                 "artifacts": []
             }
         else:
@@ -339,7 +340,7 @@ class Sandboxes:
                     "name": self.sandbox,
                     "imsOrgId": self.org_id
                 },
-                "expiry": now90daysZ_str,
+                "expiry": expiry,
                 "artifacts": deepcopy(artifacts)
             }
         path = "/packages"
@@ -350,7 +351,8 @@ class Sandboxes:
                       operation:str=None,
                       name:str=None,
                       description:str=None,
-                      artifacts:list=None,)->dict:
+                      artifacts:list=None,
+                      expiry:int|str= None)->dict:
         """
         Update a package ID.
         Arguments:
@@ -363,6 +365,7 @@ class Sandboxes:
                     {"id":"27115daa-c92b-4f17-a077-d65ffeb0c525","title": "my segment title", "type" : "PROFILE_SEGMENT"},
                     {"id":"d8d8ed6d-696a-40bd-b4fe-ca053ec94e29","title": "my journey title", "type" : "JOURNEY"}
                 ]
+            expiry : OPTIONAL : The expiry of that package in days (default 90 days) or a specific date in the format "2023-05-11T18:29:59.999Z"
             
         """
         if packageId is None:
@@ -371,17 +374,22 @@ class Sandboxes:
             self.logger.debug(f"Starting createPackage")
         action = operation
         if operation == "UPDATE":
-            decription = description if description is not None else "power by aepp"
+            description = description if description is not None else "power by aepp"
             data = {
                 "id" : packageId,
                 "action" : action,
-                "name" : name,
-                "description" : decription,
-                "sourceSandbox" : {
-                    "name": self.sandbox,
-                    "imsOrgId": self.org_id
-                }
             }
+            if name is not None:
+                data["name"] = name
+            if description is not None:
+                data["description"] = description
+            if expiry is not None:
+                if type(expiry) == int:
+                    deltaXdays = datetime.timedelta(days=expiry)
+                    now = datetime.datetime.now()
+                    nowXdays = now + deltaXdays
+                    expiry= f"{nowXdays.isoformat(timespec='seconds')}Z"                
+                data["expiry"] = expiry
         elif operation == "DELETE" or operation == "ADD":
             data = {
                 "id" : packageId,
@@ -403,9 +411,7 @@ class Sandboxes:
         if self.loggingEnabled:
             self.logger.debug(f"Starting publishPackage")
         path = f"/packages/{packageId}/export"
-        privateHeader = deepcopy(self.header)
-        del privateHeader["x-sandbox-name"]
-        res = self.connector.getData(self.endpointPackage+path,headers=privateHeader)
+        res = self.connector.getData(self.endpointPackage+path)
         return res
     
     def importPackageCheck(self,packageId:str=None,targetSandbox:str=None)->dict:
@@ -649,7 +655,7 @@ class Sandboxes:
         res = self.connector.postData(self.endpointPackage+path,data=data)
         return res
     
-    def publishPackage(self,packageId:str=None,packageVisibility:str="PUBLIC")->dict:
+    def publishPackagePublic(self,packageId:str=None,packageVisibility:str="PUBLIC")->dict:
         """
         Change a package from private to public.
         By default, a package is created with private availability.
@@ -659,7 +665,7 @@ class Sandboxes:
         """
         if packageId is None:
             raise ValueError("Expect a package ID")
-        path = "/packages"
+        path = f"/packages"
         data ={
             "id":packageId,
             "action":"UPDATE",
@@ -669,4 +675,332 @@ class Sandboxes:
         return res
     
 
+class PackageManager:
+    """
+    This class is to manage the package creation and import with more details and control.
+    """
+    def __init__(self,
+                 package:dict=None,
+                 config: Union[dict,ConnectObject] = aepp.config.config_object,
+                 name:str|None=None,
+                 description:str=None,
+                 packageType:str="PARTIAL",
+                 artifacts:list[dict]=None,
+                 expiry:str|int=90,
+                 **kwargs):
+        """
+        Instantiate the PackageManager class.
+        Arguments:
+            package : OPTIONAL : A dictionary of the package definition if you want to import a package from the public repository.
+            config : REQUIRED : config object in the config module.
+            name : OPTIONAL : Name of the package to be created, required if you want to create a package.
+            description : OPTIONAL : Description of the package to be created.
+            packageType : OPTIONAL : Set to FULL if you want to copy the whole sandbox. (default PARTIAL)
+            artifacts : OPTIONAL : If you set fullPackage to False, then you need to provide a list of dictionary of items.
+                example : [
+                    {"id":"27115daa-c92b-4f17-a077-d65ffeb0c525","title": "my segment title", "type" : "PROFILE_SEGMENT"},
+                    {"id":"d8d8ed6d-696a-40bd-b4fe-ca053ec94e29","title": "my journey title", "type" : "JOURNEY"}
+                ]
+                For more types, refers to ARTIFACS_TYPE
+            expiry : OPTIONAL : The expiry of that package in days (default 90 days) or in ISO format (ex: "2023-05-20T20:05:10Z")
+        
+        """
+        self.ARTIFACT_TYPES = ["PROFILE_SEGMENT",
+                            "JOURNEY",
+                            "CATALOG_DATASET",
+                            "REGISTRY_SCHEMA",
+                            "REGISTRY_MIXIN",
+                            "REGISTRY_DATATYPE",
+                            "REGISTRY_DESCRIPTOR",
+                            "REGISTRY_CLASS",
+                            "IDENTITY_NAMESPACE",
+                            "FLOW",
+                            "DULE_CONSENT_POLICY",
+                            "DULE_GOVERNANCE_POLICY",
+                            "CAMPAIGN",
+                            "CUSTOM_ACTION",
+                            "CONTENT_TEMPLATE",
+                            "FRAGMENT",
+                            "CHANNEL_CONFIGURATION",
+                            "DECISIONING_OBJECT"]
+        header = aepp.config.header  ## default header; overridden when a ConnectObject is passed
+        if type(config) == dict: ## Supporting either default setup or passing a ConnectObject
+            self.config = config
+        elif type(config) == ConnectObject:
+            header = config.getConfigHeader()
+            self.config = config.getConfigObject()
+        self.tooling_api = Sandboxes(config=self.config)
+        if package is not None and type(package) == dict:
+            self.package = package
+            self.status = package.get("status","NEW")
+            self.id = package.get("id")
+            self.name = package.get("name")
+            self.description = package.get("description")
+            self.packageType = package.get("packageType","PARTIAL")
+            self.sourceSandbox = package.get("sourceSandbox",{}).get('name',None)
+            self.artifacts = package.get("artifacts",[])
+            self.expiry = package.get("expiry")
+        else:
+            if name is None:
+                raise ValueError("A name is required to create a package")
+            self.status = "NEW"
+            self.id = None
+            self.name = name
+            self.description = description if description is not None else "power by aepp"
+            self.packageType = packageType if packageType in ["FULL","PARTIAL"] else "PARTIAL"
+            self.sandbox = self.tooling_api.connector.config.get("sandbox")
+            self.artifacts = [] if artifacts is None else artifacts
+            if type(expiry) == int:
+                deltaXdays = datetime.timedelta(days=expiry)
+                now = datetime.datetime.now()
+                nowXdays = now + deltaXdays
+                self.expiry = f"{nowXdays.isoformat(timespec='seconds')}Z"
+            elif type(expiry) == str:
+                self.expiry = expiry
+            self.package = {
+                "name": self.name,
+                "description": self.description,
+                "packageType": self.packageType,
+                "sourceSandbox": {
+                    "name": self.sandbox,
+                    "imsOrgId": self.tooling_api.connector.config["org_id"]
+                },
+                "expiry": self.expiry,
+                "artifacts": self.artifacts
+            }
 
+
+    def __str__(self):
+        return json.dumps(self.package,indent=2)
+    
+    def __repr__(self):
+        return json.dumps(self.package,indent=2)
+
+    def setName(self,name:str)->None:
+        """
+        Set the name of the package.
+        """
+        self.name = name
+    
+    def setDescription(self,description:str)->None:
+        """
+        Set the description of the package.
+        """
+        self.description = description
+    
+    def setFullPackage(self,fullPackage:bool=True)->None:
+        """
+        Set the package type to full package or not. If full package, all the artifacts in the sandbox will be copied.
+        """
+        if fullPackage:
+            self.packageType = "FULL"
+        else:
+            self.packageType = "PARTIAL"
+    
+    def setExpiry(self,expiry:int|str)->None:
+        """
+        Set the expiry of the package, either with a number of days or a specific date in ISO format.
+        Arguments:
+        expiry : The expiry of that package in days (default 90 days) or a specific date in the format "2023-05-11T18:29:59.999Z"
+        """
+        if type(expiry) == int:
+            deltaXdays = datetime.timedelta(days=expiry)
+            now = datetime.datetime.now()
+            nowXdays = now + deltaXdays
+            self.expiry = f"{nowXdays.isoformat(timespec='seconds')}Z"
+        elif type(expiry) == str:
+            self.expiry = expiry
+
+    def __resolver__(self,artifact:str=None,artifactType:str=None)->str:
+        """
+        A private method to resolve the artifact ID based on the name provided.
+        Arguments:
+            artifact : REQUIRED : The name of the artifact to be resolved
+            artifactType : REQUIRED : The type of the artifact to be resolved, refer to ARTIFACS_TYPES attributes for more details.
+        """
+        if artifactType not in self.ARTIFACT_TYPES:
+            raise ValueError(f"Artifact type should be one of {self.ARTIFACT_TYPES}")
+        # For now, only supporting segment and journey, but will add more types later.
+        if artifactType == "PROFILE_SEGMENT":
+            from aepp import segmentation
+            seg = segmentation.Segmentation(config=self.config)
+            mysegs = seg.getAudiences(prop=f"name=={artifact}")
+            if len(mysegs) == 0:
+                raise ValueError(f"No segment found with the name {artifact}")
+            else:
+                myseg = mysegs[0]
+                return myseg["id"]
+        elif artifactType == "CATALOG_DATASET":
+            from aepp import catalog
+            cat = catalog.Catalog(config=self.config)
+            cat.getDatasets()
+            datasetId = cat.data.ids.get(artifact)
+            if datasetId is None:
+                raise ValueError(f"No dataset found with the name {artifact}")
+            return datasetId
+        elif artifactType == "REGISTRY_SCHEMA":
+            from aepp import schema
+            sch = schema.Schema(config=self.config)
+            sch.getSchemas()
+            schemaId = sch.data.schemas_id.get(artifact)
+            if schemaId is None:
+                raise ValueError(f"No schema found with the name {artifact}")
+            return schemaId
+        elif artifactType == "REGISTRY_MIXIN":
+            from aepp import schema
+            sch = schema.Schema(config=self.config)
+            sch.getFieldGroups()
+            mixinId = sch.data.fieldGroups_id.get(artifact)
+            if mixinId is None:
+                raise ValueError(f"No mixin found with the name {artifact}")
+            return mixinId
+        elif artifactType == "REGISTRY_DATATYPE":
+            from aepp import schema
+            sch = schema.Schema(config=self.config)
+            sch.getDataTypes()
+            datatypeId = sch.data.dataTypes_id.get(artifact)
+            if datatypeId is None:
+                raise ValueError(f"No datatype found with the name {artifact}")
+            return datatypeId
+        elif artifactType == "REGISTRY_CLASS":
+            from aepp import schema
+            sch = schema.Schema(config=self.config)
+            sch.getClasses()
+            classId = sch.data.classes_id.get(artifact)
+            if classId is None:
+                raise ValueError(f"No class found with the name {artifact}")
+            return classId
+        elif artifactType == "FLOW":
+            from aepp import flowservice
+            flow = flowservice.FlowService(config=self.config)
+            flows = flow.getFlows()
+            myflow = [f for f in flows if f["name"] == artifact]
+            if len(myflow) == 0:
+                raise ValueError(f"No flow found with the name {artifact}")
+            return myflow[0]["id"]
+
+    def addArtifact(self,artifact:list=None,artifactType:str=None,title:str=None,resolve:bool=False)->dict|list:
+        """
+        Add an artifact to the package.
+        If an existing package (already containing an ID), then it will update the package directly to AEP. Returning the response of the updatePackage call.
+        If a new package, then it will add the artifact to the package definition, and you will need to create the package after with createPackage method. Returns the list of artifacts.
+        Arguments:
+            artifact : REQUIRED : The ID or the name of the artifact to be added to the package
+            artifactType : REQUIRED : The type of the artifact to be added, refer to ARTIFACS_TYPES attributes for more details.
+            title : OPTIONAL : A title for the artifact can be added.
+            resolve : OPTIONAL : If set to True, the method will try to find the artifact ID based on the name provided in artifactId. (default False)
+                Only work on schema, field group, datatypes, classes, flow, segment and dataset for now.
+        """
+        if artifact is None or artifactType is None:
+            raise ValueError("Require both artifact ID and type")
+        if artifactType not in self.ARTIFACT_TYPES:
+            raise ValueError(f"Artifact type should be one of {self.ARTIFACT_TYPES}")
+        if resolve:
+            if artifactType not in ["PROFILE_SEGMENT","CATALOG_DATASET","REGISTRY_SCHEMA","REGISTRY_MIXIN","REGISTRY_DATATYPE","REGISTRY_CLASS","FLOW"]:
+                raise ValueError(f"Resolving artifact by name only work for PROFILE_SEGMENT, CATALOG_DATASET, REGISTRY_SCHEMA, REGISTRY_MIXIN, REGISTRY_DATATYPE, REGISTRY_CLASS and FLOW")
+            artifact = self.__resolver__(artifact=artifact,artifactType=artifactType)
+        if self.status != "NEW":
+            obj = {
+                "id": artifact,
+                "type": artifactType
+            }
+            if title is not None:
+                obj["title"] = title
+            operation = {
+                "id" : self.id,
+                "action" : "ADD",
+                "artifacts": [deepcopy(obj)]
+            }
+            res = self.tooling_api.updatePackage(packageId=self.id,operation="ADD",artifacts=operation["artifacts"])
+            return res
+        else:
+            obj = {
+                "id": artifact,
+                "type": artifactType
+            }
+            if title is not None:
+                obj["title"] = title
+            self.artifacts.append(deepcopy(obj))
+            return self.artifacts
+        
+    def deleteArtifact(self,artifact:list=None,artifactType:str=None,resolve:bool=False)->dict|list:
+        """
+        Delete an artifact from the package.
+        If an existing package (already containing an ID), then it will update the package directly to AEP. Returning the response of the updatePackage call.
+        If a new package, then it will delete the artifact from the package definition, and you will need to create the package after with createPackage method. Returns the list of artifacts.
+        Arguments:
+            artifact : REQUIRED : The ID of the artifact to be deleted from the package
+            artifactType : REQUIRED : The type of the artifact to be deleted, refer to ARTIFACS_TYPES attributes for more details.
+            resolve : OPTIONAL : If set to True, the method will try to find the artifact ID based on the name provided in artifactId. (default False)
+                Only work on schema, field group, datatypes, classes, flow, segment and dataset for now.
+        """
+        if artifact is None or artifactType is None:
+            raise ValueError("Require both artifact ID and type")
+        if artifactType not in self.ARTIFACT_TYPES:
+            raise ValueError(f"Artifact type should be one of {self.ARTIFACT_TYPES}")
+        if resolve:
+            if artifactType not in ["PROFILE_SEGMENT","CATALOG_DATASET","REGISTRY_SCHEMA","REGISTRY_MIXIN","REGISTRY_DATATYPE","REGISTRY_CLASS","FLOW"]:
+                raise ValueError(f"Resolving artifact by name only work for PROFILE_SEGMENT, CATALOG_DATASET, REGISTRY_SCHEMA, REGISTRY_MIXIN, REGISTRY_DATATYPE, REGISTRY_CLASS and FLOW")
+            artifact = self.__resolver__(artifact=artifact,artifactType=artifactType)
+        if self.status != "NEW":
+            operation = {
+                "id" : self.id,
+                "action" : "DELETE",
+                "artifacts": deepcopy([{
+                    "id": artifact,
+                    "type": artifactType
+                }])
+            }
+            res = self.tooling_api.updatePackage(packageId=self.id,operation="DELETE",artifacts=operation["artifacts"])
+            return res
+        else:
+            self.artifacts = [a for a in self.artifacts if not (a["id"] == artifact and a["type"] == artifactType)]
+            return self.artifacts
+
+    def updatePackageInfo(self,name:str=None,description:str=None,expiry:int|str=None)->dict:
+        """
+        Update the package information such as name, description and expiry.
+        Arguments:
+            name : OPTIONAL : The new name of the package
+            description : OPTIONAL : The new description of the package
+            expiry : OPTIONAL : The new expiry of that package in days (default 90 days) or a specific date in the format "2023-05-11T18:29:59.999Z"
+        """
+        if self.status == "NEW":
+            raise ValueError("Package information can only be updated for existing packages")
+        res = self.tooling_api.updatePackage(packageId=self.id,operation="UPDATE",name=name,description=description,expiry=expiry)
+        return res
+        
+    def createPackage(self)->dict:
+        """
+        Create the package in the sandbox.
+        """
+        res = self.tooling_api.createPackage(name=self.name,
+                                            description=self.description,
+                                            packageType=self.packageType,
+                                            artifacts=self.artifacts,
+                                            expiry=self.expiry)
+        if "id" in res.keys():
+            self.id = res["id"]
+            self.status = res.get("status","DRAFT")
+            self.package = res
+        return res
+    
+    def publishPackage(self,)->dict:
+        """
+        Publish the package in the sandbox. Required step before importing the package to the target sandbox.
+        """
+        if self.status == "NEW":
+            raise ValueError("Only existing package can be published, please create the package first")
+        res = self.tooling_api.publishPackage(packageId=self.id)
+        return res
+    
+    def publishPackagePublic(self)->dict:
+        """
+        Change the package visibility to public. By default, a package is created with private visibility.
+        """
+        if self.status == "NEW" or self.status == "DRAFT":
+            raise ValueError("Only existing package can be published publicly, please create the package first")
+        res = self.tooling_api.publishPackagePublic(packageId=self.id)
+        return res
+    
+    

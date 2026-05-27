@@ -1970,6 +1970,12 @@ class ServiceShell(cmd.Cmd):
                     targets=args.targets,
                     localFolder=args.localfolder,
             )
+            else:
+                synchronizor = synchronizer.Synchronizer(
+                    config=self.config,
+                    targets=args.targets,
+                    baseSandbox=self.config.sandbox,
+                )
             console.print("Starting Sync...", style="blue")
             synchronizor.syncComponent(
                 component=args.artifact,

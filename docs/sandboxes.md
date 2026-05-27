@@ -161,8 +161,8 @@ Create a package.\
 Arguments:
 * name : REQUIRED : Name of the package.
 * description : OPTIONAL : Description of the package
-* fullPackage : OPTIONAL : If you want to copy the whole sandbox. (default False)
-* artifacts : OPTIONAL : If you set fullPackage to False, then you need to provide a list of dictionaries susch as [{"id":"myId","title":"mytitle",:"type":"typeOfArtifact"}]\
+* packageType : OPTIONAL : Set "FULL" If you want to copy the whole sandbox. (default "PARTIAL")
+* artifacts : OPTIONAL : If you set packageType to "PARTIAL", then you need to provide a list of dictionaries susch as [{"id":"myId","title":"mytitle",:"type":"typeOfArtifact"}]\
     example :
     ```py 
     [
@@ -170,7 +170,7 @@ Arguments:
         {"id":"d8d8ed6d-696a-40bd-b4fe-ca053ec94e29","type": "JOURNEY","title":"myJourney"}
     ]
 For more types, refers to `ARTIFACS_TYPE` attributes.
-* expiry : OPTIONAL : The expiry of that package in days (default 90 days)
+* expiry : OPTIONAL : The expiry of that package in days (default 90 days) or specific date in this format "2023-05-16T18:29:59.999Z"
 
 ### updatePackage
 Update a package ID.\

@@ -46,6 +46,7 @@ At the moment the current wrapper is containing the following sub modules:
 * [queryservice](./docs/queryservice.md) (see note below for Interactive Queries)
 * [identity](./docs/identity.md)
 * [sandboxes](./docs/sandboxes.md)
+  * [PackageManager](./docs/packageManager.md)
 * [dataaccess](./docs/dataaccess.md)
 * [catalog](./docs/catalog.md)
 * [customerprofile](./docs/customerprofile.md)
