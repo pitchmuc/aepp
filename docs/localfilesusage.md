@@ -76,15 +76,14 @@ For that purpose, we provided a capability in aepp to export the data.
 It takes the following argument: 
 * sandbox: REQUIRED: the instance of a ConnectObject that contains the sandbox information and connection.
 * localFolder: OPTIONAL: the local folder where to extract the sandbox. If not provided, it will use the current working directory and name the    folder the name of the sandbox.
-* region: OPTIONAL: the region of the sandbox (default: nld2). This is used to fetch the correct API endpoints for the identities. 
-    Possible values: "va7","aus5", "can2", "ind2"
+* filters : OPTIONAL : If you wish to limit the Schemas and Dataset extracted to specific name. It is a list of string, and the comparison will be down lower case and partial match. The filters will not impact the other artifact types and all the artifacts of other types will be extracted. Only exception is descriptors, which will only be extracted for the artefacts matching the filter(s). The matching is case insensitive and partial, meaning that if you pass "customer", it will match "CustomerProfile", "CustomerSchema", "MyCustomerDataset" and so on
 
 Example of usage: 
 ```py
 import aepp
 
 prod = aepp.importConfigFile('myconfig.json',sandbox='prod',connectInstance=True)
-aepp.extractSandboxArtifacts(prod,localFolder='prodFolder',region='va7')
+aepp.extractSandboxArtifacts(prod,localFolder='prodFolder')
 ```
 
 

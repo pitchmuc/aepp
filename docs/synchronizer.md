@@ -83,10 +83,9 @@ Arguments:
 * verbose : OPTIONAL : if True, it will print the details of the synchronization process
 
 ##### Best Practices around syncAll
-It is not recommended to sync all the artefacts from one sandbox to another sandbox.\
-If done directly via `baseSandbox` configuration, everything will be tentatively sync. This is very expensive and may contain elements you do not want to sync, such as OOTB schema and datasets.
+`syncAll` is only supported with localFolder, the reason being that sandbox to sandbox full synchronization will generate too much boiler plate regarding OOTB artifacts that should not be synchronized. 
 
-The best practice is to download all the artifacts that you want to sync into one folder.\
+The best practice is to download all the artifacts that you want to sync into one folder. See [local file usage](./localfilesusage.md).\
 **Reminder**: All dependencies are resolved during the `extractArtifact` so extracting `datasets` will take care of extracting `schema`,`fieldgroup`,`datatype`,`descriptors`,`identities`
 
 Once all wished artifacts are in your folder, you can use the `syncAll` with a specifc folder.
