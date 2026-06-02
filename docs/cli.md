@@ -362,8 +362,7 @@ Arguments:
 Bulk extract sandbox components to a local folder.\
 Arguments:
 * `-lf`, `--localfolder` : Destination folder (default: ./extractions).
-* `-rg`, `--region` : Source region (default: 'ndl2').
-* `-f`, `--filter`: filter the artifacts to extract based on name and on lower case and partial match of that string
+* `-f`, `--filters`: filter the artifacts to extract based on name and on lower case and partial match of that string
 
 #### extract_artifact
 Extract a single specific artifact.\
@@ -371,7 +370,6 @@ Arguments:
 * `artifact` : Name or ID of the artifact.
 * `-at`, `--artifactType` : Type (e.g., schema, dataset, etc.).
 * `-lf`, `--localfolder` : Destination folder.
-* `-rg`, `--region` : Source region.
 
 
 #### sync
