@@ -1358,7 +1358,7 @@ class ServiceShell(cmd.Cmd):
                 audiences = aepp_audience.getAudiences()
             except Exception as e:
                 console.print(f"Issue with audience retrieval: {str(e)}", style="yellow")
-                console.print(f"using getSegments: {str(e)}", style="yellow")
+                console.print(f"using getSegments method.", style="yellow")
                 console.print(f"external audiences will not be available in reports", style="yellow")
                 audiences = aepp_audience.getSegments()
             if args.filter != "":

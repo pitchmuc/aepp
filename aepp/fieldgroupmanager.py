@@ -1318,11 +1318,13 @@ class FieldGroupManager:
             list_ids = self.dataTypes.keys()
         for dt_id in list_ids:
             ref_results = self.searchAttribute({'$ref':dt_id},extendedResults=True)
-            paths = [res[list(res.keys())[0]]['path'] for res in ref_results if '$ref' in res[list(res.keys())[0]].keys() or '$ref' in res[list(res.keys())[0]].get('items', {}).keys()]
+            paths = [res[list(res.keys())[0]]['path'] for res in ref_results if '$ref' in res[list(res.keys())[0]].keys() or '$ref' in res[list(res.keys())[0]].get('items', {}).keys() or '$ref' in res[list(res.keys())[0]].get('additionalProperties', {}).get('items', {}).keys()]
             for path in paths:
                 res = self.getField(path) ## to ensure the type of the path
                 if res.get('type') == 'array':
                     path = path +'[]{}'
+                elif res.get('meta:xdmType') == 'map' and res.get('additionalProperties', {}).get('type') == 'array':
+                    path = path + '.key[]{}'
                 dict_results[path] = dt_id
             meta_ref_results = self.searchAttribute({'meta:referencedFrom':dt_id},extendedResults=True)
             meta_paths = [res[list(res.keys())[0]]['path'] for res in meta_ref_results if '$ref' in res[list(res.keys())[0]].keys() or 'meta:referencedFrom' in res[list(res.keys())[0]].keys() or '$ref' in res[list(res.keys())[0]].get('items', {}).keys() or 'meta:referencedFrom' in res[list(res.keys())[0]].get('items', {}).keys()]

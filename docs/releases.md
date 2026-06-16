@@ -13,6 +13,7 @@ Patch:
 * adding the PackageManager in the sandboxes module [documentation](./packageManager.md)
 * adding safeguard for CLI `get_audiences`, fallback to `getSegments`
 * adding the `get_merge_policies` method in the CLI. 
+* Fix issue in schema manager `to_dataframe` and `to_dict` methods. Fixing map.
 
 ## version 0.5.5
 * update the `createDescriptor` method in the `Schema` class.

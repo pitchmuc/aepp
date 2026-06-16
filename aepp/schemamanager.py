@@ -1022,6 +1022,7 @@ class SchemaManager:
             dictionary = self.__transformationDF__(definition,queryPath=queryPath,required=required,full=full)
             df = pd.DataFrame(dictionary)
         else:
+            df = pd.DataFrame({'path':[],'type':[],'fieldGroup':[]})
             for clManager in list(self.classManagers.values()):
                 tmp_df = clManager.to_dataframe(queryPath=queryPath,editable=editable,required=required,full=full)
                 if required:
@@ -1053,7 +1054,7 @@ class SchemaManager:
                 df = df[df['type'] != 'object'].copy()
             if save:
                 title = self.schema.get('title',f'unknown_schema_{str(int(time.time()))}.csv')
-            df.to_csv(f"{title}.csv",index=False)
+                df.to_csv(f"{title}.csv",index=False)
         return df
     
     def to_dict(self)->dict:

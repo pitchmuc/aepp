@@ -25,8 +25,15 @@ def __transformationDict__(mydict:dict=None,typed:bool=False,dictionary:dict=Non
                     if additionalProperties.get('type') == 'array':
                         items = additionalProperties.get('items',{}).get('properties',None)
                         if items is not None:
-                            dictionary[key] = {'key':[{}]}
-                            __transformationDict__(items,typed,dictionary=dictionary[key]["key"][0])
+                            dictionary[key] = {'<key>':[{}]}
+                            __transformationDict__(items,typed,dictionary=dictionary[key]["<key>"][0])
+                        else:
+                            dictionary[key] = {'<key>': [{}]}
+                    else:
+                        if typed:
+                            dictionary[key] = {'<key>': additionalProperties.get('type','object')}
+                        else:
+                            dictionary[key] = {'<key>': ''}
             elif mydict[key].get('type') == 'array':
                 levelProperties = mydict[key]['items'].get('properties',None)
                 if levelProperties is not None:
@@ -323,7 +330,7 @@ def __searchAttrAlgo__(mydict:dict,key:str=None,value:str=None,regex:bool=False,
                         results.append(originalField)
         ## recursive action for objects and array
         if type(mydict[k]) == dict:
-            if k == "properties" or k == 'items':
+            if k == "properties" or k == 'items' or k == 'additionalProperties':
                 __searchAttrAlgo__(mydict[k],key,value,regex,originalField,results)
             else:
                 __searchAttrAlgo__(mydict[k],key,value,regex,k,results)
