@@ -1348,13 +1348,19 @@ class ServiceShell(cmd.Cmd):
     
     @login_required
     def do_get_audiences(self, args:Any) -> None:
-        """List all audiences in the current sandbox"""
+        """List all audiences in the current sandbox. If fails, it will use the segments API as fallback."""
         parser = argparse.ArgumentParser(prog='get_audiences', add_help=True)
         parser.add_argument("-f","--filter",help="filter the audience return by name (non-case sensitive and partial match)",type=str,default="")
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_audience = segmentation.Segmentation(config=self.config)
-            audiences = aepp_audience.getAudiences()
+            try:
+                audiences = aepp_audience.getAudiences()
+            except Exception as e:
+                console.print(f"Issue with audience retrieval: {str(e)}", style="yellow")
+                console.print(f"using getSegments: {str(e)}", style="yellow")
+                console.print(f"external audiences will not be available in reports", style="yellow")
+                audiences = aepp_audience.getSegments()
             if args.filter != "":
                 audiences = [aud for aud in audiences if args.filter.lower() in aud['name'].lower()]
             flw = flowservice.FlowService(config=self.config)
@@ -1773,10 +1779,11 @@ class ServiceShell(cmd.Cmd):
         parser = argparse.ArgumentParser(prog='get_profile_attributes', add_help=True)
         parser.add_argument("-uid","--user_id", help="User ID of the user", default=None,type=str)
         parser.add_argument("-ns","--namespace", help="Namespace of the user", default=None,type=str)
+        parser.add_argument("-m","--merge_policy",help="Merge policy ID to apply when retrieving attributes", type=str)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_profile = customerprofile.Profile(config=self.config)
-            attributes = aepp_profile.getEntity(entityId=args.user_id,entityIdNS=args.namespace)
+            attributes = aepp_profile.getEntity(entityId=args.user_id,entityIdNS=args.namespace,mergePolicyId=args.merge_policy)
             with open(f"{self.config.sandbox}_{args.user_id}_profile_attributes.json", 'w') as f:
                 json.dump(attributes, f, indent=4)
             dataXDM = attributes[list(attributes.keys())[0]].get("entity")
@@ -1795,10 +1802,11 @@ class ServiceShell(cmd.Cmd):
         parser = argparse.ArgumentParser(prog='get_profile_events', add_help=True)
         parser.add_argument("-uid","--user_id", help="User ID of the user", default=None,type=str)
         parser.add_argument("-ns","--namespace", help="Namespace of the user", default=None,type=str)
+        parser.add_argument("-m","--merge_policy",help="Merge policy ID to apply when retrieving attributes", type=str)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_profile = customerprofile.Profile(config=self.config)
-            events = aepp_profile.getEntityEvents(entityId=args.user_id,entityIdNS=args.namespace)
+            events = aepp_profile.getEntityEvents(entityId=args.user_id,entityIdNS=args.namespace,mergePolicyId=args.merge_policy)
             with open(f"{self.config.sandbox}_{args.user_id}_profile_events.json", 'w') as f:
                 json.dump(events, f, indent=4)
             summary_data = {
@@ -1827,6 +1835,39 @@ class ServiceShell(cmd.Cmd):
                     summary_data["primaryIdentities"][primaryIdentity] += 1
             console.print_json(data=summary_data)
             console.print(f"Profile attributes exported to {self.config.sandbox}_{args.user_id}_profile_event_attributes.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+        
+    @login_required
+    def do_get_merge_policies(self,args:Any) -> None:
+        """Get the list of merge policies defined in the current sandbox, saving it in a JSON file"""
+        parser = argparse.ArgumentParser(prog='get_merge_policies', add_help=True)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_profile = customerprofile.Profile(config=self.config)
+            merge_policies = aepp_profile.getMergePolicies()
+            with open(f"{self.config.sandbox}_merge_policies.json", 'w') as f:
+                json.dump(merge_policies, f, indent=4)
+            table = Table(title=f"Merge Policies in Sandbox: {self.config.sandbox}")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="yellow")
+            table.add_column("Schema", style="white")
+            table.add_column("Type", style="white")
+            table.add_column("Active On Edge", style="green")
+            table.add_column("Default", style="magenta")
+            for q in merge_policies:
+                table.add_row(
+                    q.get("id","N/A"),
+                    q.get("name","N/A"),
+                    q.get("schema",{}).get("name","N/A"),
+                    q.get("attributeMerge",{}).get("type","N/A"),
+                    str(q.get("isActiveOnEdge",False)),
+                    str(q.get("default",False)),
+                )
+            console.print(table)
+            console.print(f"Merge policies exported to {self.config.sandbox}_merge_policies.json", style="green")
         except Exception as e:
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
@@ -2070,6 +2111,7 @@ class ServiceShell(cmd.Cmd):
         "Profiles": [
                     "get_identities",
                     "create_identity",
+                    "get_merge_policies",
                     "get_profile_attributes",
                      "get_profile_events",
                      "get_profile_attributes_lineage",

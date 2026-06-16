@@ -248,6 +248,7 @@ Arguments:
 
 #### get_audiences
 List all audiences in the current sandbox.
+If the `getAudiences` method fails, it will fallback to `getSegments` method, which might not include external audiences.\
 Arguments:
 * `-f`, `--filter`: filter the audience returned based name and on lower case and partial match of that string
 
@@ -340,6 +341,10 @@ The output in the terminal will give you an aggregated view of these different i
 - "totalEvents": the total events attached to that profile
 - "firstEventTimestamp": The first event timestamp recorded of that profile
 - "lastEventTimestamp": The last event timestamp recorded of that profile
+
+#### get_merge_policies
+Retrieve all merge policies in the current sandbox.\
+Save the list of merge policies in a JSON file. 
 
 
 ### Hygiene API
