@@ -899,7 +899,7 @@ class PackageManager:
             if artifactType not in ["PROFILE_SEGMENT","CATALOG_DATASET","REGISTRY_SCHEMA","REGISTRY_MIXIN","REGISTRY_DATATYPE","REGISTRY_CLASS","FLOW"]:
                 raise ValueError(f"Resolving artifact by name only work for PROFILE_SEGMENT, CATALOG_DATASET, REGISTRY_SCHEMA, REGISTRY_MIXIN, REGISTRY_DATATYPE, REGISTRY_CLASS and FLOW")
             artifact = self.__resolver__(artifact=artifact,artifactType=artifactType)
-        if self.status != "NEW":
+        if self.status == "DRAFT":
             obj = {
                 "id": artifact,
                 "type": artifactType
@@ -942,7 +942,7 @@ class PackageManager:
             if artifactType not in ["PROFILE_SEGMENT","CATALOG_DATASET","REGISTRY_SCHEMA","REGISTRY_MIXIN","REGISTRY_DATATYPE","REGISTRY_CLASS","FLOW"]:
                 raise ValueError(f"Resolving artifact by name only work for PROFILE_SEGMENT, CATALOG_DATASET, REGISTRY_SCHEMA, REGISTRY_MIXIN, REGISTRY_DATATYPE, REGISTRY_CLASS and FLOW")
             artifact = self.__resolver__(artifact=artifact,artifactType=artifactType)
-        if self.status != "NEW":
+        if self.status == "DRAFT":
             operation = {
                 "id" : self.id,
                 "action" : "DELETE",
@@ -965,10 +965,21 @@ class PackageManager:
             description : OPTIONAL : The new description of the package
             expiry : OPTIONAL : The new expiry of that package in days (default 90 days) or a specific date in the format "2023-05-11T18:29:59.999Z"
         """
-        if self.status == "NEW":
-            raise ValueError("Package information can only be updated for existing packages")
-        res = self.tooling_api.updatePackage(packageId=self.id,operation="UPDATE",name=name,description=description,expiry=expiry)
-        return res
+        if self.status == "DRAFT":
+            res = self.tooling_api.updatePackage(packageId=self.id,operation="UPDATE",name=name,description=description,expiry=expiry)
+            return res
+        elif self.status == "NEW": 
+            self.name = name if name is not None else self.name
+            self.description = description if description is not None else self.description
+            if expiry is not None:
+                if type(expiry) == int:
+                    deltaXdays = datetime.timedelta(days=expiry)
+                    now = datetime.datetime.now()
+                    nowXdays = now + deltaXdays
+                    self.expiry = f"{nowXdays.isoformat(timespec='seconds')}Z"
+                elif type(expiry) == str:
+                    self.expiry = expiry
+            return self.package
         
     def createPackage(self)->dict:
         """
@@ -991,7 +1002,10 @@ class PackageManager:
         """
         if self.status == "NEW":
             raise ValueError("Only existing package can be published, please create the package first")
-        res = self.tooling_api.publishPackage(packageId=self.id)
+        if self.status == "DRAFT":
+            res = self.tooling_api.publishPackage(packageId=self.id)
+        else:
+            raise ValueError(f"Only package with DRAFT status can be published, current status is {self.status}")
         return res
     
     def publishPackagePublic(self)->dict:
