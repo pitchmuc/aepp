@@ -131,8 +131,9 @@ class Profile:
             "schema.name": schema_name,
             "entityId": entityId,
             "entityIdNS": entityIdNS,
-            "mergePolicyId": mergePolicyId,
         }
+        if mergePolicyId is not None:
+            params["mergePolicyId"] = mergePolicyId
         if schema_name == "_xdm.context.experienceevent":
             params["relatedSchema.name"] = kwargs.get("relatedSchema_name", "_xdm.context.profile")
             params["relatedEntityId"] = kwargs.get("relatedEntityId", entityId)
@@ -204,8 +205,9 @@ class Profile:
             "schema.name": schema_name,
             "entityId": entityId,
             "entityIdNS": entityIdNS,
-            "mergePolicyId": mergePolicyId,
         }
+        if mergePolicyId is not None:
+            params["mergePolicyId"] = mergePolicyId
         params["relatedSchema.name"] = kwargs.get("relatedSchema_name", "_xdm.context.profile")
         params["relatedEntityId"] = kwargs.get("relatedEntityId", entityId)
         params["relatedEntityIdNS"] = kwargs.get("relatedEntityIdNS", entityIdNS)

@@ -11,6 +11,8 @@ Patch:
 * enhancing header token replacement when private header are passed to the calls. Solving edge case of Token regeneration issue on some requests.
 * adding `get_hygiene_works`, `get_hygiene_work` and `get_hygiene_quotas` methods in CLI module
 * adding the PackageManager in the sandboxes module [documentation](./packageManager.md)
+* adding safeguard for CLI `get_audiences`, fallback to `getSegments`
+* adding the `get_merge_policies` method in the CLI. 
 
 ## version 0.5.5
 * update the `createDescriptor` method in the `Schema` class.
