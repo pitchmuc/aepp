@@ -13,7 +13,7 @@ from aepp import connector
 from typing import Union
 import re
 import logging
-from .configs import ConnectObject
+from aepp.configs import ConnectObject
 import json
 
 

@@ -16,7 +16,7 @@ import logging
 import deprecation
 from dataclasses import dataclass
 from typing import Union
-from .configs import ConnectObject
+from aepp.configs import ConnectObject
 import datetime
 import random
 

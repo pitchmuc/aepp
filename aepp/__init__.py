@@ -337,8 +337,11 @@ def extractSandboxArtifacts(
         with open(f"{mergePolicyPath / el.get('id','unknown')}.json",'w') as f:
             json.dump(el,f,indent=2)
     ## audiences
-    mysegmentation = segmentation.Segmentation(config=sandbox) 
-    audiences = mysegmentation.getAudiences()
+    mysegmentation = segmentation.Segmentation(config=sandbox)
+    try:
+        audiences = mysegmentation.getAudiences()
+    except Exception as e:
+        audiences = mysegmentation.getSegments()
     for el in audiences:
         safe_name = __titleSafe__(el.get('name','unknown'))
         if len(el.get('tags',[])) > 0:
