@@ -14,6 +14,8 @@ Patch:
 * adding safeguard for CLI `get_audiences`, fallback to `getSegments`
 * adding the `get_merge_policies` method in the CLI. 
 * Fix issue in schema manager `to_dataframe` and `to_dict` methods. Fixing map.
+* Enhancing Audience sync by detecting existing reference to other segments. 
+* Reduce limit for `getAudiences` method.
 
 ## version 0.5.5
 * update the `createDescriptor` method in the `Schema` class.

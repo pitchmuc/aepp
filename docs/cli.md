@@ -334,6 +334,7 @@ Retrieve all UPS events for a specific user, saving it in a JSON file.\
 Arguments:
 * `-uid`,`--user_id` : User ID of the user.
 * `-ns`,`--namespace` : Namespace of the user.
+* `-l`, `--limit` : Number of events returned by the response (max 5000, default 1000) 
 
 The output in the terminal will give you an aggregated view of these different informations: 
 - "eventTypes": the different types and their numbers

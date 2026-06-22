@@ -34,28 +34,29 @@ class TokenInfo:
 
 def with_network_retries(default_retries=3, backoff_factor=2):
     """
-    Decorator to retry requests specifically on streaming failures 
-    that urllib3 cannot catch.
+    Decorator to retry requests specifically on streaming failures
+    that urllib3 cannot catch (e.g. IncompleteRead on large responses).
+    `retry=N` means N retries after the first attempt (N+1 total attempts).
     """
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            max_retries = getattr(self, 'retry', default_retries)
-            for attempt in range(max_retries):
+            max_retries = max(0, getattr(self, 'retry', default_retries))
+            for attempt in range(max_retries + 1):  # attempt 0 = first try
                 try:
                     return func(self, *args, **kwargs)
                 except Exception as e:
-                    if attempt < max_retries - 1:
+                    if attempt < max_retries:
                         sleep_time = backoff_factor ** attempt
                         if getattr(self, 'loggingEnabled', False):
                             self.logger.warning(
-                                f"Streaming network drop ({type(e).__name__}) detected. "
-                                f"Retrying {attempt + 1}/{max_retries} in {sleep_time}s..."
+                                f"Network error ({type(e).__name__}) on attempt {attempt + 1}/{max_retries + 1}. "
+                                f"Retrying in {sleep_time}s..."
                             )
                         time.sleep(sleep_time)
                     else:
                         if getattr(self, 'loggingEnabled', False):
-                            self.logger.error(f"Request failed after {max_retries} attempts due to {type(e).__name__}.")
+                            self.logger.error(f"Request failed after {max_retries + 1} attempts due to {type(e).__name__}.")
                         raise e
         return wrapper
     return decorator

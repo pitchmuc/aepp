@@ -8,7 +8,7 @@
 #  OF ANY KIND, either express or implied. See the License for the specific language
 #  governing permissions and limitations under the License.
 
-import json
+import json, re
 import aepp
 from aepp import schema, schemamanager, fieldgroupmanager, datatypemanager,classmanager,identity,catalog,customerprofile,segmentation
 from copy import deepcopy
@@ -308,11 +308,13 @@ class Synchronizer:
                     for folder in self.audienceFolder:
                         for file in folder.glob('*.json'):
                             au_file = json.load(FileIO(file))
-                            if au_file.get('id','') == component or au_file.get('name','') == component:
+                            if au_file.get('id','') == component or au_file.get('name','').lower() == component.lower():
                                 if au_file.get('tags',[]) != [] and self.dict_tag_name_id is not None:
                                     au_file['tags'] = [self.dict_tag_name_id[tag_name] for tag_name in au_file.get('tags',[]) if tag_name in self.dict_tag_name_id.keys()]
                                 component = au_file
                                 break
+                            else:
+                                raise ValueError("the audience could not be found in the local folder")
         elif type(component) == dict:
             if 'meta:resourceType' in component.keys():
                 componentType = component['meta:resourceType']
@@ -329,7 +331,7 @@ class Synchronizer:
             elif 'files' in component.keys():
                 componentType = 'dataset'
                 if len(component.get('unifiedTags',[])) > 0 and self.dict_tag_name_id is not None:
-                    component['unifiedTags'] = [self.dict_tag_name_id[tag_name] for tag_name in component.get('UnifiedTags',[]) if tag_name in self.dict_tag_name_id.keys()]
+                    component['unifiedTags'] = [self.dict_tag_name_id[tag_name] for tag_name in component.get('unifiedTags',[]) if tag_name in self.dict_tag_name_id.keys()]
             elif 'attributeMerge' in component.keys():
                 componentType = 'mergepolicy'
             elif 'expression' in component.keys():
@@ -647,7 +649,7 @@ class Synchronizer:
                         res = t_fieldgroup.updateFieldGroup()
                         if '$id' not in res.keys():
                             if res["type"] == "http://ns.adobe.com/aep/errors/XDM-1406-422":
-                                t_fieldgroup.fieldGroup["properties"] = t_fieldgroup.fieldGroup["definitions"][next(iter(t_datatype.dataType["definitions"].keys()))]["properties"]
+                                t_fieldgroup.fieldGroup["properties"] = t_fieldgroup.fieldGroup["definitions"][next(iter(t_fieldgroup.dataType["definitions"].keys()))]["properties"]
                                 t_fieldgroup.fieldGroup.pop("allOf", None)
                                 t_fieldgroup.fieldGroup.pop("definitions", None)
                                 res = t_fieldgroup.updateFieldGroup()
@@ -1280,9 +1282,22 @@ class Synchronizer:
                     "evaluationInfo":baseAudience.get('evaluationInfo',{'batch': {'enabled': True}, 'continuous': {'enabled': False},'synchronous': {'enabled': False}}),
                     "tags":baseAudience.get('tags',[])
                 }
+                expression_value = audienceDef.get('expression',{}).get('value','')
+                segmentId_references = re.findall('inSegment[^}]+value":"(.+?)"}',expression_value)
+                list_dedup = set(segmentId_references)
+                for segmentId in list_dedup:
+                    if verbose:
+                        print(f"audience '{audience_name}' expression references segment with id '{segmentId}', syncing it to target {target}")
+                    self.syncComponent(segmentId,componentType='audience',verbose=verbose,force=force)
+                    base_segmentName = [name for name, segDef in self.dict_baseComponents['audience'].items() if segmentId == segDef['id']][0]
+                    new_segmentId =  self.dict_targetComponents[target]['audience'][base_segmentName]['id']
+                    expression_value = expression_value.replace(segmentId, new_segmentId)
+                    audienceDef['expression']['value'] = expression_value
                 res = targetAudiences.createAudience(audienceDef)
+                if verbose:                    
+                    print(f"audience '{audience_name}' created in target {target}")
                 if 'id' in res.keys():
-                    self.dict_targetComponents[target]['audience'][res['id']] = res
+                    self.dict_targetComponents[target]['audience'][res['name']] = res
                 else:
                     print(res)
                     raise Exception("the audience could not be created in the target sandbox")
@@ -1290,7 +1305,7 @@ class Synchronizer:
                 t_audience = [el for el in t_audiences if el['name'] == audience_name][0]
                 if verbose:
                     print(f"audience '{audience_name}' already exists in target {target}, checking it")
-                if str(t_audience['expression']) != str(baseAudience.get('expression',[])) or len(baseAudience.get('tags',[])).difference(set(t_audience.get('tags',[])))>0 or force == True:
+                if str(t_audience['expression']) != str(baseAudience.get('expression',[])) or len(set(baseAudience.get('tags',[])).difference(set(t_audience.get('tags',[]))))>0 or force == True:
                     if verbose:
                         print(f"Updating '{audience_name}' in target {target}")
                     t_audience = [el for el in t_audiences if el['name'] == audience_name][0]
@@ -1301,6 +1316,6 @@ class Synchronizer:
                     t_audience['tags'] = baseAudience.get('tags',[])
                     res = targetAudiences.putAudience(t_audience['id'],t_audience)
                     self.dict_targetComponents[target]['audience'][audience_name] = res
-                else: 
+                else:
                     self.dict_targetComponents[target]['audience'][audience_name] = [el for el in t_audiences if el['name'] == audience_name][0]
 

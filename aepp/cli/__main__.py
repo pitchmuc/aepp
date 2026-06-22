@@ -1803,10 +1803,11 @@ class ServiceShell(cmd.Cmd):
         parser.add_argument("-uid","--user_id", help="User ID of the user", default=None,type=str)
         parser.add_argument("-ns","--namespace", help="Namespace of the user", default=None,type=str)
         parser.add_argument("-m","--merge_policy",help="Merge policy ID to apply when retrieving attributes", type=str)
+        parser.add_argument("-l","--limit",help="Max Amount of events that is being returned. Default 1000, max 5000", type=int,default=1000)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_profile = customerprofile.Profile(config=self.config)
-            events = aepp_profile.getEntityEvents(entityId=args.user_id,entityIdNS=args.namespace,mergePolicyId=args.merge_policy)
+            events = aepp_profile.getEntityEvents(entityId=args.user_id,entityIdNS=args.namespace,mergePolicyId=args.merge_policy,n_events=args.limit)
             with open(f"{self.config.sandbox}_{args.user_id}_profile_events.json", 'w') as f:
                 json.dump(events, f, indent=4)
             summary_data = {

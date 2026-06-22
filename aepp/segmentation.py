@@ -121,11 +121,13 @@ class Segmentation:
         elif type(config) == ConnectObject:
             header = config.getConfigHeader()
             config = config.getConfigObject()
+        retry = kwargs.get('retry',0)
         self.connector = connector.AdobeRequest(
             config=config,
             header=header,
             loggingEnabled=self.loggingEnabled,
             logger=self.logger,
+            retry=retry,
         )
         self.header = self.connector.header
         self.header.update(**kwargs)
@@ -876,7 +878,7 @@ class Segmentation:
     
 
     def getAudiences(self,
-        limit:int=100,
+        limit:int=60,
         name:str=None,
         sort:str=None,
         entityType:str="_xdm.context.profile",
