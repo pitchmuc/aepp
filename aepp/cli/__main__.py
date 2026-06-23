@@ -33,6 +33,16 @@ def clear_terminal():
     # os.name is 'nt' for Windows, 'posix' for Mac/Linux
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 console = Console()
 
 # --- 2. The Interactive Shell ---
@@ -373,7 +383,7 @@ class ServiceShell(cmd.Cmd):
     def do_get_ups_schemas(self, args) -> None:
         """List all schemas enabled for Profile in the current sandbox. By default do not save the output to a file as it can be very long, use the --save option to export the data to a CSV file."""
         parser = argparse.ArgumentParser(prog='get_ups_schemas', add_help=True)
-        parser.add_argument("-sv", "--save",help="Boolean. Save enabled schemas to CSV file. Default False. Possible values: True, False",type=bool,default=False)
+        parser.add_argument("-sv", "--save",help="Boolean. Save enabled schemas to CSV file. Default False. Possible values: True, False",type=str2bool,default=False)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_schema = schema.Schema(config=self.config)
@@ -413,7 +423,7 @@ class ServiceShell(cmd.Cmd):
     def do_get_ups_fieldgroups(self, args:Any) -> None:
         """List all field groups enabled for Profile in the current sandbox. By default do not save the output to a file as it can be very long, use the --save option to export the data to a CSV file."""
         parser = argparse.ArgumentParser(prog='get_fieldgroups_enabled', add_help=True)
-        parser.add_argument("-sv", "--save",help="Boolean. Save enabled field groups to CSV file. Default False. Possible values: True, False",type=bool,default=False)
+        parser.add_argument("-sv", "--save",help="Boolean. Save enabled field groups to CSV file. Default False. Possible values: True, False",type=str2bool,default=False)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_schema = schema.Schema(config=self.config)
@@ -448,12 +458,36 @@ class ServiceShell(cmd.Cmd):
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
             return
-    
+        
+    @login_required
+    def do_create_b2b_artifacts(self,args:Any) -> None:
+        """
+        Create the B2B identities and schema relationship for the current sandbox
+        """
+        parser = argparse.ArgumentParser(prog="create_b2b_artifacts",add_help=True)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_identity = identity.Identity(config=self.config)
+            aepp_schema = schema.Schema(config=self.config)
+            new_identities = aepp_identity.createB2BIdentities()
+            new_schemas = aepp_schema.createB2Bschemas()
+            result = {
+                "identities":new_identities,
+                "schemas": list(new_schemas.keys())
+            }
+            console.print_json(data=result)
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+
+
     @login_required
     def do_get_profile_schemas(self,args:Any) -> None:
         """Get the current schema based on Profile class. By default do not save the output to a file as it can be very long, use the --save option to export the data to a CSV file."""
         parser = argparse.ArgumentParser(prog='get_profile_schemas', add_help=True)
-        parser.add_argument("-sv", "--save",help="Boolean. Save profile schemas to CSV file. Default False. Possible values: True, False",type=bool,default=False)
+        parser.add_argument("-sv", "--save",help="Boolean. Save profile schemas to CSV file. Default False. Possible values: True, False",type=str2bool,default=False)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_schema = schema.Schema(config=self.config)
@@ -501,7 +535,7 @@ class ServiceShell(cmd.Cmd):
     def do_get_union_profile_csv(self,args:Any) -> None:
         """Get the current Profile union schema CSV structure and saving it in a file. It is the Profile schema that contains all enabled Profile class based schemas"""
         parser = argparse.ArgumentParser(prog='get_union_profile', add_help=True)
-        parser.add_argument("-f","--full",default=False,help="Boolean. Get full schema information with all details. Default False. Possible values: True, False",type=bool)
+        parser.add_argument("-f","--full",default=False,help="Boolean. Get full schema information with all details. Default False. Possible values: True, False",type=str2bool)
         try:
             args = parser.parse_args(shlex.split(args))
             profile_union = schemamanager.SchemaManager('https://ns.adobe.com/xdm/context/profile__union',config=self.config)
@@ -533,7 +567,7 @@ class ServiceShell(cmd.Cmd):
     def do_get_union_event_csv(self,args:Any) -> None:
         """Get the current Experience Event union schema CSV structure and saving it in a file. It is the Experience Event schema that contains all enabled Experience Event class based schemas"""
         parser = argparse.ArgumentParser(prog='get_union_event', add_help=True)
-        parser.add_argument("-f","--full",default=False,help="Boolean. Get full schema information with all details. Default False. Possible values: True, False",type=bool)
+        parser.add_argument("-f","--full",default=False,help="Boolean. Get full schema information with all details. Default False. Possible values: True, False",type=str2bool)
         try:
             args = parser.parse_args(shlex.split(args))
             event_union = schemamanager.SchemaManager('https://ns.adobe.com/xdm/context/experienceevent__union',config=self.config)
@@ -549,7 +583,7 @@ class ServiceShell(cmd.Cmd):
     def do_get_event_schemas(self,args:Any) -> None:
         """Get all the schemas using the Experience Event class as filter. By default do not save the output to a file as it can be very long, use the --save option to export the data to a CSV file."""
         parser = argparse.ArgumentParser(prog='get_event_schemas', add_help=True)
-        parser.add_argument("-sv", "--save",help="Boolean. Save event schemas to CSV file. Default False. Possible values: True, False",type=bool,default=False)
+        parser.add_argument("-sv", "--save",help="Boolean. Save event schemas to CSV file. Default False. Possible values: True, False",type=str2bool,default=False)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_schema = schema.Schema(config=self.config)
@@ -582,7 +616,7 @@ class ServiceShell(cmd.Cmd):
         """Get schema XDM JSON by name or $ID or alt:Id. By default it will save the output in a JSON file with the name of the schema title, use the --full option to get the full schema with all details but beware that it can be very long."""
         parser = argparse.ArgumentParser(prog='get_schema_xdm', add_help=True)
         parser.add_argument("schema", help="Schema title, $id or alt:Id to retrieve")
-        parser.add_argument("-f","--full",default=False,help="Boolean. Get full schema with all details. Default False. Possible values: True, False",type=bool)
+        parser.add_argument("-f","--full",default=False,help="Boolean. Get full schema with all details. Default False. Possible values: True, False",type=str2bool)
         try:
             args = parser.parse_args(shlex.split(arg))
             aepp_schema = schema.Schema(config=self.config)
@@ -615,7 +649,7 @@ class ServiceShell(cmd.Cmd):
         """Get schema CSV by name or ID. Use the --full option to get the full schema information with all details."""
         parser = argparse.ArgumentParser(prog='get_schema_csv', add_help=True)
         parser.add_argument("schema", help="Schema $id or alt:Id to retrieve")
-        parser.add_argument("-f","--full",default=False,help="Boolean. Get full schema information with all details. Default False. Possible values: True, False",type=bool)
+        parser.add_argument("-f","--full",default=False,help="Boolean. Get full schema information with all details. Default False. Possible values: True, False",type=str2bool)
         try:
             args = parser.parse_args(shlex.split(arg))
             aepp_schema = schema.Schema(config=self.config)
@@ -673,7 +707,7 @@ class ServiceShell(cmd.Cmd):
     def do_get_fieldgroups(self, args:Any) -> None:
         """List all field groups in the current sandbox"""
         parser = argparse.ArgumentParser(prog='get_fieldgroups', add_help=True)
-        parser.add_argument("-sv", "--save",help="Boolean. Save field groups to CSV file. Default False. Possible values: True, False",type=bool,default=False)
+        parser.add_argument("-sv", "--save",help="Boolean. Save field groups to CSV file. Default False. Possible values: True, False",type=str2bool,default=False)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_schema = schema.Schema(config=self.config)
@@ -734,7 +768,7 @@ class ServiceShell(cmd.Cmd):
         """Get field group CSV by name or ID"""
         parser = argparse.ArgumentParser(prog='get_fieldgroup_csv', add_help=True)
         parser.add_argument("fieldgroup", help="Field Group name, $id or alt:Id to retrieve")
-        parser.add_argument("-f","--full",default=False,help="Boolean. Get full field group information with all details. Default False. Possible values: True, False",type=bool)
+        parser.add_argument("-f","--full",default=False,help="Boolean. Get full field group information with all details. Default False. Possible values: True, False",type=str2bool)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_schema = schema.Schema(config=self.config)
@@ -818,7 +852,7 @@ class ServiceShell(cmd.Cmd):
         """Get data type CSV by name or ID"""
         parser = argparse.ArgumentParser(prog='get_datatype_csv', add_help=True)
         parser.add_argument("datatype", help="Data Type name, $id or alt:Id to retrieve")
-        parser.add_argument("-f","--full",default=False,help="Boolean. Get full data type information with all details. Default False. Possible values: True, False",type=bool)
+        parser.add_argument("-f","--full",default=False,help="Boolean. Get full data type information with all details. Default False. Possible values: True, False",type=str2bool)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_schema = schema.Schema(config=self.config)
@@ -906,7 +940,7 @@ class ServiceShell(cmd.Cmd):
         """Retrieve the list of descriptors, possibly for a specific schema"""
         parser = argparse.ArgumentParser(prog='get_descriptors', add_help=True)
         parser.add_argument("-sc", "--schema", help="Schema name, $id or alt:Id to filter descriptors by schema")
-        parser.add_argument("-sv", "--save",help="Boolean. Save descriptors to JSON file. Default False. Possible values: True, False",type=bool,default=False)
+        parser.add_argument("-sv", "--save",help="Boolean. Save descriptors to JSON file. Default False. Possible values: True, False",type=str2bool,default=False)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_schema = schema.Schema(config=self.config)
@@ -996,7 +1030,7 @@ class ServiceShell(cmd.Cmd):
         parser = argparse.ArgumentParser(prog='upload_fieldgroup_definition_csv', add_help=True)
         parser.add_argument("csv_path", help="Path to the field group CSV file")
         parser.add_argument("-sp","--separator", help="CSV separator, default is comma (,)", default=",", type=str)
-        parser.add_argument("-ts","--test",help="Boolean. Test creation without uploading it to AEP. It will output a JSON file. Default False. Possible values: True, False",default=False,type=bool)
+        parser.add_argument("-ts","--test",help="Boolean. Test creation without uploading it to AEP. It will output a JSON file. Default False. Possible values: True, False",default=False,type=str2bool)
         try:
             args = parser.parse_args(shlex.split(args))
             myfg = fieldgroupmanager.FieldGroupManager(config=self.config)
@@ -1020,7 +1054,7 @@ class ServiceShell(cmd.Cmd):
         """Upload a field group definition from a JSON XDM file"""
         parser = argparse.ArgumentParser(prog='upload_fieldgroup_definition_xdm', add_help=True)
         parser.add_argument("xdm_path", help="Path to the field group JSON XDM file")
-        parser.add_argument("-ts","--test",help="Boolean. Test upload without uploading it to AEP. It will output a JSON file. Default False. Possible values: True, False",default=False,type=bool)
+        parser.add_argument("-ts","--test",help="Boolean. Test upload without uploading it to AEP. It will output a JSON file. Default False. Possible values: True, False",default=False,type=str2bool)
         try:
             args = parser.parse_args(shlex.split(args))
             with open(args.xdm_path, 'r') as f:
@@ -1295,7 +1329,7 @@ class ServiceShell(cmd.Cmd):
         """List all identities in the current sandbox"""
         parser = argparse.ArgumentParser(prog='get_identities', add_help=True)
         parser.add_argument("-r","--region", help="Region to get identities from: 'ndl2' (default), 'va7', 'aus5', 'can2', 'ind2'", default='ndl2',type=str)
-        parser.add_argument("-co","--custom_only",help="Get only custom identities", default=False,type=bool)
+        parser.add_argument("-co","--custom_only",help="Get only custom identities", default=False,type=str2bool)
         try:
             args = parser.parse_args(shlex.split(args))
             region = args.region if args.region else 'ndl2'
@@ -1422,6 +1456,118 @@ class ServiceShell(cmd.Cmd):
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
             return
+        
+    @login_required
+    def do_get_batch_evaluation(self,args:Any)->None:
+        """
+        Get the batch evaluation job definition for the sandbox.
+        """
+        try:
+            from aepp import segmentation
+            seg = segmentation.Segmentation(config = self.config)
+            activeJobs = seg.getSchedules()
+            batchSegmentationJob = [job for job in activeJobs if job.get('type') == 'batch_segmentation' and job.get('frequency') == 'daily']
+            if len(batchSegmentationJob) == 0:
+                console.print("No batch segmentation job found.", style="yellow")
+            else:
+                console.print_json(data=batchSegmentationJob[0])
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+    
+    @login_required
+    def do_update_batch_evaluation_time(self,args:Any)->None:
+        """
+        Update the batch evaluation time for the sandbox.
+        Arguments:
+            schedule : the schedule to update (ex: "0 0 1 * * ?" for daily at 1am)
+        """
+        parser = argparse.ArgumentParser(prog="update_batch_evaluation_time",description='Update the batch evaluation time for the sandbox',add_help=True)
+        parser.add_argument("schedule",type=str,help="the schedule to update (ex: \"0 0 1 * * ?\" for daily at 1am)")
+        try:
+            from aepp import segmentation
+            args = parser.parse_args(shlex.split(args))
+            seg = segmentation.Segmentation(config = self.config)
+            res = seg.updateScheduledBatchSegmentationJob(schedule=args.schedule)
+            console.print(f"Sandbox '{self.sandbox}' batch evaluation job updated successfully.", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+    
+    @login_required
+    def do_flexible_audience_evaluation(self,args:Any)->None:
+        """
+        Create a flexible audience evaluation job for the sandbox.
+        Arguments:
+            audienceIds : list of audience IDs such as "audienceId1" "audienceId2" "audienceId3"
+        """
+        parser = argparse.ArgumentParser(prog="flexible_audience_evaluation",description='Create a flexible audience evaluation job for the sandbox',add_help=True)
+        parser.add_argument("audience_ids",description="list of audience IDs such as 'audienceId1' 'audienceId2' 'audienceId3'",type=str,nargs="+")
+        try:
+            from aepp import segmentation
+            args = parser.parse_args(shlex.split(args))
+            seg = segmentation.Segmentation(config = self.config)
+            res = seg.createJob(segmentIds=args.audience_ids)
+            console.print_json(data=res)
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+    
+    @login_required
+    def do_extract_audience_paths(self,args:Any)->None:
+        """
+        Get the list of paths used in audience definitions.
+        """
+        parser = argparse.ArgumentParser(prog="extract_audience_paths",description='Get the list of paths used in audience definitions',add_help=True)
+        parser.add_argument("audience",description="Audience ID or audience name to get paths for",type=str)
+        parser.add_argument("-r","--recursive",help="Boolean. Get paths recursively from segment references. Default False. Possible values: True, False",default=False,type=str2bool)
+        try:
+            from aepp import segmentation
+            seg = segmentation.Segmentation(config = self.config)
+            args = parser.parse_args(shlex.split(args))
+            audiences = seg.getAudiences()
+            audience = next((aud for aud in audiences if aud.get("id") == args.audience or args.audience in aud.get("name", "")), None)
+            if not audience:
+                console.print(f"Audience '{args.audience}' not found.", style="red")
+                return
+            list_paths:list = seg.extractPaths(audience, recursive=args.recursive)
+            with open(f"audience_{audience.get('id')}_paths.json", 'w', newline='') as jsonfile:
+                json.dump(list_paths, jsonfile, indent=4)
+            console.print_json(data=list_paths)
+            console.print(f"Audience paths exported to audience_{audience.get('id')}_paths.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+    
+    @login_required
+    def do_extract_audience_ref(self,args:Any)->None:
+        """
+        Get the list of audience references used in audience definitions.
+        """
+        parser = argparse.ArgumentParser(prog="extract_audience_ref",description='Get the list of audience references used in audience definitions',add_help=True)
+        parser.add_argument("audience",description="Audience ID or audience name to get references for",type=str)
+        try:
+            from aepp import segmentation
+            seg = segmentation.Segmentation(config = self.config)
+            args = parser.parse_args(shlex.split(args))
+            audiences = seg.getAudiences()
+            audience = next((aud for aud in audiences if aud.get("id") == args.audience or args.audience in aud.get("name", "")), None)
+            if not audience:
+                console.print(f"Audience '{args.audience}' not found.", style="red")
+                return
+            list_refs:list = seg.extractAudiences(audience)
+            with open(f"audience_{audience.get('id')}_references.json", 'w', newline='') as jsonfile:
+                json.dump(list_refs, jsonfile, indent=4)
+            console.print_json(data=list_refs)
+            console.print(f"Audience references exported to audience_{audience.get('id')}_references.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
 
     
     @login_required
@@ -1458,9 +1604,9 @@ class ServiceShell(cmd.Cmd):
     def do_get_flows(self, args:Any) -> None:
         """List flows in the current sandbox based on parameters provided. By default, list all sources and destinations."""
         parser = argparse.ArgumentParser(prog='get_flows', add_help=True)
-        parser.add_argument("-i","--internal_flows",help="Boolean. Get internal flows. Default False. Possible values: True, False", default=False,type=bool)
-        parser.add_argument("-adv","--advanced",help="Boolean. Get advanced information about runs. Default False. Possible values: True, False", default=False,type=bool)
-        parser.add_argument("-ao","--active_only",help="Boolean. Get only active flows during that time period. Default True. Possible values: True, False", default=True,type=bool)
+        parser.add_argument("-i","--internal_flows",help="Boolean. Get internal flows. Default False. Possible values: True, False", default=False,type=str2bool)
+        parser.add_argument("-adv","--advanced",help="Boolean. Get advanced information about runs. Default False. Possible values: True, False", default=False,type=str2bool)
+        parser.add_argument("-ao","--active_only",help="Boolean. Get only active flows during that time period. Default True. Possible values: True, False", default=True,type=str2bool)
         parser.add_argument("-mn","--minutes", help="Timeframe in minutes to check for errors, default 0", default=0,type=int)
         parser.add_argument("-H","--hours", help="Timeframe in hours to check for errors, default 0", default=0,type=int)
         parser.add_argument("-d","--days", help="Timeframe in days to check for errors, default 0", default=0,type=int)
@@ -1772,6 +1918,31 @@ class ServiceShell(cmd.Cmd):
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
             return
+        
+    @login_required
+    def do_query_segment_population(self,args:Any) -> None:
+        """Retrieve the segment identities for a specific segment, save the result to a CSV file."""
+        parser = argparse.ArgumentParser(prog='query_segment_population', add_help=True)
+        parser.add_argument("segment_id", help="Segment ID(s) to query population for",type=str,nargs='+')
+        parser.add_argument("-ef", "--extra_fields", help="Extra fields to include in the query, comma-separated",type=str,nargs='?')
+        parser.add_argument("-c","--count_only", help="if you want to get only the count of the segment population",action='store_true',default=False)
+        parser.add_argument("-fn","--filename", help="if you want to save it to a specific filename",type=str)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            if args.filename:
+                filename = args.filename if args.filename.endswith('.csv') else f"{args.filename}.csv"
+            else:
+                filename = f"segment_population_{args.segment_id[0]}.csv"
+            aepp_query = queryservice.QueryService(config=self.config)
+            conn = aepp_query.connection()
+            iqs2 = queryservice.InteractiveQuery2(conn, config=self.config)
+            result:pd.DataFrame = iqs2.querySegmentPopulation(segmentId=args.segment_id, extraFields=args.extra_fields,count=args.count_only)
+            result.to_csv(filename, index=False)
+            console.print(f"Segment population exported to {filename}", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
     
     @login_required
     def do_get_profile_attributes(self,args:Any) -> None:
@@ -1995,8 +2166,8 @@ class ServiceShell(cmd.Cmd):
         parser.add_argument('-t','--targets', help='target sandboxes',nargs='+',type=str)
         parser.add_argument('-lf','--localfolder', help='Local folder(s) to use for sync',default='extractions',nargs='+',type=str)
         parser.add_argument('-b','--baseSandbox', help='Base sandbox for synchronization (if not using local folder)',type=str)
-        parser.add_argument('-v','--verbose', help='Enable verbose output (default True)',default=True,type=bool)
-        parser.add_argument("-f","--force",help="Boolean. force the creation or synchronization of the artefact. (Default False)",default=False,type=bool)
+        parser.add_argument('-v','--verbose', help='Enable verbose output (default True)',default=True,type=str2bool)
+        parser.add_argument("-f","--force",help="Boolean. force the creation or synchronization of the artefact. (Default False)",default=False,type=str2bool)
         try:
             args = parser.parse_args(shlex.split(args))
             console.print("Initializing Synchronizor...", style="blue")
@@ -2040,8 +2211,8 @@ class ServiceShell(cmd.Cmd):
         parser = argparse.ArgumentParser(prog='sync_all', description='Synchronizing all artifacts to an AEP Sandbox, either from sandbox or from local storage',add_help=True)
         parser.add_argument('-t','--targets', help='target sandboxes',nargs='+',type=str)
         parser.add_argument('-lf','--localfolder', help='Local folder(s) to use for sync',default='extractions',nargs='+',type=str)
-        parser.add_argument('-v','--verbose', help='Enable verbose output (default True)',default=True,type=bool)
-        parser.add_argument("-f","--force", help="Boolean. force the creation or synchronization of the artefact. (Default False)",default=False,type=bool)
+        parser.add_argument('-v','--verbose', help='Enable verbose output (default True)',default=True,type=str2bool)
+        parser.add_argument("-f","--force", help="Boolean. force the creation or synchronization of the artefact. (Default False)",default=False,type=str2bool)
         try:
             args = parser.parse_args(shlex.split(args))
             console.print("Initializing Synchronizor...", style="blue")
@@ -2088,7 +2259,8 @@ class ServiceShell(cmd.Cmd):
                    "enable_schema_for_ups",
                    "create_fieldgroup_template",
                    "upload_fieldgroup_definition_csv",
-                   "upload_fieldgroup_definition_xdm"
+                   "upload_fieldgroup_definition_xdm",
+                   "create_b2b_artifacts"
                    ],
         "Datasets": ["get_datasets",
                      "get_datasets_tablenames",
@@ -2101,13 +2273,19 @@ class ServiceShell(cmd.Cmd):
                      "enable_dataset_for_ups",
                      "enable_dataset_for_uis",
                      "get_tags",],
-        "Audiences":["get_audiences","create_audiences_job"],
+        "Audiences":["get_audiences","create_audiences_job",
+                     "flexible_audience_evaluation",
+                     "get_batch_evaluation",
+                     "update_batch_evaluation_time",
+                     "extract_audience_paths",
+                     "extract_audience_ref"],
         "Flows": ["get_flows",
                   "get_flow_errors",
                   "create_dataset_http_source",
                   "get_DLZ_credential"],
         "Queries": ["get_queries",
-                    "query"],
+                    "query",
+                    "query_segment_population"],
         "Hygiene": ["get_hygiene_works","get_hygiene_work"],
         "Profiles": [
                     "get_identities",
@@ -2180,7 +2358,7 @@ class ServiceShell(cmd.Cmd):
 def main():
     # ARGPARSE: Handles the initial setup flags
     parser = argparse.ArgumentParser(description="Interactive Client Tool",add_help=True)
-    
+
     # Optional: Allow passing user/pass via flags to skip the interactive login step
     parser.add_argument("-sx", "--sandbox", help="Auto-login sandbox")
     parser.add_argument("-s", "--secret", help="Secret")
@@ -2188,9 +2366,15 @@ def main():
     parser.add_argument("-sc", "--scopes", help="Scopes")
     parser.add_argument("-cid", "--client_id", help="Auto-login client ID")
     parser.add_argument("-cf", "--config_file", help="Path to config file", default=None)
+    parser.add_argument("-cmd", "--command", help="Run a single command non-interactively and exit (e.g. 'get_schemas -f client')", default=None)
     parser.add_argument("-v", "--version", action="version", version=f"aepp {aepp.__version__}")
-    args = parser.parse_args() 
-    shell = ServiceShell(**vars(args))
+    args = parser.parse_args()
+    cmd_arg = args.command
+    shell_kwargs = {k: v for k, v in vars(args).items() if k != "command"}
+    shell = ServiceShell(**shell_kwargs)
+    if cmd_arg is not None:
+        shell.onecmd(cmd_arg)
+        return
     try:
         shell.cmdloop()
     except KeyboardInterrupt:
