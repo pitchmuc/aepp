@@ -346,6 +346,48 @@ This type of Schema is special because it does not rely on the normal concept of
 This Schema is more flexible and autorize the creation of fields directly at schema level, without the need to create a field group for that.\
 The Schema Manager has been updated to be able to support this type of schema, with some specific methods that are only available for this type of schema.\
 
+> **Important**: `addFieldGroup` and `getFieldGroupManager` raise an exception on adhoc-v2 schemas. Use `addField` / `removeField` instead.
+
+### Instantiating an adhoc-v2 schema
+
+#### Creating a new adhoc-v2 schema from scratch
+
+Pass `schemaClass="https://ns.adobe.com/xdm/data/adhoc-v2"` to the constructor. The `behaviorType` parameter controls whether the schema records data (`"record"`, default) or time-series events (`"time-series"`).
+
+```python
+import aepp
+from aepp import schemamanager
+
+mySandbox = aepp.importConfigFile('myconfig.json', sandbox='mysandbox', connectInstance=True)
+
+sm = schemamanager.SchemaManager(
+    title='My Adhoc Schema',
+    description='A flexible adhoc-v2 schema',
+    schemaClass='https://ns.adobe.com/xdm/data/adhoc-v2',
+    behaviorType='record',  # or 'time-series'
+    config=mySandbox,
+)
+```
+
+#### Loading an existing adhoc-v2 schema
+
+Pass the schema `$id` or `altId` exactly as you would for a regular schema.
+
+```python
+import aepp
+from aepp import schema, schemamanager
+
+mySandbox = aepp.importConfigFile('myconfig.json', sandbox='mysandbox', connectInstance=True)
+mySchemaInstance = schema.Schema(config=mySandbox)
+
+# look up the altId from the schema registry
+existingAltId = mySchemaInstance.data.schema_altId['My Adhoc Schema']
+
+sm = schemamanager.SchemaManager(existingAltId, schemaAPI=mySchemaInstance)
+# or
+sm = schemamanager.SchemaManager(existingAltId, config=mySandbox)
+```
+
 ### Methods available for adhoc-v2 schema
 
 #### addField
@@ -373,6 +415,173 @@ possible kwargs:
 * default : if you want to add a default value for the field
 * metaStatus : if you want to add a meta:status attribute to the field
 
+#### addField examples
+
+**Simple string field**
+
+```python
+sm.addField(
+    path='customFields.customerEmail',
+    dataType='string',
+    title='Customer Email',
+    description='Primary email address of the customer',
+)
+```
+
+**Integer field with min / max constraints**
+
+```python
+sm.addField(
+    path='customFields.orderCount',
+    dataType='integer',
+    title='Order Count',
+    minimum=0,
+    maximum=10000,
+)
+```
+
+**Boolean field with a default value**
+
+```python
+sm.addField(
+    path='customFields.isSubscribed',
+    dataType='boolean',
+    title='Is Subscribed',
+    default=False,
+)
+```
+
+**Date field**
+
+```python
+sm.addField(
+    path='customFields.lastPurchaseDate',
+    dataType='date',
+    title='Last Purchase Date',
+)
+```
+
+**Enum field (strict enum)**
+
+```python
+sm.addField(
+    path='customFields.loyaltyTier',
+    dataType='string',
+    title='Loyalty Tier',
+    enumValues={
+        'bronze': 'Bronze',
+        'silver': 'Silver',
+        'gold': 'Gold',
+        'platinum': 'Platinum',
+    },
+    enumType=True,   # True = strict enum, False = suggested values only
+)
+```
+
+**Array of strings**
+
+Use `dataType='string'` together with `array=True` to create a string array field.
+
+```python
+sm.addField(
+    path='customFields.tags',
+    dataType='string',
+    title='Tags',
+    array=True,
+)
+```
+
+**Object field with inline sub-fields**
+
+Pass the sub-fields via `objectComponents` so you do not need to call `addField` separately for each child.
+
+```python
+sm.addField(
+    path='customFields.address',
+    dataType='object',
+    title='Address',
+    objectComponents={
+        'street': 'string',
+        'city': 'string',
+        'postalCode': 'string',
+        'country': 'string',
+    },
+)
+```
+
+**Array of objects**
+
+Use `dataType='array'` (or `dataType='object'` with `array=True`) together with `objectComponents` to create an array of objects.
+
+```python
+sm.addField(
+    path='customFields.orderItems',
+    dataType='array',
+    title='Order Items',
+    objectComponents={
+        'productId': 'string',
+        'quantity': 'integer',
+        'unitPrice': 'double',
+    },
+)
+```
+
+**Nested field inside an existing object**
+
+Fields can be nested as deep as needed. The parent object (`customFields.address`) must already exist before adding children this way.
+
+```python
+# Add a sub-field to an already-defined object
+sm.addField(
+    path='customFields.address.stateProvince',
+    dataType='string',
+    title='State / Province',
+)
+```
+
+**Map field (key → value dictionary)**
+
+```python
+sm.addField(
+    path='customFields.metadataMap',
+    dataType='map',
+    title='Metadata Map',
+    mapType='string',   # value type; also accepts 'integer'
+)
+```
+
+#### Full workflow example
+
+```python
+import aepp
+from aepp import schemamanager
+
+mySandbox = aepp.importConfigFile('myconfig.json', sandbox='mysandbox', connectInstance=True)
+
+# 1. Create a new adhoc-v2 schema
+sm = schemamanager.SchemaManager(
+    title='Customer Attributes',
+    schemaClass='https://ns.adobe.com/xdm/data/adhoc-v2',
+    config=mySandbox,
+)
+
+# 2. Add fields
+sm.addField('customFields.customerId', dataType='string', title='Customer ID')
+sm.addField('customFields.age', dataType='integer', title='Age', minimum=0, maximum=150)
+sm.addField('customFields.segment', dataType='string', title='Segment',
+            enumValues={'vip': 'VIP', 'regular': 'Regular'}, enumType=True)
+sm.addField('customFields.tags', dataType='string', title='Tags', array=True)
+sm.addField('customFields.address', dataType='object', title='Address',
+            objectComponents={'city': 'string', 'country': 'string'})
+
+# 3. Inspect locally before pushing
+df = sm.to_dataframe()
+print(df)
+
+# 4. Push to AEP
+result = sm.createSchema()
+print(result)
+```
 
 #### removeField
 Remove a field from the definition based on the path provided.\
