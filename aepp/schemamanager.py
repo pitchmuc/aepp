@@ -57,7 +57,7 @@ class SchemaManager:
             schemaAPI : OPTIONAL : It is required if $id or altId are used. It is the instance of the Schema class.
             schemaClass : OPTIONAL : If you want to set the class to be a specific class.
                 Default value is profile: "https://ns.adobe.com/xdm/context/profile", can be replaced with any class definition.
-                Possible default value: "https://ns.adobe.com/xdm/context/experienceevent", "https://ns.adobe.com/xdm/context/segmentdefinition"
+                Possible default value: "https://ns.adobe.com/xdm/context/experienceevent", "https://ns.adobe.com/xdm/context/segmentdefinition", "https://ns.adobe.com/xdm/data/adhoc-v2"
             config : OPTIONAL : The config object in case you want to override the configuration.
             description : OPTIONAL : To provide a description to your schema
             localFolder : OPTIONAL : If you want to use local storage to create all the connections between schema and field groups, classes and datatypes. Can be a set of folders.
