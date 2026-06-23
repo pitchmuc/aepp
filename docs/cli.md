@@ -41,6 +41,30 @@ At the start of your instantiation, you can provide optional parameters that wou
 * `--scopes` or `-sc` : Your Adobe I/O Scopes (comma-separated if multiple)
 * `--region` or `-r` : The region of your Adobe Experience Platform instance (default is 'nld2'). Available regions are: "va7", "aus5", "can2", "ind2".
 * `--config-file` or `-cf` : Path to a JSON configuration file containing connection parameters.
+* `--command` or `-cmd` : Run a single CLI command non-interactively and exit immediately after. The value is a string containing the command name followed by its arguments, using the same syntax as the interactive prompt. This is useful for scripting or automation workflows.
+
+### Non-interactive mode examples
+
+The `-cmd` flag lets you connect to AEP and execute one command in a single call, without entering the interactive shell. The command string follows the exact same syntax as the interactive prompt.
+
+```bash
+# List all schemas in the prod sandbox, filtered by "client"
+python -m aepp.cli -cf config_api.json -sx prod -cmd "get_schemas -f client"
+
+# Export all datasets to CSV from the dev sandbox
+python -m aepp.cli -cf config_api.json -sx dev -cmd "get_datasets"
+
+# List all audiences filtered by name and save them
+python -m aepp.cli -cf config_api.json -sx prod -cmd "get_audiences -f loyalty"
+
+# Get all identities from a specific region
+python -m aepp.cli -cf config_api.json -sx prod -cmd "get_identities -r va7"
+
+# Export a specific schema as a CSV file
+python -m aepp.cli -cf config_api.json -sx prod -cmd "get_schema_csv _tenant.schemas.abc123"
+```
+
+> **Note:** Any command available in the interactive shell can be used with `-cmd`. The arguments accepted by each command are the same as described in the [Available Commands](#available-commands) section below.
 
 
 ## Available Commands
@@ -204,6 +228,10 @@ Export a specific Data Type XDM definition to a JSON file.\
 Arguments:
 * `datatype` : Data Type Name, $id, or alt:Id.
 
+#### create_b2b_artifacts
+Create the B2B identities and schema and relationship for the current sandbox.\
+combination of `createB2BIdentities` in the `identity` module and `createB2Bschemas` in `schema` module. 
+
 ### Dataset Methods
 
 #### get_datasets
@@ -256,6 +284,57 @@ Arguments:
 Create a job for audience segmentation. Only 50 jobs available per year for production sandboxes.
 Arguments:
 * `audience_ids` : list of audience IDs such as `"audienceId1"` `"audienceId2"` `"audienceId3"`
+
+#### flexible_audience_evaluation
+Trigger an on-demand evaluation job for one or more specific audiences, outside of the regular batch schedule.
+This is useful when you need to refresh audience membership immediately without waiting for the next scheduled batch run.\
+Arguments:
+* `audience_ids` : One or more audience IDs to evaluate. Pass them space-separated, e.g. `"audienceId1"` `"audienceId2"`.
+
+Example:
+```bash
+# Evaluate a single audience
+flexible_audience_evaluation "a1b2c3d4-0000-0000-0000-111111111111"
+
+# Evaluate multiple audiences at once
+flexible_audience_evaluation "a1b2c3d4-0000-0000-0000-111111111111" "e5f6a7b8-0000-0000-0000-222222222222"
+
+# Non-interactive mode
+python -m aepp.cli -cf config_api.json -sx prod -cmd "flexible_audience_evaluation \"a1b2c3d4-0000-0000-0000-111111111111\""
+```
+
+#### get_batch_evaluation
+Retrieve the current batch segmentation job definition for the sandbox, including its cron schedule and status.\
+No arguments.
+
+#### update_batch_evaluation_time
+Update the cron schedule that controls when the daily batch segmentation job runs for the current sandbox.
+The schedule uses the standard six-field cron format: `seconds minutes hours day-of-month month day-of-week`.\
+Arguments:
+* `schedule` : The cron expression to apply. Example: `"0 0 1 * * ?"` runs the job daily at 01:00 UTC.
+
+Example:
+```bash
+# Run batch segmentation daily at 01:00 UTC
+update_batch_evaluation_time "0 0 1 * * ?"
+
+# Run batch segmentation daily at 03:30 UTC
+update_batch_evaluation_time "0 30 3 * * ?"
+
+# Non-interactive mode
+python -m aepp.cli -cf config_api.json -sx prod -cmd "update_batch_evaluation_time \"0 0 1 * * ?\""
+```
+
+##### extract_audience_paths
+Get the list of paths used in audience definitions.\
+Arguments:
+* `audience` : Audience ID or audience name to get paths for.
+* `-r`, `--recursive` : Boolean. Get paths recursively from segment references. Default False. Possible values: True, False.
+
+##### extract_audience_ref
+Get the list of audience references used in audience definitions.\
+Arguments:
+* `audience` : Audience ID or audience name to get references for.
 
 ### Flow Service
 
@@ -320,6 +399,18 @@ Arguments:
 * `sql_query` : The SQL string to execute.
 * `-sv`, `--save` : Path to save the query results as a CSV file.
 
+#### query_segment_population
+Query the population of specific segment(s).\
+Arguments:
+* `segment_id` : Segment ID(s) to query population for. It can be multiple segment | audience IDs separated by spaces.
+* `-ef`, `--extra_fields` : Extra fields to include in the query, comma-separated.
+* `-c`, `--count_only` : If you want to get only the count of the segment population. (default: `False`). If set to `True`, the query will return only the count of profiles in the segment(s) instead of the full list.
+* `-fn`, `--filename` : If you want to save it to a specific filename.
+
+Example:
+```bash
+prod> query_segment_population "segmentId1" "segmentId2" -ef "email,_tenant.fieldname" -fn "segment_population.csv"
+```
 
 ### Profile API 
 

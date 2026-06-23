@@ -2,6 +2,15 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.5.7
+* adding the `create_b2b_artifacts` method in the CLI. 
+* adding the possibility to pass command line arguments to the CLI module at instantiation time.[documentation](./cli.md#Non-interactive-mode-examples)
+* adding the option to extend the number of events retrieve in `get_profile_events` method in the CLI module. Default is 1000 events but can be extended to 5000 events.
+* adding the `flexible_audience_evaluation ` method in the CLI module to support flexible audience evaluation. [documentation](./segmentation.md#flexible-audience-evaluation)
+* adding the `update_batch_evaluation_time` method in the CLI module to support update of batch evaluation time. [documentation](./segmentation.md#update-batch-evaluation-time)
+* adding the `extract_audience_paths` method in the CLI module to support extraction of audience paths. [documentation](./segmentation.md#extract-audience-paths)
+* adding the `extract_audience_ref` method in the CLI module to support extraction of audience references. [documentation](./segmentation.md#extract-audience-ref)
+
 ## version 0.5.6
 * Adding the `ajo` module [documentation](./ajo.md)
 Patch:

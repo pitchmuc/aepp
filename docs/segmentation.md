@@ -18,6 +18,7 @@ Alternatively, you can use the docstring in the methods to have more information
     - [createSegment](#createsegment)
     - [deleteSegment](#deletesegment)
     - [updateSegment](#updatesegment)
+    - [updateScheduledBatchSegmentationJob](#updatescheduledbatchsegmentationjob)
     - [createExtenalAudience](#createextenalaudience)
     - [getExternalAudienceStatus](#getexternalaudiencestatus)
     - [runExternalAudienceJob](#runexternalaudiencejob)
@@ -145,6 +146,11 @@ possible kwargs:
 * expression : expression of the segment to be udpated
 * schema : schema of the segment to be udpated
 * ttlInDay : ttlInDays to be updated
+
+### updateScheduledBatchSegmentationJob
+Update the schedule for the Batch segmentation job for the all sandbox.\
+Argument:
+* schedule : REQUIRED : the schedule to update (ex: "0 0 1 * * ?" for daily at 1am)
 
 ### createExtenalAudience
 New process to create external audience with the new endpoint.\
