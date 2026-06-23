@@ -704,6 +704,33 @@ class Segmentation:
         path = f"/config/schedules/{scheduleId}"
         res = self.connector.patchData(self.endpoint + path, data=operations)
         return res
+    
+    def updateScheduledBatchSegmentationJob(self, schedule:str) -> dict:
+        """
+        Update the schedule for the Batch segmentation job for the all sandbox.
+        Argument:
+            schedule : REQUIRED : the schedule to update (ex: "0 0 1 * * ?" for daily at 1am)
+        """
+        if schedule is None:
+            raise ValueError("Require a schedule")
+        if self.loggingEnabled:
+            self.logger.debug(f"Starting updateScheduledBatchSegmentationJob")
+        activeJobs = self.getSchedules()
+        if len(activeJobs) == 0:
+            raise Exception("No active schedule found")
+        batchSegmentationJob = [job for job in activeJobs if job.get('type') == 'batch_segmentation' and job.get('frequency') == 'daily']
+        if len(batchSegmentationJob) == 0:
+            raise Exception("No batch segmentation job found")
+        batchSegmentationJobId = batchSegmentationJob[0].get('id')
+        operations = [
+            {
+                "op": "add",
+                "path": "/schedule",
+                "value": schedule
+            }
+        ]
+        res = self.updateSchedule(scheduleId=batchSegmentationJobId, operations=operations)
+        return res
 
     def getJobs(
         self,
@@ -741,7 +768,7 @@ class Segmentation:
 
     def createJob(self, segmentIds: list = None) -> dict:
         """
-        Create a new job for a segment.
+        Create a new job for a segment evaluation.
         Argument:
             segmentIds : REQUIRED : a list of segmentIds.
         """
