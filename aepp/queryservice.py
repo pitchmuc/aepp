@@ -1287,16 +1287,15 @@ class InteractiveQuery2:
             if f"mergePolicyId:{mergePolicyId}" in tmp_ds_mergePolicyId:
                 table = item['tags']['adobe/pqs/table'][0]
         if count == False:
-            strIdentity = ""
-            commaIdentity = ""
-            strIdentityFinal = ""
-            if extraFields is not None:
+            commaField = ""
+            strFields = ""
+            if extraFields is not None and len(extraFields) > 0:
                 commaField = ","
                 strFields = ','.join(extraFields)
                 minifyFields = [el.split('.').pop() for el in extraFields]
                 strFieldsFinal = ','.join(minifyFields)
             queryTemplate = f"""
-                SELECT key, inline(value), '{segmentId}' segmentId {commaField} {strFieldsFinal} FROM 
+                SELECT key, inline(value), '{segmentId}' segmentId {commaField} {strFields} FROM 
                     (SELECT explode(identityMap) {commaField} {strFields}
                     FROM {table}
                     WHERE segmentMembership['ups']['{segmentId}'].status = 'realized') LIMIT 0 
