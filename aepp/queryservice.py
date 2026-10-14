@@ -12,6 +12,7 @@
 from aepp import connector
 import pandas as pd
 from typing import Union
+from urllib.parse import parse_qs, urlparse
 import re,json
 import aepp
 import time
@@ -188,12 +189,38 @@ class QueryService:
         res = self.connector.getData(self.endpoint + path, headers=self.header)
         return res
 
+    def _getPaginated(self, path: str, response_key: str, n_results: Union[int, str], params: dict) -> list:
+        """Retrieve a collection while preserving all parameters from its pagination links."""
+        result_limit = float(n_results)
+        if not result_limit > 0 or (result_limit != float("inf") and not result_limit.is_integer()):
+            raise ValueError("n_results must be a positive integer or 'inf'.")
+        data = []
+        seen_links = set()
+        while len(data) < result_limit:
+            res = self.connector.getData(self.endpoint + path, headers=self.header, params=params)
+            if not isinstance(res, dict) or not isinstance(res.get(response_key), list):
+                raise ValueError(f"Unable to retrieve {response_key}: {res}")
+            data.extend(res[response_key])
+            if len(data) >= result_limit:
+                break
+            next_page = res.get("_links", {}).get("next", "")
+            if isinstance(next_page, dict):
+                next_page = next_page.get("href", "")
+            if not next_page:
+                break
+            next_params = parse_qs(urlparse(next_page).query)
+            if not next_params or next_page in seen_links:
+                raise ValueError(f"Invalid or repeated pagination link for {response_key}: {next_page}")
+            seen_links.add(next_page)
+            params = {**params, **next_params}
+        return data if result_limit == float("inf") else data[:int(result_limit)]
+
     def getQueries(
         self,
         orderby: str = None,
         limit: int = 1000,
         start: int = None,
-        n_results: int = 1000,
+        n_results: Union[int, str] = 1000,
         property: str = None,
         **kwargs,
     ) -> list:
@@ -201,7 +228,7 @@ class QueryService:
         Retrieve the queries from your organization.
         Arguments:
             orderby : OPTIONAL : possibility to order by "created" or "updated".
-            prepend with "+" for ASC and "-" for DESC. To be escaped (default: -)
+            prepend with "+" for ASC and "-" for DESC. Parameters are URL-encoded by the connector.
             limit : OPTIONAL : number of of records to fetch per page. (default 1000)
             start : OPTIONAL : when to start (depending on your orderby)
             property : OPTIONAL : Comma-separated filters. List of properties that allow filtering with all operators:
@@ -222,10 +249,7 @@ class QueryService:
             self.logger.debug(f"Starting getQueries")
         path = "/queries"
         arguments = {"limit": 1000}
-        n_results = float(n_results)
         if orderby is not None:
-            if orderby == "+":
-                orderby = "%2B"
             arguments["orderby"] = orderby
         else:
             arguments["orderby"] = "-created"
@@ -239,22 +263,7 @@ class QueryService:
             arguments["excludeSoftDeleted"] = kwargs.get("excludeSoftDeleted", True)
             arguments["excludeHidden"] = kwargs.get("excludeHidden", True)
             arguments["isPrevLink"] = kwargs.get("isPrevLink", "")
-        res:dict = self.connector.getData(self.endpoint + path, params=arguments)
-        data:list = res.get("queries",[])
-        nextPage = res.get("_links",{}).get("next", {}).get("href", "")
-        if float(n_results) > float(len(data)):
-            while nextPage != "" :
-                hrefParams = nextPage.split("?")[1]
-                orderBy = re.search("orderby=(.+?)(&|$)", hrefParams)
-                start = re.search("start=(.+?)(&|$)", hrefParams)
-                arguments["start"] = start.group(1)
-                arguments["orderby"] = orderBy.group(1)
-                res = self.connector.getData(self.endpoint + path, params=arguments)
-                data += res.get("queries", [])
-                nextPage = res.get("_links", {}).get("next", {}).get("href", "")
-                if float(n_results) <= float(len(data)):  ## forcing exit when reaching number of results asked
-                    nextPage = ""
-        return data
+        return self._getPaginated(path, "queries", n_results, arguments)
     
     def createQuery(self,
         data: dict = None,
@@ -412,13 +421,13 @@ class QueryService:
         res = self.connector.deleteData(self.endpoint + path)
         return res
 
-    def getSchedules(self, n_results: int = 1000, **kwargs) -> list:
+    def getSchedules(self, n_results: Union[int, str] = 1000, **kwargs) -> list:
         """
         Retrieve a list of scheduled queries for the AEP instance.
         Arguments:
             n_results : OPTIONAL : Total number of scheduled queries retrieved. To get them all, use "inf"
         possibile kwargs:
-            orderby : + for ASC and - for DESC
+            orderby : Field to order by, prefixed with + for ASC or - for DESC. Automatically URL-encoded.
             limit : number of record to fetch
             start : specific start (use with orderby)
             property : Comma-separated filters.
@@ -426,29 +435,11 @@ class QueryService:
                 templateId ; ex : templateId==123412354
                 userId ; ex : userId==12341235
         """
-        n_results = float(n_results)
-        if kwargs.get("orderby", None) is not None:
-            if kwargs.get("orderby", "-") == "+":
-                kwargs.get("orderby", "-") == "%2B"
         if self.loggingEnabled:
             self.logger.debug(f"Starting getSchedules")
         path = "/schedules"
         params = {**kwargs}
-        res = self.connector.getData(self.endpoint + path, params=params)
-        data = res["schedules"]
-        nextPage = res["_links"].get("next", {}).get("href", "")
-        while nextPage != "":
-            hrefParams = nextPage.split("?")[1]
-            orderBy = re.search("orderby=(.+?)(&|$)", hrefParams)
-            start = re.search("start=(.+?)(&|$)", hrefParams)
-            params["start"] = start.group(1)
-            params["orderby"] = orderBy.group(1)
-            res = self.connector.getData(self.endpoint + path, params=params)
-            data += res.get("schedules", [])
-            nextPage = res["_links"].get("next", {}).get("href", "")
-            if len(data) > float(n_results):
-                nextPage = ""
-        return data
+        return self._getPaginated(path, "schedules", n_results, params)
 
     def getSchedule(self, scheduleId: str = None) -> dict:
         """
@@ -638,9 +629,9 @@ class QueryService:
         )
         return res
 
-    def getTemplates(self, n_results: int = 1000, **kwargs) -> dict:
+    def getTemplates(self, n_results: Union[int, str] = 1000, **kwargs) -> list:
         """
-        Retrieve the list of template for this instance.
+        Retrieve a list of query template dictionaries for this instance.
         Arguments:
             n_results : OPTIONAL : number of total results to retrieve. To get them all, use "inf".
         possible kwargs:
@@ -659,26 +650,9 @@ class QueryService:
         if self.loggingEnabled:
             self.logger.debug(f"Starting getTemplates")
         path = "/query-templates"
-        n_results = float(n_results)  # changing inf to float inf
         params = {**kwargs}
         params["limit"] = kwargs.get("limit", 50)
-        res = self.connector.getData(
-            self.endpoint + path, headers=self.header, params=params
-        )
-        data = res["templates"]
-        nextPage = res["_links"].get("next", {}).get("href", "")
-        while nextPage != "":
-            hrefParams = nextPage.split("?")[1]
-            orderBy = re.search("orderby=(.+?)(&|$)", hrefParams)
-            start = re.search("start=(.+?)(&|$)", hrefParams)
-            params["start"] = start.group(1)
-            params["orderby"] = orderBy.group(1)
-            res = self.connector.getData(self.endpoint + path, params=params)
-            data += res.get("templates", [])
-            nextPage = res.get("_links", {}).get("next", {}).get("href", "")
-            if len(data) > float(n_results):
-                nextPage = ""
-        return data
+        return self._getPaginated(path, "templates", n_results, params)
 
     def getTemplate(self, templateId: str = None) -> dict:
         """

@@ -1074,6 +1074,31 @@ class ServiceShell(cmd.Cmd):
         except SystemExit:
             return
 
+    @login_required
+    def do_get_descriptor(self, args:Any)->None:
+        """Get a descriptor by ID; use -sv/--save to export descriptor_<id>.json."""
+        parser = argparse.ArgumentParser(prog='get_descriptor', add_help=True)
+        parser.add_argument("descriptor_id", help="Descriptor ID to retrieve")
+        parser.add_argument("-sv","--save", help="Save the descriptor to a file", default=False, action="store_true")
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_schema = schema.Schema(config=self.config)
+            descriptor = aepp_schema.getDescriptor(descriptorId=args.descriptor_id)
+            if descriptor:
+                if not descriptor.get("@id"):
+                    raise ValueError(f"Descriptor retrieval failed: {descriptor}")
+                console.print_json(data=descriptor)
+                if args.save:
+                    filename = f"descriptor_{args.descriptor_id}.json"
+                    with open(filename, 'w') as f:
+                        json.dump(descriptor, f, indent=4)
+                    console.print(f"Descriptor saved to {filename}.", style="green")
+            else:
+                console.print(f"No descriptor found with ID '{args.descriptor_id}'", style="red")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
 
     @login_required
     def do_enable_schema_for_ups(self, args:Any) -> None:
@@ -1248,6 +1273,36 @@ class ServiceShell(cmd.Cmd):
             console.print(f"Datasets exported to {self.config.sandbox}_datasets.csv", style="green")
         except Exception as e:
             console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_get_dataset(self,args:Any) -> None:
+        """Get a dataset by exact name or ID and export dataset_<id>.json."""
+        parser = argparse.ArgumentParser(prog='get_dataset',add_help=True)
+        parser.add_argument('dataset',help='dataset name or id', type=str)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_cat = catalog.Catalog(config=self.config)
+            datasets = aepp_cat.getDataSets(output='list')
+            if args.dataset in [d['id'] for d in datasets]:
+                datasetId = next(d['id'] for d in datasets if d['id'] == args.dataset)
+
+            elif args.dataset in [d['name'] for d in datasets]:
+                datasetId = next(d['id'] for d in datasets if d['name'] == args.dataset)
+            else:
+                console.print(f"(!) Dataset {args.dataset} not found", style="red")
+                return
+            dataset = aepp_cat.getDataSet(datasetId)
+            if not isinstance(dataset, dict) or datasetId not in dataset:
+                raise ValueError(f"Dataset retrieval failed: {dataset}")
+            console.print_json(data=dataset)
+            with open(f'dataset_{datasetId}.json', 'w') as f:
+                json.dump(dataset,f,indent=2)
+            console.print(f"Dataset definition exported to dataset_{datasetId}.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+            return
         except SystemExit:
             return
     
@@ -2317,43 +2372,41 @@ class ServiceShell(cmd.Cmd):
         """List top 1000 queries in the current sandbox for the last 24 hours by default, optionally filtered by dataset ID. Display top 10 in console and export all to a CSV file."""
         parser = argparse.ArgumentParser(prog='get_queries', add_help=True)
         parser.add_argument("-ds","--dataset", help="Dataset ID to filter queries", default=None)
-        parser.add_argument("-st","--state", help="State to filter queries (running, completed, failed)", default=None)
-        parser.add_argument("-H","--hours", help="Timeframe in hours to check for errors, default 0", default=0,type=int)
-        parser.add_argument("-d","--days", help="Timeframe in days to check for errors, default 0", default=0,type=int)
-        parser.add_argument("-mn","--minutes", help="Timeframe in minutes to check for errors, default 0", default=0,type=int)  
+        state_aliases = {"running": "IN_PROGRESS", "completed": "SUCCESS", "failed": "FAILED"}
+        states = ("SUBMITTED", "IN_PROGRESS", "SUCCESS", "FAILED", "KILLED", "TIMEOUT")
+        parser.add_argument("-st","--state", help="API state or alias: running, completed, failed", default=None,
+                            type=lambda value: state_aliases.get(value.lower(), value.upper()), choices=states)
+        parser.add_argument("-H","--hours", help="Lookback window in hours, default 0", default=0,type=int)
+        parser.add_argument("-d","--days", help="Lookback window in days, default 0", default=0,type=int)
+        parser.add_argument("-mn","--minutes", help="Lookback window in minutes, default 0", default=0,type=int)
         try:
             args = parser.parse_args(shlex.split(args))
+            if any(value < 0 for value in (args.minutes, args.hours, args.days)):
+                parser.error("Lookback windows must not be negative.")
             timetotal_minutes = args.minutes + (args.hours * 60) + (args.days * 1440)
             if timetotal_minutes == 0:
                 timetotal_minutes = 1440  # default to last 24 hours
-            time_reference = int(datetime.now().timestamp()) - (timetotal_minutes * 60)
-            time_reference_z = datetime.fromtimestamp(time_reference).isoformat() + 'Z'
-            params = {'property':f'created>={time_reference_z}','orderBy':'-created'}
+            time_reference = datetime.now(timezone.utc) - timedelta(minutes=timetotal_minutes)
+            time_reference_z = time_reference.isoformat(timespec="seconds").replace("+00:00", "Z")
+            filters = [f"created>={time_reference_z}"]
             if args.dataset:
-                if params['property'] == '':
-                    params['property'] = f'referenced_datasets=={args.dataset}'
-                else:
-                    params['property'] += f',referenced_datasets=={args.dataset}'
-            if params['property'] == '':
-                params = None
-            else:
-                params['property'] = urllib.parse.quote(params['property'])
+                filters.append(f"referenced_datasets=={args.dataset}")
+            if args.state:
+                filters.append(f"state=={args.state}")
             aepp_query = queryservice.QueryService(config=self.config)
-            queries = aepp_query.getQueries(property=params['property'] if params else None, orderby=params['orderBy'])
-            list_queries = []
-            for q in queries:
-                if q['client'] == "Adobe Query Service UI" or q["client"] == 'Generic PostgreSQL':
-                    list_queries.append(q) 
-            for q in list_queries:
-                obj = {
+            queries = aepp_query.getQueries(property=",".join(filters), orderby="-created")
+            list_queries = [
+                {
                     "id": q.get("id","N/A"),
                     "created": q.get("created"),
                     "client": q.get("client","N/A"),
                     "elapsedTime": q.get("elapsedTime","N/A"),
                     "userId": q.get("userId","N/A"),
                 }
-                list_queries.append(obj)
-            df_queries = pd.DataFrame(list_queries)
+                for q in queries
+                if q.get("client") in ("Adobe Query Service UI", "Generic PostgreSQL")
+            ]
+            df_queries = pd.DataFrame(list_queries, columns=["id", "created", "client", "elapsedTime", "userId"])
             df_queries.to_csv(f"{self.config.sandbox}_queries.csv",index=False)
             table = Table(title=f"Queries in Sandbox: {self.config.sandbox}")
             table.add_column("ID", style="cyan")
@@ -2363,7 +2416,7 @@ class ServiceShell(cmd.Cmd):
             for q in list_queries[:10]:
                 table.add_row(
                     q.get("id","N/A"),
-                    q.get("created","N/A"),
+                    str(q.get("created") or "N/A"),
                     q.get("client","N/A"),
                     str(q.get("elapsedTime","N/A"))
                 )
@@ -2374,19 +2427,206 @@ class ServiceShell(cmd.Cmd):
         except SystemExit:
             return
 
+    @login_required
     def do_get_query(self,args:Any)->None:
-        """Retrieve a specific meta data query by its ID."""
+        """Display query metadata, SQL and execution state by query ID."""
         parser = argparse.ArgumentParser(prog='get_query', add_help=True)
         parser.add_argument("query_id", help="ID of the query to retrieve", type=str)
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_query = queryservice.QueryService(config=self.config)
             result:dict = aepp_query.getQuery(queryId=args.query_id)
+            if not result.get("id"):
+                raise ValueError(f"Query retrieval failed: {result}")
             console.print_json(data=result)
         except Exception as e:
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
             return
+
+
+    @login_required
+    def do_get_query_templates(self,args:Any) -> None:
+        """List all query templates in the current sandbox with ID, name and creation date."""
+        parser = argparse.ArgumentParser(prog='get_query_templates', add_help=True)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_query = queryservice.QueryService(config=self.config)
+            templates:list = aepp_query.getTemplates(n_results="inf")
+            table = Table(title=f"Queries templates in Sandbox: {self.config.sandbox}")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="yellow")
+            table.add_column("Created", style="white")
+            for t in templates:
+                table.add_row(
+                    str(t.get("id", "N/A")),
+                    str(t.get("name", "N/A")),
+                    str(t.get("created") or "N/A").split('.')[0]
+                )
+            console.print(table)
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_get_query_template(self,args:Any) -> None:
+        """Display a query template by ID and export query_template_<id>.json."""
+        parser = argparse.ArgumentParser(prog='get_query_template', add_help=True)
+        parser.add_argument("template_id", help="ID of the query template to retrieve", type=str)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_query = queryservice.QueryService(config=self.config)
+            result:dict = aepp_query.getTemplate(templateId=args.template_id)
+            if not result.get("id"):
+                raise ValueError(f"Query template retrieval failed: {result}")
+            console.print_json(data=result)
+            with open(f'query_template_{args.template_id}.json', 'w') as f:
+                json.dump(result, f, indent=4)
+            console.print(f"Query template saved to query_template_{args.template_id}.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_get_queries_scheduled(self,args:Any) -> None:
+        """List all query schedules and export queries_scheduled_<sandbox>.json."""
+        parser = argparse.ArgumentParser(prog='get_queries_scheduled', add_help=True)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_query = queryservice.QueryService(config=self.config)
+            results:list = aepp_query.getSchedules(n_results="inf")
+            table = Table(title=f"Queries Scheduled in Sandbox: {self.config.sandbox}")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="yellow")
+            table.add_column("Start Date", style="blue")
+            table.add_column("Schedule", style="white")
+            table.add_column("Enabled", style="white")
+            for result in results:
+                schedule_state = result.get("state", "N/A")
+                if schedule_state == "ENABLED":
+                    state = "[green]True[/green]"
+                elif schedule_state == "DISABLED":
+                    state = "[red]False[/red]"
+                else:
+                    state = f"[yellow]{schedule_state}[/yellow]"
+                table.add_row(
+                    str(result.get("id", "")),
+                    str(result.get("query",{}).get("name") or ""),
+                    str(result.get('schedule',{}).get("startDate") or ""),
+                    str(result.get('schedule',{}).get("schedule") or ""),
+                    state
+                )
+            console.print(table)
+            with open(f'queries_scheduled_{self.config.sandbox}.json', 'w') as f:
+                json.dump(results, f, indent=4)
+            console.print(f"Queries scheduled saved to queries_scheduled_{self.config.sandbox}.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_create_query_scheduled(self,args:Any)->None:
+        """
+        Schedule SQL (-q) or a template (-t) in the current sandbox.
+        Requires -sch/--schedule and -sd/--start_date; accepts optional -a key=value,key=value,
+        -n/--name, -d/--description and -ed/--end_date. Dates must include a timezone.
+        Adobe automatically enables the schedule after registration.
+        """
+        parser = argparse.ArgumentParser(prog='create_query_scheduled')
+        parser.add_argument("-n",'--name', help="Name of the query", type=str)
+        parser.add_argument("-d", "--description", help="Description of the query", type=str)
+        source = parser.add_mutually_exclusive_group(required=True)
+        source.add_argument("-q", "--query", help="SQL query to be scheduled (e.g. 'SELECT * FROM table')", type=str)
+        source.add_argument("-t", "--template_id", help="Template ID for the query", type=str)
+        parser.add_argument("-a", "--arguments", help="SQL/template parameters: key1=value1,key2=value2", type=str)
+        parser.add_argument("-sch", "--schedule", help="Cron expression (at most hourly) or shorthand such as @daily or @once", required=True, type=str)
+        parser.add_argument("-sd", "--start_date", help="ISO 8601 start date with timezone (e.g. '2026-11-01T00:00:00Z')", required=True, type=str)
+        parser.add_argument("-ed", "--end_date", help="Optional ISO 8601 end date with timezone, later than start date", type=str)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            if not (args.query or args.template_id) or not args.schedule.strip():
+                parser.error("SQL/template ID and schedule must not be empty.")
+            schedule = {"schedule": args.schedule}
+            dates:dict[str, datetime] = {}
+            for key, value in (("startDate", args.start_date), ("endDate", args.end_date)):
+                if value is None:
+                    continue
+                try:
+                    date = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                except ValueError:
+                    parser.error(f"{key} must be an ISO 8601 timestamp with timezone.")
+                if date.tzinfo is None:
+                    parser.error(f"{key} must include a timezone, such as Z or +02:00.")
+                dates[key] = date
+                timespec = "milliseconds" if date.microsecond % 1000 == 0 else "microseconds"
+                schedule[key] = date.astimezone(timezone.utc).isoformat(timespec=timespec).replace("+00:00", "Z")
+            if "endDate" in dates and dates["endDate"] <= dates["startDate"]:
+                parser.error("End date must be later than start date.")
+            query:dict[str, Any] = {"dbName": f"{self.config.sandbox}:all"}
+            if args.template_id:
+                query["templateId"] = args.template_id
+            else:
+                query["sql"] = args.query
+            if args.name is not None:
+                query["name"] = args.name
+            if args.description is not None:
+                query["description"] = args.description
+            if args.arguments is not None:
+                arguments = {}
+                for item in args.arguments.split(","):
+                    key, separator, value = item.partition("=")
+                    if not separator or not key.strip():
+                        parser.error("Arguments must be comma-separated key=value pairs with non-empty keys.")
+                    arguments[key.strip()] = value
+                query["queryParameters"] = arguments
+            aepp_query = queryservice.QueryService(config=self.config)
+            res = aepp_query.createSchedule(scheduleQuery={"query": query, "schedule": schedule})
+            if not res.get("id"):
+                raise ValueError(f"Schedule creation failed: {res}")
+            console.print_json(data=res)
+            console.print(f"Schedule creation accepted (ID: {res['id']}, state: {res.get('state', 'N/A')}). Adobe enables it after registration.", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_enable_query_scheduled(self,args:Any)->None:
+        """Request enabling a registered query schedule by ID; the change is asynchronous."""
+        parser = argparse.ArgumentParser(prog='enable_query_scheduled', add_help=True)
+        parser.add_argument("schedule_id", help="ID of the scheduled query to enable", type=str)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_query = queryservice.QueryService(config=self.config)
+            res = aepp_query.enableSchedule(scheduleId=args.schedule_id)
+            if res.get("statusCode") != 202:
+                raise ValueError(f"Schedule enable request failed: {res}")
+            console.print(f"Enable request accepted for scheduled query {args.schedule_id}.", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_disable_query_scheduled(self,args:Any)->None:
+        """Request disabling a registered query schedule by ID; the change is asynchronous."""
+        parser = argparse.ArgumentParser(prog='disable_query_scheduled', add_help=True)
+        parser.add_argument("schedule_id", help="ID of the scheduled query to disable", type=str)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_query = queryservice.QueryService(config=self.config)
+            res = aepp_query.disableSchedule(scheduleId=args.schedule_id)
+            if res.get("statusCode") != 202:
+                raise ValueError(f"Schedule disable request failed: {res}")
+            console.print(f"Disable request accepted for scheduled query {args.schedule_id}.", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
     @login_required
     def do_query(self,args:Any) -> None:
         """Execute a SQL query against the current sandbox, save the result to a CSV file and display a sample."""
@@ -2916,9 +3156,11 @@ class ServiceShell(cmd.Cmd):
                    "upload_fieldgroup_definition_xlsx",
                    "upload_fieldgroup_definition_xdm",
                    "create_b2b_artifacts",
-                   "get_descriptors"
+                   "get_descriptors",
+                   "get_descriptor"
                    ],
         "Datasets": ["get_datasets",
+                     "get_dataset",
                      "get_datasets_tablenames",
                      "get_datasets_infos",
                      "get_observable_schema_json",
@@ -2948,6 +3190,12 @@ class ServiceShell(cmd.Cmd):
                      "delete_audience"],
         "Queries": ["get_queries",
                     "get_query",
+                    "get_query_templates",
+                    "get_query_template",
+                    "get_queries_scheduled",
+                    "create_query_scheduled",
+                    "enable_query_scheduled",
+                    "disable_query_scheduled",
                     "query",
                     "query_segment_population"],
         "Hygiene": ["get_hygiene_works","get_hygiene_work","get_hygiene_quotas"],

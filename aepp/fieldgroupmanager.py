@@ -942,6 +942,8 @@ class FieldGroupManager:
         if path is None:
             raise ValueError("path must provided")
         dataType = dataType.replace('[]','').lower()
+        if dataType == 'datatype':
+            dataType = 'dataType'
         typeTyped = ["string","boolean","double","long","int","integer","number","short","byte","date","datetime",'date-time',"boolean","object",'array','dataType','map']
         if dataType not in typeTyped:
             raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","int","integer","short","byte","date","datetime","date-time","boolean","object","byte","dataType", "map". Got {dataType}')

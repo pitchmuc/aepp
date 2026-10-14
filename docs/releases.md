@@ -25,6 +25,12 @@ Patch:
 * Adding params attribute to createRun in flowservice
 * Adding `--ootb` and `--filter` options to the `get_fieldgroups` command in the CLI to include out-of-the-box field groups and filter field groups based on a string.
 * Fixing knowledge graph build for Merge Policies.
+* Fix normalization of dataType variable so it still works when using array notation (`[]`) and different casing.
+* Adding CLI commands `get_descriptor` and `get_dataset` to retrieve individual definitions, with JSON export support. [Schema commands](./cli.md#get_descriptor), [Dataset commands](./cli.md#get_dataset).
+* Adding Query Service CLI commands `get_query_templates`, `get_query_template`, `get_queries_scheduled`, `create_query_scheduled`, `enable_query_scheduled` and `disable_query_scheduled`, with grouped help, argument help and documentation. [Query Service CLI](./cli.md#query-service-methods).
+* Scheduled-query creation now validates SQL/template selection, parameters and timezone-aware dates, uses the active sandbox's database, and reports Adobe's asynchronous activation behavior. The invalid, unused `--enabled` option is removed; schedules become enabled after registration, and subsequent enable/disable requests report acceptance rather than immediate completion.
+* Fixing `get_queries` appending to the list it was iterating, ignoring the state filter, and using local timestamps marked as UTC. Query history now applies API state filters and encodes filters only once.
+* Query Service query, template and schedule retrieval now follows complete pagination links (including string links and links without `orderby`), honors `n_results` exactly, and surfaces malformed/API error responses instead of silently returning empty results.
 
 ## version 0.5.8
 * adding `get_flow_partial_success` in the CLI to export the partial success flows

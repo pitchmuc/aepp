@@ -35,6 +35,8 @@ python3 -m aepp.cli
 
 This command will launch the CLI, and you will be able to enter various commands to interact with your aepp projects. You can type `help` to see a list of available commands and their descriptions.
 
+Commands are grouped by service. Use `help get_queries_scheduled` for a command summary or `create_query_scheduled -h` for its arguments after connecting.
+
 Example of help command output:\
 ![Help Command Output](help_cli.png)
 
@@ -150,8 +152,11 @@ The CLI provides a variety of commands to manage and interact with Adobe Experie
   * get_datatypes
   * get_datatype_csv
   * get_datatype_json
+  * get_descriptors
+  * get_descriptor
 * Dataset: 
   * get_datasets
+  * get_dataset
   * get_datasets_infos
   * do_get_datasets_tableNames
   * get_observable_schema_json
@@ -170,7 +175,15 @@ The CLI provides a variety of commands to manage and interact with Adobe Experie
   * get_identities
 * Query Service: 
   * get_queries
+  * get_query
+  * get_query_templates
+  * get_query_template
+  * get_queries_scheduled
+  * create_query_scheduled
+  * enable_query_scheduled
+  * disable_query_scheduled
   * query
+  * query_segment_population
 * Profile API: 
   * get_profile_attributes
   * get_profile_events
@@ -184,3 +197,30 @@ The CLI provides a variety of commands to manage and interact with Adobe Experie
   * get_event_attributes_lineage
   * get_profile_attribute_lineage
   * get_event_attribute_lineage
+
+### Query Service quick start
+
+After connecting, you can inspect templates and schedules without writing Python:
+
+```text
+dev> get_query_templates
+dev> get_query_template template-id
+dev> get_queries_scheduled
+dev> get_query query-id
+```
+
+To schedule a template, supply its ID, a cron expression or shorthand, and a timezone-aware start date. Optional parameters use comma-separated `key=value` pairs:
+
+```text
+dev> create_query_scheduled -t template-id -n "Daily accounts" -a "table=accounts" -sch "@daily" -sd "2026-11-01T00:00:00Z" -ed "2026-12-01T00:00:00Z"
+```
+
+Replace the IDs, parameters and example dates before use. The command uses the connected sandbox's database and displays the new schedule ID. Adobe automatically enables the schedule after its initial `REGISTERING` state. Once registration has finished, request a state change with:
+
+```text
+dev> disable_query_scheduled schedule-id
+dev> enable_query_scheduled schedule-id
+dev> get_queries_scheduled
+```
+
+State changes are asynchronous; the listing lets you check whether the change has completed. See [Query Service CLI commands](./cli.md#query-service-methods) for all arguments, output filenames and scheduling constraints.

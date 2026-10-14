@@ -511,11 +511,9 @@ class SchemaManager:
         if path is None:
             raise ValueError("path must provided")
         dataType = dataType.replace('[]','').lower()
-        typeTyped = ["string","boolean","double","long","int","integer","number","short","byte","date","datetime",'date-time',"boolean","object",'array','map']
+        typeTyped = ["string","boolean","double","long","int","integer","number","short","byte","date","datetime",'date-time',"boolean","object",'array','map'] ## do not support dataType
         if dataType not in typeTyped:
-            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","int","integer","short","byte","date","date-time","boolean","object","byte","dataType", "map". Got {dataType}')
-        if dataType == "dataType" and ref is None:
-            raise ValueError("Required a reference to be passed when selecting 'dataType' type of data.")
+            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","int","integer","short","byte","date","date-time","boolean","object","byte", "map". Got {dataType}')
         if title is None:
             title = __cleanPath__(path.split('.').pop())
         if title == 'items' or title == 'properties':

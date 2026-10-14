@@ -241,6 +241,12 @@ List all descriptors in the current sandbox.\
 Arguments:
 * `-sv`, `--save` : Save the list of descriptors to a CSV file.
 
+#### get_descriptor
+Display the JSON definition of a specific descriptor in the current sandbox.\
+Arguments:
+* `descriptor_id` : Required descriptor ID (`@id`).
+* `-sv`, `--save` : Also save the definition to `descriptor_<descriptor_id>.json`.
+
 #### get_datatypes
 List all data types in the current sandbox.\
 
@@ -270,6 +276,16 @@ combination of `createB2BIdentities` in the `identity` module and `createB2Bsche
 List all datasets in the current sandbox.\
 Also save the result in a CSV file.\
 * `-f`, `--filter`: filter the dataset returned based name and on lower case and partial match of that string
+
+#### get_dataset
+Display a single dataset's JSON definition and save it to `dataset_<dataset_id>.json`.\
+Arguments:
+* `dataset` : Required Dataset ID or exact, case-sensitive Dataset Name. Quote names containing spaces.
+
+Example:
+```text
+prod> get_dataset "Customer events"
+```
 
 #### get_datasets_infos
 List all datasets with detailed storage and row count statistics.
@@ -487,20 +503,78 @@ Arguments:
 
 ### Query Service Methods
 
+All Query Service commands require an active sandbox connection. Run `help <command>` for a summary or `<command> -h` for its arguments.
+
 #### get_queries
-List top 1000 queries from the last 24 hours (configurable).\
+Retrieve up to 1000 queries from the last 24 hours (configurable), keep queries from the Query Service UI and Generic PostgreSQL clients, display the first 10, and export them to `<sandbox>_queries.csv`.\
 Arguments:
 * `-ds`, `--dataset` : Filter by Dataset ID.
-* `-st`, `--state` : Filter by state (e.g., running, completed, failed).
-* `-mn`, `--minutes` : Lookback window in minutes.
-* `-H`, `--hours` : Lookback window in hours.
-* `-d`, `--days` : Lookback window in days.
+* `-st`, `--state` : Filter by API state: `SUBMITTED`, `IN_PROGRESS`, `SUCCESS`, `FAILED`, `KILLED`, or `TIMEOUT` (case-insensitive). Aliases `running`, `completed`, and `failed` are also accepted.
+* `-mn`, `--minutes` : Non-negative lookback window in minutes.
+* `-H`, `--hours` : Non-negative lookback window in hours.
+* `-d`, `--days` : Non-negative lookback window in days.
+
+The three lookback options are added together. If all are zero or omitted, the lookback is 24 hours. Time filters use UTC.
+
+#### get_query
+Display a query's metadata, SQL and execution state as JSON. This does not execute the query or retrieve its result rows.\
+Arguments:
+* `query_id` : Required ID of the query to retrieve.
+
+#### get_query_templates
+List all query templates in the current sandbox, following pagination. Displays each template's ID, name and creation date.
+
+#### get_query_template
+Display a query template as JSON and save it to `query_template_<template_id>.json`.\
+Arguments:
+* `template_id` : Required ID of the query template to retrieve.
+
+#### get_queries_scheduled
+List all scheduled queries in the current sandbox, following pagination, and save their full definitions to `queries_scheduled_<sandbox>.json`.
+
+Displays the schedule ID, query name, start date, cron expression and activation state. The Enabled column shows `True` for `ENABLED`, `False` for `DISABLED`, and the state name for a transition such as `REGISTERING`.
+
+#### create_query_scheduled
+Create a scheduled query using either SQL or an existing query template. The query runs against `<current_sandbox>:all`, not a hard-coded production database.\
+Arguments:
+* `-q`, `--query` : SQL string. Required unless `--template_id` is provided.
+* `-t`, `--template_id` : Query template ID. Required unless `--query` is provided. The two options are mutually exclusive.
+* `-sch`, `--schedule` : Required five-field cron expression, such as `"0 */2 * * *"`, or a shorthand: `@once`, `@hourly`, `@daily`, `@weekly`, `@monthly`, or `@yearly`.
+* `-sd`, `--start_date` : Required ISO 8601 start timestamp with a timezone, such as `"2026-11-01T00:00:00Z"`.
+* `-ed`, `--end_date` : Optional ISO 8601 end timestamp with a timezone. Must be later than the start date.
+* `-n`, `--name` : Optional query name.
+* `-d`, `--description` : Optional query description.
+* `-a`, `--arguments` : Optional comma-separated SQL/template parameters in `key1=value1,key2=value2` format. Values may contain `=`; commas separate parameters.
+
+Dates are normalized to UTC before submission. Adjust the example dates before use. Adobe validates the cron expression; scheduled runs must not be more frequent than once per hour. For recurring schedules, omitting an end date depends on your organization's support for schedules without an end date.
+
+Adobe accepts creation asynchronously and returns the schedule ID and initial state, normally `REGISTERING`. It automatically transitions to `ENABLED` after registration. There is no `--enabled` flag; use the commands below to change an existing schedule after registration.
+
+Examples:
+```text
+dev> create_query_scheduled -n "Daily accounts" -q "SELECT * FROM accounts" -sch "@daily" -sd "2026-11-01T00:00:00Z" -ed "2026-12-01T00:00:00Z"
+dev> create_query_scheduled -n "Template run" -t template-id -a "table=accounts,minimum=10" -sch "0 */2 * * *" -sd "2026-11-01T00:00:00Z" -ed "2026-12-01T00:00:00Z"
+```
+
+#### enable_query_scheduled
+Request enabling an existing query schedule.\
+Arguments:
+* `schedule_id` : Required schedule ID.
+
+#### disable_query_scheduled
+Request disabling an existing query schedule.\
+Arguments:
+* `schedule_id` : Required schedule ID.
+
+Both commands report that Adobe accepted the request, not that the state change has finished. Use `get_queries_scheduled` to inspect the resulting state. Adobe can reject changes while a schedule is still registering or already in the requested state.
+
+See the [Query Service module documentation](./queryservice.md#query-service-cli) and Adobe's [Schedules endpoint reference](https://experienceleague.adobe.com/en/docs/experience-platform/query/api/scheduled-queries) for API details.
 
 #### query
-Execute a raw SQL query against the Data Lake.\
+Execute a raw SQL query against the Data Lake, save the results as CSV and display a sample.\
 Arguments:
 * `sql_query` : The SQL string to execute.
-* `-sv`, `--save` : Path to save the query results as a CSV file.
+* `-fn` : Optional output filename. The `.csv` extension is added if omitted. Defaults to `query_result_<timestamp>.csv`.
 
 #### query_segment_population
 Query the population of specific segment(s).\

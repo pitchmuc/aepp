@@ -2,7 +2,7 @@
 
 This documentation will provide you some explanation on how to use the queryservice module and the different methods supported by this module.\
 It will include some examples but be aware that not all methods will be documented here.\
-To have a full view on the different API endpoints specific to the schema API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/query-service/).\
+To have a full view on the different API endpoints specific to the Query Service API, please refer to this [API documentation](https://developer.adobe.com/experience-platform-apis/references/query-service/).\
 Alternatively, you can use the docstring in the methods to have more information.
 
 ## Menu
@@ -43,6 +43,7 @@ Alternatively, you can use the docstring in the methods to have more information
       - [createAcceleratedQuery](#createacceleratedquery)
     - [Query Service use-cases](#query-service-use-cases)
     - [Query Service tips](#query-service-tips)
+  - [Query Service CLI](#query-service-cli)
   - [InteractiveQuery and InteractiveQuery2](#interactivequery-and-interactivequery2)
     - [Differences between InteractiveQuery and InteractiveQuery2](#differences-between-interactivequery-and-interactivequery2)
       - [Instantiation of interactive query](#instantiation-of-interactive-query)
@@ -164,6 +165,8 @@ The attributes are:\
 
 below are all the different methods that are available to you once you have instantiated the `QueryService` class.
 
+`getQueries`, `getSchedules` and `getTemplates` return lists, follow pagination links, and return at most `n_results` items (default: 1000). Set `n_results="inf"` to retrieve all available items. Missing pagination links mean the last page; malformed collection responses and API errors raise `ValueError` rather than returning an empty result. Ordering and filter values are URL-encoded by the connector and should be passed without manually escaping them.
+
 #### getResource
 Template for requesting data with a GET method.\
 Arguments:
@@ -189,7 +192,7 @@ iqs = queryservice.InteractiveQuery2(conn)
 Retrieve the queries from your organization.\
 Arguments:
 * orderby : OPTIONAL : possibility to order by "created" or "updated".
-  prepend with "+" for ASC and "-" for DESC. To be escaped (default: -)
+  prepend with "+" for ASC and "-" for DESC. Automatically URL-encoded.
 * limit : OPTIONAL : number of of records to fetch per page. (default 1000)
 * start : OPTIONAL : when to start (depending on your orderby)
 * property : OPTIONAL : Comma-separated filters. List of properties that allow filtering with all operators:
@@ -257,7 +260,7 @@ Retrieve a list of scheduled queries for the AEP instance.\
 Arguments:
 * n_results : OPTIONAL : Total number of scheduled queries retrieved. To get them all, use "inf"\
 possibile kwargs:
-* orderby : + for ASC and - for DESC
+* orderby : Field to order by, prefixed with + for ASC or - for DESC. Automatically URL-encoded.
 * limit : number of record to fetch
 * start : specific start (use with orderby)
 * property : Comma-separated filters.\
@@ -295,6 +298,26 @@ Arguments:
 * schedule : OPTIONAL : Dictionary giving the instruction to schedule the query.
 * description : OPTION : Description of the schedule query
 
+The `schedule` object must contain `schedule` (a cron expression or shorthand such as `@daily` or `@once`) and `startDate` (a UTC timestamp). `endDate` and `maxActiveRuns` are optional. Cron schedules must not run more frequently than once per hour; schedules without an end date depend on organization availability.
+
+Creation is asynchronous: the response includes the schedule `id` and normally `state="REGISTERING"`. Adobe automatically changes the state to `ENABLED` after registration. The SDK's default `dbname` remains `prod:all`; pass the connected sandbox explicitly when scheduling outside production. The CLI does this automatically.
+
+```python
+scheduled = qs.createSchedule(
+    name="Daily accounts",
+    dbname=f"{qs.sandbox}:all",
+    sql="SELECT * FROM accounts",
+    schedule={
+        "schedule": "@daily",
+        "startDate": "2026-11-01T00:00:00.000Z",
+        "endDate": "2026-12-01T00:00:00.000Z",
+    },
+)
+schedule_id = scheduled["id"]
+```
+
+Adjust the example dates before use. See Adobe's [Schedules endpoint documentation](https://experienceleague.adobe.com/en/docs/experience-platform/query/api/scheduled-queries) for full requirements.
+
 #### deleteSchedule
 Delete a scheduled query.\
 Arguments:
@@ -310,6 +333,8 @@ Enable a scheduled query.\
 Arguments:
 * scheduleId : REQUIRED : id of the schedule.
 
+`enableSchedule` and `disableSchedule` send a PATCH body containing a `replace` operation on `/state`, with value `enable` or `disable`. A successful response is `{"message": "Request to patch accepted", "statusCode": 202}`. This acknowledges an asynchronous request, not a completed state change. Use `getSchedule` or `getSchedules` to inspect `ENABLED`, `DISABLED` or a transitional state.
+
 #### updateSchedule
 Update the schedule query with the object pass.\
 Arguments:
@@ -317,7 +342,7 @@ Arguments:
 * update_obj : REQUIRED : List of patch operations
 
 #### getTemplates
-Retrieve the list of template for this instance.\
+Retrieve a list of query template dictionaries for this instance, not the raw API envelope containing a `templates` key.\
 Arguments:
 * n_results : OPTIONAL : number of total results to retrieve. To get them all, use "inf".\
 possible kwargs:
@@ -473,6 +498,25 @@ This will result in: `_tenantId.visitor_id`
   Disable a scheduled query.
   Arguments:
   * scheduleId : REQUIRED : id of the schedule.
+
+## Query Service CLI
+
+The CLI wraps Query Service methods in the connected sandbox. All commands require a connection configured with `config` or CLI startup options.
+
+| CLI command | SDK method | Output |
+| --- | --- | --- |
+| `get_queries` | `getQueries` | Filtered query history, console table and `<sandbox>_queries.csv` |
+| `get_query <query_id>` | `getQuery` | Query metadata as JSON |
+| `get_query_templates` | `getTemplates` | All templates in a console table |
+| `get_query_template <template_id>` | `getTemplate` | JSON and `query_template_<template_id>.json` |
+| `get_queries_scheduled` | `getSchedules` | All schedules in a console table and `queries_scheduled_<sandbox>.json` |
+| `create_query_scheduled` | `createSchedule` | Creation response with schedule ID and initial state |
+| `enable_query_scheduled <schedule_id>` | `enableSchedule` | Enable-request acceptance or an explicit error |
+| `disable_query_scheduled <schedule_id>` | `disableSchedule` | Disable-request acceptance or an explicit error |
+| `query "<sql>"` | `InteractiveQuery2.query` | CSV query results and a console sample |
+| `query_segment_population <segment_id> ...` | `InteractiveQuery2.querySegmentPopulation` | CSV segment population or count |
+
+Run `help` to see the Queries command group, `help <command>` for a summary, or `<command> -h` for arguments. See the [CLI command reference](./cli.md#query-service-methods) for examples and the [CLI getting-started guide](./get-started-cli.md#query-service-quick-start) for setup and scheduling.
 
 ## InteractiveQuery and InteractiveQuery2
 

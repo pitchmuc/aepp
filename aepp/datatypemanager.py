@@ -823,9 +823,12 @@ class DataTypeManager:
         """
         if self.EDITABLE == False:
             raise Exception("The Data Type is not Editable via Data Type Manager")
-        typeTyped = ["string","boolean","double","long","integer","int","short","byte","date","dateTime","boolean","object",'array']
+        dataType = dataType.replace('[]','').lower()
+        if dataType == 'datatype':
+            dataType = 'dataType'
+        typeTyped = ["string","boolean","double","long","integer","int","short","byte","date","dateTime","boolean","object",'array','dataType','map']
         if dataType not in typeTyped:
-            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","integer","int","short","byte","date","dateTime","boolean","object". Got {dataType}')
+            raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","integer","int","short","byte","date","dateTime","boolean","object","dataType","map". Got {dataType}')
         if dataType == 'object' and objectComponents is None:
             raise AttributeError('Require a dictionary providing the object component')       
         if title is None:
@@ -944,6 +947,9 @@ class DataTypeManager:
             raise Exception("The Data Type is not Editable via Field Group Manager")
         if path is None:
             raise ValueError("path must provided")
+        dataType = dataType.replace('[]','').lower()
+        if dataType == 'datatype':
+            dataType = 'dataType'
         typeTyped = ["string","boolean","double","long","int","integer", "number","short","byte","date","datetime",'date-time',"boolean","object",'array',"dataType", "map"]
         if dataType not in typeTyped:
             raise TypeError(f'Expecting one of the following type : "string","boolean","double","long","integer","number","int","short","byte","date","datetime","date-time","boolean","object","bytes", "array", "dataType", "map". Got {dataType}')

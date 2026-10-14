@@ -343,6 +343,8 @@ Return a single dataset.\
 Arguments:
 * datasetId : REQUIRED : Id of the dataset to be retrieved.
 
+CLI equivalent: [`get_dataset <dataset_id_or_name>`](./cli.md#get_dataset) displays the definition and exports `dataset_<dataset_id>.json`. Dataset names must match exactly; quote names containing spaces.
+
 
 #### getDataSetObservableSchema
 Return a single dataset observable schema.\

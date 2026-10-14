@@ -475,6 +475,8 @@ Arguments:
 * descriptorId : REQUIRED : descriptor ID to return (@id).
 * save : OPTIONAL : Boolean that would save your descriptors in the schema folder. (default False)
 
+CLI equivalent: [`get_descriptor <descriptor_id>`](./cli.md#get_descriptor) displays the definition. Add `-sv`/`--save` to export `descriptor_<descriptor_id>.json` in the current directory.
+
 
 ### createDescriptor
 Create a descriptor attached to a specific schema.\
@@ -712,4 +714,3 @@ The same way than what the Field Group Manager and Schema Manager provide, you c
 Any change that you are making to a Data Type has repercussion on all the elements that are using this Data Type (Schema or Field Groups).
 
 To get to know more on the Data Type Manager, please read [the documentation](./dataTypeManager.md)
-
