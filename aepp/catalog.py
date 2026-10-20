@@ -460,20 +460,22 @@ class Catalog:
         self.data.infos = df
         return df
     
-    def getProfileSnapshotDatasets(self,explicitMergePolicy:bool=False)->dict:
+    def getProfileSnapshotDatasets(self,explicitMergePolicy:bool=False,flatten:bool=False,defaultOnly:bool=False)->dict|list:
         """
         Return a dictionary of Profile Snapshot datasetId, containing the information related to them.
         Arguments:
             explicitMergePolicy : OPTIONAL : Provide a mergePolicyName attribute for the dataset to explain.
+            flatten : OPTIONAL : If True, return the data as a flattened list of dictionaries instead of a nested dictionary.
+            defaultOnly : OPTIONAL : If True, return only the datasets with the default merge policy.
         """
         datasets = self.getDataSets()
-        snapshotDatasets = [key for key in self.data.ids.keys() if 'Profile-Snapshot-Export' in key]
+        snapshotDatasets = [key for key in self.data.ids.keys() if 'Profile-Snapshot-Export' in key or 'Account-Snapshot' in key or 'Account-person-Snapshot' in key ]
         data = {}
         for snap in snapshotDatasets:
             snapshot = self.getDataSet(self.data.ids[snap])
             snapshotId = list(snapshot.keys())[0]
             data[snapshotId] = deepcopy(snapshot[snapshotId])
-            if explicitMergePolicy==True:
+            if explicitMergePolicy==True or defaultOnly==True:
                 unifiedProfileMergePolicy = snapshot[snapshotId].get('tags').get('unifiedProfile',None)
                 if unifiedProfileMergePolicy is not None:
                     mergePolicy = [el for el in unifiedProfileMergePolicy if 'mergePolicyId' in el][0]
@@ -483,6 +485,15 @@ class Catalog:
                     mergePolicyList:list = profile.getMergePolicies()
                     mergePolicy = [el for el in mergePolicyList if el['id'] == mergePolicyId][0]
                     data[snapshotId]['mergePolicyName'] = mergePolicy['name']
+                    data[snapshotId]['defaultPolicy'] = mergePolicy.get('default', False)
+                else:
+                    data[snapshotId]['defaultPolicy'] = "unknown"
+                    data[snapshotId]['mergePolicyName'] = "unknown"
+                if defaultOnly and not data[snapshotId].get('defaultPolicy', False):
+                    del data[snapshotId]
+        if flatten:
+            flatten_data = [{**{"id": k}, **v} for k, v in data.items()]
+            return flatten_data
         return data
     
     def createDataSet(self, 

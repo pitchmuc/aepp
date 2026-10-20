@@ -966,6 +966,13 @@ class InteractiveQuery:
             self.mycat = catalog.Catalog(config=self.config)
             self.myseg = segmentation.Segmentation(config=self.config)
 
+    def close(self) -> None:
+        """
+        Close the database connection.
+        """
+        if self.db:
+            self.db.close()
+
     def addConfig(self,config:ConnectObject)->None:
         self.config = config
         from aepp import catalog,segmentation
@@ -1189,6 +1196,13 @@ class InteractiveQuery2:
             from aepp import catalog, segmentation
             self.mycat = catalog.Catalog(config=self.config)
             self.myseg = segmentation.Segmentation(config=self.config)
+
+    def close(self) -> None:
+        """
+        Close the database connection.
+        """
+        if self.connect:
+            self.connect.close()
     
     def addConfig(self,config:ConnectObject)->None:
         """

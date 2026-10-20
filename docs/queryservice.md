@@ -49,6 +49,7 @@ Alternatively, you can use the docstring in the methods to have more information
       - [Instantiation of interactive query](#instantiation-of-interactive-query)
     - [Methods of Interactive Query](#methods-of-interactive-query)
       - [addConfig](#addconfig)
+      - [close](#close)
       - [query](#query)
       - [transformToDataFrame](#transformtodataframe)
       - [querySegmentPopulation](#querysegmentpopulation)
@@ -569,6 +570,23 @@ From the InteractiveQuery instances you can directly pass SQL query and receive 
 Possibly to attach a configuration sandbox after the instantiation of the object.
 Arguments:
 * config : REQUIRED : Configuration object from aepp ConnectObject instance.
+
+#### close
+Close the underlying database connection. Available on both `InteractiveQuery` (PyGreSQL) and `InteractiveQuery2` (psycopg2). Takes no arguments and returns `None`.
+
+Use `try`/`finally` to release the connection even if querying or processing the results raises an exception:
+
+```python
+intQuery2 = queryservice.InteractiveQuery2(conn, config=mysandbox)
+try:
+    df_result = intQuery2.query("SELECT * FROM myDataset LIMIT 100")
+finally:
+    intQuery2.close()
+```
+
+Consume or convert any raw query results before closing the connection. To run more queries after closing, create a new interactive-query instance.
+
+The CLI's [`query` command](./cli.md#query) now closes its connection after retrieving and exporting the results on the successful execution path.
 
 #### query
 Query the database and return different type of data, depending the format parameters.\

@@ -32,6 +32,14 @@ Patch:
 * Fixing `get_queries` appending to the list it was iterating, ignoring the state filter, and using local timestamps marked as UTC. Query history now applies API state filters and encodes filters only once.
 * Query Service query, template and schedule retrieval now follows complete pagination links (including string links and links without `orderby`), honors `n_results` exactly, and surfaces malformed/API error responses instead of silently returning empty results.
 
+### Patch 0.5.9-5
+
+* Extend `Catalog.getProfileSnapshotDatasets` to discover account and account-person snapshots in addition to profile snapshots. [Catalog documentation](./catalog.md#getprofilesnapshotdatasets)
+* Add `flatten=True` to return snapshot definitions as a list with an `id` field, while preserving the default dictionary return format. Merge-policy lookup now adds `defaultPolicy` alongside `mergePolicyName`; `defaultOnly=True` enables lookup and filters out non-default policies. Unknown policies are currently retained, so the documentation includes an explicit filter for confirmed default policies.
+* Extend the snapshot CLI listing with default-policy and row-count columns, a `-d` / `--defaultOnly` option, and CSV export using the list output. Fix the invalid `store_true` / `type=bool` combination: the option now accepts either a bare flag or an explicit, case-insensitive `True`/`False`, and defaults to `False` when omitted. [CLI reference](./cli.md#get_snapshot_datasets)
+* Add `close()` to `InteractiveQuery` and `InteractiveQuery2` to release their database connections. The CLI `query` command now closes its connection after retrieving and exporting results on the successful execution path. [Connection cleanup](./queryservice.md#close)
+* Document the local, mocked CLI and Query Service regression suites, covering scheduled queries, query history, definition exports, pagination, result limits and API error handling. Add snapshot CLI regression tests for optional boolean values, invalid input, help and CSV export. [Testing guide](./tests.md#offline-cli-and-query-service-regression-tests)
+
 ## version 0.5.8
 * adding `get_flow_partial_success` in the CLI to export the partial success flows
 * Improving docstring information on CLI 

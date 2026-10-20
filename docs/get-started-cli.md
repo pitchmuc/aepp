@@ -198,6 +198,20 @@ The CLI provides a variety of commands to manage and interact with Adobe Experie
   * get_profile_attribute_lineage
   * get_event_attribute_lineage
 
+### Snapshot dataset exports
+
+Snapshot discovery now includes account and account-person snapshots as well as profile snapshots. The `get_snapshot_datasets` command exports `<sandbox>_snapshot_datasets.csv` and displays merge-policy names and IDs, the default-policy indicator, and Data Lake row counts. Its new `-d` / `--defaultOnly` option requests default-policy snapshots.
+
+```text
+dev> get_snapshot_datasets
+dev> get_snapshot_datasets --defaultOnly
+dev> get_snapshot_datasets --defaultOnly True
+```
+
+Omitting the option lists all snapshots. A bare flag or an explicit `True` enables the filter; an explicit `False` disables it. Boolean values are case-insensitive. See the [snapshot CLI reference](./cli.md#get_snapshot_datasets) for metadata requirements and more examples.
+
+The [`Catalog.getProfileSnapshotDatasets`](./catalog.md#getprofilesnapshotdatasets) Python API also supports list output and merge-policy metadata. Its examples explain how to exclude unknown policies when you need only confirmed default policies.
+
 ### Query Service quick start
 
 After connecting, you can inspect templates and schedules without writing Python:
@@ -224,3 +238,11 @@ dev> get_queries_scheduled
 ```
 
 State changes are asynchronous; the listing lets you check whether the change has completed. See [Query Service CLI commands](./cli.md#query-service-methods) for all arguments, output filenames and scheduling constraints.
+
+For ad hoc SQL, `query` exports the result rows and closes its database connection after the export succeeds:
+
+```text
+dev> query "SELECT * FROM accounts LIMIT 100" -fn accounts_sample.csv
+```
+
+When querying from Python instead, call [`close`](./queryservice.md#close) on your `InteractiveQuery` or `InteractiveQuery2` instance when finished.

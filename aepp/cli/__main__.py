@@ -1462,28 +1462,32 @@ class ServiceShell(cmd.Cmd):
     def do_get_snapshot_datasets(self,args:Any) -> None:
         """List all snapshot datasets in the current sandbox"""
         parser = argparse.ArgumentParser(prog='get_snapshot_datasets', add_help=True)
+        parser.add_argument(
+            "-d", "--defaultOnly",
+            help="Only return datasets with the default merge policy (optional True/False; default False)",
+            nargs="?", const=True, default=False, type=str2bool, metavar="BOOL",
+        )
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_cat = catalog.Catalog(config=self.config)
-            datasets = aepp_cat.getProfileSnapshotDatasets(explicitMergePolicy=True)
-            list_ds = []
-            for key, ds in datasets.items():
-                obj = ds
-                obj['id'] = key
-                list_ds.append(obj)
-            df_datasets = pd.DataFrame(list_ds)
+            datasets = aepp_cat.getProfileSnapshotDatasets(explicitMergePolicy=True,flatten=True,defaultOnly=args.defaultOnly)
+            df_datasets = pd.DataFrame(datasets)
             df_datasets.to_csv(f"{self.config.sandbox}_snapshot_datasets.csv",index=False)
             table = Table(title=f"Snapshot Datasets in Sandbox: {self.config.sandbox}")
             table.add_column("ID", style="white")
             table.add_column("Table Name", style="white")
             table.add_column("Merge Policy Name", style="yellow")
             table.add_column("Merge Policy ID", style="green")
-            for ds in list_ds:
+            table.add_column("Default Policy", style="red")
+            table.add_column("Row Count", style="white")
+            for ds in datasets:
                 table.add_row(
                     ds.get("id","N/A"),
                     ds.get("tags",{}).get('adobe/pqs/table',["N/A"])[0],
                     ds.get('mergePolicyName','N/A'),
-                    [el.split(':')[1] for el in ds.get('tags',{}).get('unifiedProfile',[]) if el.startswith('mergePolicyId')][0]
+                    [el.split(':')[1] for el in ds.get('tags',{}).get('unifiedProfile',[]) if el.startswith('mergePolicyId')][0],
+                    "[green]True[/green]" if ds.get('defaultPolicy', False) else "[red]False[/red]",
+                    str(ds.get('extensions', {}).get('adobe_lakeHouse', {}).get('metrics', {}).get('rowCount', 'N/A'))
                 )
             console.print(table)
             console.print(f"Snapshot Datasets exported to {self.config.sandbox}_snapshot_datasets.csv", style="green")
@@ -2651,6 +2655,7 @@ class ServiceShell(cmd.Cmd):
                 sample = result.head()
             else:
                 sample = result.sample(5)
+            iqs2.close() ## stopping the connection
             console.print(sample)
             console.print(f"Query result exported to {filename}", style="green")
         except Exception as e:

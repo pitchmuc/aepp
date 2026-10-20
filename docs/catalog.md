@@ -301,9 +301,43 @@ see reference here: https://developer.adobe.com/experience-platform-apis/referen
 
 
 #### getProfileSnapshotDatasets
-Return a dictionary of Profile Snapshot datasetId, containing the information related to them.\
+Retrieve snapshot dataset definitions from the current sandbox. This includes datasets whose names contain `Profile-Snapshot-Export`, `Account-Snapshot`, or `Account-person-Snapshot`, covering profile, account and account-person snapshots.\
 Arguments:
-  * explicitMergePolicy : OPTIONAL : Provide a mergePolicyName attribute for the dataset to explain.
+* explicitMergePolicy : OPTIONAL : Boolean, default `False`. Resolve the dataset's merge policy and add `mergePolicyName` and `defaultPolicy` to its definition. This requires access to the Profile API's merge policies.
+* flatten : OPTIONAL : Boolean, default `False`. Return a list of dataset definitions with an `id` field instead of a dictionary keyed by dataset ID. Nested fields such as `tags` and `extensions` remain nested; this is not a recursive JSON flattening operation.
+* defaultOnly : OPTIONAL : Boolean, default `False`. Exclude snapshots whose resolved merge policy is not the default. This also enables merge-policy lookup, even when `explicitMergePolicy=False`.
+
+Return formats:
+* Default: `{"dataset_id": {<dataset definition>}, ...}`. Existing callers keep the dictionary return format.
+* With `flatten=True`: `[{"id": "dataset_id", <dataset definition>}, ...]`, suitable for `pandas.DataFrame`.
+* No matching datasets: `{}` by default, or `[]` with `flatten=True`.
+
+When merge-policy lookup is enabled but a dataset has no `unifiedProfile` tag, both `mergePolicyName` and `defaultPolicy` are set to the string `"unknown"`.
+
+**Current filtering limitation:** `defaultOnly=True` retains these unknown-policy datasets as well as datasets with `defaultPolicy=True`. If you require only confirmed default policies, explicitly filter using `is True`, as shown below. Metadata that contains a `unifiedProfile` tag but no valid, resolvable merge-policy ID can still raise an error during lookup.
+
+Examples using an authenticated Catalog instance (`myCat`):
+
+```python
+snapshots_by_id = myCat.getProfileSnapshotDatasets()
+
+snapshot_rows = myCat.getProfileSnapshotDatasets(
+    explicitMergePolicy=True,
+    flatten=True,
+)
+
+default_candidates = myCat.getProfileSnapshotDatasets(
+    flatten=True,
+    defaultOnly=True,
+)
+default_snapshots = [
+    snapshot
+    for snapshot in default_candidates
+    if snapshot.get("defaultPolicy") is True
+]
+```
+
+The CLI uses the list format for its [snapshot dataset export](./cli.md#get_snapshot_datasets).
 
 #### getDatasetsInfos
 Extract the datasets information from the data attribute and return a dataframe.\

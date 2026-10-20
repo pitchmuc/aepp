@@ -306,7 +306,32 @@ Arguments:
 * `dataset` : The Dataset ID or Name.
 
 #### get_snapshot_datasets
-Get the list of snapshot datasets in the current sandbox.\
+List profile, account and account-person snapshot datasets in the current sandbox, including merge-policy metadata. The command uses [`Catalog.getProfileSnapshotDatasets`](./catalog.md#getprofilesnapshotdatasets) with `explicitMergePolicy=True` and `flatten=True`.\
+Arguments:
+* `-d`, `--defaultOnly` : Optional boolean, default `False`. Request default-merge-policy snapshots. Passing the flag alone sets it to `True`; an explicit `True` or `False` is also accepted, case-insensitively. See the Catalog documentation for the current handling of unknown merge policies.
+
+The console table includes:
+* Dataset ID
+* Query Service table name
+* Merge policy name and ID
+* Default policy indicator
+* Data Lake row count from `extensions.adobe_lakeHouse.metrics.rowCount`, or `N/A` when unavailable
+
+Dataset records are exported to `<sandbox>_snapshot_datasets.csv`, including a top-level `id` field. Nested metadata remains nested in the records passed to the CSV export.
+
+Examples:
+
+```text
+dev> get_snapshot_datasets
+dev> get_snapshot_datasets --defaultOnly
+dev> get_snapshot_datasets --defaultOnly True
+dev> get_snapshot_datasets --defaultOnly=False
+dev> get_snapshot_datasets -d False
+```
+
+Invalid boolean values are rejected before any API request or export. The existing boolean converter also accepts `yes`/`no`, `t`/`f`, `y`/`n` and `1`/`0`.
+
+The CLI's merge-policy ID display assumes each snapshot has a `mergePolicyId` entry in its `unifiedProfile` tags. For snapshots without this metadata, use the [Python Catalog examples](./catalog.md#getprofilesnapshotdatasets).
 
 #### get_dataset_expiration
 Get the TTL (Time To Live) / `rowExpiration` setting for a dataset. ONLY WORKS ON Experience Event Datasets.\
@@ -575,6 +600,8 @@ Execute a raw SQL query against the Data Lake, save the results as CSV and displ
 Arguments:
 * `sql_query` : The SQL string to execute.
 * `-fn` : Optional output filename. The `.csv` extension is added if omitted. Defaults to `query_result_<timestamp>.csv`.
+
+After the query results have been retrieved and exported, the command closes its `InteractiveQuery2` database connection before displaying the sample. For Python usage, see [`close`](./queryservice.md#close).
 
 #### query_segment_population
 Query the population of specific segment(s).\
