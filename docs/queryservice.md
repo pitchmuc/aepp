@@ -51,8 +51,15 @@ Alternatively, you can use the docstring in the methods to have more information
       - [addConfig](#addconfig)
       - [close](#close)
       - [query](#query)
+      - [queryHistoryMeta](#queryhistorymeta)
+      - [queryProfilesTrend](#queryprofilestrend)
+      - [queryNamespacesDistribution](#querynamespacesdistribution)
+      - [queryNamespacesTrend](#querynamespacestrend)
+      - [querySegmentPopulationTrend](#querysegmentpopulationtrend)
+      - [queryAudiencePopulationTrend](#queryaudiencepopulationtrend)
       - [transformToDataFrame](#transformtodataframe)
       - [querySegmentPopulation](#querysegmentpopulation)
+      - [queryAudiencePopulation](#queryaudiencepopulation)
       - [queryIdentity](#queryidentity)
     - [Tips for Interactive Query](#tips-for-interactive-query)
 
@@ -515,9 +522,20 @@ The CLI wraps Query Service methods in the connected sandbox. All commands requi
 | `enable_query_scheduled <schedule_id>` | `enableSchedule` | Enable-request acceptance or an explicit error |
 | `disable_query_scheduled <schedule_id>` | `disableSchedule` | Disable-request acceptance or an explicit error |
 | `query "<sql>"` | `InteractiveQuery2.query` | CSV query results and a console sample |
-| `query_segment_population <segment_id> ...` | `InteractiveQuery2.querySegmentPopulation` | CSV segment population or count |
+| `query_audience_population <audience_id> ...` | `InteractiveQuery2.queryAudiencePopulation` | CSV audience population or count |
+| `query_history_meta <table>` | `InteractiveQuery2.queryHistoryMeta` | Table snapshot history, console sample and `<sandbox>_history_meta.csv` |
+| `query_profiles_trend` | `InteractiveQuery2.queryProfilesTrend` | Last 30 days of profile counts and `<sandbox>_profiles_trend.csv` |
+| `query_namespaces_distribution` | `InteractiveQuery2.queryNamespacesDistribution` | Latest namespace counts and `<sandbox>_namespaces_distribution.csv` |
+| `query_namespaces_trend [-ns <name>]` | `InteractiveQuery2.queryNamespacesTrend` | Namespace trends and `<sandbox>_namespaces_trend.csv` |
+| `query_audience_population_trend [-a <name_or_id>]` | `InteractiveQuery2.queryAudiencePopulationTrend` | Audience population trends and `<sandbox>_audience_population_trend.csv` |
 
 Run `help` to see the Queries command group, `help <command>` for a summary, or `<command> -h` for arguments. See the [CLI command reference](./cli.md#query-service-methods) for examples and the [CLI getting-started guide](./get-started-cli.md#query-service-quick-start) for setup and scheduling.
+
+The five interactive query reports accept `-fn`, `--filename` to override their output filenames, display up to 10 rows and close the connection after fetching results, including when a query fails. Namespace and audience filters are case-insensitive.
+
+Add `--plot` to `query_profiles_trend`, `query_namespaces_trend` or `query_audience_population_trend` for a Matplotlib line chart with dates on the X axis. The Y axis defaults to `COUNT_OF_PROFILES`; `--metric <column>` selects another numeric result column, matched case-insensitively. It requires `--plot`, and invalid names report the available metrics. Multiple namespaces or audiences are separate lines on a common scale. An interactive GUI backend is required; close the chart window to return to the CLI.
+
+The same `--plot` flag on `query_namespaces_distribution` still displays Rich terminal bars of profile counts scaled to the largest namespace. Charting does not alter CSV exports. See the [interactive query report reference](./cli.md#interactive-query-reports) for examples.
 
 ## InteractiveQuery and InteractiveQuery2
 
@@ -547,7 +565,14 @@ intQuery2 = queryservice.InteractiveQuery2(conn,config=mysandbox)
 The `InteractiveQuery` class is using the `PyGreSQL` python module in the background. **This class will be deprecated in the future.**\
 The `InteractiveQuery2` class is using the `psycopg2` python module in the background.
 
-Except for that change in the engine used in the background, all of the methods described below can be applied to either `InteractiveQuery` or `InteractiveQuery2` instances.
+Most methods below are available on both classes. In version 0.6.0, audience population methods use different names:
+
+| Operation | `InteractiveQuery` | `InteractiveQuery2` |
+| --- | --- | --- |
+| Export audience identities or retrieve counts | `querySegmentPopulation(segmentId=...)` | `queryAudiencePopulation(audienceId=...)` |
+| Retrieve audience population trends | `querySegmentPopulationTrend(segment=...)` | `queryAudiencePopulationTrend(segment=...)` |
+
+`InteractiveQuery2` no longer exposes `querySegmentPopulation`; update existing calls to `queryAudiencePopulation` and rename the `segmentId` argument to `audienceId`. There is no compatibility alias. The corresponding CLI command is now `query_audience_population`, replacing `query_segment_population`.
 
 #### Instantiation of interactive query
 
@@ -558,7 +583,11 @@ The parameter that you can pass during instantiation are:
 * conn_object : REQUIRED : The connection object you have generated via `QueryService` instance `connection` method.
 * config : OPTIONAL : Configuration object from aepp ConnectObject instance. Requires if you want to use some advanced methods. 
 * loggingObject : OPTIONAL : A logging object that can be passed for debuging or logging elements, see [logging documentation](./logging.md)
-* sslmode : OPTIONAL : The sslmode to use when connecting to the database. Default to "allow".
+* sslmode : OPTIONAL : `InteractiveQuery2` only. The sslmode to use when connecting to the database. Default to "allow".
+
+Initialization also reads the default merge policy and namespace mapping from `qsaccel.profile_agg.adwh_dim_merge_policies` and `qsaccel.profile_agg.adwh_dim_namespaces`. The connected sandbox must have accessible Profile reporting metadata and a row marked `IS_DEFAULT_MERGE_POLICY`. These reads happen on every instantiation, including for ordinary SQL and table-history queries; initialization fails if the metadata is unavailable or no default policy is returned.
+
+Both classes expose `default_merge_policy_queryId` (the reporting `MERGE_POLICY_ID`) and `default_merge_policy_id` (the AEP merge-policy identifier from `MERGE_POLICY`). Reporting helpers use the reporting ID selected at initialization. Create a new instance to reload this metadata after changing the sandbox's default policy.
 
 ### Methods of Interactive Query
 
@@ -614,6 +643,58 @@ df_result = intQuery.query(sql)
 result = intQuery.query(sql,output= "raw")
 ```
 
+#### queryHistoryMeta
+Retrieve snapshot history metadata for a Query Service table as a dataframe. This does not return query execution history.
+
+Arguments:
+* `table` : Required Query Service table name.
+
+#### queryProfilesTrend
+Return `DATE_KEY` and `COUNT_OF_PROFILES` for the sandbox's default merge policy, sorted by `DATE_KEY`. The 30-day window is relative to the latest successful `FACT_TABLES_PROCESSING` process date, not the local clock.
+
+#### queryNamespacesDistribution
+Return the latest namespace distribution for the default merge policy. Includes namespace names, profile counts, identity counts and single-identity profile counts.
+
+The namespace-name column is `NAMESPACE` for `InteractiveQuery` and `NAMESPACE_DESCRIPTION` for `InteractiveQuery2`. Both return `COUNT_OF_PROFILES`, `COUNT_OF_SINGLE_IDENTITY_PROFILES` and `COUNT_OF_IDENTITIES` from the latest reporting `DATE_KEY` for that policy.
+
+#### queryNamespacesTrend
+Return namespace trends for the default merge policy, sorted by `DATE_KEY`, with namespace names mapped from reporting IDs.
+
+Arguments:
+* `namespace` : Optional namespace name, matched exactly and case-insensitively. Defaults to all namespaces.
+
+Returns `DATE_KEY`, `NAMESPACE`, `COUNT_OF_PROFILES`, `COUNT_OF_IDENTITIES` and `COUNT_OF_SINGLE_IDENTITY_PROFILES`. Unlike `queryProfilesTrend`, this method does not apply a 30-day filter.
+
+#### querySegmentPopulationTrend
+Available on `InteractiveQuery` only. Return segment population trends for the default merge policy, with `DATE_KEY`, `SEGMENT_NAME` and `AUDIENCE_ID` mapped from reporting IDs. Includes `COUNT_OF_PROFILES`, `COUNT_OF_IDENTITIES`, `COUNT_OF_CALCULATED_REALIZED_PROFILES`, `COUNT_OF_CALCULATED_EXISTING_PROFILES` and `COUNT_OF_CALCULATED_EXITED_PROFILES`.
+
+Arguments:
+* `segment` : Optional segment name or audience ID, matched exactly and case-insensitively. Defaults to all segments.
+
+#### queryAudiencePopulationTrend
+Available on `InteractiveQuery2` only. Return the same metrics as `querySegmentPopulationTrend`, with `AUDIENCE_NAME` instead of `SEGMENT_NAME`. The result also includes `DATE_KEY` and `AUDIENCE_ID`.
+
+Arguments:
+* `segment` : Optional audience name or ID, matched exactly and case-insensitively. The Python argument is still named `segment`; the CLI exposes it as `-a`, `--audience`. Defaults to all audiences.
+
+Both audience trend methods map names and IDs from `adwh_dim_segments` entries in the `UPS` namespace. They return the available reporting history without a 30-day filter or explicit date sorting. The CLI sorts dates for plotting without changing the CSV row order.
+
+The trend methods return an empty dataframe when the reporting query returns no rows. Namespace and audience filters with no matches also return an empty dataframe.
+
+Example using the recommended `InteractiveQuery2` class:
+
+```python
+intQuery2 = queryservice.InteractiveQuery2(conn, config=mysandbox)
+try:
+    history = intQuery2.queryHistoryMeta(table="accounts")
+    profiles = intQuery2.queryProfilesTrend()
+    distribution = intQuery2.queryNamespacesDistribution()
+    namespaces = intQuery2.queryNamespacesTrend(namespace="Email")
+    audiences = intQuery2.queryAudiencePopulationTrend(segment="VIP Customers")
+finally:
+    intQuery2.close()
+```
+
 #### transformToDataFrame
 In case you want to transform your result into a dataframe later on, you can use the `transformToDataFrame` method.\
 This will return you a dataFrame.\
@@ -625,7 +706,7 @@ mydf = intQuery.transformToDataFrame(result)
 ```
 
 #### querySegmentPopulation
-Retrieve the identities in the identityMap that are qualified to the segment ID passed.\
+Available on `InteractiveQuery` only. Retrieve the identities in the identityMap that are qualified to the segment ID passed.\
 Arguments:
 * segmentId : REQUIRED : Single or list of segment Ids
 * extraFields : OPTIONAL : If you want to add more identities that are not in the IdentityMap
@@ -646,6 +727,18 @@ As each identity contained in the identityMap is exploded, it creates additional
 In order to achieve the same count, you would need to deduplicate the rows by identities.\
 This method is used to investigate and do advanced verification of segmentation population.\
 This method is mostly using the Profile Snapshot for exporting data, which means that Real Time or Edge Segments population may not be represented correctly due to the asynchronous nature of the Profile Snapshot vs Profile Store. 
+
+#### queryAudiencePopulation
+The `InteractiveQuery2` counterpart to `querySegmentPopulation`, renamed in version 0.6.0.
+
+Arguments:
+* `audienceId` : Required audience ID or list of audience IDs.
+* `extraFields` : Optional field name or list of additional fields to select. When a list of audiences is supplied, these fields are forwarded to each audience query.
+* `count` : Optional boolean, default `False`. Requests the population count reported by the Segmentation API rather than counting identity rows.
+
+Requires a sandbox configuration supplied at initialization or through `addConfig`. With `count=True`, returns one row per audience with `count` and `audienceId` columns, without looking up snapshot datasets or executing SQL. A missing population metric retains the existing `"No Data Yet"` value; a reported zero remains zero. The interactive-query initialization requirements still apply.
+
+For identity exports, the method resolves each audience's merge policy and its Profile snapshot dataset. Identity exports label the audience identifier `audienceId`, replacing the old `segmentId` column. The snapshot timing and identity-expansion considerations described above also apply.
 
 
 #### queryIdentity

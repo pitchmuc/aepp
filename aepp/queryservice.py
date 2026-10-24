@@ -965,6 +965,11 @@ class InteractiveQuery:
             from aepp import catalog, segmentation
             self.mycat = catalog.Catalog(config=self.config)
             self.myseg = segmentation.Segmentation(config=self.config)
+        mergePolicies = self.query("SELECT * FROM qsaccel.profile_agg.adwh_dim_merge_policies")
+        self.default_merge_policy_queryId = mergePolicies[mergePolicies.IS_DEFAULT_MERGE_POLICY].reset_index().at[0,'MERGE_POLICY_ID']
+        self.default_merge_policy_id = mergePolicies[mergePolicies.IS_DEFAULT_MERGE_POLICY].reset_index().at[0,'MERGE_POLICY']
+        self._df_namespaces_mapping = self.query(f"SELECT * FROM qsaccel.profile_agg.adwh_dim_namespaces WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId}")
+        self._mapping_namespace_id_name = { row['NAMESPACE_ID']: row['NAMESPACE_DESCRIPTION'] for _, row in self._df_namespaces_mapping.iterrows()}
 
     def close(self) -> None:
         """
@@ -1008,6 +1013,96 @@ class InteractiveQuery:
             return df
         else:
             raise KeyError("You didn't specify a correct value.")
+
+    def queryHistoryMeta(self,table:str=None)->pd.DataFrame:
+        if table is None:
+            raise Exception("Table name is required")
+        sql = f"SELECT history_meta('{table}')"
+        return self.query(sql, output="dataframe")
+
+    def queryProfilesTrend(self)->pd.DataFrame:
+        """
+        Query the profile trend for the sandbox for the last 30 days.
+        Returns:
+            A dataframe containing the profile trend data.
+        """
+        sql =f"""
+            SELECT date_key,
+                sum(count_of_profiles) AS count_of_profiles
+            FROM qsaccel.profile_agg.adwh_fact_profile_by_trendlines x
+            INNER JOIN
+                (SELECT MAX(process_date) last_process_date,
+                        merge_policy_id
+                FROM qsaccel.profile_agg.adwh_lkup_process_delta_log
+                WHERE process_name = 'FACT_TABLES_PROCESSING'
+                AND process_status = 'SUCCESSFUL'
+                GROUP BY merge_policy_id) y ON x.merge_policy_id = y.merge_policy_id
+            WHERE date_key >= dateadd(DAY, -30, y.last_process_date)
+                AND x.merge_policy_id = {self.default_merge_policy_queryId}
+            GROUP BY date_key;
+            """
+        df = self.query(sql, output="dataframe")
+        if df.empty:
+            return df
+        df = df.sort_values('DATE_KEY')
+        return df
+
+    def queryNamespacesDistribution(self) -> pd.DataFrame:
+        """
+        Query the distribution of namespaces for the sandbox.
+        Returns:
+            A dataframe containing the namespaces distribution data.
+        """
+        sql = f"""
+            SELECT namespace, COUNT_OF_PROFILES as count_of_profiles, COUNT_OF_SINGLE_IDENTITY_PROFILES as count_of_single_identity_profiles, COUNT_OF_IDENTITIES as count_of_identities
+            FROM (SELECT NAMESPACE_ID, NAMESPACE_DESCRIPTION as NAMESPACE FROM qsaccel.profile_agg.adwh_dim_namespaces WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId}) x
+            INNER JOIN (SELECT NAMESPACE_ID, COUNT_OF_PROFILES, COUNT_OF_SINGLE_IDENTITY_PROFILES, COUNT_OF_IDENTITIES FROM qsaccel.profile_agg.adwh_fact_profile_by_namespace	WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId} AND DATE_KEY = (SELECT MAX(DATE_KEY) FROM qsaccel.profile_agg.adwh_fact_profile_by_namespace WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId})) y
+            ON x.NAMESPACE_ID = y.NAMESPACE_ID
+            """
+        return self.query(sql, output="dataframe")
+
+    def queryNamespacesTrend(self,namespace:str|None=None)-> pd.DataFrame:
+        """
+        Query the trend of namespaces for the sandbox.
+        Returns:
+            A dataframe containing the namespaces trend data.
+        """
+        sql = f"""
+            SELECT DATE_KEY, NAMESPACE_ID, COUNT_OF_PROFILES, COUNT_OF_IDENTITIES, COUNT_OF_SINGLE_IDENTITY_PROFILES FROM qsaccel.profile_agg.adwh_fact_profile_by_namespace_trendlines WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId}
+            """
+        df = self.query(sql, output="dataframe")
+        if df.empty:
+            return df
+        df = df.sort_values('DATE_KEY')
+        df['NAMESPACE'] = df['NAMESPACE_ID'].map(self._mapping_namespace_id_name)
+        if namespace is not None:
+            namespace = namespace.lower()
+            df = df[df['NAMESPACE'].astype("string").str.lower() == namespace].copy()
+        return df[['DATE_KEY', 'NAMESPACE', 'COUNT_OF_PROFILES', 'COUNT_OF_IDENTITIES', 'COUNT_OF_SINGLE_IDENTITY_PROFILES']]
+
+    def querySegmentPopulationTrend(self,segment:str=None)-> pd.DataFrame:
+        """
+        Query the trend of a segment population for the sandbox.
+        Arguments:
+            segment: The name or audience ID of the segment to filter by. If None, all segments are returned.
+        Returns:
+            A dataframe containing the segment population trend data.
+        """
+        sql = f"SELECT DATE_KEY, SEGMENT_ID, COUNT_OF_PROFILES, COUNT_OF_IDENTITIES, COUNT_OF_CALCULATED_REALIZED_PROFILES, COUNT_OF_CALCULATED_EXISTING_PROFILES, COUNT_OF_CALCULATED_EXITED_PROFILES FROM qsaccel.profile_agg.adwh_fact_profile_by_segment_trendlines WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId}"
+        df = self.query(sql, output="dataframe")
+        if df.empty:
+            return df
+        df_segment_mapping:pd.DataFrame = self.query("SELECT SEGMENT_ID, SEGMENT, SEGMENT_NAME FROM qsaccel.profile_agg.adwh_dim_segments WHERE SEGMENT_NAMESPACE = 'UPS'", output="dataframe")
+        mapping_id_name = {row['SEGMENT_ID']: row['SEGMENT_NAME'] for _, row in df_segment_mapping.iterrows()}
+        mapping_id_realId = {row['SEGMENT_ID']: row['SEGMENT'] for _, row in df_segment_mapping.iterrows()}
+        df['SEGMENT_NAME'] = df['SEGMENT_ID'].map(mapping_id_name)
+        df['AUDIENCE_ID'] = df['SEGMENT_ID'].map(mapping_id_realId)
+        if segment is not None:
+            segment = segment.lower()
+            df = df[(df['SEGMENT_NAME'].astype("string").str.lower() == segment) | (df['AUDIENCE_ID'].astype("string").str.lower() == segment)].copy()
+        df = df[['DATE_KEY', 'SEGMENT_NAME', 'AUDIENCE_ID', 'COUNT_OF_PROFILES', 'COUNT_OF_IDENTITIES',
+                 'COUNT_OF_CALCULATED_REALIZED_PROFILES', 'COUNT_OF_CALCULATED_EXISTING_PROFILES', 'COUNT_OF_CALCULATED_EXITED_PROFILES']]
+        return df
     
     def querySegmentPopulation(self,segmentId:str|list,extraFields:str|list=None,count:bool=False)->pd.DataFrame|object:
         """
@@ -1196,6 +1291,11 @@ class InteractiveQuery2:
             from aepp import catalog, segmentation
             self.mycat = catalog.Catalog(config=self.config)
             self.myseg = segmentation.Segmentation(config=self.config)
+        mergePolicies = self.query("SELECT * FROM qsaccel.profile_agg.adwh_dim_merge_policies")
+        self.default_merge_policy_queryId = mergePolicies[mergePolicies.IS_DEFAULT_MERGE_POLICY].reset_index().at[0,'MERGE_POLICY_ID']
+        self.default_merge_policy_id = mergePolicies[mergePolicies.IS_DEFAULT_MERGE_POLICY].reset_index().at[0,'MERGE_POLICY']
+        self._df_namespaces_mapping = self.query(f"SELECT * FROM qsaccel.profile_agg.adwh_dim_namespaces WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId}")
+        self._mapping_namespace_id_name = {row['NAMESPACE_ID']: row['NAMESPACE_DESCRIPTION'] for _, row in self._df_namespaces_mapping.iterrows()}
 
     def close(self) -> None:
         """
@@ -1245,28 +1345,132 @@ class InteractiveQuery2:
         else:
             raise KeyError("You didn't specify a correct value.")
 
-    def querySegmentPopulation(self,segmentId:str|list,extraFields:str|list=None,count:bool=False)->pd.DataFrame|object:
+    def queryHistoryMeta(self,table:str=None)->pd.DataFrame:
         """
-        Retrieve the identities in the identityMap that are qualified to the segment ID passed.
+        Query the history metadata for a given table.
         Arguments:
-            segmentId : REQUIRED : Single or list of segment Ids
+            table : REQUIRED : The name of the table to query.
+        Returns:
+            A dataframe containing the history metadata.
+        """
+        if table is None:
+            raise Exception("Table name is required")
+        sql = f"SELECT history_meta('{table}')"
+        return self.query(sql, output="dataframe")
+
+    def queryProfilesTrend(self)->pd.DataFrame:
+        """
+        Query the profile trend for the sandbox for the last 30 days.
+        Returns:
+            A dataframe containing the profile trend data.
+        """
+        sql =f"""
+            SELECT date_key,
+                sum(count_of_profiles) AS count_of_profiles
+            FROM qsaccel.profile_agg.adwh_fact_profile_by_trendlines x
+            INNER JOIN
+                (SELECT MAX(process_date) last_process_date,
+                        merge_policy_id
+                FROM qsaccel.profile_agg.adwh_lkup_process_delta_log
+                WHERE process_name = 'FACT_TABLES_PROCESSING'
+                AND process_status = 'SUCCESSFUL'
+                GROUP BY merge_policy_id) y ON x.merge_policy_id = y.merge_policy_id
+            WHERE date_key >= dateadd(DAY, -30, y.last_process_date)
+                AND x.merge_policy_id = {self.default_merge_policy_queryId}
+            GROUP BY date_key;
+            """
+        df = self.query(sql, output="dataframe")
+        if df.empty:
+            return df
+        df = df.sort_values('DATE_KEY')
+        return df
+
+    def queryNamespacesDistribution(self) -> pd.DataFrame:
+        """
+        Query the distribution of namespaces for the sandbox.
+        Returns:
+            A dataframe containing the namespaces distribution data.
+        """
+        sql = f"""
+            SELECT NAMESPACE_DESCRIPTION, COUNT_OF_PROFILES, COUNT_OF_SINGLE_IDENTITY_PROFILES, COUNT_OF_IDENTITIES
+            FROM (SELECT NAMESPACE_ID, NAMESPACE_DESCRIPTION FROM qsaccel.profile_agg.adwh_dim_namespaces WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId}) x
+            INNER JOIN (SELECT NAMESPACE_ID, COUNT_OF_PROFILES, COUNT_OF_SINGLE_IDENTITY_PROFILES, COUNT_OF_IDENTITIES FROM qsaccel.profile_agg.adwh_fact_profile_by_namespace	WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId} AND DATE_KEY = (SELECT MAX(DATE_KEY) FROM qsaccel.profile_agg.adwh_fact_profile_by_namespace WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId})) y
+            ON x.NAMESPACE_ID = y.NAMESPACE_ID
+            """
+        return self.query(sql, output="dataframe")
+
+    def queryNamespacesTrend(self,namespace:str|None=None)-> pd.DataFrame:
+        """
+        Query the trend of namespaces for the sandbox.
+        Returns:
+            A dataframe containing the namespaces trend data.
+        """
+        sql = f"""
+            SELECT DATE_KEY, NAMESPACE_ID, COUNT_OF_PROFILES, COUNT_OF_IDENTITIES, COUNT_OF_SINGLE_IDENTITY_PROFILES FROM qsaccel.profile_agg.adwh_fact_profile_by_namespace_trendlines WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId}
+            """
+        df = self.query(sql, output="dataframe")
+        if df.empty:
+            return df
+        df = df.sort_values('DATE_KEY')
+        df['NAMESPACE'] = df['NAMESPACE_ID'].map(self._mapping_namespace_id_name)
+        if namespace is not None:
+            namespace = namespace.lower()
+            df = df[df['NAMESPACE'].astype("string").str.lower() == namespace].copy()
+        return df[['DATE_KEY', 'NAMESPACE', 'COUNT_OF_PROFILES', 'COUNT_OF_IDENTITIES', 'COUNT_OF_SINGLE_IDENTITY_PROFILES']]
+
+
+    def queryAudiencePopulationTrend(self,segment:str=None)-> pd.DataFrame:
+        """
+        Query the trend of a segment population for the sandbox.
+        Arguments:
+            segment: The name or audience ID of the segment to filter by. If None, all segments are returned.
+        Returns:
+            A dataframe containing the segment population trend data.
+        """
+        sql = f"SELECT DATE_KEY, SEGMENT_ID, COUNT_OF_PROFILES, COUNT_OF_IDENTITIES, COUNT_OF_CALCULATED_REALIZED_PROFILES, COUNT_OF_CALCULATED_EXISTING_PROFILES, COUNT_OF_CALCULATED_EXITED_PROFILES FROM qsaccel.profile_agg.adwh_fact_profile_by_segment_trendlines WHERE MERGE_POLICY_ID = {self.default_merge_policy_queryId}"
+        df = self.query(sql, output="dataframe")
+        if df.empty:
+            return df
+        df_segment_mapping:pd.DataFrame = self.query("SELECT SEGMENT_ID, SEGMENT, SEGMENT_NAME FROM qsaccel.profile_agg.adwh_dim_segments WHERE SEGMENT_NAMESPACE = 'UPS'", output="dataframe")
+        mapping_id_name = {row['SEGMENT_ID']: row['SEGMENT_NAME'] for _, row in df_segment_mapping.iterrows()}
+        mapping_id_realId = {row['SEGMENT_ID']: row['SEGMENT'] for _, row in df_segment_mapping.iterrows()}
+        df['AUDIENCE_NAME'] = df['SEGMENT_ID'].map(mapping_id_name)
+        df['AUDIENCE_ID'] = df['SEGMENT_ID'].map(mapping_id_realId)
+        if segment is not None:
+            segment = segment.lower()
+            df = df[(df['AUDIENCE_NAME'].astype("string").str.lower() == segment) | (df['AUDIENCE_ID'].astype("string").str.lower() == segment)].copy()
+        df = df[['DATE_KEY', 'AUDIENCE_NAME', 'AUDIENCE_ID', 'COUNT_OF_PROFILES', 'COUNT_OF_IDENTITIES',
+                 'COUNT_OF_CALCULATED_REALIZED_PROFILES', 'COUNT_OF_CALCULATED_EXISTING_PROFILES', 'COUNT_OF_CALCULATED_EXITED_PROFILES']]
+        return df
+
+    def queryAudiencePopulation(self,audienceId:str|list,extraFields:str|list=None,count:bool=False)->pd.DataFrame|object:
+        """
+        Retrieve the identities in the identityMap that are qualified to the audience ID passed.
+        Arguments:
+            audienceId : REQUIRED : Single or list of audience IDs
             extraFields : OPTIONAL : If you want to add more identities that are not in the IdentityMap
-            count : OPTIONAL : If you just want to get the population count of the segment IDs
+            count : OPTIONAL : Return Segmentation API counts with count and audienceId columns,
+                without looking up snapshot datasets or executing SQL.
         """
         if self.config is None:
             raise Exception('Require to have a config available. Use addConfig method to add a configuration')
         if type(extraFields) == str:
             extraFields = [extraFields]
-        if type(segmentId) == list:
+        if type(audienceId) == list:
             result = pd.DataFrame()
-            for segId in segmentId:
-                data = self.querySegmentPopulation(segId,count=count)
+            for segId in audienceId:
+                data = self.queryAudiencePopulation(segId,extraFields=extraFields,count=count)
                 if result.empty:
                     result = data.copy()
                 else:
                     result = pd.concat([result,data],ignore_index=True)
             return result
-        mysegment = self.myseg.getSegment(segmentId)
+        mysegment = self.myseg.getSegment(audienceId)
+        if count:
+            return pd.DataFrame([{
+                'count': mysegment.get('metrics', {}).get('data', {}).get('totalProfiles', 'No Data Yet'),
+                'audienceId': audienceId,
+            }])
         mergePolicyId = mysegment.get('mergePolicyId')
         myProfileSnaphots = self.mycat.getProfileSnapshotDatasets()
         table = None
@@ -1274,26 +1478,18 @@ class InteractiveQuery2:
             tmp_ds_mergePolicyId = item['tags']['unifiedProfile']
             if f"mergePolicyId:{mergePolicyId}" in tmp_ds_mergePolicyId:
                 table = item['tags']['adobe/pqs/table'][0]
-        if count == False:
-            commaField = ""
-            strFields = ""
-            if extraFields is not None and len(extraFields) > 0:
-                commaField = ","
-                strFields = ','.join(extraFields)
-                minifyFields = [el.split('.').pop() for el in extraFields]
-                strFieldsFinal = ','.join(minifyFields)
-            queryTemplate = f"""
-                SELECT key, inline(value), '{segmentId}' segmentId {commaField} {strFields} FROM 
-                    (SELECT explode(identityMap) {commaField} {strFields}
-                    FROM {table}
-                    WHERE segmentMembership['ups']['{segmentId}'].status = 'realized') LIMIT 0 
-            """
-            res = self.query(queryTemplate)
-            return res
-        else:
-            dict_data = [{'count':mysegment.get('metrics',{}).get('data',{}).get('totalProfiles','No Data Yet'),'segmentId':segmentId}]
-            df = pd.DataFrame(dict_data)
-            return df
+        commaField = ""
+        strFields = ""
+        if extraFields is not None and len(extraFields) > 0:
+            commaField = ","
+            strFields = ','.join(extraFields)
+        queryTemplate = f"""
+            SELECT key, inline(value), '{audienceId}' audienceId {commaField} {strFields} FROM
+                (SELECT explode(identityMap) {commaField} {strFields}
+                FROM {table}
+                WHERE segmentMembership['ups']['{audienceId}'].status = 'realized') LIMIT 0
+        """
+        return self.query(queryTemplate)
 
 
     def transformToDataFrame(self, query: object = None) -> pd.DataFrame:

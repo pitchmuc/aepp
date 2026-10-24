@@ -183,7 +183,12 @@ The CLI provides a variety of commands to manage and interact with Adobe Experie
   * enable_query_scheduled
   * disable_query_scheduled
   * query
-  * query_segment_population
+  * query_audience_population
+  * query_history_meta
+  * query_profiles_trend
+  * query_namespaces_distribution
+  * query_namespaces_trend
+  * query_audience_population_trend
 * Profile API: 
   * get_profile_attributes
   * get_profile_events
@@ -244,5 +249,21 @@ For ad hoc SQL, `query` exports the result rows and closes its database connecti
 ```text
 dev> query "SELECT * FROM accounts LIMIT 100" -fn accounts_sample.csv
 ```
+
+For table history and Profile reporting, use the interactive report commands:
+
+```text
+dev> query_history_meta accounts
+dev> query_profiles_trend --plot
+dev> query_namespaces_distribution --plot
+dev> query_namespaces_trend --namespace "Email" --plot --metric COUNT_OF_IDENTITIES
+dev> query_audience_population_trend --audience "VIP Customers" --filename vip_trend.csv
+```
+
+These commands display up to 10 rows and export the full returned dataframe to CSV. Trend charts require an interactive Matplotlib GUI backend; close the chart window to return to the prompt. Namespace distribution bars are displayed in the terminal. Omit `--plot` to export without charting.
+
+Interactive-query initialization requires access to the default merge-policy and namespace metadata in `qsaccel.profile_agg`, even for ordinary SQL and table-history queries. A default merge-policy row must exist. Template, schedule and query-history API commands do not instantiate this database connection. See the [report command reference](./cli.md#interactive-query-reports) for filenames, filters and chart options.
+
+In version 0.6.0, `query_audience_population` replaces `query_segment_population` without a compatibility alias. Update scripts to use the new command; identity exports now use `audienceId` instead of `segmentId`, and the default filename is `audience_population_<first_audience_id>.csv`.
 
 When querying from Python instead, call [`close`](./queryservice.md#close) on your `InteractiveQuery` or `InteractiveQuery2` instance when finished.

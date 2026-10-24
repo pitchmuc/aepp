@@ -754,6 +754,8 @@ class Synchronizer:
                             continue ## if the schema is already synchronized in the target cache and force sync is not on, we skip the synchronization of this target
                     if verbose:
                         print(f"schema '{name_base_schema}' already exists in target {target}, checking it")
+                    schema_enabled:bool = True if "union" in t_schema.schema.get('meta:immutableTags',[]) else False
+                    schema_dataset:bool = False ## flag
                     new_fieldgroups = [fg for fg in base_field_groups_names if fg not in t_schema.fieldGroups.values()]
                     existing_fieldgroups = [fg for fg in base_field_groups_names if fg in t_schema.fieldGroups.values()]
                     removed_fieldgroups = [fg for fg, n in t_schema.fieldGroups.items() if n not in dict_base_fg_name_id]
@@ -764,13 +766,21 @@ class Synchronizer:
                             else:
                                 print('force flag is set to True, updating the schema')
                         ## handling field groups
-                        for r in removed_fieldgroups:
-                            ra = [a for a in t_schema.schema["allOf"] if a["$ref"] == r]
-                            if len(ra) > 0:
-                                rae = ra[0]
-                                t_schema.schema["allOf"].remove(rae)
-
-                            t_schema.fieldGroups.pop(r, None)
+                        if len(removed_fieldgroups) > 0:
+                            if schema_enabled == False:
+                                target_cat = catalog.Catalog(config=self.dict_targetsConfig[target])
+                                datasets = target_cat.getDataSets(property=f"schemaRef.id=={t_schema.id}")
+                                schema_dataset:bool = True if len(datasets) > 0 else False
+                                if schema_enabled or schema_dataset:
+                                    if verbose:
+                                        print(f"found field group(s) to remove but schema enabled for Profile or {len(datasets)} dataset(s) associated with it. Cannot remove these field groups.")
+                                else:
+                                    for r in removed_fieldgroups:
+                                        ra = [a for a in t_schema.schema["allOf"] if a["$ref"] == r]
+                                        if len(ra) > 0:
+                                            rae = ra[0]
+                                            t_schema.schema["allOf"].remove(rae)
+                                        t_schema.fieldGroups.pop(r, None)
                         for new_fieldgroup in new_fieldgroups:
                             if baseSchema.tenantId[1:] not in dict_base_fg_name_id[new_fieldgroup]: ## ootb field group
                                 if verbose:

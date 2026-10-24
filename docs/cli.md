@@ -603,17 +603,76 @@ Arguments:
 
 After the query results have been retrieved and exported, the command closes its `InteractiveQuery2` database connection before displaying the sample. For Python usage, see [`close`](./queryservice.md#close).
 
-#### query_segment_population
-Query the population of specific segment(s).\
+#### query_audience_population
+Query the population of specific audience(s).\
+In version 0.6.0 this replaces `query_segment_population`; the old command is no longer available. The command uses `InteractiveQuery2.queryAudiencePopulation`.\
 Arguments:
-* `segment_id` : Segment ID(s) to query population for. It can be multiple segment | audience IDs separated by spaces.
+* `audience_id` : Audience ID(s) to query population for. Multiple IDs can be separated by spaces.
 * `-ef`, `--extra_fields` : Extra fields to include in the query, comma-separated.
 * `-c`, `--count_only` : If you want to get only the count of the segment population. (default: `False`). If set to `True`, the query will return only the count of profiles in the segment(s) instead of the full list.
-* `-fn`, `--filename` : If you want to save it to a specific filename.
+* `-fn`, `--filename` : Output filename. Defaults to `audience_population_<first_audience_id>.csv`; `.csv` is added if omitted.
 
 Example:
 ```bash
-prod> query_segment_population "segmentId1" "segmentId2" -ef "email,_tenant.fieldname" -fn "segment_population.csv"
+prod> query_audience_population "audienceId1" "audienceId2" -ef "email,_tenant.fieldname" -fn "audience_population.csv"
+```
+
+Identity exports use the column `audienceId` instead of `segmentId`. The command closes its connection after a successful export. See the [Python API migration details](./queryservice.md#queryaudiencepopulation) and the reporting metadata requirements below.
+
+#### Interactive query reports
+
+The following five commands display the first 10 result rows and export the complete dataframe to CSV without an index. All accept `-fn`, `--filename` to override the default filename; `.csv` is added if omitted. Empty results are exported and reported as "No rows returned."
+
+Add `--plot` to the three trend commands to open a Matplotlib line chart. The X axis always uses `DATE_KEY`, parsed as calendar dates and sorted chronologically. The Y axis defaults to `COUNT_OF_PROFILES`; use `--metric <column>` to select another numeric column available in that query's result. Metric names are case-insensitive. Invalid metrics report the available numeric columns, and `--metric` requires `--plot`.
+
+Namespace and audience trends show one line per series, with a legend and a common Y-axis scale. Counts are not normalized and observations are not dropped. Audience IDs distinguish audiences with identical names. The chart uses an interactive Matplotlib GUI backend with date labels, grid lines and the standard zoom/pan toolbar. Close the chart window to return to the CLI prompt. Matplotlib is already a project dependency.
+
+`query_namespaces_distribution --plot` continues to display bars directly in the terminal. Bars show `COUNT_OF_PROFILES`, ordered by count and scaled to the largest namespace, not to percentages, since namespace populations can overlap. Terminals that cannot encode block characters use ASCII bars instead.
+
+Charting is optional and does not change CSV contents or row order. Empty results skip charting; chart errors are reported after the CSV has been saved. Selected trend metrics must contain finite numeric values.
+
+##### query_history_meta
+Retrieve snapshot history metadata for a Query Service table. This is table history, not the execution history returned by `get_queries`.\
+Arguments:
+* `table` : Required Query Service table name.
+* `-fn`, `--filename` : Output filename. Defaults to `<sandbox>_history_meta.csv`.
+
+##### query_profiles_trend
+Retrieve daily profile counts for the 30 days preceding the latest successful reporting process date, using the default merge policy.\
+Arguments:
+* `-fn`, `--filename` : Output filename. Defaults to `<sandbox>_profiles_trend.csv`.
+* `--plot` : Open a Matplotlib line chart with dates on the X axis.
+* `--metric` : Numeric result column for the Y axis. Defaults to `COUNT_OF_PROFILES`; requires `--plot`.
+
+##### query_namespaces_distribution
+Retrieve the latest namespace distribution for the default merge policy, including profile, identity and single-identity profile counts.\
+Arguments:
+* `-fn`, `--filename` : Output filename. Defaults to `<sandbox>_namespaces_distribution.csv`.
+* `--plot` : Display a terminal bar chart of namespace profile counts.
+
+##### query_namespaces_trend
+Retrieve namespace profile and identity trends using the default merge policy.\
+Arguments:
+* `-ns`, `--namespace` : Optional namespace name, matched case-insensitively. Omit to include all namespaces.
+* `-fn`, `--filename` : Output filename. Defaults to `<sandbox>_namespaces_trend.csv`.
+* `--plot` : Open a Matplotlib chart with one line per namespace.
+* `--metric` : Numeric result column for the Y axis, such as `COUNT_OF_IDENTITIES` or `COUNT_OF_SINGLE_IDENTITY_PROFILES`. Defaults to `COUNT_OF_PROFILES`; requires `--plot`.
+
+##### query_audience_population_trend
+Retrieve audience population trends using the default merge policy, including profile, identity and calculated realized, existing and exited profile counts.\
+Arguments:
+* `-a`, `--audience` : Optional audience name or ID, matched case-insensitively. Omit to include all audiences.
+* `-fn`, `--filename` : Output filename. Defaults to `<sandbox>_audience_population_trend.csv`.
+* `--plot` : Open a Matplotlib chart with one line per audience.
+* `--metric` : Numeric result column for the Y axis, such as `COUNT_OF_IDENTITIES` or `COUNT_OF_CALCULATED_REALIZED_PROFILES`. Defaults to `COUNT_OF_PROFILES`; requires `--plot`.
+
+Examples:
+```text
+dev> query_history_meta accounts
+dev> query_profiles_trend -fn profile_counts --plot
+dev> query_namespaces_distribution --plot
+dev> query_namespaces_trend -ns "Email" --plot --metric COUNT_OF_IDENTITIES
+dev> query_audience_population_trend --audience "VIP Customers" --plot --metric COUNT_OF_CALCULATED_REALIZED_PROFILES --filename vip_trend.csv
 ```
 
 ### Profile API 

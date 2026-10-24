@@ -4,8 +4,11 @@ from aepp.cli.upsfieldsanalyzer import UpsFieldsAnalyzer
 import argparse, cmd, shlex, json
 from functools import wraps
 from rich.console import Console
+from rich import box
+from rich.bar import Bar
 from rich.table import Table
 from rich.panel import Panel
+from rich.text import Text
 from pathlib import Path
 from io import FileIO
 import pandas as pd
@@ -14,6 +17,7 @@ import urllib.parse
 from typing import Any, Concatenate, ParamSpec, ParamSpecKwargs
 from collections.abc import Callable
 import os
+from math import isfinite
 
 P = ParamSpec("P")
 
@@ -2664,10 +2668,10 @@ class ServiceShell(cmd.Cmd):
             return
         
     @login_required
-    def do_query_segment_population(self,args:Any) -> None:
+    def do_query_audience_population(self,args:Any) -> None:
         """Retrieve the segment identities for a specific segment, save the result to a CSV file."""
-        parser = argparse.ArgumentParser(prog='query_segment_population', add_help=True)
-        parser.add_argument("segment_id", help="Segment ID(s) to query population for",type=str,nargs='+')
+        parser = argparse.ArgumentParser(prog='query_audience_population', add_help=True)
+        parser.add_argument("audience_id", help="Audience ID(s) to query population for",type=str,nargs='+')
         parser.add_argument("-ef", "--extra_fields", help="Extra fields to include in the query, comma-separated",type=str,nargs='?')
         parser.add_argument("-c","--count_only", help="if you want to get only the count of the segment population",action='store_true',default=False)
         parser.add_argument("-fn","--filename", help="if you want to save it to a specific filename",type=str)
@@ -2676,13 +2680,271 @@ class ServiceShell(cmd.Cmd):
             if args.filename:
                 filename = args.filename if args.filename.endswith('.csv') else f"{args.filename}.csv"
             else:
-                filename = f"segment_population_{args.segment_id[0]}.csv"
+                filename = f"audience_population_{args.audience_id[0]}.csv"
             aepp_query = queryservice.QueryService(config=self.config)
             conn = aepp_query.connection()
             iqs2 = queryservice.InteractiveQuery2(conn, config=self.config)
-            result:pd.DataFrame = iqs2.querySegmentPopulation(segmentId=args.segment_id, extraFields=args.extra_fields,count=args.count_only)
+            result:pd.DataFrame = iqs2.queryAudiencePopulation(audienceId=args.audience_id, extraFields=args.extra_fields,count=args.count_only)
             result.to_csv(filename, index=False)
-            console.print(f"Segment population exported to {filename}", style="green")
+            console.print(f"Audience population exported to {filename}", style="green")
+            iqs2.close()
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_query_history_meta(self, arg: str) -> None:
+        """Retrieve a table's snapshot history metadata, display a sample and export it to CSV."""
+        parser = argparse.ArgumentParser(prog="query_history_meta")
+        parser.add_argument("table", help="Query Service table name")
+        parser.add_argument("-fn", "--filename", help="Output CSV filename")
+        try:
+            args = parser.parse_args(shlex.split(arg))
+            aepp_query = queryservice.QueryService(config=self.config)
+            conn = aepp_query.connection()
+            iqs2 = queryservice.InteractiveQuery2(conn, config=self.config)
+            try:
+                result: pd.DataFrame = iqs2.queryHistoryMeta(table=args.table)
+            finally:
+                iqs2.close()
+            filename = args.filename or f"{self.config.sandbox}_history_meta.csv"
+            if not filename.endswith(".csv"):
+                filename = f"{filename}.csv"
+            result.to_csv(filename, index=False)
+            if result.empty:
+                console.print("No rows returned.", style="yellow")
+            else:
+                console.print(result.head(10))
+            console.print(f"Query result exported to {filename}", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    def _display_profile_trend(
+        self,
+        result: pd.DataFrame,
+        series_columns: tuple[str, ...] = (),
+        metric: str = "COUNT_OF_PROFILES",
+    ) -> None:
+        missing = {"DATE_KEY", *series_columns}.difference(result.columns)
+        if missing:
+            raise ValueError(f"Cannot plot trend: missing columns {', '.join(sorted(missing))}")
+        data = result.copy()
+        numeric_columns: dict[str, pd.Series] = {}
+        for column in data.columns:
+            if column in {"DATE_KEY", *series_columns} or pd.api.types.is_bool_dtype(data[column]):
+                continue
+            values = pd.to_numeric(data[column], errors="coerce")
+            if values.notna().any() and not (data[column].notna() & values.isna()).any():
+                numeric_columns[column] = values
+        metric_column = next((column for column in numeric_columns if column.casefold() == metric.casefold()), None)
+        if metric_column is None:
+            available = ", ".join(numeric_columns) or "(none)"
+            raise ValueError(f"Cannot plot metric {metric!r}. Available metrics: {available}")
+        values = numeric_columns[metric_column]
+        if values.isna().any() or not values.map(isfinite).all():
+            raise ValueError(f"Cannot plot trend: {metric_column} must contain finite numeric values")
+        data[metric_column] = values
+        dates = data["DATE_KEY"].astype(str).str.replace(r"^(\d{4})(\d{2})(\d{2})$", r"\1-\2-\3", regex=True)
+        data["DATE_KEY"] = pd.to_datetime(dates, errors="raise")
+        if data["DATE_KEY"].isna().any():
+            raise ValueError("Cannot plot trend: DATE_KEY must contain valid dates")
+        data = data.sort_values("DATE_KEY", kind="stable")
+
+        import matplotlib.dates as mdates
+        import matplotlib.pyplot as plt
+
+        figure, axes = plt.subplots(figsize=(10, 5))
+        try:
+            groups = data.groupby(list(series_columns), sort=False, dropna=False) if series_columns else [(metric_column, data)]
+            for key, series in groups:
+                labels = key if isinstance(key, tuple) else (key,)
+                label = " / ".join("Unknown" if pd.isna(value) else str(value) for value in labels)
+                axes.plot(series["DATE_KEY"], series[metric_column], marker="o", markersize=4, label=label)
+            locator = mdates.AutoDateLocator(minticks=3, maxticks=8)
+            axes.xaxis.set_major_locator(locator)
+            axes.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
+            axes.set_xlabel("Date")
+            axes.set_ylabel(metric_column)
+            axes.set_title(f"{metric_column} trend")
+            axes.ticklabel_format(axis="y", style="plain", useOffset=False)
+            axes.grid(True, alpha=0.3)
+            if series_columns:
+                axes.legend()
+            figure.autofmt_xdate()
+            figure.tight_layout()
+            plt.show(block=True)
+        finally:
+            plt.close(figure)
+
+    def _display_namespace_distribution(self, result: pd.DataFrame) -> None:
+        missing = {"NAMESPACE_DESCRIPTION", "COUNT_OF_PROFILES"}.difference(result.columns)
+        if missing:
+            raise ValueError(f"Cannot plot distribution: missing columns {', '.join(sorted(missing))}")
+        data = result.copy()
+        counts = pd.to_numeric(data["COUNT_OF_PROFILES"], errors="raise")
+        if counts.isna().any() or not counts.map(isfinite).all() or (counts < 0).any():
+            raise ValueError("Cannot plot distribution: profile counts must be finite, non-negative numbers")
+        data["COUNT_OF_PROFILES"] = counts
+        data = data.sort_values("COUNT_OF_PROFILES", ascending=False, kind="stable")
+        maximum = float(data["COUNT_OF_PROFILES"].max()) or 1
+        width = max(1, min(30, console.width // 3))
+        ascii_only = False
+        try:
+            "\u2588\u2589\u258a\u258b\u258c\u258d\u258e\u258f".encode(console.encoding)
+        except UnicodeEncodeError:
+            ascii_only = True
+        table = Table(
+            title="Namespace profile distribution",
+            caption="Bars are relative to the largest namespace count, not percentages",
+            box=box.ASCII if ascii_only else box.SQUARE,
+        )
+        table.add_column("Namespace", overflow="fold")
+        table.add_column("Profiles", justify="right")
+        table.add_column("Distribution")
+        for namespace, count in zip(data["NAMESPACE_DESCRIPTION"], data["COUNT_OF_PROFILES"]):
+            label = "Unknown" if pd.isna(namespace) else str(namespace)
+            bar = Text("#" * round(count / maximum * width), style="cyan") if ascii_only else Bar(
+                size=maximum, begin=0, end=float(count), width=width, color="cyan",
+            )
+            table.add_row(Text(label), f"{count:,.0f}", bar)
+        console.print(table)
+
+    @login_required
+    def do_query_profiles_trend(self, arg: str) -> None:
+        """Retrieve profile trends, optionally plot a metric against dates, and export them to CSV."""
+        parser = argparse.ArgumentParser(prog="query_profiles_trend")
+        parser.add_argument("-fn", "--filename", help="Output CSV filename")
+        parser.add_argument("--plot", action="store_true", help="Open a Matplotlib trend chart with dates on the X axis")
+        parser.add_argument("--metric", help="Numeric result column for the Y axis (default: COUNT_OF_PROFILES; requires --plot)")
+        try:
+            args = parser.parse_args(shlex.split(arg))
+            if args.metric is not None and not args.plot:
+                parser.error("--metric requires --plot")
+            aepp_query = queryservice.QueryService(config=self.config)
+            conn = aepp_query.connection()
+            iqs2 = queryservice.InteractiveQuery2(conn, config=self.config)
+            try:
+                result: pd.DataFrame = iqs2.queryProfilesTrend()
+            finally:
+                iqs2.close()
+            filename = args.filename or f"{self.config.sandbox}_profiles_trend.csv"
+            if not filename.endswith(".csv"):
+                filename = f"{filename}.csv"
+            result.to_csv(filename, index=False)
+            if result.empty:
+                console.print("No rows returned.", style="yellow")
+            else:
+                console.print(result.head(10))
+            console.print(f"Query result exported to {filename}", style="green")
+            if args.plot and not result.empty:
+                metric = "COUNT_OF_PROFILES" if args.metric is None else args.metric
+                self._display_profile_trend(result, metric=metric)
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_query_namespaces_distribution(self, arg: str) -> None:
+        """Retrieve the latest namespace distribution, optionally show a bar chart, and export it to CSV."""
+        parser = argparse.ArgumentParser(prog="query_namespaces_distribution")
+        parser.add_argument("-fn", "--filename", help="Output CSV filename")
+        parser.add_argument("--plot", action="store_true", help="Display a Rich bar chart of namespace profile counts")
+        try:
+            args = parser.parse_args(shlex.split(arg))
+            aepp_query = queryservice.QueryService(config=self.config)
+            conn = aepp_query.connection()
+            iqs2 = queryservice.InteractiveQuery2(conn, config=self.config)
+            try:
+                result: pd.DataFrame = iqs2.queryNamespacesDistribution()
+            finally:
+                iqs2.close()
+            filename = args.filename or f"{self.config.sandbox}_namespaces_distribution.csv"
+            if not filename.endswith(".csv"):
+                filename = f"{filename}.csv"
+            result.to_csv(filename, index=False)
+            if result.empty:
+                console.print("No rows returned.", style="yellow")
+            else:
+                console.print(result.head(10))
+            console.print(f"Query result exported to {filename}", style="green")
+            if args.plot and not result.empty:
+                self._display_namespace_distribution(result)
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_query_namespaces_trend(self, arg: str) -> None:
+        """Retrieve namespace trends, optionally filter or plot a metric against dates, and export them to CSV."""
+        parser = argparse.ArgumentParser(prog="query_namespaces_trend")
+        parser.add_argument("-ns", "--namespace", help="Namespace name to filter by (case-insensitive)")
+        parser.add_argument("-fn", "--filename", help="Output CSV filename")
+        parser.add_argument("--plot", action="store_true", help="Open a Matplotlib trend chart with one line per namespace")
+        parser.add_argument("--metric", help="Numeric result column for the Y axis (default: COUNT_OF_PROFILES; requires --plot)")
+        try:
+            args = parser.parse_args(shlex.split(arg))
+            if args.metric is not None and not args.plot:
+                parser.error("--metric requires --plot")
+            aepp_query = queryservice.QueryService(config=self.config)
+            conn = aepp_query.connection()
+            iqs2 = queryservice.InteractiveQuery2(conn, config=self.config)
+            try:
+                result: pd.DataFrame = iqs2.queryNamespacesTrend(namespace=args.namespace)
+            finally:
+                iqs2.close()
+            filename = args.filename or f"{self.config.sandbox}_namespaces_trend.csv"
+            if not filename.endswith(".csv"):
+                filename = f"{filename}.csv"
+            result.to_csv(filename, index=False)
+            if result.empty:
+                console.print("No rows returned.", style="yellow")
+            else:
+                console.print(result.head(10))
+            console.print(f"Query result exported to {filename}", style="green")
+            if args.plot and not result.empty:
+                metric = "COUNT_OF_PROFILES" if args.metric is None else args.metric
+                self._display_profile_trend(result, series_columns=("NAMESPACE",), metric=metric)
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_query_audience_population_trend(self, arg: str) -> None:
+        """Retrieve audience population trends, optionally filter or plot a metric against dates, and export them to CSV."""
+        parser = argparse.ArgumentParser(prog="query_audience_population_trend")
+        parser.add_argument("-a", "--audience", help="Segment name or audience ID to filter by (case-insensitive)")
+        parser.add_argument("-fn", "--filename", help="Output CSV filename")
+        parser.add_argument("--plot", action="store_true", help="Open a Matplotlib trend chart with one line per audience")
+        parser.add_argument("--metric", help="Numeric result column for the Y axis (default: COUNT_OF_PROFILES; requires --plot)")
+        try:
+            args = parser.parse_args(shlex.split(arg))
+            if args.metric is not None and not args.plot:
+                parser.error("--metric requires --plot")
+            aepp_query = queryservice.QueryService(config=self.config)
+            conn = aepp_query.connection()
+            iqs2 = queryservice.InteractiveQuery2(conn, config=self.config)
+            try:
+                result: pd.DataFrame = iqs2.queryAudiencePopulationTrend(segment=args.audience)
+            finally:
+                iqs2.close()
+            filename = args.filename or f"{self.config.sandbox}_audience_population_trend.csv"
+            if not filename.endswith(".csv"):
+                filename = f"{filename}.csv"
+            result.to_csv(filename, index=False)
+            if result.empty:
+                console.print("No rows returned.", style="yellow")
+            else:
+                console.print(result.head(10))
+            console.print(f"Query result exported to {filename}", style="green")
+            if args.plot and not result.empty:
+                metric = "COUNT_OF_PROFILES" if args.metric is None else args.metric
+                self._display_profile_trend(result, series_columns=("AUDIENCE_NAME", "AUDIENCE_ID"), metric=metric)
         except Exception as e:
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
@@ -3202,7 +3464,12 @@ class ServiceShell(cmd.Cmd):
                     "enable_query_scheduled",
                     "disable_query_scheduled",
                     "query",
-                    "query_segment_population"],
+                    "query_audience_population",
+                    "query_history_meta",
+                    "query_profiles_trend",
+                    "query_namespaces_distribution",
+                    "query_namespaces_trend",
+                    "query_audience_population_trend"],
         "Hygiene": ["get_hygiene_works","get_hygiene_work","get_hygiene_quotas"],
         "Profiles": [
                     "get_identities",

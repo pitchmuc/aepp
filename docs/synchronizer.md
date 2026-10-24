@@ -120,7 +120,7 @@ Update | Supported | Supported | Supported | Supported | Suppported | Supported 
 Delete | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported | Supported |
 
 It is not supported to delete an artifact or delete a field in an Field Group or Data Type via the Synchronizer.\
-The synchronizer only supports additive operations 
+Field-level synchronization is additive. Schema updates can also remove field-group references under the safeguards described in [Update](#update); this does not delete the field-group artifact itself.
 
 The synchronizer will automatically resolve the dependency to create the elements require for the artifact used.\
 Example:\
@@ -141,6 +141,10 @@ The **Update** operation is provided the capacity to add new fields to `field gr
 The removal of fields are not supported as it could be a breaking change in the target sandboxes.
 
 It also supports the addition of a field group to a `schema` and replicate that change to all target sandboxes.
+
+When a field group is absent from the source schema, synchronization can remove its reference from the target schema only if the target is not enabled for Profile and has no associated datasets. Version 0.6.0 checks `meta:immutableTags` for the `union` tag and, for schemas without that tag, queries Catalog for datasets using the target schema. If either condition prevents removal, the reference is retained while other schema updates can proceed. `force=True` does not bypass these checks.
+
+Removing a reference changes the schema's field-group membership; it does not delete the field group or remove individual fields from its definition. The dataset check requires Catalog access in the target sandbox when removal is considered for a schema that is not enabled for Profile.
 
 Audiences can also be updated to reflect the changes made in the base sandbox.
 If an audience is synchronized and it already exists in the target sandbox, the synchronizer will update the audience definition in the target sandbox to reflect the definition in the base sandbox.
@@ -172,5 +176,4 @@ When the sync happen, if the base has less tags than the target, the target comp
 
 * Profile enabling capabilities
 * Data Prep Mappings
-
 
