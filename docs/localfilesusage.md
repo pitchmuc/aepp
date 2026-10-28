@@ -86,6 +86,19 @@ prod = aepp.importConfigFile('myconfig.json',sandbox='prod',connectInstance=True
 aepp.extractSandboxArtifacts(prod,localFolder='prodFolder')
 ```
 
+`extractSandboxArtifact` exports a single artifact and its dependencies:
+
+```py
+aepp.extractSandboxArtifact(
+  prod, localFolder='prodFolder', artifact='my-schema', artifactType='schema'
+)
+```
+
+Shared dependencies are extracted once per call, even when referenced by different
+names or IDs or reached by parallel workers. Recursive references to resources
+already being extracted are skipped. Resource listings are also cached for that
+call. A new call starts fresh and can overwrite previously exported files.
+
 
 ## Using the local storage
 
