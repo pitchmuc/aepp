@@ -3147,6 +3147,7 @@ class ServiceShell(cmd.Cmd):
         parser.add_argument('-lf','--localfolder', help='Local folder to extract artifacts to', default='./extractions')
         parser.add_argument('-f','--filters', help='Name to be used to filter schemas and datasets extraction. It does not impact other artifact types. Multiple filters can be separated by space.', nargs='*', default=None)
         parser.add_argument('-at','--artifact_types', help="The type of artifact to extract. Possible values are: 'class','schema','fieldgroup','datatype','descriptor','dataset','identity','mergepolicy','audience'. If not provided, it will extract all the artifacts", nargs='*', default=None)
+        parser.add_argument('-v','--verbose', help='Enable verbose output, optionally passing True or False (default False)', nargs='?', const=True, default=False, type=str2bool)
         try:
             console.print("Extracting artifacts...", style="blue")
             args = parser.parse_args(shlex.split(args))
@@ -3154,7 +3155,8 @@ class ServiceShell(cmd.Cmd):
                 sandbox=self.config,
                 localFolder=args.localfolder,
                 filters=args.filters,
-                artifactTypes=args.artifact_types
+                artifactTypes=args.artifact_types,
+                verbose=args.verbose
             )
             console.print(Panel("Extraction completed!", style="green"))
         except SystemExit:
@@ -3169,6 +3171,7 @@ class ServiceShell(cmd.Cmd):
         parser.add_argument('artifact', help='artifact to extract (name or id): "schema","fieldgroup","datatype","descriptor","dataset","identity","mergepolicy","audience"')
         parser.add_argument('-at','--artifactType', help='artifact type ')
         parser.add_argument('-lf','--localfolder', help='Local folder to extract artifacts to',default='extractions')
+        parser.add_argument('-v','--verbose', help='Enable verbose output, optionally passing True or False (default False)', nargs='?', const=True, default=False, type=str2bool)
         try:
             console.print("Extracting artifact...", style="blue")
             args = parser.parse_args(shlex.split(args))
@@ -3176,7 +3179,8 @@ class ServiceShell(cmd.Cmd):
                 artifact=args.artifact,
                 artifactType=args.artifactType,
                 sandbox=self.config,
-                localFolder=args.localfolder
+                localFolder=args.localfolder,
+                verbose=args.verbose
             )
             console.print("Extraction completed!", style="green")
         except SystemExit:

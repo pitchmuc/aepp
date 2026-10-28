@@ -191,6 +191,8 @@ def extractSandboxArtifacts(
             Identities, Field Groups, Data Types, Classes will not be filtered.
         artifactTypes: OPTIONAL: the type of artifact to extract. Possible values are: 'class','schema','fieldgroup','datatype','descriptor','dataset','identity','mergepolicy','audience'. If not provided, it will extract all the artifacts.
         retry: OPTIONAL: the number of retry in case of connection error for the modules (default is 2)
+    Possible kwargs:
+        verbose : OPTIONAL : if set to True, will print verbose output during the extraction process
     """
     if sandbox is None:
         raise ValueError("You need to provide a ConnectObject instance with the sandbox information")
@@ -205,10 +207,15 @@ def extractSandboxArtifacts(
         artifactTypes = []
     if filters is None:
         filters = []
+    verbose = kwargs.get('verbose', False)
+    if verbose:
+        print(f"Extracting sandbox artifacts to {completePath}")
     from aepp import schema, catalog, identity,customerprofile, segmentation, tags
     sch = schema.Schema(config=sandbox,retry=retry)
     cat = catalog.Catalog(config=sandbox)
     ide = identity.Identity(config=sandbox)
+    if verbose:
+        print("Initialized schema, catalog, and identity managers")
     completePath.mkdir(exist_ok=True)
     globalConfig = {
         "imsOrgId":sandbox.org_id,
@@ -244,11 +251,15 @@ def extractSandboxArtifacts(
     tagPath = completePath / 'tag'
     tagPath.mkdir(exist_ok=True)
     ## handling tags
+    if verbose:
+        print("Handling tags")
     tag_manager = tags.Tags(config=sandbox)
     all_tags = tag_manager.getTags()
     dict_id_name = {tag['id']:tag['name'] for tag in all_tags}
     with open(tagPath / "tags.json",'w') as f:
         json.dump(all_tags,f,indent=2)
+    if verbose:
+        print(f"Extracted {len(all_tags)} tags")
     myclasses = sch.getClasses()
     classesGlobal = sch.getClassesGlobal()
     behaviors = sch.getBehaviors()
@@ -280,6 +291,8 @@ def extractSandboxArtifacts(
             results = thread_pool.map(writingFullFile, behavElements)
     if len(artifactTypes) == 0 or 'class' in artifactTypes:
         ## writing classes
+        if verbose:
+            print(f"Extracted {len(myclasses) + len(classesGlobal)} classes")
         classesElements = [(element, classPath, '$id', 'title',sch.getClass) for element in myclasses]
         with ThreadPoolExecutor(thread_name_prefix = 'behavior') as thread_pool:
             results = thread_pool.map(writingFalseFile, classesElements)
@@ -290,6 +303,8 @@ def extractSandboxArtifacts(
     if filters is not None and len(filters) > 0:
         myschemas = [schema for schema in myschemas if any(fil.lower() in schema.get('title','').lower() for fil in filters)]
     all_ids = [element['$id'] for element in myschemas]
+    if verbose:
+        print(f"Extracted {len(myschemas)} schemas")
     if len(artifactTypes) == 0 or 'schema' in artifactTypes:
         ## writing schemas
         schemaElement = [(element, schemaPath, '$id', 'title', sch.getSchema) for element in myschemas]
@@ -297,6 +312,8 @@ def extractSandboxArtifacts(
             results = thread_pool.map(writingFalseFile, schemaElement)
     myfgs = sch.getFieldGroups()
     all_ids += [element['$id'] for element in myfgs]
+    if verbose:
+        print(f"Extracted {len(myfgs)} field groups")
     if len(artifactTypes) == 0 or 'fieldgroup' in artifactTypes:
         ## writing field groups
         fgsElements = [(element, fieldgroupPath, '$id', 'title', sch.getFieldGroup) for element in myfgs]
@@ -315,6 +332,8 @@ def extractSandboxArtifacts(
     if len(artifactTypes) == 0 or "datatype" in artifactTypes:
         ## writing data types
         mydt = sch.getDataTypes()
+        if verbose:
+            print(f"Extracted {len(mydt)} data types")
         datatypeElements = [(element, datatypePath, 'meta:altId', 'title', sch.getDataType) for element in mydt]
         with ThreadPoolExecutor(thread_name_prefix = 'datatype') as thread_pool:
             results = thread_pool.map(writingFalseFile, datatypeElements)
@@ -326,6 +345,8 @@ def extractSandboxArtifacts(
     if len(artifactTypes) == 0 or "descriptor" in artifactTypes:
         ## writing descriptors
         descriptors = sch.getDescriptors()
+        if verbose:
+            print(f"Extracted {len(descriptors)} descriptors")
         descriptors = [desc for desc in descriptors if desc.get('xdm:sourceSchema','') in all_ids]
         descriptorsElements = [(element,descriptorPath,'@id',"@id",None) for element in descriptors]
         with ThreadPoolExecutor(thread_name_prefix = 'descriptors') as thread_pool:
@@ -334,6 +355,8 @@ def extractSandboxArtifacts(
         datasets = cat.getDataSets(output='list')
         if filters is not None and len(filters) > 0:
             datasets = [dataset for dataset in datasets if any(fil.lower() in dataset.get('name','').lower() for fil in filters)]
+        if verbose:
+            print(f"Extracted {len(datasets)} datasets")
         for ds in datasets:
             if len(ds.get('unifiedTags',[])) > 0:
                 tag_names = [dict_id_name.get(tag_id) for tag_id in ds.get('unifiedTags',[])]
@@ -344,6 +367,8 @@ def extractSandboxArtifacts(
     if len(artifactTypes) == 0 or "identity" in artifactTypes:
         ## writing identities
         identities = ide.getIdentities()
+        if verbose:
+            print(f"Extracted {len(identities)} identities")
         for el in identities:
             with open(f"{identityPath / el['code']}.json",'w') as f:
                 json.dump(el,f,indent=2)
@@ -351,6 +376,8 @@ def extractSandboxArtifacts(
         ## merge policies
         ups = customerprofile.Profile(config=sandbox)
         mymergePolicies = ups.getMergePolicies()
+        if verbose:
+            print(f"Extracted {len(mymergePolicies)} merge policies")
         for el in mymergePolicies:
             with open(f"{mergePolicyPath / el.get('id','unknown')}.json",'w') as f:
                 json.dump(el,f,indent=2)
@@ -363,6 +390,8 @@ def extractSandboxArtifacts(
             audiences = mysegmentation.getSegments()
         if filters is not None and len(filters) > 0:
             audiences = [audience for audience in audiences if any(fil.lower() in audience.get('name','').lower() for fil in filters)]
+        if verbose:
+            print(f"Extracted {len(audiences)} audiences")
         for el in audiences:
             safe_name = __titleSafe__(el.get('name','unknown'))
             if len(el.get('tags',[])) > 0:
@@ -376,7 +405,8 @@ def extractSandboxArtifact(
     localFolder: Union[str, Path] = None,
     artifact: str = None,
     artifactType: str = None,
-    retry: int = 2
+    retry: int = 2,
+    **kwargs
 ):
     """
     Export a single artifact and its dependencies from the sandbox.
@@ -386,7 +416,10 @@ def extractSandboxArtifact(
         artifact: REQUIRED: the id or the name of the artifact to export.
         artifactType: REQUIRED: the type of artifact to export. Possible values are: 'class','schema','fieldgroup','datatype','descriptor','dataset','identity','mergepolicy',audience'
         retry: OPTIONAL: the number of retry in case of connection error for the modules (default is 2)
+    possible kwargs:
+        verbose: OPTIONAL: whether to print verbose output (default is False)
     """
+    verbose = kwargs.get('verbose', False)
     if sandbox is None:
         raise ValueError("You need to provide a ConnectObject instance with the sandbox information")
     if localFolder is None:
@@ -395,6 +428,8 @@ def extractSandboxArtifact(
     else:
         completePath = Path(localFolder)
     completePath.mkdir(exist_ok=True)
+    if verbose:
+        print(f"Extracting sandbox artifacts to {completePath}")
     from aepp import schema,catalog, tags
     sch = schema.Schema(config=sandbox,retry=2)
     cat = catalog.Catalog(config=sandbox)
@@ -414,25 +449,25 @@ def extractSandboxArtifact(
     with open(f'{tagPath}/tags.json','w') as f:
         json.dump(all_tags,f,indent=2)
     if artifactType == 'class':
-        __extractClass__(artifact,completePath,sandbox,retry)
+        __extractClass__(artifact,completePath,sandbox,retry,verbose)
     elif artifactType == 'schema':
-        __extractSchema__(artifact,completePath,sandbox,retry)
+        __extractSchema__(artifact,completePath,sandbox,retry,verbose=verbose)
     elif artifactType == 'fieldgroup':
-        __extractFieldGroup__(artifact,completePath,sandbox,retry)
+        __extractFieldGroup__(artifact,completePath,sandbox,retry,verbose)
     elif artifactType == 'datatype':
-        __extractDataType__(artifact,completePath,sandbox,retry)
+        __extractDataType__(artifact,completePath,sandbox,retry,verbose)
     elif artifactType == 'dataset':
-        __extractDataset__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name,retry=retry)
+        __extractDataset__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name,retry=retry,verbose=verbose)
     elif artifactType == 'identity':
-        __extractIdentity__(artifact,completePath,sandbox,retry=retry)
+        __extractIdentity__(artifact,completePath,sandbox,retry=retry,verbose=verbose)
     elif artifactType == 'mergepolicy':
-        __extractMergePolicy__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name)
+        __extractMergePolicy__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name,verbose=verbose)
     elif artifactType == 'audience':
-        __extractAudience__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name)
+        __extractAudience__(artifact,completePath,sandbox,dict_tag_id_name=dict_tag_id_name,verbose=verbose)
     else:
         raise ValueError("artifactType not recognized")
 
-def __extractClass__(classEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
+def __extractClass__(classEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2,verbose: bool = False):
     classPath = Path(folder) / 'class'
     classPath.mkdir(exist_ok=True)
     from aepp import schema
@@ -441,6 +476,8 @@ def __extractClass__(classEl: str,folder: Union[str, Path] = None,sandbox: 'Conn
     myclasses = sch.getClasses()
     myclassesGlobal = sch.getClassesGlobal()
     all_classes = myclasses + myclassesGlobal
+    if verbose:
+        print(f"Extracting class {classEl}")
     try:
         myclass = [el for el in all_classes if el.get('$id','') == classEl or el.get('title','') == classEl or el.get('meta:altId') == classEl][0]
     except IndexError:
@@ -461,7 +498,7 @@ def __extractClass__(classEl: str,folder: Union[str, Path] = None,sandbox: 'Conn
     with open(f"{behavPath / behav_file_name}.json",'w') as f:
         json.dump(behavDef,f,indent=2)
 
-def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
+def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2,verbose:bool = False):
     dtPath = Path(folder) / 'datatype'
     dtPath.mkdir(exist_ok=True)
     dtPathGlobal = dtPath / 'global'
@@ -472,6 +509,8 @@ def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: '
     dts = sch.getDataTypes()
     globalDts = sch.getDataTypesGlobal()
     all_dts = dts + globalDts
+    if verbose:
+        print(f"Extracting data type {dataType}")
     try:
         mydt = [el for el in all_dts if el.get('meta:altId','') == dataType or el.get('title','') == dataType or el.get('$id') == dataType][0]
     except IndexError:
@@ -501,13 +540,15 @@ def __extractDataType__(dataType: str,folder: Union[str, Path] = None,sandbox: '
                 dt = '_schema.org.GeoCoordinates'
             elif dt == 'http://schema.org/GeoCircle':
                 dt = '_schema.org.GeoCircle'
-            __extractDataType__(dt,folder,sandbox)
+            __extractDataType__(dt,folder,sandbox,verbose=verbose,retry=retry)
 
-def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
+def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2, verbose: bool = False):
     fgPath = Path(folder) / 'fieldgroup'
     fgPath.mkdir(exist_ok=True)
     fgPathGlobal = fgPath / 'global'
     fgPathGlobal.mkdir(exist_ok=True)
+    if verbose:
+        print(f"Extracting field group {fieldGroup}")
     from aepp import schema, fieldgroupmanager
     sch = schema.Schema(config=sandbox,retry=retry)
     tenantId = sch.getTenantId()
@@ -531,10 +572,10 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
     if len(myfg_manager_dataTypes) > 0:
         def unpack_dt_call(dtElements):
             element,folder,sandbox,retry = dtElements
-            __extractDataType__(element,folder,sandbox,retry)
+            __extractDataType__(element,folder,sandbox,retry,verbose=verbose)
         dtElements = [(element,folder,sandbox,retry) for element in myfg_manager_dataTypes]
         with ThreadPoolExecutor(thread_name_prefix = 'datatypes') as thread_pool:
-            results = thread_pool.map(unpack_dt_call, dtElements)
+            results = list(thread_pool.map(unpack_dt_call, dtElements))
     descriptors = myfg_manager.getDescriptors()
     if len(descriptors) > 0:
         descriptorPath = Path(folder) / 'descriptor'
@@ -544,9 +585,11 @@ def __extractFieldGroup__(fieldGroup: str,folder: Union[str, Path] = None,sandbo
                 json.dump(descriptor,f,indent=2)
     classes = myfg_manager.classIds
     for cls in classes:
-        __extractClass__(cls,folder,sandbox,retry)
+        __extractClass__(cls,folder,sandbox,retry,verbose=verbose)
 
-def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2, _visited: set = None):
+def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2, _visited: set = None, verbose: bool = False):
+    if verbose:
+        print(f"Extracting schema {schemaEl}")
     if _visited is None: ## to avoid circular dependencies
         _visited = set()
     schemaPath = Path(folder) / 'schema'
@@ -572,12 +615,12 @@ def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'Co
     if len(fg_list) > 0:
         def unpack_fg_call(fgsElements):
             element,folder,sandbox,retry = fgsElements
-            __extractFieldGroup__(element,folder,sandbox,retry)
+            __extractFieldGroup__(element,folder,sandbox,retry,verbose=verbose)
         fgsElements = [(element,folder,sandbox,retry) for element in fg_list]
         with ThreadPoolExecutor(thread_name_prefix = 'fieldGroup') as thread_pool:
-            results = thread_pool.map(unpack_fg_call, fgsElements)
+            results = list(thread_pool.map(unpack_fg_call, fgsElements))
     class_id = schema_manager.classId
-    __extractClass__(class_id,folder,sandbox,retry)
+    __extractClass__(class_id,folder,sandbox,retry,verbose=verbose)
     descriptors = schema_manager.getDescriptors()
     if len(descriptors) > 0:
         descriptorPath = Path(folder) / 'descriptor'
@@ -587,15 +630,15 @@ def __extractSchema__(schemaEl: str,folder: Union[str, Path] = None,sandbox: 'Co
                 json.dump(descriptor,f,indent=2)
             if descriptor.get('@type','') == 'xdm:descriptorIdentity':
                 namespace = descriptor['xdm:namespace']
-                __extractIdentity__(namespace,folder,sandbox,retry)
+                __extractIdentity__(namespace,folder,sandbox,retry,verbose=verbose)
             if descriptor.get('xdm:destinationSchema') is not None:
                 targetSchema = descriptor['xdm:destinationSchema']
                 if targetSchema not in _visited:
-                    __extractSchema__(targetSchema,folder,sandbox,retry,_visited)
+                    __extractSchema__(targetSchema,folder,sandbox,retry,_visited,verbose=verbose)
             
 
 
-def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2):
+def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,retry: int = 2, verbose: bool = False):
     from aepp import identity
     ide = identity.Identity(config=sandbox,retry=retry)
     identities = ide.getIdentities()
@@ -603,13 +646,15 @@ def __extractIdentity__(identityStr: str,folder: Union[str, Path] = None,sandbox
         myIdentity = [el for el in identities if el.get('code','').lower() == identityStr.lower() or el.get('name','') == identityStr][0]
     except IndexError:
         raise IndexError(f"The identity {identityStr} you want to extract is not present in the sandbox or the code/name provided is not correct")
+    if verbose:
+        print(f"Extracting identity {identityStr}")
     identityPath = Path(folder) / 'identity'
     identityPath.mkdir(exist_ok=True)
     file_name = __titleSafe__(myIdentity.get('code',myIdentity.get('name','unknown')))
     with open(f"{identityPath / file_name}.json",'w') as f:
         json.dump(myIdentity,f,indent=2)
 
-def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None, retry:int=2, _visited: set = None,**kwargs):
+def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None, retry:int=2, _visited: set = None, verbose: bool = False, **kwargs):
     from aepp import catalog
     cat = catalog.Catalog(config=sandbox)
     datasets = cat.getDataSets()
@@ -624,29 +669,33 @@ def __extractDataset__(dataset: str,folder: Union[str, Path] = None,sandbox: 'Co
     if myDataset is None:
         raise IndexError("The dataset you want to extract is not present in the sandbox or the id/name provided is not correct")
     datasetPath = Path(folder) / 'dataset'
+    if verbose:
+        print(f"Extracting dataset {dataset}")
     datasetPath.mkdir(exist_ok=True)
     file_name = __titleSafe__(myDataset.get('name',myDataset.get('tags',{}).get('adobe/pqs/table',[myDataset.get('id','unknown')])[0]))
     with open(f"{datasetPath / file_name}.json",'w') as f:
         json.dump(myDataset,f,indent=2)
     schema = myDataset.get('schemaRef',{}).get('id',None)
     if schema is not None:
-        __extractSchema__(schema,folder,sandbox,retry,_visited)
+        __extractSchema__(schema,folder,sandbox,retry,_visited,verbose=verbose)
 
-def __extractMergePolicy__(mergePolicy: str = None,folder:Union[str, Path]=None, sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None,**kwargs):
+def __extractMergePolicy__(mergePolicy: str = None,folder:Union[str, Path]=None, sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None,verbose:bool = False, **kwargs):
     from aepp import customerprofile
     ups = customerprofile.Profile(config=sandbox)
+    if verbose:
+        print(f"Extracting merge policy {mergePolicy}")
     mymergePolicies = ups.getMergePolicies()
     mymergePolicy = [el for el in mymergePolicies if el.get('id','') == mergePolicy or el.get('name','') == mergePolicy][0]
     if mymergePolicy['attributeMerge'].get('type','timestampOrdered') == 'dataSetPrecedence':
         list_ds = mymergePolicy['attributeMerge'].get('order',[])
         for ds in list_ds:
-            __extractDataset__(ds,folder,sandbox,dict_tag_id_name=dict_tag_id_name)
+            __extractDataset__(ds,folder,sandbox,dict_tag_id_name=dict_tag_id_name,verbose=verbose)
     mergePolicyPath = Path(folder) / 'mergePolicy'
     mergePolicyPath.mkdir(exist_ok=True)
     with open(f"{mergePolicyPath / mymergePolicy.get('id','unknown')}.json",'w') as f:
         json.dump(mymergePolicy,f,indent=2)
 
-def __extractAudience__(audienceName: str = None,folder:Union[str, Path]=None, sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None,**kwargs):
+def __extractAudience__(audienceName: str = None,folder:Union[str, Path]=None, sandbox: 'ConnectObject' = None,dict_tag_id_name: dict = None, verbose:bool = False, **kwargs):
     from aepp import segmentation
     mysegmentation = segmentation.Segmentation(config=sandbox) 
     audiences = mysegmentation.getAudiences()
@@ -655,6 +704,8 @@ def __extractAudience__(audienceName: str = None,folder:Union[str, Path]=None, s
     except IndexError:
         raise IndexError("The audience you want to extract is not present in the sandbox or the name/id provided is not correct")
     audiencePath = Path(folder) / 'audience'
+    if verbose:
+        print(f"Extracting audience {audienceName}")
     audiencePath.mkdir(exist_ok=True)
     safe_name = __titleSafe__(myaudience.get('name','unknown'))
     if len(myaudience.get('tags',[])) > 0 and dict_tag_id_name is not None:

@@ -11,7 +11,9 @@ This page list all of the changes that came during the different release of the 
 * Add optional Matplotlib trend charts through `--plot`, with case-insensitive numeric-column selection through `--metric`. Namespace distributions use Rich terminal bars, including an ASCII fallback. Plotting leaves CSV contents unchanged; plotting errors are reported after export. [Examples and chart requirements](./cli.md#interactive-query-reports)
 * **Breaking change:** Rename `InteractiveQuery2.querySegmentPopulation(segmentId=...)` to `queryAudiencePopulation(audienceId=...)` and CLI `query_segment_population` to `query_audience_population`. No compatibility aliases are provided. The identity export column becomes `audienceId`, and the default CLI filename becomes `audience_population_<first_audience_id>.csv`. `InteractiveQuery` retains its segment-named method. List requests now forward `extraFields` to each audience query. [Migration details](./queryservice.md#queryaudiencepopulation)
 * Prevent schema synchronization from removing field-group references when the target schema is enabled for Profile or has associated datasets. References absent from the source can still be removed from schemas that meet neither condition; `force=True` does not bypass these safeguards. [Synchronizer behavior](./synchronizer.md#update)
-* Extend offline CLI and Query Service regression coverage for reporting queries, filters, CSV exports, connection cleanup and chart behavior. [Testing guide](./tests.md#offline-cli-and-query-service-regression-tests)
+* Extend offline CLI and Query Service regression coverage for reporting queries, filters, CSV exports, connection cleanup and chart behavior. [Testing guide](./tests.md#offline-cli-and-query-service-regression-tests)\
+Patch: 
+* adding verbose option for artifact extraction
 
 ## version 0.5.9
 * Adding CLI destructive commands `delete_dataset`, `delete_schema`, `delete_dataflow` and `delete_audience`, wrapping the `deletion` module with an impact-warning panel and a type-to-confirm safeguard before anything is deleted. [documentation](./cli.md#deletion-methods)
