@@ -8,6 +8,7 @@
 #  OF ANY KIND, either express or implied. See the License for the specific language
 #  governing permissions and limitations under the License.
 
+from aepp.catalog import Catalog
 from aepp.schema import Schema
 import unittest
 from unittest.mock import patch, MagicMock
@@ -17,6 +18,29 @@ class CatalogTest(unittest.TestCase):
 
     def test_catalog_get_catalog__resource(self):
         assert True
+
+    @patch("subprocess.call")
+    @patch("aepp.connector.AdobeRequest")
+    def test_catalog_get_resource_to_file(self, mock_adobe_request, mock_call):
+        conn = mock_adobe_request.return_value
+        conn.header = {"Accept": "application/json"}
+        conn.config = {"sandbox": "prod", "client_id": "cid", "org_id": "oid"}
+        conn.token = "tok"
+        cat = Catalog()
+
+        cat.getResourceToFile(
+            endpoint="https://platform.adobe.io/data/foundation/export/batches/b1/failed?path=part-00000.json",
+            filename="failed.json",
+        )
+
+        mock_call.assert_called_once()
+        called_cmd = mock_call.call_args[0][0]
+        self.assertEqual(called_cmd[0], "curl")
+        self.assertEqual(
+            called_cmd[1],
+            "https://platform.adobe.io/data/foundation/export/batches/b1/failed?path=part-00000.json",
+        )
+        self.assertEqual(called_cmd[-1], "failed.json")
 
     def test_catalog_decode_stream_batch(self):
         assert True
