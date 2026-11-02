@@ -122,16 +122,18 @@ class DataAccess:
 
     def getBatchFailed(
         self, batchId: str = None, path: str = None, verbose: bool = False, **kwargs
-    ) -> list:
+    ) -> Union[list, dict, bytes, io.BytesIO]:
         """
-        Lists all the dataset files under a failed batch.
+        Lists all the dataset files under a failed batch, or downloads a specific file when path is provided.
         Arguments:
             batchId : REQUIRED : The batch ID to look for.
             path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided.
                 For example: path=profiles.csv
+                If the extension is .parquet, returns an io.BytesIO object; otherwise returns raw bytes by default.
         Possible kwargs:
             limit : A paging parameter to specify number of results per page.
             start : A paging parameter to specify start of new page. For example: page=1
+            format : Optional response format when path is provided ("bytes" default, "txt", "raw", or "json").
         """
         if batchId is None:
             raise ValueError("Require a batchId to be specified.")
@@ -145,15 +147,45 @@ class DataAccess:
         if path is not None:
             params["path"] = path
         pathEndpoint = f"/batches/{batchId}/failed"
-        res = self.connector.getData(
-            self.endpoint + pathEndpoint, params=params, verbose=verbose
+        if path is None:
+            res = self.connector.getData(
+                self.endpoint + pathEndpoint, params=params, verbose=verbose
+            )
+            try:
+                return res["data"]
+            except:
+                return res
+        raw = self.connector.getData(
+            self.endpoint + pathEndpoint, params=params, verbose=verbose, format="raw"
         )
-        try:
-            return res["data"]
-        except:
-            return res
+        if not hasattr(raw, "content"):
+            return raw
+        req_format = kwargs.get("format", None)
+        if req_format == "raw":
+            return raw
+        if getattr(raw, "status_code", 200) >= 400:
+            try:
+                return raw.json()
+            except Exception:
+                return {"error": raw.text, "status_code": raw.status_code}
+        if req_format == "txt":
+            return raw.text
+        if req_format == "json":
+            try:
+                return raw.json()
+            except ValueError:
+                return [
+                    json.loads(line)
+                    for line in raw.text.splitlines()
+                    if line.strip()
+                ]
+        if path.endswith(".parquet"):
+            return io.BytesIO(raw.content)
+        return raw.content
 
-    def getBatchMeta(self, batchId: str = None, path: str = None, **kwargs) -> dict:
+    def getBatchMeta(
+        self, batchId: str = None, path: str = None, verbose: bool = False, **kwargs
+    ) -> Union[dict, bytes, io.BytesIO]:
         """
         Lists files under a batch’s meta directory or download a specific file under it. The files under a batch’s meta directory may include the following:
             row_errors: A directory containing 0 or more files with parsing, conversion, and/or validation errors found at the row level.
@@ -161,7 +193,7 @@ class DataAccess:
             row_errors_sample.json: A root level file containing the sampled set of row errors for the UX.
         Arguments:
             batchId : REQUIRED : The batch ID to look for.
-            path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided.
+            path : OPTIONAL : The full name of the directory or file. The contents of the file would be downloaded if a file path is provided.
                 Possible values for this query include the following:
                     row_errors
                     input_files
@@ -169,6 +201,7 @@ class DataAccess:
         Possible kwargs:
             limit : A paging parameter to specify number of results per page.
             start : A paging parameter to specify start of new page. For example: page=1
+            format : Optional response format when path is provided ("bytes", "txt", "raw", or "json").
         """
         if batchId is None:
             raise ValueError("Require a batchId to be specified.")
@@ -182,10 +215,44 @@ class DataAccess:
         if path is not None:
             params["path"] = path
         pathEndpoint = f"/batches/{batchId}/meta"
-        res = self.connector.getData(
-            self.endpoint + pathEndpoint, headers=self.header, params=params
+        if path is None:
+            res = self.connector.getData(
+                self.endpoint + pathEndpoint, headers=self.header, params=params
+            )
+            return res
+        raw = self.connector.getData(
+            self.endpoint + pathEndpoint,
+            headers=self.header,
+            params=params,
+            verbose=verbose,
+            format="raw",
         )
-        return res
+        if not hasattr(raw, "content"):
+            return raw
+        req_format = kwargs.get("format", None)
+        if req_format == "raw":
+            return raw
+        if getattr(raw, "status_code", 200) >= 400:
+            try:
+                return raw.json()
+            except Exception:
+                return {"error": raw.text, "status_code": raw.status_code}
+        if req_format == "txt":
+            return raw.text
+        if req_format == "bytes":
+            return raw.content
+        if path.endswith(".parquet"):
+            return io.BytesIO(raw.content)
+        try:
+            return raw.json()
+        except ValueError:
+            if req_format == "json":
+                return [
+                    json.loads(line)
+                    for line in raw.text.splitlines()
+                    if line.strip()
+                ]
+            return raw.content
 
     def getHeadFile(
         self,
