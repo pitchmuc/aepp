@@ -66,14 +66,16 @@ Possible kwargs:
 
 
 #### getBatchFailed
-Lists all the dataset files under a failed batch.\
+Lists all the dataset files under a failed batch, or downloads a specific file when `path` is provided.\
 Arguments:
 * batchId : REQUIRED : The batch ID to look for.
 * path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided.\
-    For example: path=profiles.csv\
+    For example: `path=profiles.csv`\
+    If the extension is `.parquet`, returns an `io.BytesIO` object; otherwise returns raw `bytes` by default.\
 Possible kwargs:
 * limit : A paging parameter to specify number of results per page.
 * start : A paging parameter to specify start of new page. For example: page=1
+* format : Optional response format when `path` is provided (`"bytes"` default, `"txt"`, `"raw"`, or `"json"`).
 
 
 #### getBatchMeta
@@ -83,7 +85,7 @@ Lists files under a batch's meta directory or download a specific file under it.
 * row_errors_sample.json: A root level file containing the sampled set of row errors for the UX.\
 Arguments:
 * batchId : REQUIRED : The batch ID to look for.
-* path : OPTIONAL : The full name of the file. The contents of the file would be downloaded if this parameter is provided.\
+* path : OPTIONAL : The full name of the directory or file. The contents of the file would be downloaded if a file path is provided.\
   Possible values for this query include the following:
   * row_errors
   * input_files
@@ -91,6 +93,7 @@ Arguments:
 Possible kwargs:
 * limit : A paging parameter to specify number of results per page.
 * start : A paging parameter to specify start of new page. For example: page=1
+* format : Optional response format when `path` is provided (`"bytes"`, `"txt"`, `"raw"`, or `"json"`).
 
 #### getHeadFile
 Get headers regarding a file.\
@@ -178,4 +181,15 @@ Example:
 
 ```python
 myData.getFiles(dataSetFileId='fileId',path='profile.csv')
+```
+
+### Retrieving Failed Batch Files
+
+When a batch fails ingestion, you can list the failed files associated with the batch and download individual file contents using `getBatchFailed` (or inspect row-level diagnostics via `getBatchMeta`):
+
+```python
+failed_files = myData.getBatchFailed(batchId='batchId')
+for entry in failed_files:
+    if entry['name'] != '_SUCCESS':
+        content_bytes = myData.getBatchFailed(batchId='batchId', path=entry['name'])
 ```

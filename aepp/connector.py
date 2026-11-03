@@ -360,7 +360,7 @@ class AdobeRequest:
         try:
             if kwargs.get("format", "json") == "json":
                 res_json = res.json()
-            if kwargs.get("format", "json") == "txt":
+            elif kwargs.get("format", "json") == "txt":
                 res_json = res.text
             elif kwargs.get("format", "json") == "raw":
                 res_json = res
@@ -372,15 +372,6 @@ class AdobeRequest:
             if self.loggingEnabled:
                 self.logger.warning(f"error: {res.text}")
             res_json = {"error": "Request Error - could not generate json"}
-            if self.retry > 0:
-                if self.loggingEnabled:
-                    self.logger.info(f"starting retry: {self.retry} to do")
-                for each in range(self.retry):
-                    if "error" in res_json.keys():
-                        time.sleep(2)
-                        res_json = self.getData(
-                            endpoint, params, data, headers, **kwargs
-                        )
         try:  ## sometimes list is being returned
             if type(res_json) == dict:
                 if "errorMessage" in res_json.keys():
