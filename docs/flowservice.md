@@ -192,8 +192,12 @@ Arguments:
 * filterMappingSetId : OPTIONAL : returns only the flow that possess the mappingSetId passed in a list.
 * filterSourceIds : OPTIONAL : returns only the flow that possess the sourceConnectionIds passed in a list.
 * filterTargetIds : OPTIONAL : returns only the flow that possess the targetConnectionIds passed in a list.
-* onlyDestinations : OPTIONAL : Filter to only destinations flows (max 100)
-* onlySources : OPTIONAL : Filter to only source flows (max 100)
+* onlyDestinations : OPTIONAL : Filter to only destination flows; `n_results` still applies.
+* onlySources : OPTIONAL : Filter to only source flows; `n_results` still applies.
+
+Malformed collection responses and API error payloads raise `ValueError` rather than returning an empty list, including errors on subsequent pages. A valid `{"items": []}` response returns an empty list.
+
+The CLI [`get_flows`](./cli.md#get_flows) command retrieves all matching pages, supports case-insensitive name filtering and exports flow definitions with optional run counts.
 
 #### getFlow
 Returns the details of a specific flow.\
@@ -336,6 +340,10 @@ Arguments:
     Used to cut down the amount of data returned in the response body.
     For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
 
+Malformed collection responses and API error payloads raise `ValueError`, including errors on subsequent pages. A valid `{"items": []}` response returns an empty list; a final page may omit pagination links.
+
+CLI equivalents: [`get_flow_runs`](./cli.md#get_flow_runs), [`get_flow_errors`](./cli.md#get_flow_errors) and [`get_flow_partial_success`](./cli.md#get_flow_partial_success). These commands retrieve all matching pages and combine minute/hour/day lookback values, defaulting to 24 hours.
+
 #### createRun
 Generate a run based on the flowId.\
 Arguments:
@@ -360,6 +368,7 @@ Return a specific runId.\
 Arguments:
 * runId : REQUIRED : the run ID to return
 
+Use CLI [`get_flow_run`](./cli.md#get_flow_run) to export a run's details to JSON by Run ID.
 
 #### getSourceConnections
 Return the list of source connections\

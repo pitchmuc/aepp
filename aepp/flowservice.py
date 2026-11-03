@@ -477,13 +477,15 @@ class FlowService:
             filterMappingSetId : OPTIONAL : returns only the flow that possess the mappingSetId passed in a list.
             filterSourceIds : OPTIONAL : returns only the flow that possess the sourceConnectionIds passed in a list.
             filterTargetIds : OPTIONAL : returns only the flow that possess the targetConnectionIds passed in a list.
-            onlyDestinations : OPTIONAL : Filter to only destinations flows (max 100)
-            onlySources : OPTIONAL : Filter to only source flows (max 100)
+            onlyDestinations : OPTIONAL : Filter to only destination flows
+            onlySources : OPTIONAL : Filter to only source flows
+        Raises:
+            ValueError : A collection response is malformed or contains an API error.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getFlows")
         params: dict = {"limit": limit, "count": kwargs.get("count", False)}
-        if property is not None:
+        if prop is not None:
             params["property"] = prop
         if kwargs.get("continuationToken", False) != False:
             params["continuationToken"] = kwargs.get("continuationToken")
@@ -493,13 +495,19 @@ class FlowService:
         if onlySources:
             params['property'] = "inheritedAttributes.properties.isSourceFlow==true"
         res: dict = self.connector.getData(self.endpoint + path, params=params)
+        if (not isinstance(res, dict) or not isinstance(res.get("items"), list)
+                or any(not isinstance(item, dict) for item in res["items"])):
+            raise ValueError(f"Flow retrieval failed: {res}")
         token: str = res.get("_links", {}).get("next", {}).get("href", "")
-        items = res.get("items",[])
+        items = res.get("items", [])
         while token != "" and len(items) < float(n_results):
             continuationToken = token.split("=")[1]
             params["continuationToken"] = continuationToken
             res = self.connector.getData(self.endpoint + path, params=params)
-            token = res["_links"].get("next", {}).get("href", "")
+            if (not isinstance(res, dict) or not isinstance(res.get("items"), list)
+                    or any(not isinstance(item, dict) for item in res["items"])):
+                raise ValueError(f"Flow retrieval failed: {res}")
+            token = res.get("_links", {}).get("next", {}).get("href", "")
             items += res["items"]
         self.data.flowId = {item["name"]: item["id"] for item in items}
         self.data.flowSpecId = {item["name"]: item.get("flowSpec",{}).get('id') for item in items}
@@ -1077,6 +1085,8 @@ class FlowService:
             prop : OPTIONAL : comma separated list of top-level object properties to be returned in the response or list of property.
                 Used to cut down the amount of data returned in the response body.
                 For example, prop=id==3416976c-a9ca-4bba-901a-1f08f66978ff,6a8d82bc-1caf-45d1-908d-cadabc9d63a6,3c9b37f8-13a6-43d8-bad3-b863b941fedd.
+        Raises:
+            ValueError : A collection response is malformed or contains an API error.
         """
         if self.loggingEnabled:
             self.logger.debug(f"Starting getRuns")
@@ -1090,15 +1100,21 @@ class FlowService:
         if kwargs.get("continuationToken", False):
             params["continuationToken"] = kwargs.get("continuationToken")
         res: dict = self.connector.getData(self.endpoint + path, params=params)
-        items: list = res.get("items",[])
+        if (not isinstance(res, dict) or not isinstance(res.get("items"), list)
+                or any(not isinstance(item, dict) for item in res["items"])):
+            raise ValueError(f"Flow run retrieval failed: {res}")
+        items: list = res.get("items", [])
         nextPage = res.get("_links",{}).get("next", {}).get("href", "")
         while nextPage != "" and len(items) < float(n_results):
             token: str = res["_links"]["next"].get("href", "")
             continuationToken: str = token.split("=")[1]
             params["continuationToken"] = continuationToken
             res = self.connector.getData(self.endpoint + path, params=params)
-            items += res.get('items')
-            nextPage = res.get("_links").get("next", {}).get("href", "")
+            if (not isinstance(res, dict) or not isinstance(res.get("items"), list)
+                    or any(not isinstance(item, dict) for item in res["items"])):
+                raise ValueError(f"Flow run retrieval failed: {res}")
+            items += res["items"]
+            nextPage = res.get("_links", {}).get("next", {}).get("href", "")
         return items
 
     def createRun(self, flowId: str = None, status: str = "active", params: dict = None, **kwargs) -> dict:
