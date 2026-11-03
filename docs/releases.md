@@ -2,6 +2,20 @@
 
 This page list all of the changes that came during the different release of the aepp module.
 
+## version 0.6.1
+* Supporting audience ID in get_audiences in the CLI, allowing filtering by both audience name and ID.
+* Fixing the extra fields handling in the CLI for audience queries, ensuring that comma-separated values are correctly parsed and passed to the underlying query methods. `InteractiveQuery2.queryAudiencePopulation` now aliases nested extra fields to snake_case leaf names, fixing their projection in the outer SQL query (for example, `person.name.firstName` becomes `first_name`).
+* Add CLI `extend_fieldgroup_classes` with grouped and detailed help. It adds Profile and ExperienceEvent compatibility plus optional tenant/global classes supplied by name, `$id` or `alt:Id`, and rejects unknown identifiers before updating. [CLI reference](./cli.md#extend_fieldgroup_classes)
+* Make `Schema.extendFieldGroup` preserve existing compatible classes (including custom classes), deduplicate class IDs, accept a single class `$id` or a list, and read from the same container it patches. Unreadable existing class metadata prevents a PATCH. `Schema.getFieldGroup` also accepts a per-request `containerId` override for tenant/global retrieval. [Python API reference](./schema.md#extendfieldgroup)
+* Add CLI `get_flow_runs` and `get_flow_run`, and document `get_flow_partial_success`, with grouped and detailed help. All require a sandbox connection; run-list commands combine non-negative lookback values and default to 24 hours. [Flow Service CLI](./cli.md#flow-service)
+* Extend `get_flows` with case-insensitive name filtering, complete source/destination pagination, internal-only selection through `--type internal`, readable empty CSVs and run-count columns in advanced exports. Existing flow-definition columns are retained.
+* Make Flow Service collection retrieval reject API error/malformed responses instead of silently exporting empty results, and accept final pages without pagination links. [Flow Service API](./flowservice.md#getruns)
+* Fix `DataAccess.getBatchFailed` downloading file contents when `path` is supplied instead of attempting to parse every response as JSON. Downloads default to raw `bytes`, or `io.BytesIO` for `.parquet` files; `format="txt"`, `"raw"` and `"json"` allow explicit response handling, including newline-delimited JSON. Listing failed files without `path` is unchanged. [Data Access reference](./dataaccess.md#getbatchfailed)
+* Extend `DataAccess.getBatchMeta` with file-download response formats (`"bytes"`, `"txt"`, `"raw"`, `"json"`) and verbose download output. By default, Parquet files return `io.BytesIO`, JSON metadata is decoded, and other contents fall back to `bytes`. Both batch-download methods preserve API error details rather than treating error responses as file contents. [Metadata reference](./dataaccess.md#getbatchmeta)
+* Fix `AdobeRequest.getData` parsing JSON responses twice and recursively retrying JSON-decoding failures without a terminating retry count. JSON is now parsed once, and decoding failures no longer trigger that recursive retry path.
+* Fix Catalog's curl-based file downloads raising `NameError` by using the supplied endpoint instead of an undefined `url` variable.
+* Add mocked regression coverage for failed-batch and metadata downloads, response formats and Catalog's download helper. Extend offline field-group and flow coverage for additive class updates, CLI argument validation, pagination, exports and malformed/API error responses. [Field-group tests](./tests.md#offline-field-group-class-extension-regression-tests), [Flow tests](./tests.md#offline-flow-command-regression-tests).
+
 ## version 0.6.0
 
 * Add `queryHistoryMeta`, `queryProfilesTrend`, `queryNamespacesDistribution` and `queryNamespacesTrend` to both interactive Query Service classes. These return table snapshot history, daily profile counts for the last 30 days, the latest namespace distribution and namespace trends. Reporting queries use the default merge policy; namespace filtering is case-insensitive. [Query Service documentation](./queryservice.md#queryhistorymeta)
@@ -15,13 +29,7 @@ This page list all of the changes that came during the different release of the 
 Patch: 
 * Adding verbose option for artifact extraction
 * Adding thread lock for extracting artifacts
-* Supporting audience ID in get_audiences in the CLI, allowing filtering by both audience name and ID.
-* Fixing the extra fields handling in the CLI for audience queries, ensuring that comma-separated values are correctly parsed and passed to the underlying query methods.
-* Add CLI `extend_fieldgroup_classes` with grouped and detailed help. It adds Profile and ExperienceEvent compatibility plus optional tenant/global classes supplied by name, `$id` or `alt:Id`, and rejects unknown identifiers before updating. [CLI reference](./cli.md#extend_fieldgroup_classes)
-* Make `Schema.extendFieldGroup` preserve existing compatible classes (including custom classes), deduplicate class IDs, accept a single class `$id` or a list, and read from the same container it patches. Unreadable existing class metadata prevents a PATCH. [Python API reference](./schema.md#extendfieldgroup)
-* Add CLI `get_flow_runs` and `get_flow_run`, and document `get_flow_partial_success`, with grouped and detailed help. All require a sandbox connection; run-list commands combine non-negative lookback values and default to 24 hours. [Flow Service CLI](./cli.md#flow-service)
-* Extend `get_flows` with case-insensitive name filtering, complete source/destination pagination, internal-only selection through `--type internal`, readable empty CSVs and run-count columns in advanced exports. Existing flow-definition columns are retained.
-* Make Flow Service collection retrieval reject API error/malformed responses instead of silently exporting empty results, and accept final pages without pagination links. [Flow Service API](./flowservice.md#getruns)
+
 
 ## version 0.5.9
 * Adding CLI destructive commands `delete_dataset`, `delete_schema`, `delete_dataflow` and `delete_audience`, wrapping the `deletion` module with an impact-warning panel and a type-to-confirm safeguard before anything is deleted. [documentation](./cli.md#deletion-methods)
