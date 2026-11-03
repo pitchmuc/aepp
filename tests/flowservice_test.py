@@ -13,6 +13,50 @@ from aepp.flowservice import FlowService
 import unittest
 from unittest.mock import patch, MagicMock
 
+import pytest
+
+
+@pytest.fixture
+def flow_api():
+    with patch("aepp.connector.AdobeRequest"):
+        yield FlowService()
+
+
+@pytest.mark.parametrize("method", ["getFlows", "getRuns"])
+@pytest.mark.parametrize("response", [
+    {"errorMessage": "Permission denied"}, None, {}, {"items": None}, {"items": [None]},
+])
+@pytest.mark.parametrize("on_next_page", [False, True])
+def test_flow_collections_reject_error_responses(flow_api, method, response, on_next_page):
+    if on_next_page:
+        flow_api.connector.getData.side_effect = [
+            {"items": [], "_links": {"next": {"href": "?continuationToken=second"}}},
+            response,
+        ]
+    else:
+        flow_api.connector.getData.return_value = response
+
+    with pytest.raises(ValueError, match="retrieval failed"):
+        getattr(flow_api, method)(n_results="inf")
+
+
+@pytest.mark.parametrize("method", ["getFlows", "getRuns"])
+def test_flow_collections_follow_pagination_without_final_links(flow_api, method):
+    flow_api.connector.getData.side_effect = [
+        {"items": [{"id": "first", "name": "First"}],
+         "_links": {"next": {"href": "?continuationToken=second"}}},
+        {"items": [{"id": "second", "name": "Second"}]},
+    ]
+    result = getattr(flow_api, method)(n_results="inf")
+    assert [item["id"] for item in result] == ["first", "second"]
+    assert flow_api.connector.getData.call_count == 2
+
+
+@pytest.mark.parametrize("method", ["getFlows", "getRuns"])
+def test_flow_collections_allow_empty_results(flow_api, method):
+    flow_api.connector.getData.return_value = {"items": []}
+    assert getattr(flow_api, method)() == []
+
 
 class FlowserviceTest(unittest.TestCase):
 

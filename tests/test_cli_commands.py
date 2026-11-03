@@ -30,6 +30,14 @@ QUERY_COMMANDS = [
     "query_audience_population_trend",
 ]
 
+FLOW_COMMANDS = [
+    "get_flows",
+    "get_flow_runs",
+    "get_flow_run",
+    "get_flow_errors",
+    "get_flow_partial_success",
+]
+
 INTERACTIVE_REPORTS = [
     ("query_history_meta accounts", "queryHistoryMeta", {"table": "accounts"}, "dev_history_meta.csv"),
     ("query_profiles_trend", "queryProfilesTrend", {}, "dev_profiles_trend.csv"),
@@ -74,7 +82,7 @@ def trend_figures(monkeypatch):
         plt.close(number)
 
 
-@pytest.mark.parametrize("command", QUERY_COMMANDS + ["get_descriptor", "get_dataset", "get_snapshot_datasets"])
+@pytest.mark.parametrize("command", QUERY_COMMANDS + FLOW_COMMANDS + ["get_descriptor", "get_dataset", "get_snapshot_datasets", "extend_fieldgroup_classes"])
 def test_commands_require_login(shell, command, capsys):
     instance, service, output = shell
     instance.config = None
@@ -341,16 +349,24 @@ def test_interactive_query_preserves_small_result_export(shell, monkeypatch, tmp
     assert pd.read_csv(tmp_path / "sample.csv")["value"].tolist() == [1, 2]
 
 
-def test_audience_population_forwards_arguments(shell, monkeypatch, tmp_path):
+@pytest.mark.parametrize(("extra_fields_option", "expected_fields"), [
+    ("", None),
+    ("-ef email", ["email"]),
+    ("--extra_fields email", ["email"]),
+    ('-ef "email,_tenant.score"', ["email", "_tenant.score"]),
+    ('--extra_fields " email , _tenant.score "', ["email", "_tenant.score"]),
+])
+def test_audience_population_forwards_arguments(shell, monkeypatch, tmp_path, extra_fields_option, expected_fields):
     instance, service, output = shell
     interactive = Mock()
     interactive.queryAudiencePopulation.return_value = pd.DataFrame({"count": [10]})
     monkeypatch.setattr(cli.queryservice, "InteractiveQuery2", Mock(return_value=interactive))
-    instance.onecmd("query_audience_population audience-1 audience-2 -ef email -c -fn population")
+    instance.onecmd(f"query_audience_population audience-1 audience-2 {extra_fields_option} -c -fn population")
     interactive.queryAudiencePopulation.assert_called_once_with(
-        audienceId=["audience-1", "audience-2"], extraFields="email", count=True
+        audienceId=["audience-1", "audience-2"], extraFields=expected_fields, count=True
     )
     assert pd.read_csv(tmp_path / "population.csv")["count"].tolist() == [10]
+    assert "(!) Error" not in output.getvalue()
 
 
 @pytest.mark.parametrize(("command", "method", "kwargs", "filename"), INTERACTIVE_REPORTS)
@@ -889,3 +905,367 @@ def test_new_commands_have_grouped_and_detailed_help(shell, capsys):
         instance.onecmd(f"{command} -h")
         assert f"usage: {command}" in capsys.readouterr().out
     cli.queryservice.QueryService.assert_not_called()
+
+
+@pytest.fixture
+def fieldgroup_schema(monkeypatch):
+    api = Mock()
+    profile = "https://ns.adobe.com/xdm/context/profile"
+    event = "https://ns.adobe.com/xdm/context/experienceevent"
+    custom = "https://ns.adobe.com/test/classes/custom"
+    fieldgroup = "https://ns.adobe.com/test/mixins/example"
+    api.data = SimpleNamespace(
+        fieldGroups_altId={"Customer fields": "_test.mixins.example"},
+        fieldGroups_id={"Customer fields": fieldgroup},
+        classes_id={"Custom Class": custom, "XDM Individual Profile": profile, "XDM ExperienceEvent": event},
+        classes_altId={"Custom Class": "_test.classes.custom", "XDM Individual Profile": "context/profile",
+                       "XDM ExperienceEvent": "context/experienceevent"},
+    )
+    api.getClasses.return_value = [
+        {"title": "Custom Class", "$id": custom, "meta:altId": "_test.classes.custom"}
+    ]
+    api.getClassesGlobal.return_value = [
+        {"title": "XDM Individual Profile", "$id": profile, "meta:altId": "context/profile"},
+        {"title": "XDM ExperienceEvent", "$id": event, "meta:altId": "context/experienceevent"},
+    ]
+    api.extendFieldGroup.return_value = {"$id": fieldgroup, "meta:intendedToExtend": [custom, profile, event]}
+    monkeypatch.setattr(cli.schema, "Schema", Mock(return_value=api))
+    return api
+
+
+@pytest.mark.parametrize("identifier,expected", [
+    ('"Customer fields"', "_test.mixins.example"),
+    ("_test.mixins.example", "_test.mixins.example"),
+    ("https://ns.adobe.com/test/mixins/example", "https://ns.adobe.com/test/mixins/example"),
+])
+def test_extend_fieldgroup_classes_defaults(shell, fieldgroup_schema, identifier, expected):
+    instance, service, output = shell
+
+    instance.onecmd(f"extend_fieldgroup_classes {identifier}")
+
+    fieldgroup_schema.extendFieldGroup.assert_called_once_with(expected, values=[
+        "https://ns.adobe.com/xdm/context/profile",
+        "https://ns.adobe.com/xdm/context/experienceevent",
+    ])
+    fieldgroup_schema.getClasses.assert_not_called()
+    fieldgroup_schema.getClassesGlobal.assert_not_called()
+    assert "class compatibility extended" in output.getvalue()
+    assert "(!) Error" not in output.getvalue()
+
+
+@pytest.mark.parametrize("identifier,expected", [
+    ('"Custom Class"', "https://ns.adobe.com/test/classes/custom"),
+    ("https://ns.adobe.com/test/classes/custom", "https://ns.adobe.com/test/classes/custom"),
+    ("_test.classes.custom", "https://ns.adobe.com/test/classes/custom"),
+    ('"XDM Individual Profile"', "https://ns.adobe.com/xdm/context/profile"),
+    ("https://ns.adobe.com/xdm/context/profile", "https://ns.adobe.com/xdm/context/profile"),
+    ("context/profile", "https://ns.adobe.com/xdm/context/profile"),
+])
+@pytest.mark.parametrize("option", ["-c", "--class_id"])
+def test_extend_fieldgroup_classes_resolves_class_identifiers(shell, fieldgroup_schema, identifier, expected, option):
+    instance, service, output = shell
+
+    instance.onecmd(f'extend_fieldgroup_classes "Customer fields" {option} {identifier}')
+
+    classes = list(dict.fromkeys([
+        "https://ns.adobe.com/xdm/context/profile",
+        "https://ns.adobe.com/xdm/context/experienceevent",
+        expected,
+    ]))
+    fieldgroup_schema.extendFieldGroup.assert_called_once_with("_test.mixins.example", values=classes)
+    assert "(!) Error" not in output.getvalue()
+
+
+def test_extend_fieldgroup_classes_accepts_multiple_classes(shell, fieldgroup_schema):
+    instance, service, output = shell
+
+    instance.onecmd('extend_fieldgroup_classes "Customer fields" -c "Custom Class" context/profile')
+
+    fieldgroup_schema.extendFieldGroup.assert_called_once_with("_test.mixins.example", values=[
+        "https://ns.adobe.com/xdm/context/profile",
+        "https://ns.adobe.com/xdm/context/experienceevent",
+        "https://ns.adobe.com/test/classes/custom",
+    ])
+    assert "(!) Error" not in output.getvalue()
+
+
+@pytest.mark.parametrize("command,message", [
+    ("extend_fieldgroup_classes missing", "Field group 'missing' not found"),
+    ('extend_fieldgroup_classes "Customer fields" -c missing', "Class 'missing' not found"),
+    ('extend_fieldgroup_classes "Customer fields" -c "Custom Class" missing', "Class 'missing' not found"),
+])
+def test_extend_fieldgroup_classes_rejects_unknown_identifiers(shell, fieldgroup_schema, command, message):
+    instance, service, output = shell
+
+    instance.onecmd(command)
+
+    fieldgroup_schema.extendFieldGroup.assert_not_called()
+    assert message in output.getvalue()
+    assert "class compatibility extended" not in output.getvalue()
+
+
+@pytest.mark.parametrize("command", [
+    "extend_fieldgroup_classes",
+    'extend_fieldgroup_classes "Customer fields" -c',
+])
+def test_extend_fieldgroup_classes_rejects_missing_arguments(shell, fieldgroup_schema, capsys, command):
+    instance, service, output = shell
+
+    instance.onecmd(command)
+
+    cli.schema.Schema.assert_not_called()
+    assert "error:" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("response", [{"errorMessage": "Permission denied"}, None, {}])
+def test_extend_fieldgroup_classes_reports_patch_errors(shell, fieldgroup_schema, response):
+    instance, service, output = shell
+    fieldgroup_schema.extendFieldGroup.return_value = response
+
+    instance.onecmd('extend_fieldgroup_classes "Customer fields"')
+
+    assert "(!) Error" in output.getvalue()
+    assert "class compatibility extended" not in output.getvalue()
+
+
+def test_extend_fieldgroup_classes_has_grouped_and_detailed_help(shell, fieldgroup_schema, capsys):
+    instance, service, output = shell
+
+    assert "extend_fieldgroup_classes" in instance.get_grouped_commands()["Schema"]
+    instance.stdout = StringIO()
+    instance.onecmd("help extend_fieldgroup_classes")
+    help_text = instance.stdout.getvalue()
+    assert "existing" in help_text
+    assert "--class_id" in help_text
+    instance.onecmd("extend_fieldgroup_classes -h")
+    argument_help = capsys.readouterr().out
+    assert "usage: extend_fieldgroup_classes" in argument_help
+    assert "existing" in argument_help
+    cli.schema.Schema.assert_not_called()
+
+
+@pytest.fixture
+def flow_service(monkeypatch):
+    api = Mock()
+    sources = [{"id": "source-1", "name": "Customer source", "sourceConnectionIds": [], "targetConnectionIds": []}]
+    destinations = [{"id": "destination-1", "name": "CUSTOMER destination"}]
+    internal = [{"id": "internal-1", "name": "Customer internal"}]
+
+    def get_flows(**kwargs):
+        if kwargs.get("onlySources"):
+            return sources
+        if kwargs.get("onlyDestinations"):
+            return destinations
+        return sources + destinations + internal
+
+    api.getFlows.side_effect = get_flows
+    api.getRuns.return_value = [{
+        "id": "run-1", "flowId": "source-1", "createdAt": 1793361600000,
+        "metrics": {"statusSummary": {"status": "success"},
+                    "recordSummary": {"inputRecordCount": 20, "createdRecordCount": 18}},
+    }]
+    api.getRun.return_value = api.getRuns.return_value[0]
+    monkeypatch.setattr(cli.flowservice, "FlowService", Mock(return_value=api))
+
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 10, 30, 12, tzinfo=timezone.utc)
+
+    monkeypatch.setattr(cli, "datetime", FixedDatetime)
+    return api
+
+
+@pytest.mark.parametrize("command,status,suffix", [
+    ("get_flow_runs", None, "runs"),
+    ("get_flow_errors", "failed", "errors"),
+    ("get_flow_partial_success", "partialSuccess", "partial_success"),
+])
+@pytest.mark.parametrize("options,minutes", [("", 1440), ("-mn 30 -H 2 -d 1", 1590), ("-H 0", 1440)])
+def test_flow_run_exports_use_combined_lookback(shell, flow_service, tmp_path, command, status, suffix, options, minutes):
+    instance, service, output = shell
+
+    instance.onecmd(f"{command} source-1 {options}")
+
+    cutoff = 1793361600000 - minutes * 60 * 1000
+    filters = ([f"metrics.statusSummary.status=={status}"] if status else []) + [
+        "flowId==source-1", f"metrics.durationSummary.startedAtUTC>{cutoff}",
+    ]
+    flow_service.getRuns.assert_called_once_with(prop=filters, n_results="inf")
+    assert json.loads((tmp_path / f"flow_source-1_{suffix}.json").read_text()) == flow_service.getRuns.return_value
+    if command == "get_flow_runs":
+        assert "run-1" in output.getvalue()
+        assert "Success" in output.getvalue()
+        assert "20" in output.getvalue()
+        assert "18" in output.getvalue()
+    assert "(!) Error" not in output.getvalue()
+    if command == "get_flow_partial_success":
+        assert "Partial-success flow runs exported" in output.getvalue()
+
+
+@pytest.mark.parametrize("command", [command for command in FLOW_COMMANDS if command != "get_flow_run"])
+@pytest.mark.parametrize("option", ["-mn -1", "-H -1", "-d -1"])
+def test_flow_commands_reject_negative_lookback(shell, flow_service, tmp_path, command, option):
+    instance, service, output = shell
+    identifier = "" if command == "get_flows" else "source-1"
+
+    instance.onecmd(f"{command} {identifier} {option}")
+
+    cli.flowservice.FlowService.assert_not_called()
+    assert "non-negative" in output.getvalue()
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("command", FLOW_COMMANDS[1:])
+def test_flow_commands_require_identifiers(shell, flow_service, capsys, command):
+    instance, service, output = shell
+    instance.onecmd(command)
+    cli.flowservice.FlowService.assert_not_called()
+    assert "error:" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("as_list", [False, True])
+def test_flow_run_definition_is_exported(shell, flow_service, tmp_path, as_list):
+    instance, service, output = shell
+    result = flow_service.getRun.return_value
+    if as_list:
+        result = [result]
+    flow_service.getRun.return_value = result
+
+    instance.onecmd("get_flow_run run-1")
+
+    flow_service.getRun.assert_called_once_with(runId="run-1")
+    assert json.loads((tmp_path / "flow_run_run-1.json").read_text()) == result
+    assert "(!) Error" not in output.getvalue()
+
+
+@pytest.mark.parametrize("response", [{"errorMessage": "Permission denied"}, None, [{}]])
+def test_flow_run_definition_errors_do_not_export(shell, flow_service, tmp_path, response):
+    instance, service, output = shell
+    flow_service.getRun.return_value = response
+    instance.onecmd("get_flow_run run-1")
+    assert "(!) Error" in output.getvalue()
+    assert "exported" not in output.getvalue()
+    assert not (tmp_path / "flow_run_run-1.json").exists()
+
+
+@pytest.mark.parametrize("flow_type,include_internal,expected", [
+    ("all", "false", ["source-1", "destination-1"]),
+    ("source", "false", ["source-1"]),
+    ("destination", "false", ["destination-1"]),
+    ("internal", "false", ["internal-1"]),
+    ("all", "true", ["source-1", "destination-1", "internal-1"]),
+])
+def test_flow_name_filter_covers_all_types(shell, flow_service, tmp_path, flow_type, include_internal, expected):
+    instance, service, output = shell
+
+    instance.onecmd(f"get_flows --name cUsToMeR --type {flow_type} -i {include_internal} -ao false")
+
+    exported = pd.read_csv(next(tmp_path.glob("dev_flows_*.csv")))
+    assert exported["id"].tolist() == expected
+    for call in flow_service.getFlows.call_args_list:
+        assert call.kwargs["n_results"] == "inf"
+    flow_service.getRuns.assert_not_called()
+    assert "(!) Error" not in output.getvalue()
+
+
+def test_flow_name_filter_empty_result_has_readable_csv(shell, flow_service, tmp_path):
+    instance, service, output = shell
+    instance.onecmd("get_flows -n missing -ao false")
+    assert pd.read_csv(next(tmp_path.glob("dev_flows_*.csv"))).empty
+    assert "(!) Error" not in output.getvalue()
+
+
+@pytest.mark.parametrize("flow_type", ["source", "destination"])
+def test_flow_name_filter_includes_matches_beyond_default_limit(shell, flow_service, tmp_path, flow_type):
+    instance, service, output = shell
+    flows = [{"id": f"flow-{index}", "name": f"Flow {index}"} for index in range(101)]
+    flows[-1]["name"] = "Customer tail"
+
+    def get_flows(**kwargs):
+        if kwargs.get("onlySources") and flow_type != "source":
+            return []
+        if kwargs.get("onlyDestinations") and flow_type != "destination":
+            return []
+        return flows if kwargs.get("n_results") == "inf" else flows[:100]
+
+    flow_service.getFlows.side_effect = get_flows
+    instance.onecmd(f"get_flows --name customer --type {flow_type} -ao false")
+
+    exported = pd.read_csv(next(tmp_path.glob("dev_flows_*.csv")))
+    assert exported["id"].tolist() == ["flow-100"]
+    assert "(!) Error" not in output.getvalue()
+
+
+def test_flow_advanced_export_includes_run_counts(shell, flow_service, tmp_path):
+    instance, service, output = shell
+    base_run = flow_service.getRuns.return_value[0]
+    flow_service.getRuns.return_value = [
+        dict(base_run, metrics={"statusSummary": {"status": status}})
+        for status in ["success", "failed", "partialSuccess"]
+    ]
+
+    instance.onecmd("get_flows -n customer -adv true")
+
+    exported = pd.read_csv(next(tmp_path.glob("dev_flows_*_advanced.csv")))
+    assert exported["id"].tolist() == ["source-1"]
+    assert "sourceConnectionIds" in exported.columns
+    assert exported[["Total Runs", "Successful Runs", "Failed Runs", "Partial Success Runs"]].iloc[0].tolist() == [3, 1, 1, 1]
+    flow_service.getRuns.assert_called_once_with(
+        n_results="inf", prop=["metrics.durationSummary.startedAtUTC>1793275200000"],
+    )
+    assert "(!) Error" not in output.getvalue()
+
+
+@pytest.mark.parametrize("command,method", [
+    ("get_flows", "getFlows"),
+    ("get_flows", "getRuns"),
+    ("get_flow_runs source-1", "getRuns"),
+    ("get_flow_errors source-1", "getRuns"),
+    ("get_flow_partial_success source-1", "getRuns"),
+    ("get_flow_run run-1", "getRun"),
+])
+def test_flow_api_failures_do_not_export(shell, flow_service, tmp_path, command, method):
+    instance, service, output = shell
+    getattr(flow_service, method).side_effect = ValueError("Permission denied")
+
+    instance.onecmd(command)
+
+    assert "Permission denied" in output.getvalue()
+    assert "(!) Error" in output.getvalue()
+    assert "exported" not in output.getvalue()
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("command,suffix", [
+    ("get_flow_runs", "runs"),
+    ("get_flow_errors", "errors"),
+    ("get_flow_partial_success", "partial_success"),
+])
+def test_flow_empty_run_collections_are_valid_exports(shell, flow_service, tmp_path, command, suffix):
+    instance, service, output = shell
+    flow_service.getRuns.return_value = []
+
+    instance.onecmd(f"{command} source-1")
+
+    assert json.loads((tmp_path / f"flow_source-1_{suffix}.json").read_text()) == []
+    assert "(!) Error" not in output.getvalue()
+
+
+def test_flow_list_rejects_unknown_type(shell, flow_service, capsys):
+    instance, service, output = shell
+    instance.onecmd("get_flows --type invalid")
+    cli.flowservice.FlowService.assert_not_called()
+    assert "invalid choice" in capsys.readouterr().err
+
+
+def test_flow_commands_have_grouped_and_detailed_help(shell, flow_service, capsys):
+    instance, service, output = shell
+    assert set(FLOW_COMMANDS) <= set(instance.get_grouped_commands()["Flows"])
+    for command in FLOW_COMMANDS:
+        instance.stdout = StringIO()
+        instance.onecmd(f"help {command}")
+        assert "Usage:" in instance.stdout.getvalue()
+        instance.onecmd(f"{command} -h")
+        assert f"usage: {command}" in capsys.readouterr().out
+    cli.flowservice.FlowService.assert_not_called()
