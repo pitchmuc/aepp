@@ -15,6 +15,13 @@ This page list all of the changes that came during the different release of the 
 Patch: 
 * Adding verbose option for artifact extraction
 * Adding thread lock for extracting artifacts
+* Supporting audience ID in get_audiences in the CLI, allowing filtering by both audience name and ID.
+* Fixing the extra fields handling in the CLI for audience queries, ensuring that comma-separated values are correctly parsed and passed to the underlying query methods.
+* Add CLI `extend_fieldgroup_classes` with grouped and detailed help. It adds Profile and ExperienceEvent compatibility plus optional tenant/global classes supplied by name, `$id` or `alt:Id`, and rejects unknown identifiers before updating. [CLI reference](./cli.md#extend_fieldgroup_classes)
+* Make `Schema.extendFieldGroup` preserve existing compatible classes (including custom classes), deduplicate class IDs, accept a single class `$id` or a list, and read from the same container it patches. Unreadable existing class metadata prevents a PATCH. [Python API reference](./schema.md#extendfieldgroup)
+* Add CLI `get_flow_runs` and `get_flow_run`, and document `get_flow_partial_success`, with grouped and detailed help. All require a sandbox connection; run-list commands combine non-negative lookback values and default to 24 hours. [Flow Service CLI](./cli.md#flow-service)
+* Extend `get_flows` with case-insensitive name filtering, complete source/destination pagination, internal-only selection through `--type internal`, readable empty CSVs and run-count columns in advanced exports. Existing flow-definition columns are retained.
+* Make Flow Service collection retrieval reject API error/malformed responses instead of silently exporting empty results, and accept final pages without pagination links. [Flow Service API](./flowservice.md#getruns)
 
 ## version 0.5.9
 * Adding CLI destructive commands `delete_dataset`, `delete_schema`, `delete_dataflow` and `delete_audience`, wrapping the `deletion` module with an impact-warning panel and a type-to-confirm safeguard before anything is deleted. [documentation](./cli.md#deletion-methods)

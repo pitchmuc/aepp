@@ -1,0 +1,284 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://ns.adobe.com/henkel/mixins/3c3682503c246056389950bb39966ada77fc1e178f6dd36",
+    "type": "object",
+    "required": ["fieldgroup"],
+    "properties": {
+        "fieldgroup": {
+            "type": "object",
+            "required": [
+                "$id",
+                "title",
+                "meta:resourceType",
+                "version",
+                "properties"
+            ],
+            "properties": {
+                "$id": {
+                    "type": "string",
+                    "description": "id"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "meta:resourceType": {
+                    "type": "string",
+                    "const": "mixins"
+                },
+                "meta:extensible": {
+                    "type": "boolean"
+                },
+                "meta:license": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "meta:tags": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "meta:titleId": {
+                    "type": "string"
+                },
+                "meta:descriptionId": {
+                    "type": "string"
+                },
+                "meta:createdDate": {
+                    "type": "string"
+                },
+                "meta:status": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                },
+
+                "description": {
+                    "type": "string"
+                },
+                "minimum": {
+                    "type": "number"
+                },
+                "maximum": {
+                    "type": "number"
+                },
+                "properties": {
+                    "type": "object",
+                    "patternProperties": {
+                        "^[A-Za-z0-9_]+$": {
+                            "$ref": "#/$defs/fieldDefinition"
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "meta:intendedToExtend": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "meta:sourceSchema": {
+                    "type": "array"
+                },
+                "meta:allFieldAccess": {
+                    "type": "boolean"
+                }
+            }
+        }
+    },
+    "$defs": {
+        "fieldDefinition": {
+            "type": "object",
+            "description": "A field definition that can represent object, array, or primitive.",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "object",
+                        "array",
+                        "string",
+                        "number",
+                        "integer",
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "minimum": {
+                    "type": "number"
+                },
+                "maximum": {
+                    "type": "number"
+                },
+                "minLength": {
+                    "type": "number"
+                },
+                "exclusiveMinimum": {
+                    "type": "number"
+                },
+                "exclusiveMaximum": {
+                    "type": "number"
+                },
+                "maxLength": {
+                    "type": "number"
+                },
+                "minItems": {
+                    "type": "number"
+                },
+                "maxItems": {
+                    "type": "number"
+                },
+                "uniqueItems": {
+                    "type": "boolean"
+                },
+                "default": {},
+                "mapFieldType": {
+                    "type": "string"
+                },
+                "format": {
+                    "type": "string"
+                },
+                "pattern": {
+                    "type": "string"
+                },
+                "examples": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "enum": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "isRequired": {
+                    "type": "boolean"
+                },
+                "required": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "meta:xdmType": {
+                    "type": "string"
+                },
+                "meta:status": {
+                    "type": "string"
+                },
+                "meta:enum": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "meta:ui": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "meta:referencedFrom": {
+                    "type": "string"
+                },
+                "meta:xdmField": {
+                    "type": "string"
+                },
+                "meta:immutable": {
+                    "type": "boolean"
+                },
+                "meta:usereditable": {
+                    "type": "boolean"
+                },
+                "meta:sourceSchema": {
+                    "type": "array"
+                },
+                "meta:xedConverted": {
+                    "type": "boolean"
+                },
+                "properties": {
+                    "type": "object",
+                    "patternProperties": {
+                        "^[A-Za-z0-9_]+$": {
+                            "$ref": "#/$defs/fieldDefinition"
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "items": {
+                    "$ref": "#/$defs/fieldDefinition"
+                },
+                "note": {
+                    "type": "string"
+                }
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "required": ["properties"]
+                    },
+                    "then": {
+                        "properties": {
+                            "type": {
+                                "enum": ["object"]
+                            }
+                        },
+                        "anyOf": [
+                            { "not": { "required": ["type"] } },
+                            { "properties": { "type": { "enum": ["object"] } } }
+                        ]
+                    }
+                },
+                {
+                    "if": {
+                        "required": ["items"]
+                    },
+                    "then": {
+                        "properties": {
+                            "type": {
+                                "enum": ["array"]
+                            }
+                        },
+                        "anyOf": [
+                            { "not": { "required": ["type"] } },
+                            { "properties": { "type": { "enum": ["array"] } } }
+                        ]
+                    }
+                },
+                {
+                    "if": {
+                        "not": {
+                            "anyOf": [
+                                { "required": ["properties"] },
+                                { "required": ["items"] }
+                            ]
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "type": {
+                                "enum": [
+                                    "string",
+                                    "number",
+                                    "integer",
+                                    "boolean",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": ["type"]
+                    }
+                }
+            ],
+            "additionalProperties": true
+        }
+    }
+}

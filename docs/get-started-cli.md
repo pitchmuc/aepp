@@ -146,6 +146,7 @@ The CLI provides a variety of commands to manage and interact with Adobe Experie
   * get_ups_fieldgroups
   * get_fieldgroup_json
   * get_fieldgroup_csv
+  * [extend_fieldgroup_classes](./cli.md#extend_fieldgroup_classes) - add Profile and ExperienceEvent compatibility, optionally adding more classes with `-c`, while preserving existing custom classes
   * upload_fieldgroup_definition_csv
   * create_fieldgroup_definition_template
   * upload_fieldgroup_definition_xdm
@@ -170,7 +171,10 @@ The CLI provides a variety of commands to manage and interact with Adobe Experie
   * create_dataset_http_source
   * get_DLZ_credential
   * get_flows
+  * [get_flow_runs](./cli.md#get_flow_runs) - display and export a flow's runs over a combined lookback window
+  * [get_flow_run](./cli.md#get_flow_run) - export one run's details by Run ID
   * get_flow_errors
+  * [get_flow_partial_success](./cli.md#get_flow_partial_success) - export partial-success runs
 * Identities: 
   * get_identities
 * Query Service: 

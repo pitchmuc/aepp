@@ -38,6 +38,30 @@ python -m pytest tests\test_cli_commands.py -k "report or trend or namespace"
 
 These mocked tests do not validate live Adobe permissions, availability of `qsaccel.profile_agg` reporting tables, asynchronous schedule registration, snapshot dataset discovery, database connection cleanup against a running database, or interactive GUI windows. The CLI audience-population test mocks the Python helper and checks argument forwarding, not its live SQL or count result.
 
+### Offline field-group class-extension regression tests
+
+[`schema_test.py`](../tests/schema_test.py) and [`test_cli_commands.py`](../tests/test_cli_commands.py) cover additive class updates, preservation of existing custom classes, duplicate removal, string/list/default values, URL encoding, matching read/PATCH containers, invalid metadata and read failures. CLI coverage includes tenant/global class lookup by exact name, `$id` and `alt:Id`, multiple classes, missing/unknown arguments, update errors, login requirements and grouped/detailed help.
+
+Run the focused cases without Adobe credentials or live API calls:
+
+```powershell
+python -m pytest tests\schema_test.py tests\test_cli_commands.py -k extend_fieldgroup
+```
+
+These mocked tests do not validate live Schema Registry permissions or whether Adobe accepts a particular field-group/class combination.
+
+### Offline flow-command regression tests
+
+[`test_cli_commands.py`](../tests/test_cli_commands.py) covers flow-command login requirements, grouped and detailed help, additive/default/invalid lookback windows, case-insensitive name filters across flow types (including matches beyond 100 results), run-ID exports, empty results, advanced CSV counts and retrieval failures without misleading exports. [`flowservice_test.py`](../tests/flowservice_test.py) covers malformed/error collection responses on initial and subsequent pages, valid empty lists and pagination whose final page omits links.
+
+Run the flow-focused cases without Adobe credentials or live API calls:
+
+```powershell
+python -m pytest tests\test_cli_commands.py tests\flowservice_test.py -k "flow and not fieldgroup"
+```
+
+These mocked tests do not validate live Flow Service permissions or service-side status/time filtering.
+
 ## Environment tests
 You can also run tests to see the different implementation of the module in different python environment: 
 
