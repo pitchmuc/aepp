@@ -203,6 +203,23 @@ Get the XDM definition of a specific field group exported as a JSON file.\
 Arguments:
 * `fieldgroup` : Field Group Name, $id, or alt:Id.
 
+#### extend_fieldgroup_classes
+Add XDM Individual Profile and XDM ExperienceEvent compatibility to a tenant field group in the current sandbox, without removing its existing compatible classes (including custom classes). Duplicate class IDs are removed. Requires an active sandbox connection.\
+Arguments:
+* `fieldgroup` : Required exact Field Group name, `$id`, or `alt:Id`.
+* `-c`, `--class_id` : One or more additional class names, `$id`s, or `alt:Id`s, resolved against tenant and global classes. These are added **alongside Profile and ExperienceEvent**, not instead of them. Quote names containing spaces.
+
+Examples:
+```text
+extend_fieldgroup_classes "Customer fields"
+extend_fieldgroup_classes "Customer fields" -c "Custom Class"
+extend_fieldgroup_classes "_tenant.mixins.customerfields" --class_id "_tenant.classes.custom" "https://ns.adobe.com/xdm/context/profile"
+```
+
+Unknown field groups or classes are reported as errors without applying an update. A bare `-c` is invalid: omit the option to add only the default classes. Retrieval and update errors are reported rather than shown as successful extensions.
+
+Use `help extend_fieldgroup_classes` for a summary or `extend_fieldgroup_classes -h` for argument help. For Python API behavior, including the distinction between omitted and explicit class values, see [`Schema.extendFieldGroup`](./schema.md#extendfieldgroup).
+
 #### delete_fieldgroup
 Delete a field group from the current sandbox.\
 Arguments:
@@ -431,6 +448,8 @@ Arguments:
 
 ### Flow Service
 
+All flow commands require an active sandbox connection. Use `help <command>` for a summary or `<command> -h` for argument help.
+
 #### create_dataset_http_source
 Create an HTTP streaming endpoint for a specific dataset.\
 Arguments:
@@ -442,23 +461,81 @@ Arguments:
 * `type` : (Optional) Credential type: 'user_drop_zone' (default) or 'dlz_destination'.
 
 #### get_flows
-List flows in the sandbox. Supports filtering by source/destination and time. Default last 24h.\
+List flows in the current sandbox and export their definitions to CSV. By default, select source and destination flows with at least one run started in the last 24 hours. Name filtering is applied to the displayed and exported results, including flows beyond the first 100 results.\
 Arguments:
-* `-i`, `--internal_flows` : Include internal flows (default: False).
-* `-t`, `--type` : Filter by flow type (source, destination, internal, all).
-* `-adv`, `--advanced` : Fetch run metrics (success/fail rates) (default: False).
-* `-ao`, `--active_only` : List only flows active in the time period (default: True).
+* `-n`, `--name` : Case-insensitive partial match on the flow name. Quote names containing spaces.
+* `-i`, `--internal_flows` : Boolean. Include all flow types, including internal flows; takes precedence over `--type` (default: False).
+* `-t`, `--type` : Filter by flow type: `source`, `destination`, `internal` or `all` (default). `internal` selects only flows classified as neither source nor destination. `all` includes internal flows only when `--internal_flows true` is supplied.
+* `-adv`, `--advanced` : Boolean. Display total, successful, failed and partial-success run counts, plus success/failure percentages (default: False). The four run-count columns are also added to the CSV without removing the original flow-definition columns.
+* `-ao`, `--active_only` : Boolean. List only flows with runs started in the selected window (default: True). Pass `false` to include inactive flows.
 * `-mn`, `--minutes` : Lookback window in minutes (default: 0).
 * `-H`, `--hours` : Lookback window in hours (default: 0).
 * `-d`, `--days` : Lookback window in days (default: 0).
 
-#### get_flow_errors
-Export failed run details for a specific flow to a JSON file Default is last 24h.\
+The non-negative lookback values are **added together**; a zero total means 24 hours. The window controls activity filtering and advanced metrics, not flow creation dates. Output is `<sandbox>_flows_<cutoff_unix_seconds>.csv`, with optional `_advanced`, `_all` (inactive flows included) and `_internal` suffixes reflecting the enabled options. An empty result still exports a readable CSV with `id` and `name` headers.
+
+Examples:
+```text
+get_flows --name "daily import" --active_only false
+get_flows -n customer -adv true -H 6
+get_flows --type internal --active_only false
+```
+
+#### get_flow_runs
+Display runs for a specific flow and export the complete returned list to `flow_<flow_id>_runs.json`. The table shows run ID, creation time, status, input records and created records.\
 Arguments:
-* `flow_id` : The Flow ID.
-* `-mn`, `--minutes` : Lookback window in minutes.
-* `-H`, `--hours` : Lookback window in hours.
-* `-d`, `--days` : Lookback window in days (default: 0).
+* `flow_id` : Required Flow ID.
+* `-mn`, `--minutes` : Non-negative lookback minutes (default: 0).
+* `-H`, `--hours` : Non-negative lookback hours (default: 0).
+* `-d`, `--days` : Non-negative lookback days (default: 0).
+
+The values are additive; when all are zero or omitted, the window is the last 24 hours. Filtering uses the run's `metrics.durationSummary.startedAtUTC` timestamp. All matching pages are retrieved, and an empty collection is exported as `[]`.
+
+```text
+get_flow_runs "flow-id"
+get_flow_runs "flow-id" -d 1 -H 2 -mn 30
+```
+
+#### get_flow_run
+Export one run's details to `flow_run_<run_id>.json`, preserving the dictionary or list returned by Flow Service.\
+Arguments:
+* `run_id` : Required Run ID, not a Flow ID.
+
+```text
+get_flow_run "run-id"
+```
+
+Missing run definitions and API errors are reported without creating a JSON export.
+
+#### get_flow_errors
+Export runs whose status is `failed` to `flow_<flow_id>_errors.json`.\
+Arguments:
+* `flow_id` : Required Flow ID.
+* `-mn`, `--minutes` : Non-negative lookback minutes (default: 0).
+* `-H`, `--hours` : Non-negative lookback hours (default: 0).
+* `-d`, `--days` : Non-negative lookback days (default: 0).
+
+The values are additive, with a 24-hour fallback when the total is zero. This uses the same run-start-time filter as `get_flow_runs`.
+
+```text
+get_flow_errors "flow-id" -H 6
+```
+
+#### get_flow_partial_success
+Export runs whose status is `partialSuccess` to `flow_<flow_id>_partial_success.json`. This does not select `partialFailure` runs.\
+Arguments:
+* `flow_id` : Required Flow ID.
+* `-mn`, `--minutes` : Non-negative lookback minutes (default: 0).
+* `-H`, `--hours` : Non-negative lookback hours (default: 0).
+* `-d`, `--days` : Non-negative lookback days (default: 0).
+
+The values are additive, with a 24-hour fallback when the total is zero. This uses the same run-start-time filter as `get_flow_runs`.
+
+```text
+get_flow_partial_success "flow-id" -d 2
+```
+
+Run-collection commands export `[]` when no runs match. Retrieval failures are reported without a successful-export message; API error payloads are not treated as empty collections.
 
 ### Deletion Methods
 
@@ -608,7 +685,7 @@ Query the population of specific audience(s).\
 In version 0.6.0 this replaces `query_segment_population`; the old command is no longer available. The command uses `InteractiveQuery2.queryAudiencePopulation`.\
 Arguments:
 * `audience_id` : Audience ID(s) to query population for. Multiple IDs can be separated by spaces.
-* `-ef`, `--extra_fields` : Extra fields to include in the query, comma-separated.
+* `-ef`, `--extra_fields` : Extra fields to include in the query, comma-separated. The CLI trims whitespace and forwards a list to Query Service, even for a single field; omitting the option forwards `None`.
 * `-c`, `--count_only` : If you want to get only the count of the segment population. (default: `False`). If set to `True`, the query will return only the count of profiles in the segment(s) instead of the full list.
 * `-fn`, `--filename` : Output filename. Defaults to `audience_population_<first_audience_id>.csv`; `.csv` is added if omitted.
 
@@ -729,6 +806,8 @@ Bulk extract sandbox components to a local folder.\
 Arguments:
 * `-lf`, `--localfolder` : Destination folder (default: ./extractions).
 * `-f`, `--filters`: filter the artifacts to extract based on name and on lower case and partial match of that string
+* `-at`, `--artifact_types` : The type of artifact to extract. Possible values are: 'class','schema','fieldgroup','datatype','descriptor','dataset','identity','mergepolicy','audience'. If not provided, it will extract all the artifacts
+* `-v`, `--verbose` : Enable verbose logging (default: False).
 
 #### extract_artifact
 Extract a single specific artifact.\
@@ -736,7 +815,7 @@ Arguments:
 * `artifact` : Name or ID of the artifact.
 * `-at`, `--artifactType` : Type (e.g., schema, dataset, etc.).
 * `-lf`, `--localfolder` : Destination folder.
-
+* `-v`, `--verbose` : Enable verbose logging (default: False).
 
 #### sync
 Synchronize or copy artifacts between sandboxes.\
@@ -746,7 +825,7 @@ Arguments:
 * `-t`, `--targets` : list of target sandboxes.
 * `-lf`, `--localfolder` : Local staging folders.
 * `-b`, `--baseSandbox` : The source sandbox name.
-* `-v`, `--verbose` : Enable verbose logging (default: True).
+* `-v`, `--verbose` : Enable verbose logging (default: False).
 
 
 ### Knowledge Graph

@@ -535,7 +535,7 @@ class ServiceShell(cmd.Cmd):
     @login_required
     def do_create_b2b_artifacts(self,args:Any) -> None:
         """
-        Create the B2B identities and schema relationship for the current sandbox
+        Create the B2B identities, schemas and relationship for the current sandbox
         """
         parser = argparse.ArgumentParser(prog="create_b2b_artifacts",add_help=True)
         try:
@@ -905,6 +905,53 @@ class ServiceShell(cmd.Cmd):
             with open(filename, 'w') as f:
                 json.dump(fieldgroup_json, f, indent=4)
             console.print(f"Field Group XDM definition saved to {filename}.", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_extend_fieldgroup_classes(self,args:Any) -> None:
+        """Add Profile and ExperienceEvent compatibility while preserving existing classes.
+
+        Usage: extend_fieldgroup_classes <fieldgroup> [-c CLASS [CLASS ...]]
+        Field groups and classes accept an exact name, $id or alt:Id; quote names with spaces.
+        -c/--class_id adds one or more tenant or global classes alongside the defaults.
+        Existing custom classes are retained and duplicate class IDs are removed.
+        """
+        parser = argparse.ArgumentParser(
+            prog='extend_fieldgroup_classes',
+            description="Add Profile and ExperienceEvent compatibility, preserving existing classes.",
+            add_help=True,
+        )
+        parser.add_argument("fieldgroup", help="Field Group name, $id or alt:Id to extend")
+        parser.add_argument("-c", "--class_id", help="Additional class names, $ids or alt:Ids to add alongside Profile and ExperienceEvent; existing classes are preserved", type=str, nargs='+', metavar="CLASS")
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_schema = schema.Schema(config=self.config)
+            aepp_schema.getFieldGroups()
+            if args.fieldgroup in aepp_schema.data.fieldGroups_altId:
+                my_fieldgroup_id = aepp_schema.data.fieldGroups_altId[args.fieldgroup]
+            elif args.fieldgroup in aepp_schema.data.fieldGroups_altId.values() or args.fieldgroup in aepp_schema.data.fieldGroups_id.values():
+                my_fieldgroup_id = args.fieldgroup
+            else:
+                raise ValueError(f"Field group '{args.fieldgroup}' not found")
+            list_classes = ["https://ns.adobe.com/xdm/context/profile","https://ns.adobe.com/xdm/context/experienceevent"]
+            if args.class_id is not None:
+                classes = aepp_schema.getClasses() + aepp_schema.getClassesGlobal()
+                class_ids = {
+                    identifier: class_def["$id"]
+                    for class_def in classes
+                    for identifier in (class_def["title"], class_def["$id"], class_def["meta:altId"])
+                }
+                for class_id in args.class_id:
+                    if class_id not in class_ids:
+                        raise ValueError(f"Class '{class_id}' not found")
+                    list_classes.append(class_ids[class_id])
+            result = aepp_schema.extendFieldGroup(my_fieldgroup_id,values=list(dict.fromkeys(list_classes)))
+            if not isinstance(result, dict) or not isinstance(result.get("meta:intendedToExtend"), list):
+                raise ValueError(f"Field group extension failed: {result}")
+            console.print(f"Field group '{args.fieldgroup}' class compatibility extended.", style="green")
         except Exception as e:
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
@@ -1637,7 +1684,7 @@ class ServiceShell(cmd.Cmd):
     def do_get_audiences(self, args:Any) -> None:
         """List all audiences in the current sandbox. If fails, it will use the segments API as fallback."""
         parser = argparse.ArgumentParser(prog='get_audiences', add_help=True)
-        parser.add_argument("-f","--filter",help="filter the audience return by name (non-case sensitive and partial match)",type=str,default="")
+        parser.add_argument("-f","--filter",help="filter the audience return by name or id (non-case sensitive and partial match)",type=str,default="")
         try:
             args = parser.parse_args(shlex.split(args))
             aepp_audience = segmentation.Segmentation(config=self.config)
@@ -1649,7 +1696,7 @@ class ServiceShell(cmd.Cmd):
                 console.print(f"external audiences will not be available in reports", style="yellow")
                 audiences = aepp_audience.getSegments()
             if args.filter != "":
-                audiences = [aud for aud in audiences if args.filter.lower() in aud['name'].lower()]
+                audiences = [aud for aud in audiences if args.filter.lower() in aud['name'].lower() or args.filter.lower() in aud['id'].lower()]
             flw = flowservice.FlowService(config=self.config)
             destinations = flw.getFlows(onlyDestinations=True)
             segments_shared = []
@@ -1889,35 +1936,48 @@ class ServiceShell(cmd.Cmd):
         except SystemExit:
             return
     
+    def _flow_time_reference(self, minutes:int, hours:int, days:int) -> int:
+        if min(minutes, hours, days) < 0:
+            raise ValueError("Flow lookback values must be non-negative")
+        total_minutes = minutes + hours * 60 + days * 1440 or 1440
+        return int(datetime.now(timezone.utc).timestamp() * 1000) - total_minutes * 60 * 1000
+
     @login_required
     def do_get_flows(self, args:Any) -> None:
-        """List flows in the current sandbox based on parameters provided. By default, list all sources and destinations for customers. Default time check: Last 24h."""
+        """List sandbox flows and export CSV, optionally filtering by name and type.
+
+        Usage: get_flows [-n NAME] [-t TYPE] [-i BOOL] [-adv BOOL] [-ao BOOL]
+                         [-mn MINUTES] [-H HOURS] [-d DAYS]
+        Names use case-insensitive partial matching. Active flows are selected by default.
+        Time options are additive and default to the last 24 hours when their sum is zero.
+        Use -ao false to include inactive flows, -adv true for run counts and rates.
+        """
         parser = argparse.ArgumentParser(prog='get_flows', add_help=True)
-        parser.add_argument("-i","--internal_flows",help="Boolean. Get internal flows. Default False. Possible values: True, False", default=False,type=str2bool)
-        parser.add_argument("-t","--type",help="Type of flows to get. Possible values: source, destination, internal. Default: all", default="all",type=str)
+        parser.add_argument("-n","--name",help="Case-insensitive partial match on the flow name", default=None,type=str)
+        parser.add_argument("-i","--internal_flows",help="Boolean. Include all flow types, overriding --type. Default False. Possible values: True, False", default=False,type=str2bool)
+        parser.add_argument("-t","--type",help="Type of flows to get. Default: all", default="all",choices=["source", "destination", "internal", "all"])
         parser.add_argument("-adv","--advanced",help="Boolean. Get advanced information about runs. Default False. Possible values: True, False", default=False,type=str2bool)
         parser.add_argument("-ao","--active_only",help="Boolean. Get only active flows during that time period. Default True. Possible values: True, False", default=True,type=str2bool)
-        parser.add_argument("-mn","--minutes", help="Timeframe in minutes to check for errors, default 0", default=0,type=int)
-        parser.add_argument("-H","--hours", help="Timeframe in hours to check for errors, default 24", default=0,type=int)
-        parser.add_argument("-d","--days", help="Timeframe in days to check for errors, default 0", default=0,type=int)
+        parser.add_argument("-mn","--minutes", help="Lookback minutes, added to hours and days; a zero total means 24 hours", default=0,type=int)
+        parser.add_argument("-H","--hours", help="Lookback hours, added to minutes and days (default 0)", default=0,type=int)
+        parser.add_argument("-d","--days", help="Lookback days, added to minutes and hours (default 0)", default=0,type=int)
         try:
             args = parser.parse_args(shlex.split(args))
-            timetotal_minutes = args.minutes + (args.hours * 60) + (args.days * 1440)
-            if timetotal_minutes == 0:
-                timetotal_minutes = 1440  # default to last 24 hours
-            timereference = int(datetime.now().timestamp()*1000) - (timetotal_minutes * 60 * 1000)
+            timereference = self._flow_time_reference(args.minutes, args.hours, args.days)
             aepp_flow = flowservice.FlowService(config=self.config)
             flows = aepp_flow.getFlows(n_results="inf")
             runs = None
             if args.active_only:
                 runs = aepp_flow.getRuns(n_results="inf",prop=[f'metrics.durationSummary.startedAtUTC>{timereference}'])
                 active_flow_ids = list(set([run.get("flowId") for run in runs]))            
-            source_flows = aepp_flow.getFlows(onlySources=True)
-            destinations_flows = aepp_flow.getFlows(onlyDestinations=True)
+            source_flows = aepp_flow.getFlows(onlySources=True,n_results="inf")
+            destinations_flows = aepp_flow.getFlows(onlyDestinations=True,n_results="inf")
             list_source_ids = [f.get("id") for f in source_flows]
             list_destination_ids = [f.get("id") for f in destinations_flows]
-            if args.internal_flows or args.type == "internal":
+            if args.internal_flows:
                 list_flows = flows
+            elif args.type == "internal":
+                list_flows = [flow for flow in flows if flow.get("id") not in list_source_ids and flow.get("id") not in list_destination_ids]
             else:
                 if args.type == "source":
                     list_flows = source_flows
@@ -1925,6 +1985,8 @@ class ServiceShell(cmd.Cmd):
                     list_flows = destinations_flows
                 else:
                     list_flows = source_flows + destinations_flows
+            if args.name:
+                list_flows = [fl for fl in list_flows if args.name.lower() in fl.get('name','').lower()]
             if args.active_only:
                 list_flows = [fl for fl in list_flows if fl.get("id") in active_flow_ids]
             if args.advanced:
@@ -1955,9 +2017,9 @@ class ServiceShell(cmd.Cmd):
                     "name": fl.get("name","N/A"),
                     "created": fl.get("createdAt",1000),
                     "flowSpec": fl.get("flowSpec",{}).get('id','N/A'),
-                    "sourceConnectionId": fl.get("sourceConnectionIds",["N/A"])[0],
-                    "targetConnectionId": fl.get("targetConnectionIds",["N/A"])[0],
-                    "connectionSpec": fl.get("inheritedAttributes",{}).get('sourceConnections',[{}])[0].get('connectionSpec',{}).get('id'),
+                    "sourceConnectionId": (fl.get("sourceConnectionIds") or ["N/A"])[0],
+                    "targetConnectionId": (fl.get("targetConnectionIds") or ["N/A"])[0],
+                    "connectionSpec": (fl.get("inheritedAttributes",{}).get('sourceConnections') or [{}])[0].get('connectionSpec',{}).get('id'),
                     "type": fl.get("inheritedAttributes",{}).get('properties','N/A'),
                 }
                 if obj.get("id") in list_source_ids:
@@ -1977,7 +2039,10 @@ class ServiceShell(cmd.Cmd):
                     obj["Successful Runs"] = run_info.get("success_runs",0)
                     obj["Partial Success Runs"] = run_info.get("partial_success",0)
                 report_flows.append(obj)
-            df_flows = pd.DataFrame(list_flows)
+            df_flows = pd.DataFrame(list_flows) if list_flows else pd.DataFrame(columns=["id", "name"])
+            if args.advanced:
+                for column in ("Total Runs", "Successful Runs", "Failed Runs", "Partial Success Runs"):
+                    df_flows[column] = [flow[column] for flow in report_flows]
             filename = f"{self.config.sandbox}_flows_{timereference/1000}"
             if args.advanced:
                 filename = f"{filename}_advanced"
@@ -1987,7 +2052,7 @@ class ServiceShell(cmd.Cmd):
                 filename = f"{filename}_internal"
             df_flows.to_csv(f"{filename}.csv",index=False)
             table = Table(title=f"Flows in Sandbox: {self.config.sandbox}")
-            table.add_column("ID", style="cyan")
+            table.add_column("ID", style="cyan",no_wrap=True)
             table.add_column("Name", style="magenta")
             table.add_column("Type", style="white")
             if args.advanced == False:
@@ -2057,22 +2122,89 @@ class ServiceShell(cmd.Cmd):
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
             return
+
+    @login_required
+    def do_get_flow_runs(self,args:Any) -> None:
+        """Display a flow's runs and export flow_<flow_id>_runs.json.
+
+        Usage: get_flow_runs <flow_id> [-mn MINUTES] [-H HOURS] [-d DAYS]
+        Non-negative lookback values are additive; a zero total means the last 24 hours.
+        """
+        parser = argparse.ArgumentParser(prog='get_flow_runs', add_help=True)
+        parser.add_argument("flow_id", help="Flow ID to get runs for")
+        parser.add_argument("-mn","--minutes", help="Lookback minutes, added to hours and days; a zero total means 24 hours", default=0,type=int)
+        parser.add_argument("-H","--hours", help="Lookback hours, added to minutes and days (default 0)", default=0,type=int)
+        parser.add_argument("-d","--days", help="Lookback days, added to minutes and hours (default 0)", default=0,type=int)
+        try:
+            args = parser.parse_args(shlex.split(args))
+            timereference = self._flow_time_reference(args.minutes, args.hours, args.days)
+            aepp_flow = flowservice.FlowService(config=self.config)
+            flow_runs = aepp_flow.getRuns(prop=[f'flowId=={args.flow_id}',f'metrics.durationSummary.startedAtUTC>{timereference}'],n_results="inf")
+            with open(f"flow_{args.flow_id}_runs.json", 'w') as f:
+                json.dump(flow_runs, f, indent=4)
+            table = Table(title=f"Runs in Sandbox for Flow {args.flow_id}")
+            table.add_column("ID", style="cyan")
+            table.add_column("Created", style="magenta")
+            table.add_column("Status", style="white")
+            table.add_column("Input Records", style="white")
+            table.add_column("Created Records", style="white")
+            for run in flow_runs:
+                status = run.get('metrics',{}).get('statusSummary',{}).get('status','unknown')
+                status_str = "[green]Success[/green]" if status == "success" else "[red]Failed[/red]" if status == "failed" else f"[yellow]{status}[/yellow]" if status == "partialFailure" or status == "partialSuccess" else f"[white]{status}[/white]"
+                table.add_row(
+                    str(run.get("id","")),
+                    datetime.fromtimestamp(run.get("createdAt",0)/1000).isoformat(),
+                    status_str,
+                    str(run.get('metrics',{}).get('recordSummary',{}).get('inputRecordCount',0)),
+                    str(run.get('metrics',{}).get('recordSummary',{}).get('createdRecordCount',0))
+                )
+            console.print(table)
+            console.print(f"Flow runs exported to flow_{args.flow_id}_runs.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
+
+    @login_required
+    def do_get_flow_run(self,args:Any) -> None:
+        """Export one run's details to flow_run_<run_id>.json.
+
+        Usage: get_flow_run <run_id>
+        Requires an active sandbox connection. API errors are reported without exporting.
+        """
+        parser = argparse.ArgumentParser(prog='get_flow_run', add_help=True)
+        parser.add_argument("run_id", help="Run ID to get")
+        try:
+            args = parser.parse_args(shlex.split(args))
+            aepp_flow = flowservice.FlowService(config=self.config)
+            flow_run = aepp_flow.getRun(runId=args.run_id)
+            definitions = flow_run if isinstance(flow_run, list) else [flow_run]
+            if not definitions or any(not isinstance(run, dict) or not run.get("id") for run in definitions):
+                raise ValueError(f"Flow run retrieval failed: {flow_run}")
+            with open(f"flow_run_{args.run_id}.json", 'w') as f:
+                json.dump(flow_run, f, indent=4)
+            console.print(f"Flow run exported to flow_run_{args.run_id}.json", style="green")
+        except Exception as e:
+            console.print(f"(!) Error: {str(e)}", style="red")
+        except SystemExit:
+            return
     
     @login_required
     def do_get_flow_errors(self,args:Any) -> None:
-        """Get errors for a specific flow, saving it in a JSON file for specific timeframe, default last 24 hours."""
+        """Export failed runs to flow_<flow_id>_errors.json.
+
+        Usage: get_flow_errors <flow_id> [-mn MINUTES] [-H HOURS] [-d DAYS]
+        Non-negative lookback values are additive; a zero total means the last 24 hours.
+        """
         parser = argparse.ArgumentParser(prog='get_flow_errors', add_help=True)
         parser.add_argument("flow_id", help="Flow ID to get errors for")
-        parser.add_argument("-mn","--minutes", help="Timeframe in minutes to check for errors, default 0", default=0,type=int)
-        parser.add_argument("-H","--hours", help="Timeframe in hours to check for errors, default 24", default=0,type=int)
-        parser.add_argument("-d","--days", help="Timeframe in days to check for errors, default 0", default=0,type=int)
+        parser.add_argument("-mn","--minutes", help="Lookback minutes, added to hours and days; a zero total means 24 hours", default=0,type=int)
+        parser.add_argument("-H","--hours", help="Lookback hours, added to minutes and days (default 0)", default=0,type=int)
+        parser.add_argument("-d","--days", help="Lookback days, added to minutes and hours (default 0)", default=0,type=int)
         try:
             args = parser.parse_args(shlex.split(args))
-            timetotal_minutes = args.minutes + (args.hours * 60) + (args.days * 1440)
-            if timetotal_minutes == 0:
-                timetotal_minutes = 1440  # default to last 24 hours
+            timereference = self._flow_time_reference(args.minutes, args.hours, args.days)
             aepp_flow = flowservice.FlowService(config=self.config)
-            timereference = int(datetime.now().timestamp()*1000) - (timetotal_minutes * 60 * 1000)
             failed_runs = aepp_flow.getRuns(prop=['metrics.statusSummary.status==failed',f'flowId=={args.flow_id}',f'metrics.durationSummary.startedAtUTC>{timereference}'],n_results="inf")
             with open(f"flow_{args.flow_id}_errors.json", 'w') as f:
                 json.dump(failed_runs, f, indent=4)
@@ -2084,23 +2216,25 @@ class ServiceShell(cmd.Cmd):
     
     @login_required
     def do_get_flow_partial_success(self,args:Any) -> None:
-        """Get the partial success for a specific flow, saving it in a JSON file for specific timeframe, default last 24 hours."""
+        """Export partial-success runs to flow_<flow_id>_partial_success.json.
+
+        Usage: get_flow_partial_success <flow_id> [-mn MINUTES] [-H HOURS] [-d DAYS]
+        Selects partialSuccess runs, not partialFailure. Lookback values are non-negative
+        and additive; a zero total means the last 24 hours.
+        """
         parser = argparse.ArgumentParser(prog='get_flow_partial_success', add_help=True)
         parser.add_argument("flow_id", help="Flow ID to get partial success for")
-        parser.add_argument("-mn","--minutes", help="Timeframe in minutes to check for errors, default 0", default=0,type=int)
-        parser.add_argument("-H","--hours", help="Timeframe in hours to check for errors, default 24", default=0,type=int)
-        parser.add_argument("-d","--days", help="Timeframe in days to check for errors, default 0", default=0,type=int)
+        parser.add_argument("-mn","--minutes", help="Lookback minutes, added to hours and days; a zero total means 24 hours", default=0,type=int)
+        parser.add_argument("-H","--hours", help="Lookback hours, added to minutes and days (default 0)", default=0,type=int)
+        parser.add_argument("-d","--days", help="Lookback days, added to minutes and hours (default 0)", default=0,type=int)
         try:
             args = parser.parse_args(shlex.split(args))
-            timetotal_minutes = args.minutes + (args.hours * 60) + (args.days * 1440)
-            if timetotal_minutes == 0:
-                timetotal_minutes = 1440  # default to last 24 hours
+            timereference = self._flow_time_reference(args.minutes, args.hours, args.days)
             aepp_flow = flowservice.FlowService(config=self.config)
-            timereference = int(datetime.now().timestamp()*1000) - (timetotal_minutes * 60 * 1000)
-            failed_runs = aepp_flow.getRuns(prop=['metrics.statusSummary.status==partialSuccess',f'flowId=={args.flow_id}',f'metrics.durationSummary.startedAtUTC>{timereference}'],n_results="inf")
+            partial_runs = aepp_flow.getRuns(prop=['metrics.statusSummary.status==partialSuccess',f'flowId=={args.flow_id}',f'metrics.durationSummary.startedAtUTC>{timereference}'],n_results="inf")
             with open(f"flow_{args.flow_id}_partial_success.json", 'w') as f:
-                json.dump(failed_runs, f, indent=4)
-            console.print(f"Flow errors exported to flow_{args.flow_id}_partial_success.json", style="green")
+                json.dump(partial_runs, f, indent=4)
+            console.print(f"Partial-success flow runs exported to flow_{args.flow_id}_partial_success.json", style="green")
         except Exception as e:
             console.print(f"(!) Error: {str(e)}", style="red")
         except SystemExit:
@@ -2684,6 +2818,8 @@ class ServiceShell(cmd.Cmd):
             aepp_query = queryservice.QueryService(config=self.config)
             conn = aepp_query.connection()
             iqs2 = queryservice.InteractiveQuery2(conn, config=self.config)
+            if args.extra_fields:
+                args.extra_fields = [field.strip() for field in args.extra_fields.split(',')]
             result:pd.DataFrame = iqs2.queryAudiencePopulation(audienceId=args.audience_id, extraFields=args.extra_fields,count=args.count_only)
             result.to_csv(filename, index=False)
             console.print(f"Audience population exported to {filename}", style="green")
@@ -3416,6 +3552,7 @@ class ServiceShell(cmd.Cmd):
                    "get_fieldgroup_json",
                    "get_fieldgroup_csv",
                    "get_fieldgroup_xdm",
+                   "extend_fieldgroup_classes",
                    "delete_fieldgroup",
                    "get_datatypes",
                    "get_datatype_json",
@@ -3453,6 +3590,8 @@ class ServiceShell(cmd.Cmd):
         "Flows": ["get_flows",
                   "get_flow_errors",
                   "get_flow_partial_success",
+                  "get_flow_runs",
+                  "get_flow_run",
                   "create_dataset_http_source",
                   "get_DLZ_credential"],
         "Deletion": ["delete_dataset",
