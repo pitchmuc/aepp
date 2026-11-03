@@ -1448,7 +1448,8 @@ class InteractiveQuery2:
         Retrieve the identities in the identityMap that are qualified to the audience ID passed.
         Arguments:
             audienceId : REQUIRED : Single or list of audience IDs
-            extraFields : OPTIONAL : If you want to add more identities that are not in the IdentityMap
+            extraFields : OPTIONAL : Additional field paths to return. Column names use the final
+                path element in snake_case, e.g. person.name.firstName becomes first_name.
             count : OPTIONAL : Return Segmentation API counts with count and audienceId columns,
                 without looking up snapshot datasets or executing SQL.
         """
@@ -1480,11 +1481,21 @@ class InteractiveQuery2:
                 table = item['tags']['adobe/pqs/table'][0]
         commaField = ""
         strFields = ""
+        strFieldsFinal = ""
         if extraFields is not None and len(extraFields) > 0:
             commaField = ","
-            strFields = ','.join(extraFields)
+            fieldNames = []
+            fieldSelections = []
+            for field in extraFields:
+                fieldName = field.rsplit('.', 1)[-1]
+                fieldName = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', fieldName)
+                fieldName = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', fieldName).lower()
+                fieldNames.append(fieldName)
+                fieldSelections.append(f"{field} AS {fieldName}")
+            strFields = ','.join(fieldSelections)
+            strFieldsFinal = ','.join(fieldNames)
         queryTemplate = f"""
-            SELECT key, inline(value), '{audienceId}' audienceId {commaField} {strFields} FROM
+            SELECT key, inline(value), '{audienceId}' audienceId {commaField} {strFieldsFinal} FROM
                 (SELECT explode(identityMap) {commaField} {strFields}
                 FROM {table}
                 WHERE segmentMembership['ups']['{audienceId}'].status = 'realized') LIMIT 0
