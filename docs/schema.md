@@ -335,6 +335,9 @@ Arguments:
 * deprecated : OPTIONAL : Display the deprecated fields from that schema
 * save : Save the fieldGroup to a JSON file
 
+kwargs:
+* containerId : OPTIONAL : Override the instance container (`"tenant"` or `"global"`) for this request, without changing the instance.
+
 ### copyFieldGroup
 Copy the dictionary returned by getFieldGroup to the only required elements for copying it over.\
 Arguments:
@@ -524,18 +527,39 @@ Arguments:
 
 
 ### extendFieldGroup
-Patch a Field Group to extend its compatibility with ExperienceEvents, IndividualProfile and Record.\
+Add class compatibility to a field group without removing existing entries in `meta:intendedToExtend`. Existing custom classes are retained, and duplicate class IDs are removed while preserving first-seen order (existing classes first).\
 Arguments:
-* fieldGroupId : REQUIRED : meta:altId or $id of the field group.
-* values : OPTIONAL : If you want to pass the behavior you want to extend the field group to.
-  Examples: 
-  ```python
-  ["https://ns.adobe.com/xdm/context/profile",
-  "https://ns.adobe.com/xdm/context/experienceevent"]
-  ```
-    by default profile and experienceEvent will be added to the FieldGroup.
-* tenant : OPTIONAL : default "tenant", possible value 'global'
+* fieldGroupId : REQUIRED : `meta:altId` or `$id` of the field group.
+* values : OPTIONAL : A single class `$id` string or a list of class `$id` strings to add. Unlike the CLI, this method does not resolve class names or `alt:Id`s.
+  * Omitted or `None`: add XDM Individual Profile (`https://ns.adobe.com/xdm/context/profile`) and XDM ExperienceEvent (`https://ns.adobe.com/xdm/context/experienceevent`).
+  * Explicit string or list: add only those classes, alongside the existing classes.
+  * Empty list: add no classes; existing entries are retained and deduplicated.
+* tenant : OPTIONAL : Container to read and patch. Default `"tenant"`; also accepts `"global"`. This overrides the instance container for this operation without changing it.
 
+For a configured `Schema` instance named `schema_api`:
+```python
+# Add the default classes, keeping any existing custom classes.
+schema_api.extendFieldGroup("_tenant.mixins.customerfields")
+
+# Add one custom class without replacing any existing classes.
+schema_api.extendFieldGroup(
+    "_tenant.mixins.customerfields",
+    values="https://ns.adobe.com/tenant/classes/custom",
+)
+
+# Add several classes.
+schema_api.extendFieldGroup(
+    "_tenant.mixins.customerfields",
+    values=[
+        "https://ns.adobe.com/tenant/classes/custom",
+        "https://ns.adobe.com/xdm/context/profile",
+    ],
+)
+```
+
+The method reads the current field group before sending a PATCH and returns the PATCH response. Invalid class values or a missing/malformed existing class list raise `ValueError` without sending a PATCH, so an error response cannot accidentally be treated as an empty class list. Connector exceptions propagate to the caller.
+
+The CLI equivalent is [`extend_fieldgroup_classes`](./cli.md#extend_fieldgroup_classes); it always adds Profile and ExperienceEvent alongside any explicitly supplied classes.
 
 ### enableSchemaForRealTime
 Enable a schema for real time based on its ID.\

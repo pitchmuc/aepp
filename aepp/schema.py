@@ -1152,6 +1152,8 @@ class Schema:
             flat : OPTIONAL : if the fieldGroup is flat (false by default)
             deprecated : OPTIONAL : Display the deprecated fields from that schema
             save : Save the fieldGroup to a JSON file
+        kwargs:
+            containerId : Override the instance container ("tenant" or "global") for this request.
         """
         if fieldGroupId.startswith("https://"):
             from urllib import parse
@@ -1173,13 +1175,13 @@ class Schema:
             type = kwargs.get('xtype', 'xdm')
         update_accept = (f"application/vnd.adobe.{type}{accept_full}{accept_desc}{accept_flat}{accept_deprec}+json; version={version}")
         privateHeader.update({"Accept": update_accept})
-        path = f"/{self.container}/fieldgroups/{fieldGroupId}"
+        path = f"/{kwargs.get('containerId', self.container)}/fieldgroups/{fieldGroupId}"
         res = self.connector.getData(self.endpoint + path, headers=privateHeader)
         if save:
             aepp.saveFile(
                 module="schema", file=res, filename=res["title"], type_file="json"
             )
-        if "title" in res.keys():
+        if isinstance(res, dict) and "title" in res:
             self.data.fieldGroups[res["title"]] = res
         return res
 
@@ -1973,31 +1975,44 @@ class Schema:
         res: list = self.connector.postData(self.endpoint + path, data=dataResource)
         return res
 
-    def extendFieldGroup(self,fieldGroupId:str=None,values:list=None,tenant:str='tenant')->dict:
+    def extendFieldGroup(self,fieldGroupId:str|None=None,values:str|list[str]|None=None,tenant:str='tenant')->dict:
         """
-        Patch a Field Group to extend its compatibility with ExperienceEvents, IndividualProfile and Record.
+        Add compatible classes to a field group without removing existing classes.
         Arguments:
             fieldGroupId : REQUIRED : meta:altId or $id of the field group.
-            values : OPTIONAL : If you want to pass the behavior you want to extend the field group to.
+            values : OPTIONAL : A class $id string or a list of class $ids to add.
                 Examples: ["https://ns.adobe.com/xdm/context/profile",
                       "https://ns.adobe.com/xdm/context/experienceevent",
                     ]
-                by default profile and experienceEvent will be added to the FieldGroup.
-            tenant : OPTIONAL : default "tenant", possible value 'global'
+                If None, add XDM Individual Profile and XDM ExperienceEvent.
+                Explicit values add only the supplied classes. An empty list adds nothing.
+                Existing classes, including custom classes, are preserved and duplicates removed.
+            tenant : OPTIONAL : Container to read and patch; default "tenant", possible value "global".
+        Raises:
+            ValueError : Invalid values or an unreadable existing class list; no PATCH is sent.
         """
         if fieldGroupId is None:
-            raise Exception("Require a field Group ID")
+            raise ValueError("Require a field Group ID")
         if self.loggingEnabled:
             self.logger.debug(f"Starting extendFieldGroup")
+        if values is None:
+            values = ["https://ns.adobe.com/xdm/context/profile",
+                      "https://ns.adobe.com/xdm/context/experienceevent"]
+        elif isinstance(values, str):
+            values = [values]
+        if not isinstance(values, list) or any(not isinstance(value, str) or not value for value in values):
+            raise ValueError("values must be a class $id string or a list of non-empty class $id strings")
+        fg_def = self.getFieldGroup(fieldGroupId, full=False, containerId=tenant)
+        if not isinstance(fg_def, dict):
+            raise ValueError(f"Field group retrieval failed: {fg_def}")
+        current_classes = fg_def.get("meta:intendedToExtend")
+        if not isinstance(current_classes, list) or any(not isinstance(value, str) or not value for value in current_classes):
+            raise ValueError(f"Field group retrieval failed: {fg_def}")
+        list_fgs = list(dict.fromkeys(current_classes + values))
         if fieldGroupId.startswith("https://"):
             from urllib import parse
             fieldGroupId = parse.quote_plus(fieldGroupId)
         path = f"/{tenant}/fieldgroups/{fieldGroupId}"
-        if values is not None:
-            list_fgs = values
-        else:
-            list_fgs = ["https://ns.adobe.com/xdm/context/profile",
-                      "https://ns.adobe.com/xdm/context/experienceevent"]
         operation = [
            { 
             "op": "replace",
