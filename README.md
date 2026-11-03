@@ -66,10 +66,19 @@ At the moment the current wrapper is containing the following sub modules:
 * [ajo](./docs/ajo.md)
 * [som](./docs/som.md) (see note below)
 * [synchronizer](./docs/synchronizer.md)
-* [cli](./docs/cli.md)
 * [Knowledge Graph](./docs/knowledge-graph.md) (see note below)
 
 Last but not least, the core methods are described here: [main](./docs/main.md)
+
+## CLI
+
+The CLI module allows you to interact with the AEP services directly from your terminal. You can perform various operations such as managing schemas, querying data, and handling sandboxes without writing Python code.\
+The CLI encompass the different modules in a single interface, allowing you to manage various aspects of the AEP services efficiently from the command line.\
+It abstracts the requirements of the different modules, and provide more advanced use-cases that would otherwise require direct interaction with the individual APIs.\
+This allows users to focus on their business logic rather than the intricacies of each individual service.
+For more information on how to use the CLI, refer to the [CLI documentation](./docs/cli.md).
+
+Do not hesitate to raise a ticket / request in case you have a very common task or feature that you would like to see implemented in the CLI.
 
 ## Special classes
 
